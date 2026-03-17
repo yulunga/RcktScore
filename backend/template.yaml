@@ -48,6 +48,18 @@ Resources:
             Path: /start_match
             Method: POST
 
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/login/handler.lambda_handler
+      Events:
+        Login:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /login
+            Method: POST
+
   GetMatchFunction:
     Type: AWS::Serverless::Function
     Properties:

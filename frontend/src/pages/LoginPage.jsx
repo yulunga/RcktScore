@@ -7,7 +7,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, loading, login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/match/new";
@@ -16,9 +16,9 @@ export default function LoginPage() {
     return <Navigate replace to={redirectTo} />;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    const result = login(username, password);
+    const result = await login(username, password);
 
     if (!result.ok) {
       setError(result.message);
@@ -32,9 +32,9 @@ export default function LoginPage() {
     <main className="page-shell login-shell">
       <section className="login-panel stack">
         <span className="status-pill">RcktScore v2</span>
-        <h1>Operator Login</h1>
+        <h1>Rckt Score Login</h1>
         <p className="helper-text">
-          Sign in before opening the live scoring console for a court.
+          Sign in to gain access to scoring tool
         </p>
 
         <form className="stack" onSubmit={handleSubmit}>
@@ -76,7 +76,9 @@ export default function LoginPage() {
           {error ? <div className="notice error">{error}</div> : null}
 
           <div className="button-row">
-            <button type="submit">Sign In</button>
+            <button disabled={loading} type="submit">
+              {loading ? "Signing In..." : "Sign In"}
+            </button>
           </div>
         </form>
       </section>

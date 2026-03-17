@@ -11,7 +11,10 @@ export default function SessionBar() {
     <section className="session-bar">
       <div>
         <strong>Signed in</strong>
-        <span>{session?.username || "Operator"}</span>
+        <span>
+          {session?.username || "Operator"}
+          {session?.organization_name ? ` • ${session.organization_name}` : ""}
+        </span>
       </div>
       <button
         className="secondary"

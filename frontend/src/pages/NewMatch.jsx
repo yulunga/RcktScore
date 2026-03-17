@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SessionBar from "../components/SessionBar";
+import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 
 const scoreTypeOptions = [11, 15];
@@ -79,11 +80,13 @@ const formFields = [
 ];
 
 export default function NewMatch() {
+  const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
+  const organizationId = session?.organization_id ? String(session.organization_id) : "";
   const requiredFieldsComplete =
-    formState.tenant_id.trim() &&
+    organizationId &&
     formState.court_id.trim() &&
     formState.court_name.trim() &&
     formState.player1_name.trim() &&
@@ -98,7 +101,10 @@ export default function NewMatch() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const createdMatch = await startMatch(formState);
+    const createdMatch = await startMatch({
+      ...formState,
+      tenant_id: organizationId,
+    });
     if (createdMatch?.id) {
       navigate(`/match/${createdMatch.id}`);
     }
@@ -122,23 +128,29 @@ export default function NewMatch() {
           <p>Complete the required court and player fields before opening the live scoring screen.</p>
         </div>
 
+        <div className="notice">
+          Organisation: {session?.organization_name || "Unknown"} ({organizationId || "No organisation id"})
+        </div>
+
         <div className="field-grid">
-          {formFields.map(({ name, label, placeholder, required }) => (
-            <div className="field" key={name}>
-              <label htmlFor={name}>
-                {label}
-                {required ? <span className="required-mark"> *</span> : null}
-              </label>
-              <input
-                id={name}
-                name={name}
-                placeholder={placeholder}
-                required={required}
-                value={formState[name]}
-                onChange={(event) => handleChange(name, event.target.value)}
-              />
-            </div>
-          ))}
+          {formFields
+            .filter(({ name }) => name !== "tenant_id")
+            .map(({ name, label, placeholder, required }) => (
+              <div className="field" key={name}>
+                <label htmlFor={name}>
+                  {label}
+                  {required ? <span className="required-mark"> *</span> : null}
+                </label>
+                <input
+                  id={name}
+                  name={name}
+                  placeholder={placeholder}
+                  required={required}
+                  value={formState[name]}
+                  onChange={(event) => handleChange(name, event.target.value)}
+                />
+              </div>
+            ))}
 
           <div className="field">
             <label htmlFor="score_type">Game Format</label>

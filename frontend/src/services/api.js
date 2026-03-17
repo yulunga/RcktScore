@@ -28,6 +28,13 @@ export function startMatch(payload) {
   });
 }
 
+export function login(payload) {
+  return apiRequest("/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function scorePoint(payload) {
   return apiRequest("/score_point", {
     method: "POST",

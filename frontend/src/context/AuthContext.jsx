@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
+import { login as loginRequest } from "../services/api";
+
 const SESSION_KEY = "rcktscore.auth";
 
 export const AuthContext = createContext(null);
@@ -28,6 +30,7 @@ function readStoredSession() {
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => readStoredSession());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -42,7 +45,7 @@ export function AuthProvider({ children }) {
     window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }, [session]);
 
-  const login = useCallback((username, password) => {
+  const login = useCallback(async (username, password) => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
 
@@ -53,12 +56,26 @@ export function AuthProvider({ children }) {
       };
     }
 
-    setSession({
-      username: trimmedUsername,
-      loggedInAt: new Date().toISOString(),
-    });
+    setLoading(true);
+    try {
+      const response = await loginRequest({
+        username: trimmedUsername,
+        password: trimmedPassword,
+      });
+      setSession({
+        ...response.session,
+        loggedInAt: new Date().toISOString(),
+      });
 
-    return { ok: true };
+      return { ok: true, session: response.session };
+    } catch (requestError) {
+      return {
+        ok: false,
+        message: requestError.message || "Login failed.",
+      };
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -69,10 +86,11 @@ export function AuthProvider({ children }) {
     () => ({
       isAuthenticated: Boolean(session),
       session,
+      loading,
       login,
       logout,
     }),
-    [login, logout, session],
+    [loading, login, logout, session],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
