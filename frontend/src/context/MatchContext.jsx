@@ -1,6 +1,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -22,6 +23,28 @@ export function MatchProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const socketRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      socketRef.current?.();
+      socketRef.current = null;
+    };
+  }, []);
+
+  const runMatchMutation = useCallback(async (request) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await request();
+      setCurrentMatch(response.match);
+      return response.match;
+    } catch (requestError) {
+      setError(requestError.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const loadMatch = useCallback(async (matchId) => {
     if (!matchId) {
@@ -58,26 +81,24 @@ export function MatchProvider({ children }) {
   }, []);
 
   const scorePoint = useCallback(async (matchId, scorer) => {
-    const response = await scorePointRequest({ match_id: matchId, scorer });
-    setCurrentMatch(response.match);
-    return response.match;
-  }, []);
+    return runMatchMutation(() =>
+      scorePointRequest({ match_id: matchId, scorer }),
+    );
+  }, [runMatchMutation]);
 
   const sendEventAction = useCallback(async (matchId, actionType, payload = {}) => {
-    const response = await sendEventActionRequest({
-      match_id: matchId,
-      action_type: actionType,
-      ...payload,
-    });
-    setCurrentMatch(response.match);
-    return response.match;
-  }, []);
+    return runMatchMutation(() =>
+      sendEventActionRequest({
+        match_id: matchId,
+        action_type: actionType,
+        ...payload,
+      }),
+    );
+  }, [runMatchMutation]);
 
   const undoLastAction = useCallback(async (matchId) => {
-    const response = await undoActionRequest({ match_id: matchId });
-    setCurrentMatch(response.match);
-    return response.match;
-  }, []);
+    return runMatchMutation(() => undoActionRequest({ match_id: matchId }));
+  }, [runMatchMutation]);
 
   const connectRealtime = useCallback((matchId) => {
     if (socketRef.current) {

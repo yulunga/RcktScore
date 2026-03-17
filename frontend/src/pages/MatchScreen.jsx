@@ -12,12 +12,14 @@ export default function MatchScreen() {
   const {
     currentMatch,
     error,
+    loading,
     loadMatch,
     connectRealtime,
     scorePoint,
     sendEventAction,
     undoLastAction,
   } = useMatch();
+  const displayUrl = `${window.location.origin}/display?match=${matchId}`;
 
   useEffect(() => {
     loadMatch(matchId);
@@ -30,7 +32,7 @@ export default function MatchScreen() {
       <div className="stack">
         <Scoreboard match={currentMatch} />
         <MatchControls
-          disabled={!currentMatch}
+          disabled={!currentMatch || loading}
           onScorePoint={(scorer) => scorePoint(matchId, scorer)}
           onEventAction={(actionType, payload) =>
             sendEventAction(matchId, actionType, payload)
@@ -41,6 +43,14 @@ export default function MatchScreen() {
 
       <div className="stack">
         <Timer />
+        <section className="panel stack">
+          <h2>Spectator Display</h2>
+          <p className="helper-text">
+            Open this URL on the venue display, TV browser, or secondary tablet.
+          </p>
+          <input className="read-only-input" readOnly value={displayUrl} />
+        </section>
+        {loading ? <div className="notice">Syncing match state...</div> : null}
         {error ? <div className="notice error">{error}</div> : null}
         <EventTimeline events={currentMatch?.state?.events || []} />
       </div>

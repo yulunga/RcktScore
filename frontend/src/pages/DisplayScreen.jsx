@@ -8,7 +8,7 @@ import { useMatch } from "../hooks/useMatch";
 export default function DisplayScreen() {
   const [searchParams] = useSearchParams();
   const matchId = searchParams.get("match");
-  const { currentMatch, connectRealtime, loadMatch } = useMatch();
+  const { currentMatch, connectRealtime, error, loadMatch, loading } = useMatch();
 
   useEffect(() => {
     if (!matchId) {
@@ -26,6 +26,13 @@ export default function DisplayScreen() {
         <span className="status-pill">Spectator Display</span>
         <h1>Live Court Display</h1>
       </section>
+      {!matchId ? (
+        <div className="notice error">
+          No match was selected. Open this screen with a `?match=` query value.
+        </div>
+      ) : null}
+      {loading ? <div className="notice">Loading live match...</div> : null}
+      {error ? <div className="notice error">{error}</div> : null}
       <Scoreboard match={currentMatch} />
       <EventTimeline events={currentMatch?.state?.events || []} />
     </main>
