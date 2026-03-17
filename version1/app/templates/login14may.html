@@ -1,0 +1,24 @@
+{% extends "loginlayout.html" %}
+
+{% block content %}
+      <div class="login-container">
+        <h1>Please login</h1>
+          <br>
+            <form action="" method="post">
+              <div class="form-group">
+                <input type="text" placeholder="Username" name="username" value="{{
+                  request.form.username }}">
+              </div>
+              <div class="form-group">
+                <input type="password" placeholder="Password" name="password" value="{{
+                  request.form.password }}">
+              </div>
+              <input class="btn-login" type="submit" value="Login">
+            </form>
+              {% if error %}
+                  <p class="error"><strong>Error:</strong> {{ error }}</p>
+              {% endif %}
+              {% for message in get_flashed_messages() %}
+                  {{ message }}
+              {% endfor %}
+{% endblock %}

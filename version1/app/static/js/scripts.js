@@ -1,0 +1,1 @@
+console.log("SqScore scripts loaded.");

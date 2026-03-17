@@ -1,0 +1,20 @@
+{
+    "courts": [
+      {
+        "value": "1",
+        "label": "Court-1"
+      },
+      {
+        "value": "2",
+        "label": "Court-2"
+      },
+      {
+        "value": "3",
+        "label": "Court-3"
+      },
+      {
+        "value": "4",
+        "label": "Court-4"
+      }
+    ]
+  }

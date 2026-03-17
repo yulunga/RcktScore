@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scorekeeper</title>
+</head>
+<body>
+  <h1>Scorekeeper</h1>
+  <h2>Match Details</h2>
+  <p>Score Type: {{ score_type }}</p>
+  <p>Player 1: {{ player1_name }} {{ player1_surname }} ({{ player1_country }})</p>
+  <p>Player 2: {{ player2_name }} {{ player2_surname }} ({{ player2_country }})</p>
+  <p>Court Name: {{ court_name }}</p>
+  <p>Referee Name: {{ referee_name }}</p>
+  <h2>Score</h2>
+  <p>Player 1: <span id="player1_score">0</span></p>
+  <p>Player 2: <span id="player2_score">0</span></p>
+  <button id="player1_score_button">Player 1 Scored</button>
+  <button id="player2_score_button">Player 2 Scored</button>
+  <button id="end_game_button">End Game</button>
+
+  <script src="{{ url_for('static', filename='static/scorekeeper.js') }}"></script>
+</body>
+</html>

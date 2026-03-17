@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Calsa SquashLevels Box Leagues</title>
+    <style>
+      /* Add your CSS styles here */
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+
+      img {
+        width: auto;
+        height: 100vh;
+        display: block; /* This ensures the image is centered horizontally */
+        margin: auto; /* Offset by 550px from the top, centered horizontally */
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Use Jinja2 syntax to insert the dynamic file name 
+    <img src="{{ 'squashlevel_' + date_string + '.png' }}" alt="Screenshot" />
+    <img src="{{ '../images/SquashLevels/' + 'squashlevel_' + date_string + '.png' }}" alt="Screenshot" />
+    -->
+      <img src="{{ url_for('static', filename='images/SquashLevels/squashlevel_' + date_string + '.png') }}" alt="Screenshot" />
+    </body>
+</html>

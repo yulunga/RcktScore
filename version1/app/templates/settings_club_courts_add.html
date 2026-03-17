@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container pt-4">
+    <h3>Add Court</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="court_name" class="form-label">Court Name</label>
+            <input type="text" name="court_name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="court_alias" class="form-label">Court Alias</label>
+            <input type="text" name="court_alias" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-success">Add</button>
+        <a href="{{ url_for('settings.add_court_route') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

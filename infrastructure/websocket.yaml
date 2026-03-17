@@ -1,0 +1,17 @@
+websocket_api:
+  name: rcktscore-live-score
+  route_selection_expression: "$request.body.action"
+  routes:
+    - route: $connect
+      purpose: register device or screen connection
+    - route: $disconnect
+      purpose: clean up connection registration
+    - route: subscribe_match
+      purpose: subscribe to a single live match
+    - route: subscribe_court
+      purpose: subscribe to a court feed for ESP32 displays
+    - route: broadcast_update
+      integration: WebsocketBroadcastFunction
+  note: >
+    The websocket broadcast Lambda is scaffolded. Connection registration and
+    subscription persistence should be added next.

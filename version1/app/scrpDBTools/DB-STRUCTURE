@@ -1,0 +1,47 @@
+
+
+TABLE - SQGAMESPLAY
+
+ID (INTEGER) 1 None 1 
+MATCHSESSION (TEXT) 0 None 0 
+PLAYER1_NAME (TEXT) 1 None 0 
+PLAYER1_SURNAME (TEXT) 0 None 0 
+PLAYER1_COUNTRY (TEXT) 0 None 0 
+PLAYER1_HANDICAP (INT) 0 None 0 
+PLAYER2_NAME (TEXT) 1 None 0 
+PLAYER2_SURNAME (TEXT) 0 None 0 
+PLAYER2_COUNTRY (TEXT) 0 None 0 
+PLAYER2_HANDICAP (INT) 0 None 0 
+COURT_NAME (TEXT) 1 None 0 
+REFEREE_NAME (TEXT) 1 None 0 
+SCORE_TYPE (INT) 0 None 0 
+
+
+--> Need to add GAMEID (INT)
+--> Need to add BESTOF
+--> Need to add TIMESTAMP
+
+
+
+TABLE - SQGAMESSCORE
+
+
+GAMEID
+PLAY1POINTS (INT)
+PLAY1GAMES
+PLAY1SRVSIDE
+PLAY2POINTS (INT)
+PLAY2GAMES
+PLAY2SRVESIDE
+
+
+
+
+
+
+
+
+
+    from sqlalchemy.sql import select
+    s = select([students, addresses]).where(students.c.id == addresses.c.st_id)
+    result = conn.execute(s)

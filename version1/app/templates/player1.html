@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Player 1 Scoreboard</title>
+</head>
+<body>
+    <h1>Player 1 Scoreboard</h1>
+    <h2>{{ player1 }}: {{ player1_score }}</h2>
+    <form method="POST" action="{{ url_for('add_point', player='player1') }}">
+        <input type="submit" value="+1">
+    </form>
+    <br>
+    <form method="POST" action="{{ url_for('toggle_serve', player='player1') }}">
+        <input type="submit" value="Toggle Serve">
+    </form>
+    <br>
+    <form method="POST" action="{{ url_for('toggle_side', player='player1') }}">
+        <input type="submit" value="Toggle Side">
+    </form>
+    <br>
+    <a href="{{ url_for('scoreboard') }}">Scoreboard1</a>
+</body>
+</html>

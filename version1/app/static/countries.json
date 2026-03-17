@@ -1,0 +1,28 @@
+{
+    "countries": [
+      {
+        "value": "GB",
+        "label": "United Kingdom"
+      },
+      {
+        "value": "US",
+        "label": "USA"
+      },
+      {
+        "value": "AU",
+        "label": "Australia"
+      },
+      {
+        "value": "CA",
+        "label": "Canada"
+      },
+      {
+        "value": "MX",
+        "label": "Mexico"
+      },
+      {
+        "value": "EG",
+        "label": "Egypt"
+      }
+    ]
+  }

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- div class="containerHome" -->
+<div class="containerGame">
+    <div class="cent-div">
+    <table>
+        <thead>
+            <tr>
+                <th>Game ID</th>
+                <th>Score</th>
+                <th>Player 1 Name</th>
+                <th>Player 2 Name</th>
+                <th>Court</th>
+                <th>Referee</th>
+                <th>Scoreboard</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for SQGAMESPLAY in activegames %}
+                <tr>
+                    <td><a href="{{ url_for('game.matchscore', game_id=SQGAMESPLAY.ID)}}">
+                        {{SQGAMESPLAY.ID}}
+                    </a></td>
+                    <td>{{ SQGAMESPLAY.SCORE_TYPE }}</td>
+                    <td>{{ SQGAMESPLAY.PLAYER1_NAME }}</td>
+                    <td>{{ SQGAMESPLAY.PLAYER2_NAME }}</td>
+                    <td>{{ SQGAMESPLAY.COURT_NAME }}</td>
+                    <td>{{ SQGAMESPLAY.REFEREE_NAME }}</td>
+                    <td><a href="{{ url_for('game.scoreboardv1', game_id=SQGAMESPLAY.ID)}}">
+                        {{SQGAMESPLAY.ID}}
+                    </a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

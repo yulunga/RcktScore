@@ -1,0 +1,58 @@
+{% extends "baselayout.html" %}
+{% block content %}
+<h1>New Game</h1>
+<div class="cent-div">
+<form method="POST" action="/new-game/create">
+  <label for="score_type">Score Type:</label>
+  <select id="score_type" name="score_type">
+    <option value="9">9</option>
+    <option value="11">11</option>
+    <option value="15">15</option>
+    <option value="21">21</option>
+  </select>
+  <br><br>
+  <label for="player1_name">Player 1 Name:</label>
+  <input type="text" id="player1_name" name="player1_name">
+  <label for="player1_country">Country:</label>
+  <select id="player1_country" name="player1_country">
+    <option value="USA">USA</option>
+    <option value="Canada">Canada</option>
+    <option value="Mexico">Mexico</option>
+  </select>
+  <img src="{{ url_for('static', filename='flags/usa.png') }}" alt="USA flag">
+  <br><br>
+  <label for="player2_name">Player 2 Name:</label>
+  <input type="text" id="player2_name" name="player2_name">
+  <label for="player2_country">Country:</label>
+  <select id="player2_country" name="player2_country">
+    <option value="USA">USA</option>
+    <option value="Canada">Canada</option>
+    <option value="Mexico">Mexico</option>
+  </select>
+  <img src="{{ url_for('static', filename='flags/canada.png') }}" alt="Canada flag">
+  <br><br>
+  <label for="referee_name">Referee Name:</label>
+  <input type="text" id="referee_name" name="referee_name">
+  <br><br>
+  <button type="submit">Create Game</button>
+  <br><br>
+</form>
+<div class="button-container">
+  <button class="button" onclick="location.href='/welcome'";>Welcome</button>
+  <button class="button" onclick="location.href='/new-game'";>New Game</button>
+  <button class="button" onclick="location.href='/gmScore'";>Current Games</button>
+  <button class="button" onclick="location.href='/Scoreboard'";>Scoreboard</button>
+  <button class="button" onclick="location.href='/settings'";>Settings</button>
+  <button class="button" onclick="location.href='/logout'";>Logout</button>
+</div>
+</div>
+{% for message in get_flashed_messages() %}
+      {{ message }}
+    {% endfor %}
+{% endblock %}
+
+
+
+
+
+

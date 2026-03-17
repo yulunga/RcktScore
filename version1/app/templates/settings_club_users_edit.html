@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid pt-4 ps-5">
+    <h2>Edit User Role</h2>
+
+    <form method="POST" action="{{ url_for('settings.edit_user', user_id=user.id) }}">
+        <div class="mb-3">
+            <label for="clubusername" class="form-label">Username</label>
+            <input type="text" class="form-control" id="clubusername" name="clubusername" value="{{ user.clubusername }}" disabled>
+        </div>
+
+        <div class="mb-3">
+            <label for="role" class="form-label">Role</label>
+            <select class="form-select" id="role" name="role" required>
+                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="scorer" {% if user.role == 'scorer' %}selected{% endif %}>Scorer</option>
+                <option value="read-only" {% if user.role == 'read-only' %}selected{% endif %}>Read-Only</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('settings.settings_club_users') }}" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %}

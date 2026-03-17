@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="containerHome">
+    <h1>Welcome {{ username }}</h1>
+        <br>
+        <form method="POST" action="{{ url_for('score.update_score') }}">
+        </form>
+</div>
+
+{% endblock %}

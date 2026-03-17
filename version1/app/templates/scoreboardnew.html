@@ -1,0 +1,16 @@
+{% extends "baselayout.html" %}
+{% block title %}Scoreboard{% endblock %}
+{% block content %}
+
+<div class="containerGame">
+    <div class="Player1">{{ scoreboardID.PLAYER1_NAME }}</div>
+    <div class="Player2">{{ scoreboardID.PLAYER2_NAME }}</div>
+    <div class="Court">Court {{ scoreboardID.COURT_NAME }}</div>
+    {% for comment in scoreboardID.livegames %}
+    <div class="PlayScore1">{{ comment.PLAY1POINTS }}</div>
+    <div class="PlayScore2">{{ comment.PLAY2POINTS }}</div>
+    {% endfor %}
+    <div class="CentreBlank"></div>
+    <div class="Test-Foot"></div>
+</div>
+{% endblock %}

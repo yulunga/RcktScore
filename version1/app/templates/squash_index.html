@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Squash Scoreboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="static/bootstrap.min.css" rel="stylesheet" media="screen">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 50px;
+        }
+        #score {
+            font-size: 72px;
+            font-weight: bold;
+            margin: 50px auto;
+            width: 200px;
+        }
+        #player1, #player2 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #serve {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+    <h1>Squash Scoreboard</h1>
+    <p>Click <a href="/logout"> here</a> to logout. </p>
+    {% for message in get_flashed_messages() %}
+      {{ message }}
+    {% endfor %}
+
+    <br><br>
+    <div>Score: {{ score }}</div>
+    <div id="score">{{ score.get(player1, {}).get("points", 0) }} - {{ score.get(player2, {}).get("points", 0) }}</div>
+    <!-- <div id="score">{{ score[player1]["points"] }} - {{ score[player2]["points"] }}</div> -->
+    <div id="player1">{{ player1 }}</div>
+    <div id="player2">{{ player2 }}</div>
+    <div id="serve">{{ score["serve"] }} to serve from the {{ score["side"] }} side</div>
+    <form method="POST" action="{{ url_for('add_point', player=player1) }}">
+        <input type="submit" value="{{ player1 }} scores">
+    </form>
+    <form method="POST" action="{{ url_for('add_point', player=player2) }}">
+        <input type="submit" value="{{ player2 }} scores">
+    </form>
+    <form method="POST" action="{{ url_for('toggle_serve') }}">
+        <input type="submit" value="Toggle Serve">
+    </form>
+<!--    <form method="POST" action="{{ url_for('toggle_side') }}">
+        <input type="submit" value="Toggle Side">
+    </form>
+-->
+    <form method="POST" action="{{ url_for('new_game') }}">
+        <input type="submit" value="New Game">
+    </form>
+    <form method="get" action="{{ url_for('settings') }}">
+    <input type="submit" value="Settings">
+    </form>
+    </div>
+</body>
+</html>

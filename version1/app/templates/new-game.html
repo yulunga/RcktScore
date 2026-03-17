@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- jQuery label width equalizer -->
+<script>
+  $(document).ready(function () {
+    function adjustLabelWidths() {
+      if ($(window).width() > 480) {
+        let maxLabelWidth = 0;
+        $('.form-row label').each(function () {
+          const width = $(this).outerWidth();
+          if (width > maxLabelWidth) maxLabelWidth = width;
+        });
+        $('.form-row label').css('width', maxLabelWidth + 'px');
+      } else {
+        // On small screens, remove forced width
+        $('.form-row label').css('width', '100%');
+      }
+    }
+
+    // Run on page load
+    adjustLabelWidths();
+
+    // Run on window resize
+    $(window).on('resize', function () {
+      adjustLabelWidths();
+    });
+  });
+</script>
+
+<script>
+  // Auto-dismiss flash messages after 3.5 seconds
+  setTimeout(() => {
+    const flashMessages = document.querySelectorAll('.flash-message');
+    flashMessages.forEach(msg => {
+      msg.style.transition = 'opacity 0.5s ease-out';
+      msg.style.opacity = '0';
+      setTimeout(() => msg.remove(), 500); // fully remove after fade out
+    });
+  }, 3500);
+</script>
+
+<!-- Load countries and courts -->
+<script>
+  const flagBase = "https://flagcdn.com/";
+  const flagSize = "w40";
+  const flagSize2x = "w80";
+
+  // Reusable function to update flag when country changes
+  function updateFlag(selectId, imgId) {
+    const select = document.getElementById(selectId);
+    const img = document.getElementById(imgId);
+
+    select.addEventListener("change", function () {
+      const code = this.value.toLowerCase();
+      img.src = `${flagBase}${flagSize}/${code}.png`;
+      img.srcset = `${flagBase}${flagSize2x}/${code}.png 2x`;
+      img.alt = `${code.toUpperCase()} flag`;
+    });
+  }
+
+  // Load countries from JSON and bind flag updates
+  fetch('/static/countries.json')
+    .then(response => response.json())
+    .then(data => {
+      const player1Select = document.getElementById('player1_country');
+      const player2Select = document.getElementById('player2_country');
+
+      data.countries.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country.value;
+        option.textContent = country.label;
+
+        player1Select.appendChild(option.cloneNode(true));
+        player2Select.appendChild(option);
+      });
+
+      updateFlag("player1_country", "player1_flag");
+      updateFlag("player2_country", "player2_flag");
+    })
+    .catch(error => console.error("Error loading countries:", error));
+    
+</script>
+
+<div class="containerGame">
+
+  <div class="cent-div">
+      <!-- Flash message -->
+  <div style="max-width: 1000px; margin: 0 auto; ">
+    {% for message in get_flashed_messages() %}
+      <div class="alert alert-success flash-message" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+    <form method="POST" action="{{ url_for('game.new_game') }}">
+
+      <fieldset>
+        <div class="form-row">
+          <legend>Match Setup</legend>
+        </div>
+        
+
+          <div class="form-row">
+            <label for="score_type">Score Type:</label>
+            <select id="score_type" name="score_type" required>
+              <option value="9">9</option>
+              <option value="11">11</option>
+              <option selected value="15">15</option>
+              <option value="21">21</option>
+            </select>
+          </div>
+
+        <div class="player-box player1">
+          <h3>Player 1</h3><img id="player1_flag" class="country-flag" src="https://flagcdn.com/w40/gb.png" srcset="https://flagcdn.com/w80/gb.png 2x" alt="GB flag">
+            <div class="form-pair">
+              <div class="form-row">
+                <label for="player1_name">Name:</label>
+                <input type="text" id="player1_name" name="player1_name" required>
+              </div>
+        
+              <div class="form-row">
+                <label for="player1_surname">Surname:</label>
+                <input type="text" id="player1_surname" name="player1_surname">
+              </div>
+            
+
+
+            <div class="country-select">
+              <label for="player1_country">Country:</label>
+              <select id="player1_country" name="player1_country" required></select>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="player-box player2">
+          <h3>Player 2</h3>
+
+          <div class="form-pair">
+            <div class="form-row">
+              <label for="player2_name">Name:</label>
+              <input type="text" id="player2_name" name="player2_name" required>
+            </div>
+        
+            <div class="form-row">
+              <label for="player2_surname">Surname:</label>
+              <input type="text" id="player2_surname" name="player2_surname">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="player2_country">Country:</label>
+            <select id="player2_country" name="player2_country" required></select>
+            <img id="player2_flag" class="country-flag" src="https://flagcdn.com/w40/gb.png" srcset="https://flagcdn.com/w80/gb.png 2x" alt="GB flag">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="court_name">Court:</label>
+          <select id="court_name" name="court_name" required>
+            {% for court in courts %}
+              <option value="{{ court.court_name }}">{{ court.court_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="referee_name">Referee Name:</label>
+          <input type="text" id="referee_name" name="referee_name" required>
+        </div>
+
+        <div class="form-row">
+          <button type="submit" class="btn-login">Create Game</button>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

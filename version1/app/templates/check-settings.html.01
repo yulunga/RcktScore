@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Settings</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Add click event handler for edit buttons
+      $('.edit-btn').on('click', function() {
+        var row = $(this).closest('tr');
+        var valueCell = row.find('.value');
+        var value = valueCell.text().trim();
+        var input = $('<input type="text" class="edit-input" value="' + value + '">');
+        valueCell.empty().append(input);
+        input.focus();
+      });
+
+      // Add blur event handler for input fields
+      $(document).on('blur', '.edit-input', function() {
+        var input = $(this);
+        var row = input.closest('tr');
+        var section = row.find('.section').text().trim();
+        var option = row.find('.option').text().trim();
+        var value = input.val().trim();
+
+        // Make AJAX request to update setting value
+        $.ajax({
+          type: 'POST',
+          url: '/update_setting',
+          data: {
+            section: section,
+            option: option,
+            value: value
+          },
+          success: function(response) {
+            // Update value in the row
+            row.find('.value').text(value);
+          },
+          error: function(error) {
+            console.error('Failed to update setting value:', error);
+          }
+        });
+
+        // Restore original text in the row
+        input.remove();
+      });
+
+      // Add click event handler for reset button
+      $('#reset-btn').on('click', function() {
+        // Make AJAX request to reset settings
+        $.ajax({
+          type: 'POST',
+          url: '/settings/reset',
+          success: function(response) {
+            // Update title in the page
+            $('#title').text(response.title);
+          },
+          error: function(error) {
+            console.error('Failed to reset settings:', error);
+          }
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+  <h1 id="title">{{ title }}</h1>
+  <table>
+    <tr>
+      <th>Section</th>
+      <th>Option</th>
+      <th>Value</th>
+      <th>Action</th>
+    </tr>
+    <tr>
+      <td class="section">Settings</td>
+      <td class="option">Title</td>
+      <td class="value">{{ title }}</td>
+      <td><button class="edit-btn">Edit</button></td>
+    </tr>
+    <tr>
+      <td class="section">Settings</td>
+      <td class="option">Setting1</td>
+      <td class="value">{{ setting1 }}</td>
+      <td><button class="edit-btn">Edit</button></td>
+    </tr>
+    <tr>
+      <td class="section">Settings</td>
+      <td class="option">Setting2</td>
+      <td class="value">{{ setting2 }}</td>
+      <td><button class="edit-btn">Edit</button></td>
+    </tr>
+  </table>
+  <button id="reset-btn">Reset</button>
+</body>
+</html>

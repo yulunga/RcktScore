@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+  {% include 'settings_menu.html' %}
+
+
+    <div class="container-fluid pt-4 ps-6">
+      <h2>🏟 Courts</h2>
+      <div id="court-feedback" class="alert d-none" role="alert"></div>
+
+      <!-- Add Court Form -->
+      <form method="POST" class="row g-3 mb-4" action="{{ url_for('settings.add_court_route') }}">
+        <div class="col-md-5">
+          <input type="text" name="court_name" class="form-control" placeholder="Court Name (eg Court-1)" required>
+        </div>
+        <div class="col-md-5">
+          <input type="text" name="court_alias" class="form-control" placeholder="Court Alias (optional)">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary">Add Court</button>
+        </div>
+      </form>
+  
+      <!-- Court List -->
+      <table class="table table-bordered">
+          <thead>
+              <tr>
+                  <th>Court Name</th>
+                  <th>Alias</th>
+                  <th style="width: 180px;">Actions</th>
+              </tr>
+          </thead>
+          <tbody>
+            {% for court in courts %}
+            <tr data-court-id="{{ court.id }}">
+              <td>
+                <span class="editable" data-field="court_name">{{ court.court_name if court.court_name else '🖊️'}}</span>
+              </td>
+              <td>
+                <span class="editable" data-field="court_alias">{{ court.court_alias if court.court_alias else '🖊️' }}</span>
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('settings.delete_court_record', court_id=court.id) }}" style="display:inline-block" onsubmit="return confirm('Delete this court?')">
+                      <button class="btn btn-sm btn-danger delete-court-btn" 
+                      data-court-id="{{ court.id }}" 
+                      data-court-name="{{ court.court_name }}"
+                      title="Delete court">
+                🗑️ Delete
+              </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+      </table>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/editable-inline.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      initInlineEditable('.editable', '/settings/courts/update/{id}', '#court-feedback');
+    });
+  </script>
+{% endblock %}
+
+

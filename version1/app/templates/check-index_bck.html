@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Squash Game Scorer</title>
+  </head>
+  <body>
+    <h1>Squash Game Scorer</h1>
+    <p>Score to Win: {{ game_settings.score_to_win }}</p>
+    <form method="post">
+      <label for="score_to_win">Score to Win:</label>
+      <select id="score_to_win" name="score_to_win">
+        <option value="11" {% if game_settings.score_to_win == 11 %}selected{% endif %}>First to 11</option>
+        <option value="15" {% if game_settings.score_to_win == 15 %}selected{% endif %}>First to 15</option>
+      </select>
+      <button type="submit">Update Game Settings</button>
+    </form>
+    <h2>Game Score</h2>
+    <p>Server: {{ server }}</p>
+    <p>Score: {{ player1_score }} - {{ player2_score }}</p>
+    <form method="post">
+      <input type="hidden" name="server" value="{{ server }}">
+      <input type="hidden" name="player1_score" value="{{ player1_score }}">
+      <input type="hidden" name="player2_score" value="{{ player2_score }}">
+      <button type="submit" name="action" value="player1_score">Player 1 Scores</button>
+      <button type="submit" name="action" value="player2_score">Player 2 Scores</button>
+      <button type="submit" name="action" value="switch_server_left">Server on Left</button>
+      <button type="submit" name="action" value="switch_server_right">Server on Right</button>
+    </form>
+  </body>
+</html>

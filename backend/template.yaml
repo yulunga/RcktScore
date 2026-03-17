@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: RcktScore v2 HTTP API and Lambda backend.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 15
+    MemorySize: 256
+    CodeUri: .
+    Environment:
+      Variables:
+        SUPABASE_DB_URL: !Ref SupabaseDbUrl
+
+Parameters:
+  SupabaseDbUrl:
+    Type: String
+    NoEcho: true
+  StageName:
+    Type: String
+    Default: prod
+
+Resources:
+  RcktScoreHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref StageName
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Content-Type
+          - x-api-key
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+
+  StartMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_match/handler.lambda_handler
+      Events:
+        StartMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /start_match
+            Method: POST
+
+  GetMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_match/handler.lambda_handler
+      Events:
+        GetScore:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /get_score/{match_id}
+            Method: GET
+
+  ScorePointFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/score_point/handler.lambda_handler
+      Events:
+        ScorePoint:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /score_point
+            Method: POST
+
+  EventActionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/event_action/handler.lambda_handler
+      Events:
+        EventAction:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /event_action
+            Method: POST
+
+  UndoActionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/undo_action/handler.lambda_handler
+      Events:
+        UndoAction:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /undo_action
+            Method: POST
+
+  WebsocketBroadcastFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/websocket_broadcast/handler.lambda_handler
+
+Outputs:
+  HttpApiUrl:
+    Description: Base URL for the RcktScore HTTP API
+    Value: !Sub "https://${RcktScoreHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"

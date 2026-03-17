@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+<div class="d-flex">
+  {% include 'settings_menu.html' %}
+  <div class="flex-grow-1 p-3">
+    <!-- Your settings content -->
+    <div class="container-fluid">
+      <div class="cent-div">
+        <!-- This is where the settings page content like forms or tables goes -->
+        <div class="container py-4">
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+              {% for msg in messages %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                  {{ msg }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+        
+          <!-- User Management -->
+          <div class="mb-5">
+            <h2 class="h4">Settings Page</h2>
+        
+          </div>
+        
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

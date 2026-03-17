@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>New Game</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    form {
+      margin: 0 auto;
+      width: 400px;
+    }
+    .country-flag {
+      display: inline-block;
+      height: 20px;
+      margin-left: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h1>New Game</h1>
+  <form method="POST" action="/new-game/create">
+    <label for="score_type">Score Type:</label>
+    <select id="score_type" name="score_type">
+      <option value="9">9</option>
+      <option value="11">11</option>
+      <option value="15">15</option>
+      <option value="21">21</option>
+    </select>
+    <br><br>
+    <label for="player1_name">Player 1 Name:</label>
+    <input type="text" id="player1_name" name="player1_name">
+    <label for="player1_country">Country:</label>
+    <select id="player1_country" name="player1_country">
+      <option value="UK">United Kingdom</option>
+      <option value="US">USA</option>
+      <option value="Canada">Canada</option>
+      <option value="MX">Mexico</option>
+    </select>
+    <img id="player1_flag" class="country-flag" src="https://flagcdn.com/w20/gb.png" alt="" width="20">
+    <br><br>
+    <label for="player2_name">Player 2 Name:</label>
+    <input type="text" id="player2_name" name="player2_name">
+    <label for="player2_country">Country:</label>
+    <select id="player2_country" name="player2_country">
+      <option value="US">USA</option>
+      <option value="Canada">Canada</option>
+      <option value="MX">Mexico</option>
+    </select>
+    <img id="player2_flag" class="country-flag" src="" alt="">
+    <br><br>
+    <label for="referee_name">Referee Name:</label>
+    <input type="text" id="referee_name" name="referee_name">
+    <br><br>
+    <button type="submit">Create Game</button>
+  </form>
+
+<script>
+  // dynamically update flag based on country selection
+  //const countryFlagApiUrl = "https://flagsapi.com/";
+  const countryFlagApiUrl = "https://flagcdn.com/";
+
+  const player1CountrySelect = document.getElementById("player1_country");
+  const player1FlagImg = document.getElementById("player1_flag");
+  player1CountrySelect.addEventListener("change", (event) => {
+    const countryCode = event.target.value.toLowerCase();
+    //const countryCode = event.target.value.slice(0, 2).toLowerCase();
+    player1FlagImg.src = countryFlagApiUrl + "w20/" + countryCode + ".png";
+    player1FlagImg.alt = event.target.value + " flag";
+  });
+
+  const player2CountrySelect = document.getElementById("player2_country");
+  const player2FlagImg = document.getElementById("player2_flag");
+  player2CountrySelect.addEventListener("change", (event) => {
+    const countryCode = event.target.value.toLowerCase();
+    player2FlagImg.src = countryFlagApiUrl + countryCode + "/flat/64.png";
+    player2FlagImg.alt = event.target.value + " flag";
+  });
+</script>
+
+
+

@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}Match Score{% endblock %}
+
+{% block content %}
+<div class="containerGame">
+  <div class="cent-div">
+
+    <!-- div class="match-header">
+      <h2>Match In Progress</h2>
+      <p><strong>Court:</strong> {{ court_name }}</p>
+      <div id="game-timer">Time: <span id="timer-display">00:00</span></div>
+      <button class="btn1" id="start-pause-btn">Start</button>
+      <button class="btn1" id="reset-btn">Reset</button>
+    </div -->
+
+    <div class="player-box player1">
+      <h3>Player 1</h3>
+      <p><strong>{{ player1_name }}</strong></p>
+      <p>Score: <span id="score-player1">{{ player1_score }}</span></p>
+    </div>
+
+    <div class="player-box player2">
+      <h3>Player 2</h3>
+      <p><strong>{{ player2_name }}</strong></p>
+      <p>Score: <span id="score-player2">{{ player2_score }}</span></p>
+    </div>
+
+    <div class="form-row">
+      <h3>Serving:</h3>
+      {% if serving_player == 1 %}
+        <p>{{ player1_name }} is serving from the <strong>{{ serving_side }}</strong> side</p>
+      {% elif serving_player == 2 %}
+        <p>{{ player2_name }} is serving from the <strong>{{ serving_side }}</strong> side</p>
+      {% endif %}
+    </div>
+
+    <!-- Score Form -->
+    <div class="form-row">
+      <form method="POST" action="{{ url_for('game.matchscore', game_id=game_id) }}" id="match-form">
+        <input type="hidden" name="action" id="action-input">
+        <input type="hidden" name="player" id="player-input">
+        <input type="hidden" name="side" id="side-input">
+
+        <!-- Score Buttons -->
+        <div class="button-group">
+          <button type="button" class="btn1" onclick="submitAction('score', '{{ player1_name }}')">+1 {{ player1_name }}</button>
+          <button type="button" class="btn2" onclick="submitAction('score', '{{ player2_name }}')">+1 {{ player2_name }}</button>
+        </div>
+
+        <!-- Let Buttons -->
+        <div class="button-group">
+          <button type="button" class="btn1" onclick="submitAction('let', '{{ player1_name }}')">Let {{ player1_name }}</button>
+          <button type="button" class="btn2" onclick="submitAction('let', '{{ player2_name }}')">Let {{ player2_name }}</button>
+        </div>
+
+        <!-- Stroke Buttons -->
+        <div class="button-group">
+          <button type="button" class="btn1" onclick="submitAction('stroke', '{{ player1_name }}')">Stroke {{ player1_name }}</button>
+          <button type="button" class="btn2" onclick="submitAction('stroke', '{{ player2_name }}')">Stroke {{ player2_name }}</button>
+        </div>
+
+        <!-- Serve Side -->
+        <div class="button-group">
+          <button type="button" class="btn1" onclick="submitServe('Left')">Serve Left</button>
+          <button type="button" class="btn1" onclick="submitServe('Right')">Serve Right</button>
+        </div>
+
+        <!-- Undo & Timer -->
+        <div class="button-group">
+          <button type="button" class="btn-undo" onclick="submitAction('undo')">Undo</button>
+          <button type="button" class="btn-toggle" onclick="submitAction('toggle_timer')">Pause/Resume</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Live Timeline -->
+    <div class="timeline">
+      <h2>Live Match Timeline</h2>
+      <ul id="event-log-list"></ul>
+    </div>
+
+    <!-- Optional Debug Link -->
+    <div style="margin-top: 10px;">
+      <a href="{{ url_for('game.get_match_logs', game_id=game_id) }}" target="_blank">🔍 View JSON Log</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- Live Event Fetch -->
+<!--script>
+  function fetchMatchEvents() {
+    fetch(`/game/matchscore/logs/{{ game_id }}`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("Live scores from JSON:", data);
+
+        //Update Timeline
+        const logList = document.getElementById('event-log-list');
+        logList.innerHTML = '';
+        data.events.forEach(event => {
+            const li = document.createElement('li');
+            li.textContent = `[${new Date(event.timestamp).toLocaleTimeString()}] ${event.event_type.toUpperCase()}: ${JSON.stringify(event.data)}`;
+            logList.appendChild(li);
+        });
+        // Update scores if present
+        if (data.scores && typeof data.scores.player1 !== 'undefined' && typeof data.scores.player2 !== 'undefined') {
+          const player1ScoreEl = document.getElementById('score-player1');
+          const player2ScoreEl = document.getElementById('score-player2');
+
+          if (player1ScoreEl) player1ScoreEl.textContent = data.scores.player1;
+          if (player2ScoreEl) player2ScoreEl.textContent = data.scores.player2;
+        } else {
+          console.warn("No scores found in JSON");
+        }
+      })
+
+      .catch(err => {
+        console.error("Failed to fetch match events:", err);
+
+        // Send the error to Flask backend for logging
+        fetch("/game/log-js-error", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: err.message || err.toString(),
+            url: window.location.href,
+            stack: err.stack || "No stack trace",
+            userAgent: navigator.userAgent
+          })
+        }).catch(reportErr => {
+          console.warn("Failed to send JS error log to server:", reportErr);
+        });
+      });
+  }
+// Start fetching the updates 
+window.onload =() => {
+  fetchMatchEvents();
+  setInterval(fetchMatchEvents, 10000);
+};
+</script -->
+
+<!-- Score + Timeline Fetch -->
+<script>
+  function fetchMatchEvents() {
+    fetch(`/game/matchscore/logs/{{ game_id }}`)
+      .then(response => response.json())
+      .then(data => {
+        console.log("✅ Fetched match data:", data);
+
+        const logList = document.getElementById('event-log-list');
+        logList.innerHTML = '';
+        data.events.forEach(event => {
+          const li = document.createElement('li');
+          li.textContent = `[${new Date(event.timestamp).toLocaleTimeString()}] ${event.event_type.toUpperCase()}: ${JSON.stringify(event.data)}`;
+          logList.appendChild(li);
+        });
+
+        if (data.scores && typeof data.scores.player1 !== 'undefined' && typeof data.scores.player2 !== 'undefined') {
+          const p1 = document.getElementById('score-player1');
+          const p2 = document.getElementById('score-player2');
+          if (p1) p1.textContent = data.scores.player1;
+          if (p2) p2.textContent = data.scores.player2;
+        } else {
+          console.warn("⚠️ No scores found in JSON");
+        }
+      })
+      .catch(err => {
+        console.error("❌ Fetch error:", err);
+        fetch("/game/log-js-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: err.message || err.toString(),
+            url: window.location.href,
+            stack: err.stack || "No stack",
+            userAgent: navigator.userAgent
+          })
+        }).catch(reportErr => {
+          console.warn("⚠️ Failed to send JS error log:", reportErr);
+        });
+      });
+  }
+
+  window.onload = () => {
+    fetchMatchEvents();
+    setInterval(fetchMatchEvents, 3000);
+  };
+</script>
+
+<!-- Match Action Handler -->
+<script>
+  function submitAction(action, player = '') {
+    document.getElementById('action-input').value = action;
+    document.getElementById('player-input').value = player;
+    document.getElementById('side-input').value = '';
+    document.getElementById('match-form').submit();
+  }
+
+  function submitServe(side) {
+    document.getElementById('action-input').value = 'serve_side';
+    document.getElementById('player-input').value = '';
+    document.getElementById('side-input').value = side;
+    document.getElementById('match-form').submit();
+  }
+</script>
+
+<!-- Timer Script 
+<script>
+  let timerInterval;
+  let seconds = 0;
+  let running = false;
+
+  function updateTimerDisplay() {
+    const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const secs = String(seconds % 60).padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+  }
+
+  document.getElementById("start-pause-btn").addEventListener("click", function () {
+    if (running) {
+      clearInterval(timerInterval);
+      this.textContent = "Resume";
+    } else {
+      timerInterval = setInterval(() => {
+        seconds++;
+        updateTimerDisplay();
+      }, 1000);
+      this.textContent = "Pause";
+    }
+    running = !running;
+  });
+
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    clearInterval(timerInterval);
+    seconds = 0;
+    updateTimerDisplay();
+    running = false;
+    document.getElementById("start-pause-btn").textContent = "Start";
+  });
+
+  updateTimerDisplay();
+</script> -->
+{% endblock %}

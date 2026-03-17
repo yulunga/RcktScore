@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% block title %}SqScore{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Scoreboard.css') }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <div class="scorewrapper" id="scorewrapper" data-game-id="{{ game_id }}">
+        <div class="scoreheader">
+            <div class="hamburger" id="menu-toggle">
+                ☰
+            </div>
+            <!-- Menu -->
+            <nav class="menu" id="main-menu">
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/game/read-games">All Games</a></li>
+                    <li><a href="/scoreboard1">Testing</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="leftdiv">
+            <div class="player1-name" id="player1-name">{{ player1_name }}</div>
+            <div>L/R</div>
+            <div class="player-score" id="player1-score">{{ player1_score }}</div>
+        </div>
+        <div class="centrediv">
+            <div id="serving">serving</div>
+            <div id="point-history">point-history</div>
+                <p>Patty&#8217;s parents scraped together enough money to buy her a secondhand guitar. From that moment on, Patty poured her heart and soul into mastering the instrument, spending countless hours practicing and crafting her own songs.</p>
+        </div>
+        <div class="rightdiv">
+            <div class="player2-name" id="player2-name">{{ player2_name }}</div>
+            <div>L/R</div>
+            <div class="player-score" id="player2-score">{{ player2_score }}</div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/scoreboardpol.js') }}"></script>
+    <script>
+        $(function () {
+            const $menu = $('#main-menu');
+            const $toggle = $('#menu-toggle');
+
+          // Toggle menu open/close on hamburger click
+            $toggle.on('click', function (e) {
+                e.stopPropagation(); // Prevent bubbling
+                $menu.toggleClass('open');
+            });
+
+          // Close if clicking outside
+            $(document).on('click', function (e) {
+                if (
+                    !$menu.is(e.target) && $menu.has(e.target).length === 0 &&
+                    !$toggle.is(e.target) && $toggle.has(e.target).length === 0
+                ) {
+                    $menu.removeClass('open');
+                }
+            });
+    
+          // Optional: Close on mouseleave of the menu itself
+            $menu.on('mouseleave', function () {
+                $menu.removeClass('open');
+            });
+        });
+    </script>
+</body>
+</html>

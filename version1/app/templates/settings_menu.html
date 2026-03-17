@@ -1,0 +1,24 @@
+
+<!-- settings_menu.html -->
+<div class="sidebar bg-light">
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a href="{{ url_for('settings.settings_club_details') }}" class="nav-link">
+                <i class="fas fa-building"></i>
+                <span class="menu-text">Club Details</span>
+            </a>
+        </li>
+        <li class="nav-item">
+        <a href="{{ url_for('settings.settings_user_manager') }}" class="nav-link">
+            <i class="fas fa-users"></i>
+            <span class="menu-text">Users Manager</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('settings.settings_courts') }}" class="nav-link">
+            <i class="fas fa-table-tennis"></i>
+            <span class="menu-text">Courts</span>
+            </a>
+        </li>
+    </ul>
+</div>

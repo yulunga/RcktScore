@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Tennis Tournament Bracket</title>
+    <style>
+      /* Add your CSS styles here */
+    </style>
+  </head>
+  <body>
+    <h1>Tennis Tournament Bracket</h1>
+    
+    <div class="tournament-bracket">
+      <table id="tournament">
+        <thead>
+          <tr>
+            <th>Round 1</th>
+            <th>Round 2</th>
+            <th>Round 3</th>
+            <th>Round 4</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 1</button></td>
+            <td rowspan="2"><button disabled>Player A</button></td>
+            <td rowspan="4"><button disabled>Player X</button></td>
+            <td rowspan="8"><button disabled>Winner</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 2</button></td>
+            <td rowspan="2"><button disabled>Player B</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 3</button></td>
+            <td rowspan="2"><button disabled>Player C</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 4</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 5</button></td>
+            <td rowspan="2"><button disabled>Player D</button></td>
+            <td rowspan="4"><button disabled>Player Y</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 6</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 7</button></td>
+            <td rowspan="2"><button disabled>Player E</button></td>
+            <td rowspan="2"><button disabled>Player Z</button></td>
+          </tr>
+          <tr>
+            <td><button onclick="selectWinner(this)">Player 8</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <script>
+      function selectWinner(button) {
+        // Disable all other buttons in the same round
+        var siblings = getSiblings(button.parentNode.parentNode);
+        for (var i = 0; i < siblings.length; i++) {
+          siblings[i].getElementsByTagName('button')[0].disabled = true;
+        }
+        // Enable the next round's buttons
+        var nextRound = button.parentNode.parentNode.parentNode.nextSibling;
+        if (nextRound) {
+          var nextButtons = nextRound.getElementsByTagName('button');
+          for (var i = 0; i < nextButtons.length; i++) {
+            nextButtons[i].disabled = false;
+          }
+        }
+      }
+
+      function getSiblings(element) {
+        var siblings = [];
+        var sibling = element.parentNode.firstChild;
+        while (sibling) {
+          if (sibling.nodeType === 1 && sibling !== element) {
+            siblings.push(sibling);
+          }
+          sibling = sibling.nextSibling;
+        }
+        return siblings;
+      }
+    </script>
+  </body>
+</html>

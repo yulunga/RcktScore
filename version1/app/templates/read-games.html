@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- div class="containerHome" -->
+<div class="containerGame read-games-wrapper" >
+    <div class="cent-div">
+        <div class="game-grid">
+        {% for game in activegames %}
+            <div class="game-card">
+                <div class="game-header">
+                    <strong>Game #{{ game.ID }}</strong> — {{ game.SCORE_TYPE }} points
+                </div>
+                <div class="game-details">
+                    <div><strong>Player 1:</strong> {{ game.PLAYER1_NAME }}</div>
+                    <div><strong>Player 2:</strong> {{ game.PLAYER2_NAME }}</div>
+                    <div><strong>Court:</strong> {{ game.COURT_NAME }}</div>
+                    <div><strong>Referee:</strong> {{ game.REFEREE_NAME }}</div>
+                </div>
+                <div class="game-actions">
+                    <a class="btn-action" href="{{ url_for('game.matchscore', game_id=game.ID) }}">Score</a>
+                    <a class="btn-action" href="{{ url_for('game.scoreboardv1', game_id=game.ID) }}">Scoreboard</a>
+                </div>
+                </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

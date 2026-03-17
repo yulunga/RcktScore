@@ -1,0 +1,460 @@
+/* CSS File */
+/*body {
+  display: grid;
+  grid-gap: 10px;
+  grid-template-columns: 1fr;
+  grid-template-areas: "nav" "main" "footer";
+  grid-template-rows: 100px 1fr 80px;
+  justify-content: center;
+  align-content: center;
+}
+*/
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #007BFF;
+    color: white;
+}
+
+header {
+  background-color: #007BFF;
+  grid-area: nav;
+}
+
+main {
+  background-color: #ffffff;
+  grid-area: main;
+}
+
+.containerGame {  display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 1px 1px;
+    grid-auto-flow: row;
+    justify-content: stretch;
+    justify-items: stretch;
+    align-items: stretch;
+  }
+  
+  .Player1 { 
+    grid-area: 1 / 1 / 2 / 4; 
+    text-size-adjust: auto;
+    font-size: xxx-large;
+  }
+  
+  .Player2 { 
+    grid-area: 1 / 3 / 2 / 4; 
+    text-size-adjust: auto;
+    font-size: xxx-large;
+  }
+  
+  .Court { 
+    grid-area: 1 / 2 / 2 / 3; 
+    text-size-adjust: auto;
+    font-size: xxx-large;
+  }
+
+  .PlayScore1 { 
+    grid-area: 2 / 1 / 3 / 2; 
+    text-size-adjust: auto;
+    font-size: xxx-large;
+  }
+  
+  .PlayScore2 { 
+    grid-area: 2 / 3 / 3 / 4; 
+    text-size-adjust: auto;
+    font-size: xxx-large;
+  }
+  
+  .CentreBlank { grid-area: 2 / 2 / 3 / 3; }
+  
+  .Test-Foot { grid-area: 3 / 1 / 4 / 4; }
+  
+.layout {
+  display: grid;
+  grid:
+    "header" auto
+    "main" 1fr
+    "footer" auto
+    / 1fr;
+  gap: 8px;
+}
+
+.header { grid-area: header; }
+.main { grid-area: main; }
+.footer { 
+  grid-area: footer; 
+  background-color: #3f3f3f;
+}
+
+
+.parent {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+  }
+  
+  .grid-div1 { grid-area: 2 / 2 / 3 / 5; }
+  .grid-div2 { grid-area: 3 / 2 / 4 / 5; }
+  .grid-div3 { grid-area: 4 / 2 / 5 / 5; }
+
+.button-container {
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  grid-template-columns: repeat(1, 1fr);
+  grid-gap: 10px;
+  border-radius: 10px;
+  background-color: #f1f1f1;
+  padding: 10px;
+}
+
+.btn-group .button {
+  background-color: #04AA6D; /* Green background */
+  border: 1px solid green; /* Green border */
+  color: white; /* White text */
+  padding: 10px 24px; /* Some padding */
+  cursor: pointer; /* Pointer/hand icon */
+  float: left; /* Float the buttons side by side */
+}
+
+.btn-group .button:not(:last-child) {
+  border-right: none; /* Prevent double borders */
+}
+
+/* Clear floats (clearfix hack) */
+.btn-group:after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+/* Add a background color on hover */
+.btn-group .button:hover {
+  background-color: #3e8e41;
+}
+
+.button1 {
+  border-radius: 5px;
+  background-color: #ff0000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+.btn1 {
+    background-color: red;
+    color: white;
+    border-radius: 20px;
+    padding: 10px 20px;
+    text-decoration: none;
+    font-size: 18px;
+  }
+
+ .container {  display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 0px 0px;
+    grid-auto-flow: row;
+    grid-template-areas:
+      ". . ."
+      ". cent-div ."
+      ". . .";
+  }
+  
+  .cent-div { 
+    grid-area: cent-div; 
+    display: grid;
+    justify-content: center;
+    align-items: center;
+    grid-template-columns: repeat(1, 1fr);
+    grid-gap: 10px;
+    border-radius: 10px;
+    background-color: #f1f1f1;
+    padding: 20px;
+  }
+  
+
+  .flex-container {
+
+    display: flex;
+    
+    justify-content: space-between; 
+    align-items: stretch;    
+    align-content: stretch;
+
+    background-color: #bbdefb;
+    height: 100%;
+    padding: 15px;
+    gap: 5px;
+
+  }
+
+  .flex-container > div{
+    background: #ffecb3;
+    border: 3px solid #ffcc80;
+    border-radius: 5px;
+    padding: 8px;
+  }
+
+
+  .item2 { 
+    /* flex:0 1 80%; */
+    flex-basis:80%;
+  }
+			
+
+
+  .flex-items:nth-child(1) {
+    display: block;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: auto;
+    align-self: auto;
+    order: 0;
+  }
+  
+  .flex-items:nth-child(2) {
+    display: block;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: auto;
+    align-self: auto;
+    order: 0;
+  }
+  
+  .flex-items:nth-child(3) {
+    display: block;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: auto;
+    align-self: auto;
+    order: 0;
+  }
+
+  /*
+  form {
+    margin: 0 auto;
+    width: 400px;
+  }
+*/
+
+  .country-flag {
+    display: inline-block;
+    height: 20px;
+    margin-left: 2px;
+  }
+
+  .modal__content{
+    color: #161718;
+    font-family: ProximaNova-Regular;
+    font-size: 100%;
+    line-height: normal;
+    -webkit-box-sizing: inherit;
+    background: #fff;
+    position: absolute;
+    top: 10vh;
+    left: 50%;
+    transform: translate(-50%);
+    z-index: 10000;
+    box-shadow: -1px 1px 3px 0 rgba(0,0,0,.2);
+    border-radius: 4px;
+    margin-bottom: 5vh;
+    overflow: hidden;
+    width: 375px;
+  }
+
+
+  .navbar {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  }
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .navbar h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .menu {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .menu a {
+    color: #FFDD57;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+
+  .menu a:hover {
+    background-color: #ffc107;
+    color: #000;
+  }
+
+   /* Dropdown specific styles */
+   .dropdown {
+    position: relative;
+    display: inline-block;
+    align-self: center;
+  }
+
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    top: 23px;
+    background-color: #fff;
+    min-width: 160px;
+    z-index: 1;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+  }
+
+  .dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-weight: normal;
+  }
+
+  .dropdown-content a:hover {
+    background-color: #ddd;
+  }
+
+  .dropdown:hover .dropdown-content {
+    display: block;
+  }
+
+  /* Dropdown toggle button style */
+  .dropdown-toggle {
+    color: #FFDD57;
+    text-decoration: none;
+    padding: 6px 12px;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+  }
+
+  .dropdown-toggle:hover {
+    background-color: #ffc107;
+    color: #000;
+  }
+
+  .logout-btn {
+    background-color: #FFDD57;
+    color: #000;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .logout-btn:hover {
+    background-color: #ffc107;
+  }
+
+  .content {
+    padding: 20px;
+  }
+
+.login-page {
+  height: 100%;
+  margin: 0;
+  background-color: #ffffff;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  }
+
+body.login-page {
+    height: 100%;
+    margin: 0;
+    background-color: #ffffff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-page .login-container {
+    background-color: #007BFF;
+    padding: 25px 20px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 300px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.login-page .login-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 22px;
+}
+
+.login-page .form-group {
+    margin-bottom: 15px;
+}
+
+.login-page input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+.login-page .btn-login {
+    width: 100%;
+    padding: 10px;
+    background-color: #FFDD57;
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.login-page .btn-login:hover {
+    background-color: #ffc107;
+}
+
+.login-page .error-message {
+    color: #FFBABA;
+    margin-top: 10px;
+    font-size: 13px;
+    display: none;
+    text-align: center;
+}
