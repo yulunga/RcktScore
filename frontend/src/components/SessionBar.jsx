@@ -17,7 +17,7 @@ export default function SessionBar() {
         type="button"
         onClick={() => {
           logout();
-          navigate("/login", { replace: true });
+          navigate("/", { replace: true });
         }}
       >
         Log Out
