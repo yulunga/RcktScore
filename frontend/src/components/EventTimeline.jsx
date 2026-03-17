@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function EventTimeline({ events = [] }) {
   return (
     <section className="timeline-card">

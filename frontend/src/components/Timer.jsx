@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 function formatSeconds(value) {
   const minutes = String(Math.floor(value / 60)).padStart(2, "0");
