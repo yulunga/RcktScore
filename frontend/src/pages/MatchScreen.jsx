@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import EventTimeline from "../components/EventTimeline";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
+import SessionBar from "../components/SessionBar";
 import Timer from "../components/Timer";
 import { useMatch } from "../hooks/useMatch";
 
@@ -30,6 +31,7 @@ export default function MatchScreen() {
   return (
     <main className="page-shell grid two-column">
       <div className="stack">
+        <SessionBar />
         <Scoreboard match={currentMatch} />
         <MatchControls
           disabled={!currentMatch || loading}

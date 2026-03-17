@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import SessionBar from "../components/SessionBar";
 import { useMatch } from "../hooks/useMatch";
 
 const scoreTypeOptions = [11, 15];
@@ -105,6 +106,7 @@ export default function NewMatch() {
 
   return (
     <main className="page-shell">
+      <SessionBar />
       <section className="hero-card stack">
         <span className="status-pill">RcktScore v2</span>
         <h1>Create a New Match</h1>
