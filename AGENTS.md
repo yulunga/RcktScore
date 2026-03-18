@@ -303,3 +303,81 @@ When version 2 progresses, update this file for:
 - completed features that are currently listed as gaps
 
 This file should remain the short operational truth for the repository.
+
+
+
+## 📝 TODO — Architecture & Platform Enhancements (Backlog)
+
+The following items are intentionally deferred while frontend UI structure is prioritised. These must be implemented before production maturity.
+
+---
+
+### 🔄 Core Architecture Improvements
+
+* [ ] Define and document full request lifecycle (frontend → API → Lambda → Supabase → response)
+* [ ] Standardise API response contract (success/error format)
+* [ ] Define and enforce match event schema in `match_events`
+* [ ] Document and implement WebSocket target architecture
+* [ ] Introduce versioning and API change management rules
+
+---
+
+### ⚡ Realtime (Option A)
+
+Goal: Enable live scoreboard updates without polling
+
+* [ ] Create API Gateway WebSocket API (SAM template)
+* [ ] Implement connection management (store connection IDs)
+* [ ] Implement match subscription model (connection → match_id)
+* [ ] Build broadcast Lambda for match updates
+* [ ] Integrate WebSocket client fully in frontend
+* [ ] Remove polling fallback once stable
+
+---
+
+### 🔐 Backend Authentication Enforcement (Option B)
+
+Goal: Secure all match and scoring operations
+
+* [ ] Introduce token/session validation in Lambda
+* [ ] Ensure all scoring endpoints require authenticated user
+* [ ] Enforce organisation-level access control (tenant isolation)
+* [ ] Prevent cross-organisation match access
+* [ ] Align backend auth with existing `SkwshOrgUsers` model
+* [ ] Add middleware/shared auth validation module
+
+---
+
+### 🧪 Reference Endpoint Refactor (Option C)
+
+Goal: Establish a gold-standard implementation pattern
+
+* [ ] Refactor `score_point` Lambda:
+
+  * [ ] Input validation
+  * [ ] Shared logic usage (`match_logic.py`)
+  * [ ] Supabase write consistency
+  * [ ] Structured logging
+  * [ ] WebSocket broadcast hook
+* [ ] Use this endpoint as template for all others
+* [ ] Ensure consistent error handling and response format
+
+---
+
+### 📊 Observability & Logging
+
+* [ ] Add structured logging across all Lambdas
+* [ ] Include match_id, user_id, action in logs
+* [ ] Improve CloudWatch traceability
+
+---
+
+### 📌 Notes
+
+These items are deferred while focusing on:
+
+* frontend UX structure
+* operator workflows
+* dashboard experience
+
+They must be revisited before declaring v2 production-ready.
