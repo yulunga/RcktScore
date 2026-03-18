@@ -255,6 +255,27 @@ select {
   background: #486581;
 }
 
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 12px 18px;
+  color: #fff;
+  background: #1274d0;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.button-link.secondary {
+  background: #486581;
+}
+
+.button-link:hover {
+  transform: translateY(-1px);
+}
+
 .button-row button.warning,
 .match-control-grid button.warning {
   background: #d9822b;
@@ -516,6 +537,40 @@ select {
 
 .sport-option.disabled span {
   color: #7b8794;
+}
+
+.matrix-panel {
+  margin-top: 8px;
+}
+
+.matrix-scroll {
+  overflow-x: auto;
+}
+
+.matrix-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix-table th,
+.matrix-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border: 1px solid #d9e2ec;
+}
+
+.matrix-table thead th,
+.matrix-table tbody th {
+  background: #f0f4f8;
+  font-weight: 700;
+}
+
+.matrix-table td.selected-cell {
+  background: #fff7d6;
+  color: #8d5a00;
+  font-weight: 700;
 }
 
 .map-frame {

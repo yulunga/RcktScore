@@ -47,7 +47,7 @@ def _event_summary(match_row, event_type, payload):
 def _serialize_event(match_row, event_row):
     payload = event_row.get("payload") or {}
     return {
-        "id": event_row["id"],
+        "id": str(event_row["id"]),
         "event_type": event_row["event_type"],
         "payload": payload,
         "event_source": event_row["event_source"],
@@ -115,7 +115,7 @@ def _build_state(match_row, event_rows):
 
 def _serialize_match(match_row, event_rows):
     return {
-        "id": match_row["id"],
+        "id": str(match_row["id"]),
         "tenant_id": match_row["tenant_id"],
         "court_id": match_row["court_id"],
         "court_name": match_row["court_name"],
