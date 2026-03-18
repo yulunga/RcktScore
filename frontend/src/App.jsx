@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
+import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
@@ -12,6 +13,14 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/dashboard"
+        element={(
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        )}
+      />
       <Route
         path="/match/new"
         element={(

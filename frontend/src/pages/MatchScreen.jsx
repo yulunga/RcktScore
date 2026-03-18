@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 
+import AppFooter from "../components/AppFooter";
 import EventTimeline from "../components/EventTimeline";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
@@ -29,33 +30,36 @@ export default function MatchScreen() {
   }, [connectRealtime, loadMatch, matchId]);
 
   return (
-    <main className="page-shell grid two-column">
-      <div className="stack">
-        <SessionBar />
-        <Scoreboard match={currentMatch} />
-        <MatchControls
-          disabled={!currentMatch || loading}
-          onScorePoint={(scorer) => scorePoint(matchId, scorer)}
-          onEventAction={(actionType, payload) =>
-            sendEventAction(matchId, actionType, payload)
-          }
-          onUndo={() => undoLastAction(matchId)}
-        />
-      </div>
+    <main className="page-shell stack">
+      <div className="grid two-column">
+        <div className="stack">
+          <SessionBar />
+          <Scoreboard match={currentMatch} />
+          <MatchControls
+            disabled={!currentMatch || loading}
+            onScorePoint={(scorer) => scorePoint(matchId, scorer)}
+            onEventAction={(actionType, payload) =>
+              sendEventAction(matchId, actionType, payload)
+            }
+            onUndo={() => undoLastAction(matchId)}
+          />
+        </div>
 
-      <div className="stack">
-        <Timer />
-        <section className="panel stack">
-          <h2>Spectator Display</h2>
-          <p className="helper-text">
-            Open this URL on the venue display, TV browser, or secondary tablet.
-          </p>
-          <input className="read-only-input" readOnly value={displayUrl} />
-        </section>
-        {loading ? <div className="notice">Syncing match state...</div> : null}
-        {error ? <div className="notice error">{error}</div> : null}
-        <EventTimeline events={currentMatch?.state?.events || []} />
+        <div className="stack">
+          <Timer />
+          <section className="panel stack">
+            <h2>Spectator Display</h2>
+            <p className="helper-text">
+              Open this URL on the venue display, TV browser, or secondary tablet.
+            </p>
+            <input className="read-only-input" readOnly value={displayUrl} />
+          </section>
+          {loading ? <div className="notice">Syncing match state...</div> : null}
+          {error ? <div className="notice error">{error}</div> : null}
+          <EventTimeline events={currentMatch?.state?.events || []} />
+        </div>
       </div>
+      <AppFooter />
     </main>
   );
 }

@@ -10,10 +10,10 @@ export default function SessionBar() {
   return (
     <section className="session-bar">
       <div>
-        <strong>Signed in</strong>
+        <strong>{session?.organization_name || "Club"}</strong>
         <span>
-          {session?.username || "Operator"}
-          {session?.organization_name ? ` • ${session.organization_name}` : ""}
+          {(session?.username || "Operator")}
+          {session?.role ? ` • ${session.role}` : ""}
         </span>
       </div>
       <button

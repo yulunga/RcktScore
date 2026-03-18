@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import AppFooter from "../components/AppFooter";
 import SessionBar from "../components/SessionBar";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
@@ -177,6 +178,7 @@ export default function NewMatch() {
           </button>
         </div>
       </form>
+      <AppFooter />
     </main>
   );
 }

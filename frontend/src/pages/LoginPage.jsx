@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
+import AppFooter from "../components/AppFooter";
 import { useAuth } from "../hooks/useAuth";
 
 export default function LoginPage() {
@@ -10,7 +11,7 @@ export default function LoginPage() {
   const { isAuthenticated, loading, login } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const redirectTo = location.state?.from?.pathname || "/match/new";
+  const redirectTo = location.state?.from?.pathname || "/dashboard";
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />;
@@ -82,6 +83,9 @@ export default function LoginPage() {
           </div>
         </form>
       </section>
+      <div className="login-footer-wrap">
+        <AppFooter />
+      </div>
     </main>
   );
 }

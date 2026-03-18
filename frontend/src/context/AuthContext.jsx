@@ -87,6 +87,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(session),
       session,
       loading,
+      setSession,
       login,
       logout,
     }),

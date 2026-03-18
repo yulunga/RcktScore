@@ -72,6 +72,18 @@ Resources:
             Path: /get_score/{match_id}
             Method: GET
 
+  GetDashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_dashboard/handler.lambda_handler
+      Events:
+        GetDashboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /dashboard/{organization_id}
+            Method: GET
+
   ScorePointFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -106,6 +118,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /undo_action
+            Method: POST
+
+  EndMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/end_match/handler.lambda_handler
+      Events:
+        EndMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /end_match
             Method: POST
 
   WebsocketBroadcastFunction:

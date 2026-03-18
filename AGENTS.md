@@ -87,6 +87,7 @@ Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/sr
 
 - `/` -> login page
 - `/login` -> login page
+- `/dashboard` -> protected organisation dashboard
 - `/match/new` -> protected route
 - `/match/:matchId` -> protected route
 - `/display` -> public spectator display route
@@ -100,11 +101,13 @@ Auth protection is currently implemented in the frontend with `AuthContext` and 
 Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml):
 
 - `POST /login`
+- `GET /dashboard/{organization_id}`
 - `POST /start_match`
 - `GET /get_score/{match_id}`
 - `POST /score_point`
 - `POST /event_action`
 - `POST /undo_action`
+- `POST /end_match`
 
 Important: these are the real v2 endpoints. Do not document or build against `/matches`, `/matches/{id}/score`, or other REST shapes unless the code has actually been changed to support them.
 
@@ -162,6 +165,7 @@ Current status:
 
 - login is validated against the database
 - route blocking in the browser exists
+- organisation users now land on a protected dashboard after login
 - scoring/match APIs are still callable without server-side token verification
 
 Any work on auth should preserve the existing `SkwshOrgUsers` table model unless there is an explicit migration plan.
@@ -176,6 +180,13 @@ This is implemented in [NewMatch.jsx](/Users/glennrowe/Development/Projects/Rckt
 
 Do not reintroduce free-text manual entry of the tenant/organisation ID in the operator UI unless there is a clear reason.
 
+The dashboard is now the primary post-login landing page and currently includes:
+
+- quick actions
+- active matches
+- recent completed matches
+- organisation summary information
+
 ---
 
 ## Match and Scoring Logic
@@ -189,6 +200,7 @@ Current behavior:
 - match state is reconstructed from event history
 - undo deletes the last non-`match_started` event and rebuilds state
 - service side and current server are derived from events
+- ending a match sets `matches.status` to `completed` and appends a `match_ended` event
 
 Important: the backend does not currently implement full squash game validation such as complete win/deuce/end-of-game enforcement. Do not document those rules as already shipped unless the code supports them.
 

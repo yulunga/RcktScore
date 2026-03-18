@@ -12,6 +12,8 @@ def _utcnow():
 def _event_summary(match_row, event_type, payload):
     if event_type == "match_started":
         return f"{match_row['player1_name']} vs {match_row['player2_name']} started"
+    if event_type == "match_ended":
+        return payload.get("note") or "Match ended"
     if event_type == "score_point":
         scorer = payload.get("scorer")
         if scorer == "player1":
@@ -137,6 +139,32 @@ def get_match(connection, match_id):
     if not match_row:
         return None
     return _serialize_match(match_row, _fetch_match_events(connection, match_id))
+
+
+def list_matches(connection, tenant_id, status=None, limit=10):
+    query = [
+        """
+        SELECT *
+        FROM matches
+        WHERE tenant_id = %(tenant_id)s
+        """
+    ]
+    params = {"tenant_id": str(tenant_id), "limit": limit}
+
+    if status:
+        query.append("AND status = %(status)s")
+        params["status"] = status
+
+    query.append("ORDER BY updated_at DESC, created_at DESC LIMIT %(limit)s")
+
+    with connection.cursor() as cursor:
+        cursor.execute("\n".join(query), params)
+        match_rows = cursor.fetchall()
+
+    return [
+        _serialize_match(match_row, _fetch_match_events(connection, match_row["id"]))
+        for match_row in match_rows
+    ]
 
 
 def create_match(connection, payload, source="api"):
@@ -299,6 +327,41 @@ def undo_last_action(connection, match_id):
             WHERE id = %(match_id)s
             """,
             {"updated_at": _utcnow(), "match_id": match_id},
+        )
+
+    connection.commit()
+    return get_match(connection, match_id)
+
+
+def end_match(connection, match_id, source="api"):
+    match_row = _fetch_match_row(connection, match_id)
+    if not match_row:
+        return None
+
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO match_events (id, match_id, tenant_id, event_type, payload, event_source, created_at)
+            VALUES (%(id)s, %(match_id)s, %(tenant_id)s, 'match_ended', %(payload)s, %(event_source)s, %(created_at)s)
+            """,
+            {
+                "id": str(uuid4()),
+                "match_id": match_id,
+                "tenant_id": match_row["tenant_id"],
+                "payload": {"status": "completed"},
+                "event_source": source,
+                "created_at": now,
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE matches
+            SET status = 'completed',
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {"updated_at": now, "match_id": match_id},
         )
 
     connection.commit()

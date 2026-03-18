@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import AppFooter from "../components/AppFooter";
 import EventTimeline from "../components/EventTimeline";
 import Scoreboard from "../components/Scoreboard";
 import { useMatch } from "../hooks/useMatch";
@@ -35,6 +36,7 @@ export default function DisplayScreen() {
       {error ? <div className="notice error">{error}</div> : null}
       <Scoreboard match={currentMatch} />
       <EventTimeline events={currentMatch?.state?.events || []} />
+      <AppFooter />
     </main>
   );
 }

@@ -35,6 +35,10 @@ export function login(payload) {
   });
 }
 
+export function getDashboard(organizationId) {
+  return apiRequest(`/dashboard/${organizationId}`);
+}
+
 export function scorePoint(payload) {
   return apiRequest("/score_point", {
     method: "POST",
@@ -51,6 +55,13 @@ export function sendEventAction(payload) {
 
 export function undoAction(payload) {
   return apiRequest("/undo_action", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function endMatch(payload) {
+  return apiRequest("/end_match", {
     method: "POST",
     body: JSON.stringify(payload),
   });
