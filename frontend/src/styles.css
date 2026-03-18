@@ -13,7 +13,11 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(18, 116, 208, 0.18), transparent 30%),
+    radial-gradient(
+      circle at top left,
+      rgba(18, 116, 208, 0.18),
+      transparent 30%
+    ),
     linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
 }
 
@@ -246,7 +250,9 @@ select {
   color: #fff;
   background: #1274d0;
   cursor: pointer;
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
 }
 
 .button-row button.secondary,
@@ -265,7 +271,9 @@ select {
   background: #1274d0;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
 }
 
 .button-link.secondary {
@@ -326,6 +334,20 @@ select {
   color: #486581;
 }
 
+.session-link-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.session-link-button:hover {
+  color: #102a43;
+  text-decoration: underline;
+}
+
 .scoreboard-card {
   padding: 24px;
   display: grid;
@@ -337,6 +359,10 @@ select {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.scoreboard-header-meta {
+  justify-items: end;
 }
 
 .scoreboard-grid {
@@ -353,14 +379,45 @@ select {
 }
 
 .player-card h3 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 1.4rem;
+}
+
+.player-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .player-score {
   font-size: clamp(2.8rem, 6vw, 5rem);
   font-weight: 800;
   line-height: 1;
+}
+
+.player-games {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 600;
+}
+
+.server-badge,
+.score-series-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.score-series-chip {
+  background: #e6f0fb;
+  color: #0b4f88;
 }
 
 .meta-grid {
@@ -385,6 +442,12 @@ select {
   margin: 0;
   display: grid;
   gap: 12px;
+}
+
+.timeline-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .timeline-item {
@@ -537,6 +600,12 @@ select {
 
 .sport-option.disabled span {
   color: #7b8794;
+}
+
+.game-history-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .matrix-panel {

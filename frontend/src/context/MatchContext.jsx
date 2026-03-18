@@ -8,6 +8,7 @@ import React, {
 } from "react";
 
 import {
+  endMatch as endMatchRequest,
   getScore,
   scorePoint as scorePointRequest,
   sendEventAction as sendEventActionRequest,
@@ -100,6 +101,15 @@ export function MatchProvider({ children }) {
     return runMatchMutation(() => undoActionRequest({ match_id: matchId }));
   }, [runMatchMutation]);
 
+  const endMatch = useCallback(async (matchId, payload = {}) => {
+    return runMatchMutation(() =>
+      endMatchRequest({
+        match_id: matchId,
+        ...payload,
+      }),
+    );
+  }, [runMatchMutation]);
+
   const connectRealtime = useCallback((matchId) => {
     if (socketRef.current) {
       socketRef.current();
@@ -132,6 +142,7 @@ export function MatchProvider({ children }) {
       scorePoint,
       sendEventAction,
       undoLastAction,
+      endMatch,
       connectRealtime,
     }),
     [
@@ -144,6 +155,7 @@ export function MatchProvider({ children }) {
       sendEventAction,
       startMatch,
       undoLastAction,
+      endMatch,
     ],
   );
 

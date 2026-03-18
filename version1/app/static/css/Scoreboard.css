@@ -1,155 +1,154 @@
 /* CSS File */
 
-
-
 html {
-    background-color: #121212;
-    -webkit-text-size-adjust: 100%;
-    overflow-x: hidden;
-    scroll-behavior: smooth; }
-    
-body {
-    margin: 0 auto;
-    padding: 0;
-    color: aliceblue;
+  background-color: #121212;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
-    
+
+body {
+  margin: 0 auto;
+  padding: 0;
+  color: aliceblue;
+}
 
 .scorewrapper {
-    display: grid;
-    width: 100%;
-    height: 99vh;
-    grid:   "header header header" auto 
-            "leftside centrebody rightside" 1fr
-            / 1fr 1fr 1fr;
-    gap: 8px;
-    max-width: 1600px;
-    margin: 0 auto;
+  display: grid;
+  width: 100%;
+  height: 99vh;
+  grid:
+    "header header header" auto
+    "leftside centrebody rightside" 1fr
+    / 1fr 1fr 1fr;
+  gap: 8px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
 .scoreheader {
-    grid-area: header;
-    border: 1px dashed red;
-    height: 3vh;
-    padding: 6px;
+  grid-area: header;
+  border: 1px dashed red;
+  height: 3vh;
+  padding: 6px;
 }
 
 .leftdiv {
-    grid-area: leftside;
-    overflow: hidden;
-    align-items: center;
-    border-radius: 1rem;
-    /*padding: 2rem;*/
-    background-color: #222;
-    font-size: 2rem;
-    text-align: left;
+  grid-area: leftside;
+  overflow: hidden;
+  align-items: center;
+  border-radius: 1rem;
+  /*padding: 2rem;*/
+  background-color: #222;
+  font-size: 2rem;
+  text-align: left;
 }
 
 .rightdiv {
-    grid-area: rightside;
-    overflow: hidden;
-    align-items: center;
-    border-radius: 1rem;
-    /*padding: 2rem; */
-    background-color: #222;
-    font-size: 2rem;
-    text-align: center;
+  grid-area: rightside;
+  overflow: hidden;
+  align-items: center;
+  border-radius: 1rem;
+  /*padding: 2rem; */
+  background-color: #222;
+  font-size: 2rem;
+  text-align: center;
 }
 
 .centrediv {
-    grid-area: centrebody;
-    border: 1px dashed red;
-    padding: 10px;
+  grid-area: centrebody;
+  border: 1px dashed red;
+  padding: 10px;
 }
 
 .player1-name {
-    align-items: center;
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    font-size: clamp (2em, 8vw, 8rem);
-    font-size: calc(1vw + 1vh);
-    border-radius: 1rem;
-    padding: 3rem;
-    color: #007BFF;
-    background-color: #e8f0ff;
-    border: 2px solid #007BFF;
-    border-left: 5px solid #007BFF;
-    font-size: 2rem;
-    text-align: center;
+  align-items: center;
+  font-family:
+    "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+  font-size: clamp (2em, 8vw, 8rem);
+  font-size: calc(1vw + 1vh);
+  border-radius: 1rem;
+  padding: 3rem;
+  color: #007bff;
+  background-color: #e8f0ff;
+  border: 2px solid #007bff;
+  border-left: 5px solid #007bff;
+  font-size: 2rem;
+  text-align: center;
 }
 
 .player2-name {
-    align-items: center;
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-    font-size: clamp(3em, 10vw, 10rem);
-    border-radius: 1rem;
-    padding: 3rem;
-    color: #007BFF;
-    background-color: #ffece6;
-    border: 2px solid #FF5733;
-    border-left: 5px solid #FF5733;
-    font-size: 2rem;
-    text-align: center;
+  align-items: center;
+  font-family:
+    "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+  font-size: clamp(3em, 10vw, 10rem);
+  border-radius: 1rem;
+  padding: 3rem;
+  color: #007bff;
+  background-color: #ffece6;
+  border: 2px solid #ff5733;
+  border-left: 5px solid #ff5733;
+  font-size: 2rem;
+  text-align: center;
 }
 
 .player-score {
-    display: flex;
-    font-size: clamp(12em, 20vw, 14rem);
-    align-items: center;
-    justify-content: center;
-    transform: scale(1);
-    transform-origin: center;
-    width: 90%;
-    height: 85%;
-    max-width: 95%;
-    max-height: 95%;
-    padding: 1rem;
-
+  display: flex;
+  font-size: clamp(12em, 20vw, 14rem);
+  align-items: center;
+  justify-content: center;
+  transform: scale(1);
+  transform-origin: center;
+  width: 90%;
+  height: 85%;
+  max-width: 95%;
+  max-height: 95%;
+  padding: 1rem;
 }
-
-
-
 
 /* Basic styling */
 .hamburger {
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 0.4rem;
-    position: fixed;
-    top: 0.5rem;
-    left: 0.5rem;
-    z-index: 1001;
-    background-color: #222;
-    color: #3d3d3d;
-    border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.4rem;
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1001;
+  background-color: #222;
+  color: #3d3d3d;
+  border-radius: 0.5rem;
 }
 
 .menu {
-    position: fixed;
-    top: 0;
-    left: -250px; /* hidden off-screen */
-    width: 200px;
-    height: 100vh;
-    background-color: #111;
-    padding-top: 3rem;
-    transition: left 0.3s ease;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: -250px; /* hidden off-screen */
+  width: 200px;
+  height: 100vh;
+  background-color: #111;
+  padding-top: 3rem;
+  transition: left 0.3s ease;
+  z-index: 1000;
 }
 
 .menu ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .menu ul li {
-    padding: 0.5rem;
+  padding: 0.5rem;
 }
 
 .menu ul li a {
-    color: rgb(68, 68, 68);
-    text-decoration: none;
+  color: rgb(68, 68, 68);
+  text-decoration: none;
 }
 
 .menu.open {
-    left: 0;
+  left: 0;
 }

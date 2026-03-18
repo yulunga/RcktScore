@@ -15,7 +15,13 @@ def lambda_handler(event, context):
         return json_response(400, {"message": "Missing required fields", "fields": missing_fields})
 
     with get_db_connection() as connection:
-        match = end_match(connection, payload["match_id"], source=payload.get("source", "lambda"))
+        match = end_match(
+            connection,
+            payload["match_id"],
+            source=payload.get("source", "lambda"),
+            reason=payload.get("reason"),
+            ended_early=payload.get("ended_early"),
+        )
 
     if not match:
         return json_response(404, {"message": "Match not found"})

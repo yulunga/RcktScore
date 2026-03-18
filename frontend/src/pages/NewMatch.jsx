@@ -11,6 +11,11 @@ const scoreTypeOptions = [
   { value: 11, label: "PAR-11" },
   { value: 15, label: "PAR-15" },
 ];
+const bestOfOptions = [
+  { value: 1, label: "Best of 1" },
+  { value: 3, label: "Best of 3" },
+  { value: 5, label: "Best of 5" },
+];
 const handicapBands = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"];
 const handicapMatrix = {
   A: { A: 0, B: -1, C: -2, D: -3, E: -4, F: -5, G: -6, H: -6, I: -7, J: -8, K: -8, L: -9, M: -10 },
@@ -42,6 +47,7 @@ const initialFormState = {
   // player2_country: "",
   referee_name: "",
   score_type: 15,
+  best_of: 1,
   handicap_enabled: false,
   player1_band: "",
   player2_band: "",
@@ -291,6 +297,22 @@ export default function NewMatch() {
               {scoreTypeOptions.map((scoreType) => (
                 <option key={scoreType.value} value={scoreType.value}>
                   {scoreType.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="best_of">Match Format</label>
+            <select
+              id="best_of"
+              name="best_of"
+              value={formState.best_of}
+              onChange={(event) => handleChange("best_of", event.target.value)}
+            >
+              {bestOfOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>

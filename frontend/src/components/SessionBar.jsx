@@ -17,7 +17,7 @@ export default function SessionBar() {
         </span>
       </div>
       <button
-        className="secondary"
+        className="session-link-button"
         type="button"
         onClick={() => {
           logout();
