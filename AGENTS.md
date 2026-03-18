@@ -560,6 +560,45 @@ Goal: Establish a gold-standard implementation pattern
 
 ---
 
+### 📱 Responsive Dashboard Experience
+
+Goal: Shape the post-login dashboard intentionally for mobile, tablet, and desktop without splitting the app into separate codebases
+
+* [ ] Define responsive dashboard breakpoints and document them
+  Recommended baseline:
+  - mobile: `< 768px`
+  - tablet: `768px - 1023px`
+  - desktop: `>= 1024px`
+* [ ] Keep one shared dashboard route and data flow, with layout differences only where the device needs a different experience
+* [ ] Build the dashboard mobile-first, then layer tablet and desktop enhancements
+* [ ] Create a viewport/layout-mode utility only if behavior needs to change, not just CSS
+* [ ] Mobile dashboard requirements:
+  - single-column stacked cards
+  - larger tap targets
+  - shortest possible path to start or resume a match
+  - secondary information collapsed or deferred
+* [ ] Tablet dashboard requirements:
+  - two-column layout where useful
+  - operator-focused density suitable for courtside use
+  - quick access to active matches and scoring controls
+* [ ] Desktop dashboard requirements:
+  - full multi-panel grid
+  - richer organisation summary and match visibility
+  - higher information density for club/admin workflows
+* [ ] Apply progressive disclosure for smaller screens instead of shrinking everything
+  Examples:
+  - accordions
+  - expandable sections
+  - hidden secondary actions
+* [ ] Use touch-friendly spacing and control sizing where device input is touch-first
+* [ ] Review and adapt each dashboard panel by device size:
+  - Quick Actions
+  - Active Matches
+  - Recent Matches
+  - Organisation Settings summary
+
+---
+
 ### 📊 Observability & Logging
 
 * [ ] Add structured logging across all Lambdas
