@@ -14,7 +14,12 @@ def get_database_url():
 
 @contextmanager
 def get_db_connection():
-    connection = psycopg.connect(get_database_url(), row_factory=dict_row)
+    # Supabase's serverless transaction pooler expects prepared statements to be disabled.
+    connection = psycopg.connect(
+        get_database_url(),
+        row_factory=dict_row,
+        prepare_threshold=None,
+    )
     try:
         yield connection
     finally:
