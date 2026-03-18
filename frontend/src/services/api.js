@@ -15,7 +15,14 @@ async function apiRequest(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || "API request failed");
+    const error = new Error(payload?.error?.message || payload.message || "API request failed");
+    error.code = payload?.error?.code;
+    error.details = payload?.error?.details;
+    throw error;
+  }
+
+  if (typeof payload?.success === "boolean") {
+    return payload.data;
   }
 
   return payload;

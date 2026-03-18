@@ -130,7 +130,9 @@ Schema bootstrap for match persistence is in:
 ### Shared Utilities
 
 - [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-  - `json_response(status_code, body)`
+  - `success_response(status_code, data=None, meta=None)`
+  - `error_response(status_code, code, message, details=None)`
+  - `json_response(status_code, body)` compatibility wrapper for older callers
   - `parse_body(event)`
   - `path_parameter(event, name)`
   - `require_fields(payload, fields)`
@@ -254,33 +256,71 @@ Current `match_events` responsibility:
 
 ## Current Response Contract
 
-### Current State
+The API now uses one shared envelope for both success and error responses.
 
-The API does not yet have one fully standardized envelope.
+### Success Envelope
 
-Current conventions:
+Every successful response returns:
 
-- handlers return JSON through `json_response(...)`
-- success payloads usually return one of:
-  - `{"session": ...}`
-  - `{"match": ..., "broadcast": ...}`
-  - dashboard or organisation objects
-- error payloads usually return:
-  - `{"message": "..."}`
-  - optionally `{"fields": [...]}` for validation failures
+```json
+{
+  "success": true,
+  "data": {},
+  "error": null,
+  "meta": {}
+}
+```
+
+Current resource payloads are nested inside `data`, for example:
+
+- `{"success": true, "data": {"session": {...}}, "error": null, "meta": {}}`
+- `{"success": true, "data": {"match": {...}, "broadcast": {...}}, "error": null, "meta": {}}`
+- `{"success": true, "data": {"dashboard": {...}}, "error": null, "meta": {}}`
+- `{"success": true, "data": {"organizationSettings": {...}}, "error": null, "meta": {}}`
+- `{"success": true, "data": {"user": {...}}, "error": null, "meta": {}}`
+- `{"success": true, "data": {"court": {...}}, "error": null, "meta": {}}`
+
+### Error Envelope
+
+Every error response returns:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable message"
+  },
+  "meta": {}
+}
+```
+
+Validation errors may also include `error.details`, for example:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Missing required fields",
+    "details": {
+      "fields": ["match_id"]
+    }
+  },
+  "meta": {}
+}
+```
 
 ### Current Status Codes
 
 - `200` successful read/update
 - `201` successful create
 - `400` invalid request or missing fields
+- `401` authentication failure
 - `404` resource not found
 - `500` unhandled backend error
-
-### Important Limitation
-
-Response shapes are only partially standardized today.
-Any refactor work should centralize this into a shared success/error contract before claiming the item complete.
 
 ---
 

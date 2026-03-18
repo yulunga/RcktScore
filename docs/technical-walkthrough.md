@@ -19,8 +19,33 @@ Almost every request follows the same path:
 4. The Lambda handler parses and validates input using [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py).
 5. Shared logic in `backend/common/` performs the real business work.
 6. A DB connection from [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py) reads/writes Supabase Postgres.
-7. The Lambda returns JSON.
+7. The Lambda returns the shared API envelope.
 8. Frontend context updates state and the screen rerenders.
+
+Shared response envelope:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "error": null,
+  "meta": {}
+}
+```
+
+or
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable message"
+  },
+  "meta": {}
+}
+```
 
 The sections below describe each major flow explicitly.
 
@@ -47,9 +72,10 @@ The sections below describe each major flow explicitly.
    - joins `SkwshOrgSettings`
    - verifies `password_hash`
    - returns serialized session data
-8. Handler returns `{"session": ...}`.
-9. Frontend stores the session in `sessionStorage`.
-10. User is redirected to `/dashboard`.
+8. Handler returns `{"success": true, "data": {"session": ...}, "error": null, "meta": {}}`.
+9. `api.js` unwraps `payload.data`, so `AuthContext` receives `response.session`.
+10. Frontend stores the session in `sessionStorage`.
+11. User is redirected to `/dashboard`.
 
 ---
 
@@ -71,8 +97,9 @@ The sections below describe each major flow explicitly.
    - loads recent completed matches from `matches`
    - loads organisation summary from `SkwshOrgSettings`
    - loads user/court counts from `SkwshOrgUsers` and `SkwshCourts`
-6. Handler returns a dashboard object.
-7. Dashboard page renders quick actions, active matches, recent matches, and organisation summary.
+6. Handler returns `{"success": true, "data": {"dashboard": ...}, "error": null, "meta": {}}`.
+7. `api.js` unwraps `payload.data`, so the page reads `response.dashboard`.
+8. Dashboard page renders quick actions, active matches, recent matches, and organisation summary.
 
 Important:
 - dashboard logic safely handles missing `matches` tables by returning empty match lists
@@ -94,11 +121,9 @@ Important:
    - organisation details from `SkwshOrgSettings`
    - users from `SkwshOrgUsers`
    - courts from `SkwshCourts`
-5. Handler returns:
-   - `organization`
-   - `users`
-   - `courts`
-6. Frontend renders organisation forms, users, courts, game settings scaffold, and map.
+5. Handler returns `{"success": true, "data": {"organizationSettings": ...}, "error": null, "meta": {}}`.
+6. `api.js` unwraps `payload.data`, so the page reads `response.organizationSettings`.
+7. Frontend renders organisation forms, users, courts, game settings scaffold, and map.
 
 ---
 
@@ -115,7 +140,7 @@ Important:
 3. API Gateway invokes [update_organization_details/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_organization_details/handler.py).
 4. Handler calls [update_organization_details(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
 5. Shared logic updates `SkwshOrgSettings`.
-6. Updated organisation settings payload is returned.
+6. Updated organisation settings payload is returned inside `data.organizationSettings`.
 7. Frontend refreshes the settings screen state.
 
 ---
@@ -131,7 +156,7 @@ Important:
    - validates username, password, and role
    - hashes the password
    - inserts into `SkwshOrgUsers`
-5. Serialized user object is returned.
+5. Serialized user object is returned inside `data.user`.
 
 ### Update User Role
 
@@ -139,7 +164,7 @@ Important:
 2. API Gateway invokes [update_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_org_user/handler.py).
 3. Handler calls [update_organization_user_role(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
 4. Shared logic updates `SkwshOrgUsers.role`.
-5. Updated user object is returned.
+5. Updated user object is returned inside `data.user`.
 
 ---
 
@@ -151,7 +176,7 @@ Important:
 2. API Gateway invokes [create_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_court/handler.py).
 3. Handler calls [create_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
 4. Shared logic inserts into `SkwshCourts`.
-5. Court object is returned.
+5. Court object is returned inside `data.court`.
 
 ### Update Court
 
@@ -159,7 +184,7 @@ Important:
 2. API Gateway invokes [update_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_court/handler.py).
 3. Handler calls [update_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
 4. Shared logic updates `SkwshCourts`.
-5. Updated court object is returned.
+5. Updated court object is returned inside `data.court`.
 
 ### Delete Court
 
@@ -167,7 +192,7 @@ Important:
 2. API Gateway invokes [delete_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_court/handler.py).
 3. Handler calls [delete_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
 4. Shared logic deletes the row from `SkwshCourts`.
-5. Boolean success is returned.
+5. Boolean success is returned inside `data.deleted`.
 
 ---
 
@@ -194,9 +219,10 @@ Important:
    - inserts a `matches` row
    - inserts a `match_started` event into `match_events`
    - initializes best-of, games-to-win, and handicap offsets
-6. Handler returns `{"match": ..., "broadcast": ...}`.
-7. Frontend stores the match in `MatchContext`.
-8. Operator is routed to `/match/:matchId`.
+6. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
+7. `api.js` unwraps `payload.data`, so `MatchContext` receives `response.match`.
+8. Frontend stores the match in `MatchContext`.
+9. Operator is routed to `/match/:matchId`.
 
 ---
 
@@ -217,8 +243,9 @@ Important:
    - loads the `matches` row
    - loads `match_events`
    - rebuilds match state from the event stream
-6. Handler returns the match object.
-7. Frontend renders:
+6. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
+7. `api.js` unwraps `payload.data`, so `MatchContext` reads `payload.match`.
+8. Frontend renders:
    - current game score
    - games won
    - serving player and side
@@ -247,7 +274,7 @@ Important:
    - detects match completion
    - writes a `score_point` event to `match_events`
    - updates summary columns in `matches`
-6. Handler returns the updated `match`.
+6. Handler returns the updated `match` inside `data.match`.
 7. Frontend updates the scoreboard immediately.
 
 Current scoring rules:
@@ -276,7 +303,7 @@ Current scoring rules:
 4. Shared logic:
    - `stroke` is scoring-aware and can complete a game/match
    - other actions append event entries without changing score summaries
-5. Updated `match` is returned.
+5. Updated `match` is returned inside `data.match`.
 
 ---
 
@@ -289,7 +316,7 @@ Current scoring rules:
 3. Shared logic deletes the last non-`match_started` event.
 4. Match state is rebuilt from the remaining event stream.
 5. `matches` summary columns are updated to the rebuilt state.
-6. Updated `match` is returned.
+6. Updated `match` is returned inside `data.match`.
 
 ---
 
@@ -328,21 +355,24 @@ Important:
 
 ---
 
-## 14. Current Response Shape Notes
+## 14. Response Contract Notes
 
-The backend response contract is only partially standardized today.
+The backend now uses one shared response envelope.
 
-Current conventions:
+- success responses set `success: true` and carry the resource payload in `data`
+- error responses set `success: false` and carry machine-readable error information in `error`
+- the frontend API client unwraps `payload.data` for successful responses and throws `error.message` for non-2xx responses
 
-- success:
-  - `{"session": ...}`
-  - `{"match": ..., "broadcast": ...}`
-  - direct dashboard/organisation payloads
-- error:
-  - `{"message": "..."}`
-  - optional `{"fields": [...]}` for validation failures
+Current resource keys inside `data` include:
 
-This is good enough for current implementation work, but it is not yet the finished contract.
+- `session`
+- `dashboard`
+- `organizationSettings`
+- `user`
+- `court`
+- `match`
+- `broadcast`
+- `deleted`
 
 ---
 
@@ -350,7 +380,6 @@ This is good enough for current implementation work, but it is not yet the finis
 
 - backend authorization is not yet enforced on scoring endpoints
 - WebSocket infrastructure is still incomplete at the API Gateway level
-- response payloads are not yet fully standardized into one shared envelope
 - historical reporting pages are still lighter than the scoring data now stored in the database
 
 ---

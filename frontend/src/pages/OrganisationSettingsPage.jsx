@@ -79,18 +79,20 @@ export default function OrganisationSettingsPage() {
   }, [organizationForm.org_address, settings?.organization?.org_address]);
 
   const syncLocalState = useCallback((response) => {
-    setSettings(response);
+    const nextSettings = response?.organizationSettings || response || null;
+
+    setSettings(nextSettings);
     setOrganizationForm({
-      organization_name: response?.organization?.organization_name || "",
-      org_address: response?.organization?.org_address || "",
-      org_contact: response?.organization?.org_contact || "",
-      org_telephone: response?.organization?.org_telephone || "",
-      org_email: response?.organization?.org_email || "",
-      org_webaddress: response?.organization?.org_webaddress || "",
+      organization_name: nextSettings?.organization?.organization_name || "",
+      org_address: nextSettings?.organization?.org_address || "",
+      org_contact: nextSettings?.organization?.org_contact || "",
+      org_telephone: nextSettings?.organization?.org_telephone || "",
+      org_email: nextSettings?.organization?.org_email || "",
+      org_webaddress: nextSettings?.organization?.org_webaddress || "",
     });
     setCourtDrafts(
       Object.fromEntries(
-        (response?.courts || []).map((court) => [
+        (nextSettings?.courts || []).map((court) => [
           court.id,
           {
             court_name: court.court_name || "",
@@ -100,7 +102,7 @@ export default function OrganisationSettingsPage() {
       ),
     );
     setUserRoleDrafts(
-      Object.fromEntries((response?.users || []).map((user) => [user.id, user.role || "user"])),
+      Object.fromEntries((nextSettings?.users || []).map((user) => [user.id, user.role || "user"])),
     );
   }, []);
 

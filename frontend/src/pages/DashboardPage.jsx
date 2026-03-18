@@ -47,7 +47,7 @@ export default function DashboardPage() {
       setActionError("");
       try {
         const response = await getDashboard(session.organization_id);
-        setDashboard(response);
+        setDashboard(response.dashboard || null);
       } catch (requestError) {
         setActionError(requestError.message || "Failed to load dashboard.");
       } finally {
@@ -63,7 +63,7 @@ export default function DashboardPage() {
     try {
       await endMatch({ match_id: matchId });
       const response = await getDashboard(session.organization_id);
-      setDashboard(response);
+      setDashboard(response.dashboard || null);
     } catch (requestError) {
       setActionError(requestError.message || "Failed to end match.");
     }

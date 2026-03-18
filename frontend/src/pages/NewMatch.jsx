@@ -142,7 +142,7 @@ export default function NewMatch() {
       setCourtError("");
       try {
         const response = await getOrganizationSettings(organizationId);
-        setAvailableCourts(response?.courts || []);
+        setAvailableCourts(response?.organizationSettings?.courts || []);
       } catch (requestError) {
         setCourtError(requestError.message || "Failed to load organisation courts.");
       } finally {

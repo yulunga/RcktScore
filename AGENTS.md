@@ -171,11 +171,16 @@ Important: these are the real v2 endpoints. Do not document or build against `/m
 Current API contract status:
 
 - response handling is centralized through [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-- status codes are mostly consistent (`200`, `201`, `400`, `404`, `500`)
-- error payloads generally use `{"message": "..."}`
-- success payloads are not yet fully standardized across all endpoints
-
-Do not claim that a final unified API envelope already exists. It is still a backlog item.
+- shared response helpers are:
+  - `success_response(status_code, data=None, meta=None)`
+  - `error_response(status_code, code, message, details=None)`
+- all current handlers return one shared envelope:
+  - success:
+    - `{"success": true, "data": {...}, "error": null, "meta": {}}`
+  - error:
+    - `{"success": false, "data": null, "error": {"code": "...", "message": "..."}, "meta": {}}`
+- status codes are standardized across the current API surface (`200`, `201`, `400`, `401`, `404`, `500`)
+- the frontend API client unwraps `payload.data` on success and surfaces `error.message`, `error.code`, and `error.details` on failure
 
 ---
 
@@ -479,12 +484,13 @@ The following items are intentionally deferred while frontend UI structure is pr
   - [AGENTS.md](/Users/glennrowe/Development/Projects/RcktScore/AGENTS.md)
   - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
   - [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
-* [ ] Standardise API response contract (success/error format)
-  Remaining work:
-  - create shared success/error helpers in `backend/common/utils.py`
-  - define one stable envelope for success payloads
-  - define one stable envelope for error payloads
-  - migrate all handlers and frontend API consumers to the same contract
+* [x] Standardise API response contract (success/error format)
+  Completed in:
+  - [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
+  - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+  - current Lambda handlers in `backend/functions/*/handler.py`
+  - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
+  - [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
 * [ ] Define and enforce match event schema in `match_events`
   Current state:
   - the event model is described in docs and implemented in `match_logic.py`

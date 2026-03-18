@@ -4,7 +4,7 @@ import os
 import boto3
 from aws_lambda_powertools import Logger
 
-from common.utils import json_response, parse_body, require_fields
+from common.utils import error_response, parse_body, require_fields, success_response
 
 
 logger = Logger(service="websocket_broadcast")
@@ -14,12 +14,12 @@ def lambda_handler(event, context):
     payload = parse_body(event)
     missing_fields = require_fields(payload, ["connection_ids", "payload"])
     if missing_fields:
-        return json_response(400, {"message": "Missing required fields", "fields": missing_fields})
+        return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
 
     domain_name = payload.get("domain_name") or os.getenv("WEBSOCKET_DOMAIN_NAME")
     stage = payload.get("stage") or os.getenv("WEBSOCKET_STAGE")
     if not domain_name or not stage:
-        return json_response(400, {"message": "domain_name and stage are required"})
+        return error_response(400, "VALIDATION_ERROR", "domain_name and stage are required")
 
     management_api = boto3.client(
         "apigatewaymanagementapi",
@@ -41,4 +41,4 @@ def lambda_handler(event, context):
             logger.warning("Failed to deliver websocket message to %s: %s", connection_id, exc)
             failed.append({"connection_id": connection_id, "error": str(exc)})
 
-    return json_response(200, {"delivered": delivered, "failed": failed})
+    return success_response(200, {"delivered": delivered, "failed": failed})
