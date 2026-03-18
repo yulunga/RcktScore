@@ -117,6 +117,8 @@ def _serialize_match(match_row, event_rows):
         "tenant_id": match_row["tenant_id"],
         "court_id": match_row["court_id"],
         "court_name": match_row["court_name"],
+        "court_alias": match_row.get("court_alias"),
+        "sport": match_row.get("sport") or "squash",
         "player1_name": match_row["player1_name"],
         "player1_surname": match_row.get("player1_surname"),
         "player1_country": match_row.get("player1_country"),
@@ -125,8 +127,18 @@ def _serialize_match(match_row, event_rows):
         "player2_country": match_row.get("player2_country"),
         "referee_name": match_row.get("referee_name"),
         "score_type": match_row["score_type"],
+        "handicap_enabled": bool(match_row.get("handicap_enabled")),
+        "player1_band": match_row.get("player1_band"),
+        "player2_band": match_row.get("player2_band"),
+        "player1_offset": _coerce_int(match_row.get("player1_offset")),
+        "player2_offset": _coerce_int(match_row.get("player2_offset")),
+        "player1_final_score": _coerce_int(match_row.get("player1_final_score")),
+        "player2_final_score": _coerce_int(match_row.get("player2_final_score")),
+        "winner_side": match_row.get("winner_side"),
+        "winner_name": match_row.get("winner_name"),
         "status": match_row["status"],
         "created_at": match_row["created_at"].isoformat(),
+        "completed_at": match_row["completed_at"].isoformat() if match_row.get("completed_at") else None,
         "updated_at": match_row["updated_at"].isoformat(),
         "state": _build_state(match_row, event_rows),
     }
@@ -206,6 +218,8 @@ def create_match(connection, payload, source="api"):
                 tenant_id,
                 court_id,
                 court_name,
+                court_alias,
+                sport,
                 player1_name,
                 player1_surname,
                 player1_country,
@@ -214,8 +228,18 @@ def create_match(connection, payload, source="api"):
                 player2_country,
                 referee_name,
                 score_type,
+                handicap_enabled,
+                player1_band,
+                player2_band,
+                player1_offset,
+                player2_offset,
+                player1_final_score,
+                player2_final_score,
+                winner_side,
+                winner_name,
                 status,
                 created_at,
+                completed_at,
                 updated_at
             )
             VALUES (
@@ -223,6 +247,8 @@ def create_match(connection, payload, source="api"):
                 %(tenant_id)s,
                 %(court_id)s,
                 %(court_name)s,
+                %(court_alias)s,
+                %(sport)s,
                 %(player1_name)s,
                 %(player1_surname)s,
                 %(player1_country)s,
@@ -231,8 +257,18 @@ def create_match(connection, payload, source="api"):
                 %(player2_country)s,
                 %(referee_name)s,
                 %(score_type)s,
+                %(handicap_enabled)s,
+                %(player1_band)s,
+                %(player2_band)s,
+                %(player1_offset)s,
+                %(player2_offset)s,
+                %(player1_final_score)s,
+                %(player2_final_score)s,
+                %(winner_side)s,
+                %(winner_name)s,
                 'active',
                 %(created_at)s,
+                %(completed_at)s,
                 %(updated_at)s
             )
             """,
@@ -241,6 +277,8 @@ def create_match(connection, payload, source="api"):
                 "tenant_id": tenant_id,
                 "court_id": payload["court_id"],
                 "court_name": payload["court_name"],
+                "court_alias": payload.get("court_alias"),
+                "sport": payload.get("sport") or "squash",
                 "player1_name": payload["player1_name"],
                 "player1_surname": payload.get("player1_surname"),
                 "player1_country": payload.get("player1_country"),
@@ -249,7 +287,17 @@ def create_match(connection, payload, source="api"):
                 "player2_country": payload.get("player2_country"),
                 "referee_name": payload.get("referee_name"),
                 "score_type": int(payload.get("score_type", 15)),
+                "handicap_enabled": bool(payload.get("handicap_enabled")),
+                "player1_band": payload.get("player1_band"),
+                "player2_band": payload.get("player2_band"),
+                "player1_offset": _coerce_int(payload.get("player1_offset")),
+                "player2_offset": _coerce_int(payload.get("player2_offset")),
+                "player1_final_score": None,
+                "player2_final_score": None,
+                "winner_side": None,
+                "winner_name": None,
                 "created_at": now,
+                "completed_at": None,
                 "updated_at": now,
             },
         )
@@ -272,6 +320,7 @@ def create_match(connection, payload, source="api"):
                     "player2_band": payload.get("player2_band"),
                     "player1_offset": _coerce_int(payload.get("player1_offset")),
                     "player2_offset": _coerce_int(payload.get("player2_offset")),
+                    "sport": payload.get("sport") or "squash",
                 },
                 "event_source": source,
                 "created_at": now,
@@ -366,11 +415,26 @@ def undo_last_action(connection, match_id):
 
 
 def end_match(connection, match_id, source="api"):
-    match_row = _fetch_match_row(connection, match_id)
-    if not match_row:
+    match = get_match(connection, match_id)
+    if not match:
         return None
 
     now = _utcnow()
+    final_scores = {
+        "player1_final_score": _coerce_int(match["state"].get("player1_score")),
+        "player2_final_score": _coerce_int(match["state"].get("player2_score")),
+    }
+
+    if final_scores["player1_final_score"] > final_scores["player2_final_score"]:
+        winner_side = "player1"
+        winner_name = match["player1_name"]
+    elif final_scores["player2_final_score"] > final_scores["player1_final_score"]:
+        winner_side = "player2"
+        winner_name = match["player2_name"]
+    else:
+        winner_side = "draw"
+        winner_name = "Draw"
+
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -380,8 +444,13 @@ def end_match(connection, match_id, source="api"):
             {
                 "id": str(uuid4()),
                 "match_id": match_id,
-                "tenant_id": match_row["tenant_id"],
-                "payload": {"status": "completed"},
+                "tenant_id": match["tenant_id"],
+                "payload": {
+                    "status": "completed",
+                    **final_scores,
+                    "winner_side": winner_side,
+                    "winner_name": winner_name,
+                },
                 "event_source": source,
                 "created_at": now,
             },
@@ -390,10 +459,23 @@ def end_match(connection, match_id, source="api"):
             """
             UPDATE matches
             SET status = 'completed',
+                player1_final_score = %(player1_final_score)s,
+                player2_final_score = %(player2_final_score)s,
+                winner_side = %(winner_side)s,
+                winner_name = %(winner_name)s,
+                completed_at = %(completed_at)s,
                 updated_at = %(updated_at)s
             WHERE id = %(match_id)s
             """,
-            {"updated_at": now, "match_id": match_id},
+            {
+                "player1_final_score": final_scores["player1_final_score"],
+                "player2_final_score": final_scores["player2_final_score"],
+                "winner_side": winner_side,
+                "winner_name": winner_name,
+                "completed_at": now,
+                "updated_at": now,
+                "match_id": match_id,
+            },
         )
 
     connection.commit()

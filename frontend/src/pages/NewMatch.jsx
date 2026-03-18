@@ -175,6 +175,7 @@ export default function NewMatch() {
     event.preventDefault();
     const createdMatch = await startMatch({
       ...formState,
+      sport: "squash",
       tenant_id: organizationId,
     });
     if (createdMatch?.id) {

@@ -228,10 +228,12 @@ Current behavior:
 
 - match records are created in `matches`
 - events are stored in `match_events`
+- schema bootstrap for these tables now lives in [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql)
 - match state is reconstructed from event history
 - undo deletes the last non-`match_started` event and rebuilds state
 - service side and current server are derived from events
-- ending a match sets `matches.status` to `completed` and appends a `match_ended` event
+- ending a match sets `matches.status` to `completed`, stamps `completed_at`, and stores `player1_final_score`, `player2_final_score`, `winner_side`, and `winner_name`
+- new matches should be created as `sport = "squash"` for the current launch scope unless the app has been explicitly extended for another racket sport
 
 Important: the backend does not currently implement full squash game validation such as complete win/deuce/end-of-game enforcement. Do not document those rules as already shipped unless the code supports them.
 
