@@ -149,7 +149,7 @@ def list_matches(connection, tenant_id, status=None, limit=10):
         WHERE tenant_id = %(tenant_id)s
         """
     ]
-    params = {"tenant_id": str(tenant_id), "limit": limit}
+    params = {"tenant_id": tenant_id, "limit": limit}
 
     if status:
         query.append("AND status = %(status)s")
