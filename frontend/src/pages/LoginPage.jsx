@@ -89,7 +89,7 @@ export default function LoginPage() {
   return (
     <main className="page-shell login-shell">
       <section className="login-panel stack">
-        <span className="status-pill">Rckt Score Login</span>
+        <h1 className="login-title">Rckt Score Login</h1>
 
         <form className="stack" onSubmit={handleSubmit}>
           <div className="field">
@@ -129,28 +129,27 @@ export default function LoginPage() {
 
           {error ? <div className="notice error">{error}</div> : null}
 
-          <div className="button-row">
+          <div className="button-row login-action-row">
             <button disabled={loading} type="submit">
               {loading ? "Signing In..." : "Sign In"}
+            </button>
+            <button
+              className="text-link-button login-inline-link"
+              type="button"
+              onClick={() => {
+                setShowInterestForm((current) => !current);
+                setInterestError("");
+                setInterestMessage("");
+                setInterestCaptcha(createCaptchaChallenge());
+                setInterestAnswer("");
+              }}
+            >
+              Want In
             </button>
           </div>
         </form>
 
         <div className="stack compact">
-          <button
-            className="text-link-button"
-            type="button"
-            onClick={() => {
-              setShowInterestForm((current) => !current);
-              setInterestError("");
-              setInterestMessage("");
-              setInterestCaptcha(createCaptchaChallenge());
-              setInterestAnswer("");
-            }}
-          >
-            Want In
-          </button>
-
           {showInterestForm ? (
             <form className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
               <div className="field">
