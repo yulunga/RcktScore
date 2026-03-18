@@ -1,16 +1,30 @@
+from psycopg.errors import UndefinedTable
+
 from common.match_logic import list_matches
 
 
+def _safe_list_matches(connection, organization_id, status, limit):
+    try:
+        return list_matches(
+            connection,
+            tenant_id=organization_id,
+            status=status,
+            limit=limit,
+        )
+    except UndefinedTable:
+        return []
+
+
 def get_dashboard_data(connection, organization_id, active_limit=10, recent_limit=10):
-    active_matches = list_matches(
+    active_matches = _safe_list_matches(
         connection,
-        tenant_id=organization_id,
+        organization_id=organization_id,
         status="active",
         limit=active_limit,
     )
-    recent_matches = list_matches(
+    recent_matches = _safe_list_matches(
         connection,
-        tenant_id=organization_id,
+        organization_id=organization_id,
         status="completed",
         limit=recent_limit,
     )
