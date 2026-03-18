@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
+import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
 
 export default function App() {
   return (
@@ -18,6 +19,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/settings"
+        element={(
+          <ProtectedRoute>
+            <OrganisationSettingsPage />
           </ProtectedRoute>
         )}
       />

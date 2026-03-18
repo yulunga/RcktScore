@@ -227,6 +227,11 @@ export default function DashboardPage() {
               <div>{organization.roles?.length ? organization.roles.join(", ") : session?.role || "user"}</div>
             </div>
           </div>
+          <div className="button-row">
+            <button className="secondary" type="button" onClick={() => navigate("/settings")}>
+              Open Organisation Settings
+            </button>
+          </div>
         </section>
       </section>
 

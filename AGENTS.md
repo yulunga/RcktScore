@@ -78,6 +78,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - `common/auth_logic.py`
 - `common/supabase_client.py`
 - `common/utils.py`
+- `common/organization_logic.py`
 
 ---
 
@@ -88,6 +89,7 @@ Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/sr
 - `/` -> login page
 - `/login` -> login page
 - `/dashboard` -> protected organisation dashboard
+- `/settings` -> protected organisation settings page
 - `/match/new` -> protected route
 - `/match/:matchId` -> protected route
 - `/display` -> public spectator display route
@@ -102,6 +104,13 @@ Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backe
 
 - `POST /login`
 - `GET /dashboard/{organization_id}`
+- `GET /organization_settings/{organization_id}`
+- `PUT /organization_details/{organization_id}`
+- `POST /organization_users`
+- `PUT /organization_users/{user_id}`
+- `POST /organization_courts`
+- `PUT /organization_courts/{court_id}`
+- `DELETE /organization_courts/{court_id}`
 - `POST /start_match`
 - `GET /get_score/{match_id}`
 - `POST /score_point`
@@ -186,6 +195,16 @@ The dashboard is now the primary post-login landing page and currently includes:
 - active matches
 - recent completed matches
 - organisation summary information
+- a direct route into organisation settings management
+
+The organisation settings page currently provides:
+
+- organisation detail editing for club name, address, contact, telephone, email, and website
+- a Google Maps embed driven from the saved address
+- organisation user creation and role updates (`admin` / `user`)
+- court create, update, and delete operations
+
+Important: social profile inputs are scaffolded in the UI only right now. They are not yet persisted because the current documented organisation table does not yet include dedicated social profile columns.
 
 ---
 

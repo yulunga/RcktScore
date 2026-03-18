@@ -34,6 +34,8 @@ Resources:
         AllowMethods:
           - GET
           - POST
+          - PUT
+          - DELETE
           - OPTIONS
 
   StartMatchFunction:
@@ -83,6 +85,90 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /dashboard/{organization_id}
             Method: GET
+
+  GetOrganizationSettingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_organization_settings/handler.lambda_handler
+      Events:
+        GetOrganizationSettings:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_settings/{organization_id}
+            Method: GET
+
+  UpdateOrganizationDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_organization_details/handler.lambda_handler
+      Events:
+        UpdateOrganizationDetails:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_details/{organization_id}
+            Method: PUT
+
+  CreateOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_org_user/handler.lambda_handler
+      Events:
+        CreateOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_users
+            Method: POST
+
+  UpdateOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_org_user/handler.lambda_handler
+      Events:
+        UpdateOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_users/{user_id}
+            Method: PUT
+
+  CreateCourtFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_court/handler.lambda_handler
+      Events:
+        CreateCourt:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_courts
+            Method: POST
+
+  UpdateCourtFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_court/handler.lambda_handler
+      Events:
+        UpdateCourt:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_courts/{court_id}
+            Method: PUT
+
+  DeleteCourtFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_court/handler.lambda_handler
+      Events:
+        DeleteCourt:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_courts/{court_id}
+            Method: DELETE
 
   ScorePointFunction:
     Type: AWS::Serverless::Function

@@ -39,6 +39,52 @@ export function getDashboard(organizationId) {
   return apiRequest(`/dashboard/${organizationId}`);
 }
 
+export function getOrganizationSettings(organizationId) {
+  return apiRequest(`/organization_settings/${organizationId}`);
+}
+
+export function updateOrganizationDetails(organizationId, payload) {
+  return apiRequest(`/organization_details/${organizationId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createOrganizationUser(payload) {
+  return apiRequest("/organization_users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateOrganizationUserRole(userId, payload) {
+  return apiRequest(`/organization_users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createOrganizationCourt(payload) {
+  return apiRequest("/organization_courts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateOrganizationCourt(courtId, payload) {
+  return apiRequest(`/organization_courts/${courtId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteOrganizationCourt(courtId, payload) {
+  return apiRequest(`/organization_courts/${courtId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function scorePoint(payload) {
   return apiRequest("/score_point", {
     method: "POST",
