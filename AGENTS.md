@@ -79,6 +79,54 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - `common/supabase_client.py`
 - `common/utils.py`
 - `common/organization_logic.py`
+- `docs/backend-api.md` backend/API developer reference
+- `docs/technical-walkthrough.md` end-to-end lifecycle walkthroughs
+
+---
+
+## Request Lifecycle
+
+The v2 request lifecycle is now documented explicitly in:
+
+- [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
+- [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
+
+Current architecture layers:
+
+- frontend state owner
+  - [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
+  - [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
+- API client layer
+  - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+- Lambda handler layer
+  - `backend/functions/*/handler.py`
+- shared domain logic layer
+  - `backend/common/auth_logic.py`
+  - `backend/common/organization_logic.py`
+  - `backend/common/dashboard_logic.py`
+  - `backend/common/match_logic.py`
+- persistence layer
+  - [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
+  - Supabase Postgres tables:
+    - `SkwshOrgSettings`
+    - `SkwshOrgUsers`
+    - `SkwshCourts`
+    - `matches`
+    - `match_events`
+
+Current runtime flow is:
+
+1. React page/component triggers an action through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+2. The request is sent to the deployed HTTP API in API Gateway
+3. API Gateway invokes the matching Lambda from [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml)
+4. The Lambda handler parses input using [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
+5. Shared domain logic runs in `backend/common/*.py`
+6. Shared DB access is created through [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
+7. Supabase/Postgres is read/written
+8. The handler returns JSON to the frontend
+9. Frontend context updates local state and the relevant page rerenders
+
+This flow is consistent across login, dashboard, organisation settings, match creation, scoring, undo, and match completion.
 
 ---
 
@@ -119,6 +167,15 @@ Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backe
 - `POST /end_match`
 
 Important: these are the real v2 endpoints. Do not document or build against `/matches`, `/matches/{id}/score`, or other REST shapes unless the code has actually been changed to support them.
+
+Current API contract status:
+
+- response handling is centralized through [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
+- status codes are mostly consistent (`200`, `201`, `400`, `404`, `500`)
+- error payloads generally use `{"message": "..."}`
+- success payloads are not yet fully standardized across all endpoints
+
+Do not claim that a final unified API envelope already exists. It is still a backlog item.
 
 ---
 
@@ -417,9 +474,24 @@ The following items are intentionally deferred while frontend UI structure is pr
 
 ### 🔄 Core Architecture Improvements
 
-* [ ] Define and document full request lifecycle (frontend → API → Lambda → Supabase → response)
+* [x] Define and document full request lifecycle (frontend → API → Lambda → Supabase → response)
+  Completed in:
+  - [AGENTS.md](/Users/glennrowe/Development/Projects/RcktScore/AGENTS.md)
+  - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
+  - [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
 * [ ] Standardise API response contract (success/error format)
+  Remaining work:
+  - create shared success/error helpers in `backend/common/utils.py`
+  - define one stable envelope for success payloads
+  - define one stable envelope for error payloads
+  - migrate all handlers and frontend API consumers to the same contract
 * [ ] Define and enforce match event schema in `match_events`
+  Current state:
+  - the event model is described in docs and implemented in `match_logic.py`
+  Remaining work:
+  - formally document the payload shape for each event type
+  - validate payload structure consistently before insert
+  - reject malformed event payloads at the backend boundary
 * [ ] Document and implement WebSocket target architecture
 * [ ] Introduce versioning and API change management rules
 
@@ -482,5 +554,10 @@ These items are deferred while focusing on:
 * frontend UX structure
 * operator workflows
 * dashboard experience
+
+Recently completed from this backlog:
+
+* request lifecycle is now documented explicitly
+* architecture layers are now documented explicitly
 
 They must be revisited before declaring v2 production-ready.
