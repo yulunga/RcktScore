@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from psycopg.types.json import Jsonb
+
 
 ALLOWED_ACTION_TYPES = {"let", "stroke", "serve_side", "timer"}
 
@@ -311,7 +313,7 @@ def create_match(connection, payload, source="api"):
                 "id": str(uuid4()),
                 "match_id": match_id,
                 "tenant_id": tenant_id,
-                "payload": {
+                "payload": Jsonb({
                     "court_id": payload["court_id"],
                     "court_name": payload["court_name"],
                     "court_alias": payload.get("court_alias"),
@@ -321,7 +323,7 @@ def create_match(connection, payload, source="api"):
                     "player1_offset": _coerce_int(payload.get("player1_offset")),
                     "player2_offset": _coerce_int(payload.get("player2_offset")),
                     "sport": payload.get("sport") or "squash",
-                },
+                }),
                 "event_source": source,
                 "created_at": now,
             },
@@ -347,7 +349,7 @@ def _append_event(connection, match_id, event_type, payload, source="api"):
                 "match_id": match_id,
                 "tenant_id": match_row["tenant_id"],
                 "event_type": event_type,
-                "payload": payload,
+                "payload": Jsonb(payload),
                 "event_source": source,
                 "created_at": _utcnow(),
             },
@@ -445,12 +447,12 @@ def end_match(connection, match_id, source="api"):
                 "id": str(uuid4()),
                 "match_id": match_id,
                 "tenant_id": match["tenant_id"],
-                "payload": {
+                "payload": Jsonb({
                     "status": "completed",
                     **final_scores,
                     "winner_side": winner_side,
                     "winner_name": winner_name,
-                },
+                }),
                 "event_source": source,
                 "created_at": now,
             },
