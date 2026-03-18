@@ -195,6 +195,22 @@ select {
   background: #fff;
 }
 
+.checkbox-field {
+  gap: 8px;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.checkbox-label input {
+  width: auto;
+  margin: 0;
+}
+
 .field input[readonly] {
   background: #f8fbff;
   color: #486581;
@@ -445,6 +461,61 @@ select {
 .settings-success {
   background: #e6f7ed;
   color: #0f6b38;
+}
+
+.game-settings-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.sport-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.sport-option {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid #d9e2ec;
+}
+
+.sport-option strong {
+  font-size: 1rem;
+}
+
+.sport-option span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sport-option p {
+  margin: 0;
+  color: #486581;
+  font-size: 0.92rem;
+}
+
+.sport-option.active {
+  background: #eef8f1;
+  border-color: #9bd3ae;
+}
+
+.sport-option.active span {
+  color: #0f6b38;
+}
+
+.sport-option.disabled {
+  background: #f0f4f8;
+  border-color: #d9e2ec;
+  opacity: 0.68;
+}
+
+.sport-option.disabled span {
+  color: #7b8794;
 }
 
 .map-frame {

@@ -33,6 +33,12 @@ const emptyCourtForm = {
   court_name: "",
   court_alias: "",
 };
+const sportOptions = [
+  { name: "Squash", status: "active", note: "Primary launch scoring mode" },
+  { name: "Tennis", status: "planned", note: "Planned after squash launch" },
+  { name: "Racketball", status: "planned", note: "Planned after squash launch" },
+  { name: "Badminton", status: "planned", note: "Planned after squash launch" },
+];
 
 function formatDate(value) {
   if (!value) {
@@ -54,6 +60,7 @@ export default function OrganisationSettingsPage() {
   const [courtForm, setCourtForm] = useState(emptyCourtForm);
   const [courtDrafts, setCourtDrafts] = useState({});
   const [userRoleDrafts, setUserRoleDrafts] = useState({});
+  const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
@@ -305,6 +312,59 @@ export default function OrganisationSettingsPage() {
               </button>
             </div>
           </form>
+        </section>
+
+        <section className="panel stack">
+          <div className="panel-heading">
+            <h2>Game Settings</h2>
+            <p className="helper-text">
+              Launch controls for organisation-specific scoring behaviour and future racket sports.
+            </p>
+          </div>
+
+          <div className="game-settings-grid">
+            <div className="field checkbox-field">
+              <label className="checkbox-label" htmlFor="org_handicap_scoring">
+                <input
+                  checked={handicapScoringEnabled}
+                  disabled={!isAdmin}
+                  id="org_handicap_scoring"
+                  name="org_handicap_scoring"
+                  type="checkbox"
+                  onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
+                />
+                Enable Handicap Scoring
+              </label>
+              <p className="helper-text">
+                Controls whether handicap match setup should be available for this organisation.
+              </p>
+            </div>
+
+            <div className="dashboard-empty">
+              This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
+              will be added in a later backend pass.
+            </div>
+          </div>
+
+          <div className="panel-heading">
+            <h3>Racket Sports</h3>
+            <p className="helper-text">
+              Squash is the active launch sport. The others are shown for roadmap visibility only.
+            </p>
+          </div>
+
+          <div className="sport-grid">
+            {sportOptions.map((sport) => (
+              <article
+                className={`sport-option${sport.status === "active" ? " active" : " disabled"}`}
+                key={sport.name}
+              >
+                <strong>{sport.name}</strong>
+                <span>{sport.status === "active" ? "Enabled" : "Coming later"}</span>
+                <p>{sport.note}</p>
+              </article>
+            ))}
+          </div>
         </section>
 
         <section className="panel stack">

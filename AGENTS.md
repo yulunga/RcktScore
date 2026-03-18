@@ -187,6 +187,16 @@ When an operator logs in, the frontend uses the authenticated user's `organizati
 
 This is implemented in [NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx).
 
+Current match setup behavior:
+
+- the operator does not manually type the tenant or organisation id
+- the court selector is populated from organisation settings
+- the selector displays `court_name` values from `SkwshCourts`
+- `court_alias` is shown as the read-only paired field once a court is selected
+- player country fields are intentionally hidden for now pending a later maturity pass
+- handicap matches use the predefined 2024 matrix bands (`A` through `M`) to calculate opening offsets
+- handicap mode forces PAR-15 scoring in the current implementation
+
 Do not reintroduce free-text manual entry of the tenant/organisation ID in the operator UI unless there is a clear reason.
 
 The dashboard is now the primary post-login landing page and currently includes:
@@ -203,8 +213,10 @@ The organisation settings page currently provides:
 - a Google Maps embed driven from the saved address
 - organisation user creation and role updates (`admin` / `user`)
 - court create, update, and delete operations
+- a game settings section with an organisation-level handicap scoring toggle scaffold
+- a visible racket-sports launch matrix where only squash is currently active and the other sports are intentionally greyed out
 
-Important: social profile inputs are scaffolded in the UI only right now. They are not yet persisted because the current documented organisation table does not yet include dedicated social profile columns.
+Important: social profile inputs and organisation-level game settings are scaffolded in the UI only right now. They are not yet persisted because the current documented organisation table does not yet include dedicated columns for them.
 
 ---
 

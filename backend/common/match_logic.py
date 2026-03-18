@@ -9,6 +9,13 @@ def _utcnow():
     return datetime.now(timezone.utc)
 
 
+def _coerce_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _event_summary(match_row, event_type, payload):
     if event_type == "match_started":
         return f"{match_row['player1_name']} vs {match_row['player2_name']} started"
@@ -53,6 +60,13 @@ def _build_state(match_row, event_rows):
         "player2_score": 0,
         "current_server": None,
         "service_side": "Right",
+        "handicap": {
+            "enabled": False,
+            "player1_band": None,
+            "player2_band": None,
+            "player1_offset": 0,
+            "player2_offset": 0,
+        },
         "events": [],
     }
 
@@ -61,7 +75,19 @@ def _build_state(match_row, event_rows):
         event_type = event_row["event_type"]
         state["events"].append(_serialize_event(match_row, event_row))
 
-        if event_type == "score_point":
+        if event_type == "match_started":
+            if payload.get("handicap_enabled"):
+                state["player1_score"] = _coerce_int(payload.get("player1_offset"))
+                state["player2_score"] = _coerce_int(payload.get("player2_offset"))
+                state["handicap"] = {
+                    "enabled": True,
+                    "player1_band": payload.get("player1_band"),
+                    "player2_band": payload.get("player2_band"),
+                    "player1_offset": _coerce_int(payload.get("player1_offset")),
+                    "player2_offset": _coerce_int(payload.get("player2_offset")),
+                }
+
+        elif event_type == "score_point":
             scorer = payload.get("scorer")
             if scorer == "player1":
                 state["player1_score"] += 1
@@ -240,6 +266,12 @@ def create_match(connection, payload, source="api"):
                 "payload": {
                     "court_id": payload["court_id"],
                     "court_name": payload["court_name"],
+                    "court_alias": payload.get("court_alias"),
+                    "handicap_enabled": bool(payload.get("handicap_enabled")),
+                    "player1_band": payload.get("player1_band"),
+                    "player2_band": payload.get("player2_band"),
+                    "player1_offset": _coerce_int(payload.get("player1_offset")),
+                    "player2_offset": _coerce_int(payload.get("player2_offset")),
                 },
                 "event_source": source,
                 "created_at": now,
