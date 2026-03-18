@@ -249,10 +249,12 @@ Used by Vite/Amplify:
 - `VITE_API_BASE_URL`
 - `VITE_WEBSOCKET_URL`
 - `VITE_API_KEY`
+- `VITE_BUILD_ID`
 
 Notes:
 
 - `VITE_*` values are public build-time values
+- `VITE_BUILD_ID` is displayed in the footer and should be sourced from CI metadata when available
 - do not put database credentials or private secrets in frontend env vars
 
 ### Backend

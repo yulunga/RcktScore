@@ -8,6 +8,7 @@ applications:
             - npm ci
         build:
           commands:
+            - export VITE_BUILD_ID="${GITHUB_RUN_NUMBER:-${AWS_JOB_ID:-local}}"
             - npm run build
       artifacts:
         baseDirectory: dist
