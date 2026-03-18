@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import SessionBar from "../components/SessionBar";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
+import { getOrganizationSettings } from "../services/api";
 
 const scoreTypeOptions = [11, 15];
 
@@ -14,10 +15,10 @@ const initialFormState = {
   court_name: "",
   player1_name: "",
   player1_surname: "",
-  player1_country: "",
+  // player1_country: "",
   player2_name: "",
   player2_surname: "",
-  player2_country: "",
+  // player2_country: "",
   referee_name: "",
   score_type: 15,
 };
@@ -27,18 +28,6 @@ const formFields = [
     name: "tenant_id",
     label: "Tenant ID",
     placeholder: "club-hq",
-    required: true,
-  },
-  {
-    name: "court_id",
-    label: "Court ID",
-    placeholder: "court-1",
-    required: true,
-  },
-  {
-    name: "court_name",
-    label: "Court Name",
-    placeholder: "Glass Court",
     required: true,
   },
   {
@@ -53,11 +42,6 @@ const formFields = [
     placeholder: "El Sherbini",
   },
   {
-    name: "player1_country",
-    label: "Player 1 Country",
-    placeholder: "EGY",
-  },
-  {
     name: "player2_name",
     label: "Player 2 First Name",
     placeholder: "Ali",
@@ -69,11 +53,6 @@ const formFields = [
     placeholder: "Farag",
   },
   {
-    name: "player2_country",
-    label: "Player 2 Country",
-    placeholder: "EGY",
-  },
-  {
     name: "referee_name",
     label: "Referee",
     placeholder: "Match official",
@@ -83,6 +62,9 @@ const formFields = [
 export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [courtLoading, setCourtLoading] = useState(true);
+  const [courtError, setCourtError] = useState("");
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
@@ -97,6 +79,37 @@ export default function NewMatch() {
     setFormState((current) => ({
       ...current,
       [name]: name === "score_type" ? Number(value) : value,
+    }));
+  }
+
+  useEffect(() => {
+    async function loadCourts() {
+      if (!organizationId) {
+        setCourtLoading(false);
+        return;
+      }
+
+      setCourtLoading(true);
+      setCourtError("");
+      try {
+        const response = await getOrganizationSettings(organizationId);
+        setAvailableCourts(response?.courts || []);
+      } catch (requestError) {
+        setCourtError(requestError.message || "Failed to load organisation courts.");
+      } finally {
+        setCourtLoading(false);
+      }
+    }
+
+    loadCourts();
+  }, [organizationId]);
+
+  function handleCourtChange(value) {
+    const selectedCourt = availableCourts.find((court) => String(court.id) === value);
+    setFormState((current) => ({
+      ...current,
+      court_id: value,
+      court_name: selectedCourt?.court_name || "",
     }));
   }
 
@@ -133,7 +146,49 @@ export default function NewMatch() {
           Organisation: {session?.organization_name || "Unknown"} ({organizationId || "No organisation id"})
         </div>
 
+        {courtError ? <div className="notice error">{courtError}</div> : null}
+
         <div className="field-grid">
+          <div className="field">
+            <label htmlFor="court_id">
+              Court ID
+              <span className="required-mark"> *</span>
+            </label>
+            <select
+              disabled={courtLoading || availableCourts.length === 0}
+              id="court_id"
+              name="court_id"
+              required
+              value={formState.court_id}
+              onChange={(event) => handleCourtChange(event.target.value)}
+            >
+              <option value="">
+                {courtLoading ? "Loading courts..." : "Select a court"}
+              </option>
+              {availableCourts.map((court) => (
+                <option key={court.id} value={String(court.id)}>
+                  {court.id}
+                  {court.court_alias ? ` • ${court.court_alias}` : ""}
+                  {court.court_name ? ` • ${court.court_name}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="court_name">
+              Court Name
+              <span className="required-mark"> *</span>
+            </label>
+            <input
+              id="court_name"
+              name="court_name"
+              readOnly
+              required
+              value={formState.court_name}
+            />
+          </div>
+
           {formFields
             .filter(({ name }) => name !== "tenant_id")
             .map(({ name, label, placeholder, required }) => (
