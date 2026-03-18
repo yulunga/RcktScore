@@ -194,8 +194,12 @@ Current match setup behavior:
 - the selector displays `court_name` values from `SkwshCourts`
 - `court_alias` is shown as the read-only paired field once a court is selected
 - player country fields are intentionally hidden for now pending a later maturity pass
+- the setup form supports `PAR-11` and `PAR-15`
+- the setup form supports `best_of` values `1`, `3`, and `5`
+- after successful match creation the operator is routed directly to `/match/:matchId`
 - handicap matches use the predefined 2024 matrix bands (`A` through `M`) to calculate opening offsets
 - handicap mode forces PAR-15 scoring in the current implementation
+- the setup page includes an in-page handicap matrix table and summary helper for the selected player bands
 
 Do not reintroduce free-text manual entry of the tenant/organisation ID in the operator UI unless there is a clear reason.
 
@@ -230,12 +234,63 @@ Current behavior:
 - events are stored in `match_events`
 - schema bootstrap for these tables now lives in [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql)
 - match state is reconstructed from event history
+- squash scoring is now match-aware, not just single-score aware
+- `score_type` is the game target, so `PAR-11` wins at 11 and `PAR-15` wins at 15
+- both PAR formats use win-by-2 logic once tied at game ball
+- matches support `best_of` values `1`, `3`, and `5`
+- first player to the required number of game wins completes the match automatically
+- the backend tracks:
+  - current game number
+  - games required to win
+  - games won by each player
+  - current server
+  - current server side
+  - current service side
+  - completed game history
 - undo deletes the last non-`match_started` event and rebuilds state
 - service side and current server are derived from events
 - ending a match sets `matches.status` to `completed`, stamps `completed_at`, and stores `player1_final_score`, `player2_final_score`, `winner_side`, and `winner_name`
+- operators can also end a match early through `POST /end_match`, which records `ended_early` and `end_reason`
 - new matches should be created as `sport = "squash"` for the current launch scope unless the app has been explicitly extended for another racket sport
 
-Important: the backend does not currently implement full squash game validation such as complete win/deuce/end-of-game enforcement. Do not document those rules as already shipped unless the code supports them.
+The scoring timeline is now the persistence source for historic views:
+
+- every scoring action is written to `match_events`
+- scoring payloads carry game-aware snapshot data
+- completed matches persist enough summary data in `matches` for dashboard/history queries without replaying every event first
+
+Current summary columns expected on `matches` include:
+
+- `best_of`
+- `games_to_win`
+- `current_game_number`
+- `player1_games_won`
+- `player2_games_won`
+- `player1_final_score`
+- `player2_final_score`
+- `winner_side`
+- `winner_name`
+- `ended_early`
+- `end_reason`
+- `completed_at`
+
+Important: rerun [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql) in Supabase whenever these match-tracking columns are added or changed. The deployed backend now expects them.
+
+Relevant operator-facing frontend files:
+
+- [MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
+- [Scoreboard.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/Scoreboard.jsx)
+- [MatchControls.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/MatchControls.jsx)
+- [EventTimeline.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/EventTimeline.jsx)
+
+Current scoring screen behavior:
+
+- the scoreboard shows games won as well as the current game score
+- the active server is shown next to the player name with the current service side
+- the event timeline is scrollable inside a fixed-height panel
+- the spectator display section appears below the event timeline
+- operators can end a match early
+- operators can navigate back to the dashboard from the scoring controls
 
 ---
 
@@ -333,6 +388,7 @@ Current SAM config intentionally does not store the real Supabase password in th
 
 - backend token-based authorization is not yet enforced on protected scoring endpoints
 - WebSocket infrastructure is incomplete in the deployed backend
+- historic match list/detail UX is still basic compared with the richer scoring data now stored
 - AGENTS.md, README, and deployment notes should continue to be kept in sync as v2 expands
 
 ---
