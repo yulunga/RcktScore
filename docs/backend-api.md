@@ -71,6 +71,7 @@ This layer is responsible for:
 Examples:
 
 - [login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
+- [register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py)
 - [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py)
 - [score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py)
 - [end_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/end_match/handler.py)
@@ -178,6 +179,8 @@ Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/Rckt
 
 - `POST /login`
 - `POST /register_interest`
+
+`POST /register_interest` is an unauthenticated prospect-access route. It validates an email address, supports a honeypot field for basic bot filtering, and sends an AWS SES email notification to the configured interest inbox.
 
 ### Dashboard / Organisation
 

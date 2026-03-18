@@ -70,6 +70,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 
 - `functions/create_match/handler.py`
 - `functions/login/handler.py`
+- `functions/register_interest/handler.py`
 - `functions/get_match/handler.py`
 - `functions/score_point/handler.py`
 - `functions/event_action/handler.py`

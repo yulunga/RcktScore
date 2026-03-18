@@ -89,8 +89,7 @@ export default function LoginPage() {
   return (
     <main className="page-shell login-shell">
       <section className="login-panel stack">
-        <span className="status-pill">RcktScore v2</span>
-        <h1>Rckt Score Login</h1>
+        <span className="status-pill">Rckt Score Login</span>
 
         <form className="stack" onSubmit={handleSubmit}>
           <div className="field">
@@ -149,7 +148,7 @@ export default function LoginPage() {
               setInterestAnswer("");
             }}
           >
-            Register interest
+            Want In
           </button>
 
           {showInterestForm ? (
