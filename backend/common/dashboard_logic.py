@@ -12,6 +12,7 @@ def _safe_list_matches(connection, organization_id, status, limit):
             limit=limit,
         )
     except UndefinedTable:
+        connection.rollback()
         return []
 
 
