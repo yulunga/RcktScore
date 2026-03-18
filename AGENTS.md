@@ -31,6 +31,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - Amplify build config is at [amplify.yml](/Users/glennrowe/Development/Projects/RcktScore/amplify.yml)
 - Amplify app has been deployed in `eu-north-1`
 - The frontend calls the backend through `VITE_API_BASE_URL`
+- The login page also includes a register-interest flow for prospective users
 
 ### Backend
 
@@ -151,6 +152,7 @@ Auth protection is currently implemented in the frontend with `AuthContext` and 
 Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml):
 
 - `POST /login`
+- `POST /register_interest`
 - `GET /dashboard/{organization_id}`
 - `GET /organization_settings/{organization_id}`
 - `PUT /organization_details/{organization_id}`
@@ -202,6 +204,18 @@ The active login flow:
    - `organization_id`
    - `organization_name`
 5. Frontend stores that session in `sessionStorage`
+
+The login page also includes a register-interest flow:
+
+1. A prospective user opens the inline interest form from the login page
+2. The form captures an email address
+3. A lightweight human-check challenge must be completed before submit
+4. The backend sends an email notification to `rcktinterest@ucingo.com`
+
+Important:
+
+- the current anti-bot control is a lightweight built-in challenge plus honeypot, not a third-party managed captcha service
+- the backend email send relies on AWS SES configuration and a verified sender address
 
 Relevant files:
 

@@ -42,6 +42,13 @@ export function login(payload) {
   });
 }
 
+export function registerInterest(payload) {
+  return apiRequest("/register_interest", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getDashboard(organizationId) {
   return apiRequest(`/dashboard/${organizationId}`);
 }

@@ -79,6 +79,32 @@ The sections below describe each major flow explicitly.
 
 ---
 
+## 1A. Register Interest Flow
+
+### Frontend Entry
+
+- [LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
+- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+
+### Request Path
+
+1. A user opens the register-interest form from the login page.
+2. The user enters an email address.
+3. The user completes the built-in human-check challenge.
+4. Frontend calls `POST /register_interest`.
+5. API Gateway invokes [register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py).
+6. Handler validates the email address and silently drops obvious bot submissions that trip the honeypot field.
+7. Handler sends an AWS SES email notification to the configured interest inbox and sets the submitter as the reply-to address.
+8. Handler returns `{"success": true, "data": {"accepted": true}, "error": null, "meta": {}}`.
+9. Frontend shows a confirmation message.
+
+Important:
+
+- this is a lightweight built-in anti-bot control, not a managed third-party captcha service
+- SES sender verification is required in AWS for delivery to succeed
+
+---
+
 ## 2. Dashboard Load
 
 ### Frontend Entry

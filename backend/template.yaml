@@ -19,6 +19,12 @@ Parameters:
   StageName:
     Type: String
     Default: prod
+  InterestToEmail:
+    Type: String
+    Default: rcktinterest@ucingo.com
+  InterestFromEmail:
+    Type: String
+    Default: rcktinterest@ucingo.com
 
 Resources:
   RcktScoreHttpApi:
@@ -60,6 +66,29 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /login
+            Method: POST
+
+  RegisterInterestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/register_interest/handler.lambda_handler
+      Environment:
+        Variables:
+          INTEREST_TO_EMAIL: !Ref InterestToEmail
+          INTEREST_FROM_EMAIL: !Ref InterestFromEmail
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+      Events:
+        RegisterInterest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /register_interest
             Method: POST
 
   GetMatchFunction:

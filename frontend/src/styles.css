@@ -99,6 +99,11 @@ select {
   width: min(100%, 440px);
 }
 
+.interest-panel {
+  padding-top: 8px;
+  border-top: 1px solid rgba(16, 42, 67, 0.08);
+}
+
 .stack {
   display: grid;
   gap: 16px;
@@ -282,6 +287,21 @@ select {
 
 .button-link:hover {
   transform: translateY(-1px);
+}
+
+.text-link-button {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.text-link-button:hover {
+  color: #102a43;
+  text-decoration: underline;
 }
 
 .button-row button.warning,
@@ -474,6 +494,14 @@ select {
   border-radius: 14px;
   background: #fff7d6;
   color: #8d5a00;
+}
+
+.interest-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .error {

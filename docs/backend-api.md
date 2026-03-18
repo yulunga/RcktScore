@@ -123,6 +123,14 @@ Schema bootstrap for match persistence is in:
 - Active API base URL:
   `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod`
 
+Additional backend email parameters:
+
+- `InterestToEmail`
+  - current default: `rcktinterest@ucingo.com`
+- `InterestFromEmail`
+  - sender address used by AWS SES
+  - must be verified in SES for delivery to succeed
+
 ---
 
 ## Backend Modules
@@ -169,6 +177,7 @@ Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/Rckt
 ### Authentication
 
 - `POST /login`
+- `POST /register_interest`
 
 ### Dashboard / Organisation
 
