@@ -253,27 +253,59 @@ select {
 
 .dashboard-item--card {
   align-content: start;
+  position: relative;
 }
 
 .dashboard-card-status {
-  justify-self: start;
+  justify-self: end;
 }
 
 .dashboard-card-players {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
 }
 
-.dashboard-card-players strong,
-.dashboard-card-players span {
+.dashboard-card-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-card-player strong {
   display: block;
 }
 
-.dashboard-card-players span {
+.dashboard-card-player--right {
+  justify-content: flex-end;
+}
+
+.dashboard-card-versus {
+  display: block;
   color: #7b8794;
   font-size: 0.9rem;
   font-weight: 600;
   text-transform: lowercase;
+  text-align: center;
+}
+
+.dashboard-score-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e6f0fb;
+  color: #0b4f88;
+  font-weight: 700;
+}
+
+.dashboard-card-games {
+  color: #486581;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .dashboard-card-score {
@@ -301,6 +333,7 @@ select {
 .dashboard-item-actions--compact button {
   padding: 8px 10px;
   font-size: 0.82rem;
+  flex: 1 1 0;
 }
 
 .dashboard-empty {
@@ -980,6 +1013,19 @@ select {
 
   .dashboard-item-actions--compact {
     flex-wrap: wrap;
+  }
+
+  .dashboard-card-players {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card-player,
+  .dashboard-card-player--right {
+    justify-content: flex-start;
+  }
+
+  .dashboard-card-versus {
+    text-align: left;
   }
 
   .session-bar {

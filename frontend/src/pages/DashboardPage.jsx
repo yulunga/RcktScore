@@ -9,7 +9,17 @@ import { endMatch, getDashboard } from "../services/api";
 function formatScore(match) {
   const player1Score = match?.state?.player1_score ?? 0;
   const player2Score = match?.state?.player2_score ?? 0;
-  return `${player1Score} - ${player2Score}`;
+  return {
+    player1: player1Score,
+    player2: player2Score,
+    label: `${player1Score} - ${player2Score}`,
+  };
+}
+
+function formatGameScore(match) {
+  const player1Games = match?.state?.player1_games_won ?? match?.player1_games_won ?? 0;
+  const player2Games = match?.state?.player2_games_won ?? match?.player2_games_won ?? 0;
+  return `${player1Games} - ${player2Games}`;
 }
 
 function formatPlayers(match) {
@@ -103,20 +113,10 @@ export default function DashboardPage() {
   const activeMatches = dashboard?.active_matches || [];
   const recentMatches = dashboard?.recent_matches || [];
   const organization = dashboard?.organization || {};
-  const primaryDisplayMatch = activeMatches[0];
   const dashboardActions = [
     {
       label: "Start New Match",
       onClick: () => navigate("/match/new"),
-    },
-    {
-      label: "Open Display Screen",
-      onClick: () => {
-        const displayUrl = primaryDisplayMatch
-          ? `${window.location.origin}/display?match=${primaryDisplayMatch.id}`
-          : `${window.location.origin}/display`;
-        window.open(displayUrl, "_blank", "noopener,noreferrer");
-      },
     },
     {
       label: "Match History",
@@ -161,11 +161,18 @@ export default function DashboardPage() {
                     <span className="status-pill status-pill--active">{match.status || "active"}</span>
                   </div>
                   <div className="dashboard-card-players">
-                    <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
-                    <span>vs</span>
-                    <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
+                    <div className="dashboard-card-player">
+                      <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
+                      <span className="dashboard-score-chip">{formatScore(match).player1}</span>
+                    </div>
+                    <span className="dashboard-card-versus">vs</span>
+                    <div className="dashboard-card-player dashboard-card-player--right">
+                      <span className="dashboard-score-chip">{formatScore(match).player2}</span>
+                      <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
+                    </div>
                   </div>
-                  <div className="dashboard-card-score">{formatScore(match)}</div>
+                  <div className="dashboard-card-games">Games: {formatGameScore(match)}</div>
+                  <div className="dashboard-card-score">{formatScore(match).label}</div>
                   <div className="dashboard-item-meta dashboard-item-meta--stacked">
                     <span>Court: {match.court_name || "Unassigned"}</span>
                     <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
@@ -173,18 +180,6 @@ export default function DashboardPage() {
                   <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
                     <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
                       Resume
-                    </button>
-                    <button
-                      className="secondary"
-                      type="button"
-                      onClick={() =>
-                        window.open(
-                          `${window.location.origin}/display?match=${match.id}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        )}
-                    >
-                      Display
                     </button>
                     <button
                       className="danger"
