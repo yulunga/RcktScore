@@ -57,6 +57,7 @@ const sportOptions = [
 ];
 
 const adminTabs = [
+  { id: "club-details", label: "Club Details" },
   { id: "users", label: "Users" },
   { id: "courts", label: "Courts" },
   { id: "game-settings", label: "Game Settings" },
@@ -83,7 +84,7 @@ export default function RootAdminClubPage() {
   const [courtDrafts, setCourtDrafts] = useState({});
   const [userRoleDrafts, setUserRoleDrafts] = useState({});
   const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("club-details");
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
@@ -285,111 +286,113 @@ export default function RootAdminClubPage() {
         ))}
       </section>
 
-      <section className="club-admin-overview-grid">
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Organisation Details</h2>
-            <p className="helper-text">Club details used for contact information and venue context.</p>
-          </div>
+      {activeTab === "club-details" ? (
+        <section className="club-admin-overview-grid">
+          <section className="panel stack">
+            <div className="panel-heading">
+              <h2>Organisation Details</h2>
+              <p className="helper-text">Club details used for contact information and venue context.</p>
+            </div>
 
-          <form className="stack" onSubmit={handleOrganizationSubmit}>
-            <div className="field-grid">
-              <div className="field">
-                <label htmlFor="organization_name">Club Name</label>
-                <input
-                  id="organization_name"
-                  value={organizationForm.organization_name}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, organization_name: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_contact">Primary Contact</label>
-                <input
-                  id="org_contact"
-                  value={organizationForm.org_contact}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_telephone">Telephone</label>
-                <input
-                  id="org_telephone"
-                  value={organizationForm.org_telephone}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_email">Email</label>
-                <input
-                  id="org_email"
-                  type="email"
-                  value={organizationForm.org_email}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
-                />
-              </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="org_webaddress">Website</label>
-                <div className="prefixed-input">
-                  <span className="prefixed-input__label">{WEBSITE_PREFIX}</span>
+            <form className="stack" onSubmit={handleOrganizationSubmit}>
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="organization_name">Club Name</label>
                   <input
-                    id="org_webaddress"
-                    type="text"
-                    value={organizationForm.org_webaddress}
-                    onChange={(event) =>
-                      setOrganizationForm((current) => ({
-                        ...current,
-                        org_webaddress: stripWebsitePrefix(event.target.value),
-                      }))}
+                    id="organization_name"
+                    value={organizationForm.organization_name}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, organization_name: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="org_contact">Primary Contact</label>
+                  <input
+                    id="org_contact"
+                    value={organizationForm.org_contact}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="org_telephone">Telephone</label>
+                  <input
+                    id="org_telephone"
+                    value={organizationForm.org_telephone}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="org_email">Email</label>
+                  <input
+                    id="org_email"
+                    type="email"
+                    value={organizationForm.org_email}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
+                  />
+                </div>
+                <div className="field settings-field-wide">
+                  <label htmlFor="org_webaddress">Website</label>
+                  <div className="prefixed-input">
+                    <span className="prefixed-input__label">{WEBSITE_PREFIX}</span>
+                    <input
+                      id="org_webaddress"
+                      type="text"
+                      value={organizationForm.org_webaddress}
+                      onChange={(event) =>
+                        setOrganizationForm((current) => ({
+                          ...current,
+                          org_webaddress: stripWebsitePrefix(event.target.value),
+                        }))}
+                    />
+                  </div>
+                </div>
+                <div className="field settings-field-wide">
+                  <label htmlFor="org_address">Address</label>
+                  <input
+                    id="org_address"
+                    value={organizationForm.org_address}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="org_postcode">Postcode</label>
+                  <input
+                    id="org_postcode"
+                    value={organizationForm.org_postcode}
+                    onChange={(event) => setOrganizationForm((current) => ({ ...current, org_postcode: event.target.value }))}
                   />
                 </div>
               </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="org_address">Address</label>
-                <input
-                  id="org_address"
-                  value={organizationForm.org_address}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+
+              <div className="button-row">
+                <button disabled={savingSection === "organization"} type="submit">
+                  {savingSection === "organization" ? "Saving..." : "Save Organisation Details"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section className="panel stack">
+            <div className="panel-heading">
+              <h2>Venue Preview</h2>
+              <p className="helper-text">Google Maps preview based on the saved club address.</p>
+            </div>
+
+            {mapUrl ? (
+              <div className="map-frame-wrap">
+                <iframe
+                  title="Organisation map"
+                  className="map-frame"
+                  src={mapUrl}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
-              <div className="field">
-                <label htmlFor="org_postcode">Postcode</label>
-                <input
-                  id="org_postcode"
-                  value={organizationForm.org_postcode}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_postcode: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="button-row">
-              <button disabled={savingSection === "organization"} type="submit">
-                {savingSection === "organization" ? "Saving..." : "Save Organisation Details"}
-              </button>
-            </div>
-          </form>
+            ) : (
+              <div className="dashboard-empty">Add an address above to show the venue map.</div>
+            )}
+          </section>
         </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Venue Preview</h2>
-            <p className="helper-text">Google Maps preview based on the saved club address.</p>
-          </div>
-
-          {mapUrl ? (
-            <div className="map-frame-wrap">
-              <iframe
-                title="Organisation map"
-                className="map-frame"
-                src={mapUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
-          ) : (
-            <div className="dashboard-empty">Add an address above to show the venue map.</div>
-          )}
-        </section>
-      </section>
+      ) : null}
 
       {activeTab === "users" ? (
         <section className="panel stack">
