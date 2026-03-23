@@ -22,6 +22,21 @@ const emptyOrganizationForm = {
   org_webaddress: "",
 };
 
+const WEBSITE_PREFIX = "http://";
+
+function stripWebsitePrefix(value) {
+  return value.replace(/^https?:\/\//i, "");
+}
+
+function formatWebsiteForSave(value) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return "";
+  }
+
+  return `${WEBSITE_PREFIX}${stripWebsitePrefix(trimmedValue)}`;
+}
+
 const emptyUserForm = {
   username: "",
   password: "",
@@ -85,7 +100,7 @@ export default function RootAdminClubPage() {
       org_contact: nextSettings?.organization?.org_contact || "",
       org_telephone: nextSettings?.organization?.org_telephone || "",
       org_email: nextSettings?.organization?.org_email || "",
-      org_webaddress: nextSettings?.organization?.org_webaddress || "",
+      org_webaddress: stripWebsitePrefix(nextSettings?.organization?.org_webaddress || ""),
     });
     setCourtDrafts(
       Object.fromEntries(
@@ -142,9 +157,14 @@ export default function RootAdminClubPage() {
 
   async function handleOrganizationSubmit(event) {
     event.preventDefault();
+    const payload = {
+      ...organizationForm,
+      org_webaddress: formatWebsiteForSave(organizationForm.org_webaddress),
+    };
+
     await runMutation(
       "organization",
-      () => updateOrganizationDetails(organizationId, organizationForm),
+      () => updateOrganizationDetails(organizationId, payload),
       "Organisation details updated.",
     );
   }
@@ -281,12 +301,19 @@ export default function RootAdminClubPage() {
               </div>
               <div className="field settings-field-wide">
                 <label htmlFor="org_webaddress">Website</label>
-                <input
-                  id="org_webaddress"
-                  type="url"
-                  value={organizationForm.org_webaddress}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
-                />
+                <div className="prefixed-input">
+                  <span className="prefixed-input__label">{WEBSITE_PREFIX}</span>
+                  <input
+                    id="org_webaddress"
+                    type="text"
+                    value={organizationForm.org_webaddress}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({
+                        ...current,
+                        org_webaddress: stripWebsitePrefix(event.target.value),
+                      }))}
+                  />
+                </div>
               </div>
               <div className="field settings-field-wide">
                 <label htmlFor="org_address">Address</label>

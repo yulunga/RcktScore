@@ -216,6 +216,37 @@ select {
   background: #fff;
 }
 
+.prefixed-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cbd2d9;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.prefixed-input__label {
+  flex: 0 0 auto;
+  padding: 12px 0 12px 14px;
+  color: #486581;
+  white-space: nowrap;
+}
+
+.prefixed-input input {
+  border: 0;
+  border-radius: 0;
+  padding-left: 6px;
+}
+
+.prefixed-input input:focus {
+  outline: none;
+}
+
+.prefixed-input:focus-within {
+  border-color: #7aa5d8;
+  box-shadow: 0 0 0 3px rgba(122, 165, 216, 0.18);
+}
+
 .checkbox-field {
   gap: 8px;
 }
@@ -445,11 +476,15 @@ select {
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
 }
 
 .root-admin-search {
   position: relative;
+}
+
+.root-admin-search input {
+  margin: 0;
 }
 
 .root-admin-search-results {

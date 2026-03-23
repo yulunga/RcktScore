@@ -19,6 +19,21 @@ const emptyOrganizationForm = {
   org_webaddress: "",
 };
 
+const WEBSITE_PREFIX = "http://";
+
+function stripWebsitePrefix(value) {
+  return value.replace(/^https?:\/\//i, "");
+}
+
+function formatWebsiteForSave(value) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return "";
+  }
+
+  return `${WEBSITE_PREFIX}${stripWebsitePrefix(trimmedValue)}`;
+}
+
 export default function RootAdminDashboardPage() {
   const navigate = useNavigate();
   const { session } = useRootAdmin();
@@ -90,9 +105,14 @@ export default function RootAdminDashboardPage() {
 
   async function handleCreateOrganization(event) {
     event.preventDefault();
+    const payload = {
+      ...organizationForm,
+      org_webaddress: formatWebsiteForSave(organizationForm.org_webaddress),
+    };
+
     await runMutation(
       "create-organization",
-      () => createRootAdminOrganization(organizationForm),
+      () => createRootAdminOrganization(payload),
       "Organisation created.",
     );
     setOrganizationForm(emptyOrganizationForm);
@@ -116,7 +136,6 @@ export default function RootAdminDashboardPage() {
       <RootAdminSessionBar />
 
       <section className="hero-card stack compact">
-        <span className="status-pill">Root Administration</span>
         <h1>Platform Control Centre</h1>
         <p className="helper-text">
           Manage tenant organisations and their users from one top-level administration portal.
@@ -148,7 +167,6 @@ export default function RootAdminDashboardPage() {
       <section className="panel stack">
         <div className="panel-heading">
           <h2>Club Directory</h2>
-          <p className="helper-text">Create clubs, search tenants quickly, and jump into full club administration.</p>
         </div>
 
         <div className="root-admin-toolbar">
@@ -158,11 +176,11 @@ export default function RootAdminDashboardPage() {
             </button>
           </div>
 
-          <div className="field root-admin-search">
-            <label htmlFor="root_admin_search">Search Clubs</label>
+          <div className="root-admin-search">
             <input
+              aria-label="Search by Club Name"
               id="root_admin_search"
-              placeholder="Start typing a club name"
+              placeholder="Search by Club Name"
               value={searchTerm}
               onChange={(event) => {
                 setSearchTerm(event.target.value);
@@ -281,13 +299,19 @@ export default function RootAdminDashboardPage() {
                 </div>
                 <div className="field settings-field-wide">
                   <label htmlFor="root_org_web">Website</label>
-                  <input
-                    id="root_org_web"
-                    type="url"
-                    value={organizationForm.org_webaddress}
-                    onChange={(event) =>
-                      setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
-                  />
+                  <div className="prefixed-input">
+                    <span className="prefixed-input__label">{WEBSITE_PREFIX}</span>
+                    <input
+                      id="root_org_web"
+                      type="text"
+                      value={organizationForm.org_webaddress}
+                      onChange={(event) =>
+                        setOrganizationForm((current) => ({
+                          ...current,
+                          org_webaddress: stripWebsitePrefix(event.target.value),
+                        }))}
+                    />
+                  </div>
                 </div>
                 <div className="field settings-field-wide">
                   <label htmlFor="root_org_address">Address</label>
