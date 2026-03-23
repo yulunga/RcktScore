@@ -281,7 +281,7 @@ select {
   min-height: 0;
   min-width: 0;
   width: 100%;
-  padding: 12px 12px 10px;
+  padding: 10px 12px 8px;
   border-radius: 18px;
   background: #1f4f82;
   border: 1px solid #173b60;
@@ -296,7 +296,7 @@ select {
 .dashboard-card-player-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 56px;
-  align-items: stretch;
+  align-items: center;
   gap: 8px;
   width: 100%;
 }
@@ -304,7 +304,7 @@ select {
 .dashboard-card-player-name {
   display: grid;
   gap: 2px;
-  min-height: 72px;
+  min-height: 52px;
   min-width: 0;
   align-content: center;
 }
