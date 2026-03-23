@@ -7,6 +7,7 @@ VALID_ROLES = {"admin", "user"}
 ORGANIZATION_FIELDS = [
     "organization_name",
     "org_address",
+    "org_postcode",
     "org_contact",
     "org_telephone",
     "org_email",
@@ -23,6 +24,7 @@ def _serialize_organization(row):
         "id": row["id"],
         "organization_name": row.get("organization_name") or "",
         "org_address": row.get("org_address") or "",
+        "org_postcode": row.get("org_postcode") or "",
         "org_contact": row.get("org_contact") or "",
         "org_telephone": row.get("org_telephone") or "",
         "org_email": row.get("org_email") or "",
@@ -62,7 +64,7 @@ def get_organization_settings(connection, organization_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, organization_name, org_address, org_contact, org_telephone, org_email, org_webaddress
+            SELECT id, organization_name, org_address, org_postcode, org_contact, org_telephone, org_email, org_webaddress
             FROM "SkwshOrgSettings"
             WHERE id = %(organization_id)s
             LIMIT 1

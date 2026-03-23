@@ -13,6 +13,7 @@ import {
 const emptyOrganizationForm = {
   organization_name: "",
   org_address: "",
+  org_postcode: "",
   org_contact: "",
   org_telephone: "",
   org_email: "",
@@ -313,6 +314,15 @@ export default function RootAdminDashboardPage() {
                     value={organizationForm.org_address}
                     onChange={(event) =>
                       setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="root_org_postcode">Postcode</label>
+                  <input
+                    id="root_org_postcode"
+                    value={organizationForm.org_postcode}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_postcode: event.target.value }))}
                   />
                 </div>
               </div>

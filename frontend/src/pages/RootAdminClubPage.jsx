@@ -16,6 +16,7 @@ import {
 const emptyOrganizationForm = {
   organization_name: "",
   org_address: "",
+  org_postcode: "",
   org_contact: "",
   org_telephone: "",
   org_email: "",
@@ -90,12 +91,19 @@ export default function RootAdminClubPage() {
 
   const mapUrl = useMemo(() => {
     const address = organizationForm.org_address || settings?.organization?.org_address;
-    if (!address) {
+    const postcode = organizationForm.org_postcode || settings?.organization?.org_postcode;
+    const venueQuery = [address, postcode].filter(Boolean).join(", ");
+    if (!venueQuery) {
       return "";
     }
 
-    return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
-  }, [organizationForm.org_address, settings?.organization?.org_address]);
+    return `https://www.google.com/maps?q=${encodeURIComponent(venueQuery)}&output=embed`;
+  }, [
+    organizationForm.org_address,
+    organizationForm.org_postcode,
+    settings?.organization?.org_address,
+    settings?.organization?.org_postcode,
+  ]);
 
   const syncLocalState = useCallback((response) => {
     const nextSettings = response?.organizationSettings || response || null;
@@ -104,6 +112,7 @@ export default function RootAdminClubPage() {
     setOrganizationForm({
       organization_name: nextSettings?.organization?.organization_name || "",
       org_address: nextSettings?.organization?.org_address || "",
+      org_postcode: nextSettings?.organization?.org_postcode || "",
       org_contact: nextSettings?.organization?.org_contact || "",
       org_telephone: nextSettings?.organization?.org_telephone || "",
       org_email: nextSettings?.organization?.org_email || "",
@@ -340,6 +349,14 @@ export default function RootAdminClubPage() {
                   id="org_address"
                   value={organizationForm.org_address}
                   onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="org_postcode">Postcode</label>
+                <input
+                  id="org_postcode"
+                  value={organizationForm.org_postcode}
+                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_postcode: event.target.value }))}
                 />
               </div>
             </div>
