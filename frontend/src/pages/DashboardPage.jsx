@@ -180,7 +180,7 @@ export default function DashboardPage() {
                         </div>
                         <span className="dashboard-score-inline">{formatScore(match).player1}</span>
                       </div>
-                      <span className="dashboard-card-games-inline">Games won: {formatGameScore(match).player1}</span>
+                      <span className="dashboard-card-games-inline">Games: {formatGameScore(match).player1}</span>
                     </div>
                     <span className="dashboard-card-versus">vs</span>
                     <div className="dashboard-card-player-card dashboard-card-player-card--right">
@@ -191,7 +191,7 @@ export default function DashboardPage() {
                         </div>
                         <span className="dashboard-score-inline">{formatScore(match).player2}</span>
                       </div>
-                      <span className="dashboard-card-games-inline">Games won: {formatGameScore(match).player2}</span>
+                      <span className="dashboard-card-games-inline">Games: {formatGameScore(match).player2}</span>
                     </div>
                   </div>
                   <div className="dashboard-item-meta dashboard-item-meta--stacked dashboard-card-meta-box">
