@@ -160,20 +160,20 @@ export default function DashboardPage() {
                   <div className="dashboard-card-status">
                     <span className="status-pill status-pill--active">{match.status || "active"}</span>
                   </div>
-                  <div className="dashboard-card-players">
-                    <div className="dashboard-card-player">
+                  <div className="dashboard-card-showcase">
+                    <div className="dashboard-card-player-card">
                       <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
-                      <span className="dashboard-score-chip">{formatScore(match).player1}</span>
+                      <span className="dashboard-score-orb">{formatScore(match).player1}</span>
                     </div>
                     <span className="dashboard-card-versus">vs</span>
-                    <div className="dashboard-card-player dashboard-card-player--right">
-                      <span className="dashboard-score-chip">{formatScore(match).player2}</span>
+                    <div className="dashboard-card-player-card dashboard-card-player-card--right">
                       <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
+                      <span className="dashboard-score-orb">{formatScore(match).player2}</span>
                     </div>
                   </div>
-                  <div className="dashboard-card-games">Games: {formatGameScore(match)}</div>
-                  <div className="dashboard-card-score">{formatScore(match).label}</div>
-                  <div className="dashboard-item-meta dashboard-item-meta--stacked">
+                  <div className="dashboard-card-games dashboard-card-games--centered">({formatGameScore(match)})</div>
+                  <div className="dashboard-card-score-strip">{formatScore(match).label}</div>
+                  <div className="dashboard-item-meta dashboard-item-meta--stacked dashboard-card-meta-box">
                     <span>Court: {match.court_name || "Unassigned"}</span>
                     <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
                   </div>
