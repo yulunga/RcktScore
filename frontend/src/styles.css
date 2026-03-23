@@ -254,15 +254,16 @@ select {
 .dashboard-item--card {
   align-content: start;
   position: relative;
-  gap: 14px;
-  padding-top: 18px;
+  gap: 10px;
+  padding: 14px;
+  padding-top: 16px;
 }
 
 .dashboard-card-status {
   justify-self: end;
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 12px;
+  right: 12px;
 }
 
 .dashboard-card-showcase {
@@ -270,18 +271,18 @@ select {
   grid-template-columns: 1fr;
   align-items: stretch;
   gap: 6px;
-  margin-top: 34px;
+  margin-top: 28px;
 }
 
 .dashboard-card-player-card {
   display: grid;
   justify-items: start;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
   min-width: 0;
   width: 100%;
-  padding: 14px 14px 12px;
-  border-radius: 22px;
+  padding: 12px 12px 10px;
+  border-radius: 18px;
   background: #1f4f82;
   border: 1px solid #173b60;
   color: #fff;
@@ -294,16 +295,16 @@ select {
 
 .dashboard-card-player-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
+  grid-template-columns: minmax(0, 1fr) 74px;
   align-items: stretch;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
 .dashboard-card-player-name {
   display: grid;
-  gap: 4px;
-  min-height: 92px;
+  gap: 2px;
+  min-height: 72px;
   min-width: 0;
   align-content: center;
 }
@@ -317,13 +318,13 @@ select {
 }
 
 .dashboard-card-player-name strong {
-  font-size: clamp(0.95rem, 1.2vw, 1.35rem);
+  font-size: clamp(0.9rem, 1vw, 1.18rem);
   font-weight: 800;
   line-height: 1.02;
 }
 
 .dashboard-card-player-name span {
-  font-size: clamp(0.95rem, 1.2vw, 1.35rem);
+  font-size: clamp(0.9rem, 1vw, 1.18rem);
   font-weight: 700;
   line-height: 1.02;
 }
@@ -344,21 +345,21 @@ select {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 92px;
-  min-height: 92px;
-  padding: 8px 10px;
-  border-radius: 18px;
+  height: 72px;
+  min-height: 72px;
+  padding: 6px 8px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.28);
   border: 2px solid rgba(255, 255, 255, 0.72);
   color: #fff;
-  font-size: clamp(2.2rem, 3vw, 3.4rem);
+  font-size: clamp(1.7rem, 2.1vw, 2.35rem);
   font-weight: 800;
   line-height: 1;
 }
 
 .dashboard-card-games-inline {
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 600;
 }
 
@@ -370,11 +371,12 @@ select {
 .dashboard-card-meta-box {
   justify-self: center;
   min-width: min(100%, 280px);
-  padding: 14px 18px;
-  border-radius: 20px;
+  padding: 10px 14px;
+  border-radius: 16px;
   background: #fff;
   border: 1px solid #d9e2ec;
   text-align: center;
+  font-size: 0.92rem;
 }
 
 .dashboard-item-actions {
@@ -388,8 +390,8 @@ select {
 }
 
 .dashboard-item-actions--compact button {
-  padding: 8px 10px;
-  font-size: 0.82rem;
+  padding: 7px 10px;
+  font-size: 0.8rem;
   flex: 1 1 0;
 }
 
