@@ -254,29 +254,31 @@ select {
 .dashboard-item--card {
   align-content: start;
   position: relative;
+  gap: 14px;
+  padding-top: 18px;
 }
 
 .dashboard-card-status {
   justify-self: end;
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
 }
 
 .dashboard-card-showcase {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
+  align-items: end;
+  gap: 14px;
+  margin-top: 34px;
 }
 
 .dashboard-card-player-card {
   display: grid;
   justify-items: center;
-  gap: 18px;
-  min-height: 220px;
-  padding: 20px 14px;
+  gap: 14px;
+  min-height: 0;
+  padding: 18px 12px 14px;
   border-radius: 22px;
   background: #fff;
   border: 1px solid #d9e2ec;
@@ -285,8 +287,8 @@ select {
 
 .dashboard-card-player-card strong {
   display: block;
-  font-size: 1.5rem;
-  line-height: 1.15;
+  font-size: 1.2rem;
+  line-height: 1.2;
 }
 
 .dashboard-card-player-card--right {
@@ -297,14 +299,14 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 62px;
-  min-height: 62px;
+  width: 76px;
+  min-height: 76px;
   padding: 10px;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #fff;
   border: 1px solid #d9e2ec;
   color: #7b8794;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   text-transform: lowercase;
   text-align: center;
@@ -314,12 +316,12 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  height: 120px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   background: #e6f0fb;
   color: #0b4f88;
-  font-size: 3.2rem;
+  font-size: 2.6rem;
   font-weight: 800;
 }
 
@@ -332,16 +334,16 @@ select {
 .dashboard-card-games--centered {
   justify-self: center;
   color: #0b4f88;
-  font-size: 2.1rem;
+  font-size: 1.8rem;
   font-weight: 700;
 }
 
 .dashboard-card-score-strip {
-  padding: 16px 18px;
+  padding: 14px 16px;
   border-radius: 20px;
   background: #e6f0fb;
   color: #0b4f88;
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 700;
   text-align: center;
 }
@@ -354,7 +356,7 @@ select {
 .dashboard-card-meta-box {
   justify-self: center;
   min-width: min(100%, 280px);
-  padding: 16px 18px;
+  padding: 14px 18px;
   border-radius: 20px;
   background: #fff;
   border: 1px solid #d9e2ec;
@@ -1058,6 +1060,7 @@ select {
 
   .dashboard-card-showcase {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .dashboard-card-player-card,
