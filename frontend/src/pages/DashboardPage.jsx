@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
-import SessionBar from "../components/SessionBar";
 import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard } from "../services/api";
 
@@ -31,7 +30,7 @@ function formatDate(value) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, logout } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -76,14 +75,57 @@ export default function DashboardPage() {
 
   return (
     <main className="page-shell stack">
-      <SessionBar />
+      <section className="hero-card dashboard-summary-card">
+        <div className="dashboard-summary-copy">
+          <h1>{organization.name || session?.organization_name || "Club Dashboard"}</h1>
+          <div className="dashboard-summary-username">{session?.username || "Operator"}</div>
+          <p className="helper-text">
+            Manage live scoring, keep an eye on active courts, and review recent matches.
+          </p>
+        </div>
+        <button
+          className="session-link-button"
+          type="button"
+          onClick={() => {
+            logout();
+            navigate("/", { replace: true });
+          }}
+        >
+          Log Out
+        </button>
+      </section>
 
-      <section className="hero-card stack compact">
-        <span className="status-pill">Dashboard</span>
-        <h1>{organization.name || session?.organization_name || "Club Dashboard"}</h1>
-        <p className="helper-text">
-          Manage live scoring, keep an eye on active courts, and review recent matches.
-        </p>
+      <section className="dashboard-menu-row" aria-label="Dashboard menu">
+        <button className="dashboard-menu-button" type="button" onClick={() => navigate("/match/new")}>
+          Start New Match
+        </button>
+        <button
+          className="dashboard-menu-button"
+          type="button"
+          onClick={() => {
+            const displayUrl = primaryDisplayMatch
+              ? `${window.location.origin}/display?match=${primaryDisplayMatch.id}`
+              : `${window.location.origin}/display`;
+            window.open(displayUrl, "_blank", "noopener,noreferrer");
+          }}
+        >
+          Open Display Screen
+        </button>
+        <button
+          className="dashboard-menu-button"
+          type="button"
+          onClick={() => {
+            document.getElementById("match-history-section")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }}
+        >
+          Match History
+        </button>
+        <button className="dashboard-menu-button" type="button" onClick={() => navigate("/settings")}>
+          Settings
+        </button>
       </section>
 
       {loading ? <div className="notice">Loading dashboard...</div> : null}
@@ -169,7 +211,7 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="panel stack">
+        <section className="panel stack" id="match-history-section">
           <div className="panel-heading">
             <h2>Recent Matches</h2>
             <p className="helper-text">Completed matches for this organisation.</p>
@@ -203,36 +245,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Organisation Settings</h2>
-            <p className="helper-text">Current organisation footprint and user access summary.</p>
-          </div>
-
-          <div className="meta-grid">
-            <div className="meta-item">
-              <strong>Club Name</strong>
-              <div>{organization.name || session?.organization_name || "Unknown"}</div>
-            </div>
-            <div className="meta-item">
-              <strong>Courts</strong>
-              <div>{organization.court_count ?? 0}</div>
-            </div>
-            <div className="meta-item">
-              <strong>Users</strong>
-              <div>{organization.user_count ?? 0}</div>
-            </div>
-            <div className="meta-item">
-              <strong>Roles</strong>
-              <div>{organization.roles?.length ? organization.roles.join(", ") : session?.role || "user"}</div>
-            </div>
-          </div>
-          <div className="button-row">
-            <button className="secondary" type="button" onClick={() => navigate("/settings")}>
-              Open Organisation Settings
-            </button>
-          </div>
-        </section>
       </section>
 
       <AppFooter />
