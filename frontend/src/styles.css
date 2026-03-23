@@ -134,7 +134,7 @@ select {
 .dashboard-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .dashboard-primary {
@@ -150,31 +150,36 @@ select {
   margin: 0;
 }
 
-.quick-action-grid {
+.club-page-header {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
 }
 
-.dashboard-summary-card {
+.club-page-header__meta {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  gap: 10px;
 }
 
-.dashboard-summary-copy {
+.club-page-header__username {
+  color: #7b8794;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.club-page-header__divider {
+  color: #9fb3c8;
+  font-size: 0.95rem;
+}
+
+.club-page-header__copy {
   display: grid;
   gap: 10px;
 }
 
-.dashboard-summary-copy p {
+.club-page-header__copy p {
   margin: 0;
-}
-
-.dashboard-summary-username {
-  color: #486581;
-  font-size: 1.35rem;
 }
 
 .dashboard-menu-row {
@@ -202,6 +207,12 @@ select {
 .dashboard-list {
   display: grid;
   gap: 14px;
+}
+
+.dashboard-card-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .dashboard-item {
@@ -864,9 +875,16 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-summary-card {
+  .dashboard-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .club-page-header__meta {
+    justify-content: flex-start;
+  }
+
+  .club-page-header {
     align-items: flex-start;
-    flex-direction: column;
   }
 
   .session-bar {
@@ -895,6 +913,12 @@ select {
   }
 
   .club-admin-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-card-grid {
     grid-template-columns: 1fr;
   }
 }

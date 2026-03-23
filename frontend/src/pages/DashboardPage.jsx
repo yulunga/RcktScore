@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard } from "../services/api";
 
@@ -30,7 +31,7 @@ function formatDate(value) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -72,94 +73,47 @@ export default function DashboardPage() {
   const recentMatches = dashboard?.recent_matches || [];
   const organization = dashboard?.organization || {};
   const primaryDisplayMatch = activeMatches[0];
+  const dashboardActions = [
+    {
+      label: "Start New Match",
+      onClick: () => navigate("/match/new"),
+    },
+    {
+      label: "Open Display Screen",
+      onClick: () => {
+        const displayUrl = primaryDisplayMatch
+          ? `${window.location.origin}/display?match=${primaryDisplayMatch.id}`
+          : `${window.location.origin}/display`;
+        window.open(displayUrl, "_blank", "noopener,noreferrer");
+      },
+    },
+    {
+      label: "Match History",
+      onClick: () => {
+        document.getElementById("match-history-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      },
+    },
+    {
+      label: "Settings",
+      onClick: () => navigate("/settings"),
+    },
+  ];
 
   return (
     <main className="page-shell stack">
-      <section className="hero-card dashboard-summary-card">
-        <div className="dashboard-summary-copy">
-          <h1>{organization.name || session?.organization_name || "Club Dashboard"}</h1>
-          <div className="dashboard-summary-username">{session?.username || "Operator"}</div>
-          <p className="helper-text">
-            Manage live scoring, keep an eye on active courts, and review recent matches.
-          </p>
-        </div>
-        <button
-          className="session-link-button"
-          type="button"
-          onClick={() => {
-            logout();
-            navigate("/", { replace: true });
-          }}
-        >
-          Log Out
-        </button>
-      </section>
-
-      <section className="dashboard-menu-row" aria-label="Dashboard menu">
-        <button className="dashboard-menu-button" type="button" onClick={() => navigate("/match/new")}>
-          Start New Match
-        </button>
-        <button
-          className="dashboard-menu-button"
-          type="button"
-          onClick={() => {
-            const displayUrl = primaryDisplayMatch
-              ? `${window.location.origin}/display?match=${primaryDisplayMatch.id}`
-              : `${window.location.origin}/display`;
-            window.open(displayUrl, "_blank", "noopener,noreferrer");
-          }}
-        >
-          Open Display Screen
-        </button>
-        <button
-          className="dashboard-menu-button"
-          type="button"
-          onClick={() => {
-            document.getElementById("match-history-section")?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            });
-          }}
-        >
-          Match History
-        </button>
-        <button className="dashboard-menu-button" type="button" onClick={() => navigate("/settings")}>
-          Settings
-        </button>
-      </section>
+      <ClubPageHeader
+        actions={dashboardActions}
+        subtitle="Manage live scoring, keep an eye on active courts, and review recent matches."
+        title={organization.name || session?.organization_name || "Club Dashboard"}
+      />
 
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
       <section className="dashboard-grid">
-        <section className="panel stack dashboard-primary">
-          <div className="panel-heading">
-            <h2>Quick Actions</h2>
-            <p className="helper-text">Start the next scoring session or open the venue display.</p>
-          </div>
-
-          <div className="quick-action-grid">
-            <button type="button" onClick={() => navigate("/match/new")}>
-              Start New Match
-            </button>
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => {
-                const displayUrl = primaryDisplayMatch
-                  ? `${window.location.origin}/display?match=${primaryDisplayMatch.id}`
-                  : `${window.location.origin}/display`;
-                window.open(displayUrl, "_blank", "noopener,noreferrer");
-              }}
-            >
-              Open Display Screen
-            </button>
-            <button className="secondary" disabled type="button">
-              Add Players
-            </button>
-          </div>
-        </section>
-
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Active Matches</h2>
@@ -169,7 +123,7 @@ export default function DashboardPage() {
           {activeMatches.length === 0 ? (
             <div className="dashboard-empty">No active matches right now.</div>
           ) : (
-            <div className="dashboard-list">
+            <div className="dashboard-card-grid">
               {activeMatches.map((match) => (
                 <article className="dashboard-item" key={match.id}>
                   <div className="dashboard-item-head">

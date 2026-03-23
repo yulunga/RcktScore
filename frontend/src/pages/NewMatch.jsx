@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
-import SessionBar from "../components/SessionBar";
+import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 import { getOrganizationSettings } from "../services/api";
@@ -111,6 +111,21 @@ export default function NewMatch() {
     formState.player1_band && formState.player2_band
       ? `${formState.player1_band} vs ${formState.player2_band}: Player 1 starts ${formState.player1_offset}, Player 2 starts ${formState.player2_offset}.`
       : "Select both bands to see the starting offset for each player.";
+  const headerActions = [
+    {
+      label: "Back to Dashboard",
+      onClick: () => navigate("/dashboard"),
+    },
+    {
+      label: "View Handicap Matrix",
+      onClick: () => {
+        document.getElementById("handicap-matrix")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      },
+    },
+  ];
 
   function handleChange(name, value) {
     setFormState((current) => ({
@@ -196,15 +211,11 @@ export default function NewMatch() {
 
   return (
     <main className="page-shell">
-      <SessionBar />
-      <section className="hero-card stack">
-        <span className="status-pill">RcktScore v2</span>
-        <h1>Create a New Match</h1>
-        <p>
-          Start the next court session and publish it to the scoring console,
-          spectator display, and device clients from one shared match record.
-        </p>
-      </section>
+      <ClubPageHeader
+        actions={headerActions}
+        subtitle="Start the next court session and publish it to the scoring console, spectator display, and device clients from one shared match record."
+        title="Create a New Match"
+      />
 
       <form className="panel stack" onSubmit={handleSubmit}>
         <div className="section-heading stack compact">
@@ -217,15 +228,6 @@ export default function NewMatch() {
         </div>
 
         {courtError ? <div className="notice error">{courtError}</div> : null}
-
-        <div className="button-row">
-          <button className="secondary" type="button" onClick={() => navigate("/dashboard")}>
-            Back to Dashboard
-          </button>
-          <a className="button-link secondary" href="#handicap-matrix">
-            View Handicap Matrix
-          </a>
-        </div>
 
         <div className="field-grid">
           <div className="field">

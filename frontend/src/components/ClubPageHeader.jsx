@@ -1,0 +1,52 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+
+import { useAuth } from "../hooks/useAuth";
+
+export default function ClubPageHeader({ title, subtitle, actions = [] }) {
+  const navigate = useNavigate();
+  const { session, logout } = useAuth();
+
+  return (
+    <>
+      <section className="hero-card club-page-header">
+        <div className="club-page-header__meta">
+          <span className="club-page-header__username">{session?.username || "Operator"}</span>
+          <span className="club-page-header__divider" aria-hidden="true">
+            |
+          </span>
+          <button
+            className="session-link-button"
+            type="button"
+            onClick={() => {
+              logout();
+              navigate("/", { replace: true });
+            }}
+          >
+            Log Out
+          </button>
+        </div>
+
+        <div className="club-page-header__copy">
+          <h1>{title}</h1>
+          <p className="helper-text">{subtitle}</p>
+        </div>
+      </section>
+
+      {actions.length ? (
+        <section className="dashboard-menu-row" aria-label="Club page menu">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              className="dashboard-menu-button"
+              type="button"
+              onClick={action.onClick}
+            >
+              {action.label}
+            </button>
+          ))}
+        </section>
+      ) : null}
+    </>
+  );
+}
