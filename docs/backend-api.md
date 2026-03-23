@@ -71,6 +71,7 @@ This layer is responsible for:
 Examples:
 
 - [login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
+- [root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py)
 - [register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py)
 - [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py)
 - [score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py)
@@ -88,7 +89,9 @@ Reusable backend business logic lives in:
 This layer owns:
 
 - authentication checks against `SkwshOrgUsers`
+- root admin authentication checks against `SkRootAdmin`
 - organisation and court CRUD logic
+- root admin tenant-management aggregation
 - dashboard aggregation
 - squash scoring rules
 - event sourcing and match reconstruction
@@ -106,6 +109,7 @@ Current persistence tables include:
 
 - `SkwshOrgSettings`
 - `SkwshOrgUsers`
+- `SkRootAdmin`
 - `SkwshCourts`
 - `matches`
 - `match_events`
@@ -178,9 +182,19 @@ Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/Rckt
 ### Authentication
 
 - `POST /login`
+- `POST /root_admin/login`
 - `POST /register_interest`
 
+`POST /root_admin/login` authenticates against the `SkRootAdmin` table and returns a separate root-admin session payload.
+
 `POST /register_interest` is an unauthenticated prospect-access route. It validates an email address, supports a honeypot field for basic bot filtering, and sends an AWS SES email notification to the configured interest inbox.
+
+### Root Administration
+
+- `GET /root_admin/dashboard`
+- `POST /root_admin/organizations`
+- `POST /root_admin/organization_users`
+- `PUT /root_admin/organization_users/{user_id}`
 
 ### Dashboard / Organisation
 

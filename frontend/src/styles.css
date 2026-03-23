@@ -411,6 +411,36 @@ select {
   text-decoration: underline;
 }
 
+.root-admin-login-note {
+  text-align: center;
+}
+
+.root-admin-org-card {
+  gap: 16px;
+}
+
+.root-admin-user-list {
+  display: grid;
+  gap: 12px;
+}
+
+.root-admin-user-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #d9e2ec;
+}
+
+.root-admin-user-row strong,
+.root-admin-user-row span {
+  display: block;
+}
+
 .scoreboard-card {
   padding: 24px;
   display: grid;

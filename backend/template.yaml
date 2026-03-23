@@ -68,6 +68,66 @@ Resources:
             Path: /login
             Method: POST
 
+  RootAdminLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/root_admin_login/handler.lambda_handler
+      Events:
+        RootAdminLogin:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/login
+            Method: POST
+
+  GetRootAdminDashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_dashboard/handler.lambda_handler
+      Events:
+        GetRootAdminDashboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/dashboard
+            Method: GET
+
+  CreateRootAdminOrganizationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_root_admin_organization/handler.lambda_handler
+      Events:
+        CreateRootAdminOrganization:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organizations
+            Method: POST
+
+  CreateRootAdminOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_root_admin_org_user/handler.lambda_handler
+      Events:
+        CreateRootAdminOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organization_users
+            Method: POST
+
+  UpdateRootAdminOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_org_user/handler.lambda_handler
+      Events:
+        UpdateRootAdminOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organization_users/{user_id}
+            Method: PUT
+
   RegisterInterestFunction:
     Type: AWS::Serverless::Function
     Properties:

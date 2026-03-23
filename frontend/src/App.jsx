@@ -2,18 +2,30 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import RootAdminProtectedRoute from "./components/RootAdminProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
+import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
+import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/rckscoreAdmin" element={<RootAdminLoginPage />} />
+      <Route
+        path="/rckscoreAdmin/dashboard"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminDashboardPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
       <Route
         path="/dashboard"
         element={(

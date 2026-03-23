@@ -42,6 +42,13 @@ export function login(payload) {
   });
 }
 
+export function rootAdminLogin(payload) {
+  return apiRequest("/root_admin/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function registerInterest(payload) {
   return apiRequest("/register_interest", {
     method: "POST",
@@ -51,6 +58,31 @@ export function registerInterest(payload) {
 
 export function getDashboard(organizationId) {
   return apiRequest(`/dashboard/${organizationId}`);
+}
+
+export function getRootAdminDashboard() {
+  return apiRequest("/root_admin/dashboard");
+}
+
+export function createRootAdminOrganization(payload) {
+  return apiRequest("/root_admin/organizations", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createRootAdminOrganizationUser(payload) {
+  return apiRequest("/root_admin/organization_users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateRootAdminOrganizationUserRole(userId, payload) {
+  return apiRequest(`/root_admin/organization_users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getOrganizationSettings(organizationId) {

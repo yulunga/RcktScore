@@ -79,6 +79,29 @@ The sections below describe each major flow explicitly.
 
 ---
 
+## 1B. Root Admin Login Flow
+
+### Frontend Entry
+
+- [RootAdminLoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminLoginPage.jsx)
+- [RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
+- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+
+### Request Path
+
+1. Root admin opens `/rckscoreAdmin`.
+2. The login page requires username, password, and a built-in human-check answer.
+3. `RootAdminContext.login(...)` calls `api.js -> POST /root_admin/login`.
+4. API Gateway invokes [root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py).
+5. Handler validates required fields and checks credentials through [authenticate_root_admin(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
+6. `auth_logic.py` loads the user from `SkRootAdmin` and verifies `password_hash`.
+7. Handler returns `{"success": true, "data": {"rootAdminSession": ...}, "error": null, "meta": {}}`.
+8. `api.js` unwraps `payload.data`, so `RootAdminContext` receives `response.rootAdminSession`.
+9. Frontend stores the root admin session in `sessionStorage`.
+10. User is redirected to `/rckscoreAdmin/dashboard`.
+
+---
+
 ## 1A. Register Interest Flow
 
 ### Frontend Entry
@@ -129,6 +152,30 @@ Important:
 
 Important:
 - dashboard logic safely handles missing `matches` tables by returning empty match lists
+
+---
+
+## 2A. Root Admin Dashboard Load
+
+### Frontend Entry
+
+- [RootAdminDashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminDashboardPage.jsx)
+- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+
+### Request Path
+
+1. Root admin dashboard loads after root-admin login.
+2. Frontend calls `GET /root_admin/dashboard`.
+3. API Gateway invokes [get_root_admin_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_root_admin_dashboard/handler.py).
+4. Handler opens DB connection and calls [get_root_admin_dashboard(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/root_admin_logic.py).
+5. Shared logic:
+   - loads organisation records from `SkwshOrgSettings`
+   - counts tenant users from `SkwshOrgUsers`
+   - counts tenant courts from `SkwshCourts`
+   - groups tenant users under each organisation
+6. Handler returns `{"success": true, "data": {"rootAdminDashboard": ...}, "error": null, "meta": {}}`.
+7. `api.js` unwraps `payload.data`, so the page reads `response.rootAdminDashboard`.
+8. Dashboard renders organisation counts, tenant creation forms, and grouped tenant-user management controls.
 
 ---
 

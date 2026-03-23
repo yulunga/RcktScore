@@ -32,6 +32,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - Amplify app has been deployed in `eu-north-1`
 - The frontend calls the backend through `VITE_API_BASE_URL`
 - The login page also includes a register-interest flow for prospective users
+- A separate root administration portal now exists at `/rckscoreAdmin`
 
 ### Backend
 
@@ -62,6 +63,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 
 - `src/App.jsx` route definitions
 - `src/context/AuthContext.jsx` frontend auth/session state
+- `src/context/RootAdminContext.jsx` root admin auth/session state
 - `src/context/MatchContext.jsx` match state and API mutations
 - `src/services/api.js` HTTP API client
 - `src/services/websocket.js` browser WebSocket client
@@ -70,6 +72,11 @@ The old Flask application remains in `version1/` as reference only. It is not th
 
 - `functions/create_match/handler.py`
 - `functions/login/handler.py`
+- `functions/root_admin_login/handler.py`
+- `functions/get_root_admin_dashboard/handler.py`
+- `functions/create_root_admin_organization/handler.py`
+- `functions/create_root_admin_org_user/handler.py`
+- `functions/update_root_admin_org_user/handler.py`
 - `functions/register_interest/handler.py`
 - `functions/get_match/handler.py`
 - `functions/score_point/handler.py`
@@ -78,6 +85,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - `functions/websocket_broadcast/handler.py`
 - `common/match_logic.py`
 - `common/auth_logic.py`
+- `common/root_admin_logic.py`
 - `common/supabase_client.py`
 - `common/utils.py`
 - `common/organization_logic.py`
@@ -112,6 +120,7 @@ Current architecture layers:
   - Supabase Postgres tables:
     - `SkwshOrgSettings`
     - `SkwshOrgUsers`
+    - `SkRootAdmin`
     - `SkwshCourts`
     - `matches`
     - `match_events`
@@ -143,6 +152,8 @@ Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/sr
 - `/match/new` -> protected route
 - `/match/:matchId` -> protected route
 - `/display` -> public spectator display route
+- `/rckscoreAdmin` -> root admin login page
+- `/rckscoreAdmin/dashboard` -> protected root admin dashboard
 
 Auth protection is currently implemented in the frontend with `AuthContext` and `ProtectedRoute`.
 
@@ -153,7 +164,12 @@ Auth protection is currently implemented in the frontend with `AuthContext` and 
 Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml):
 
 - `POST /login`
+- `POST /root_admin/login`
 - `POST /register_interest`
+- `GET /root_admin/dashboard`
+- `POST /root_admin/organizations`
+- `POST /root_admin/organization_users`
+- `PUT /root_admin/organization_users/{user_id}`
 - `GET /dashboard/{organization_id}`
 - `GET /organization_settings/{organization_id}`
 - `PUT /organization_details/{organization_id}`
@@ -192,6 +208,7 @@ Current API contract status:
 ### Current State
 
 Login is now backed by Supabase/Postgres via the `SkwshOrgUsers` table.
+Root admin login is separately backed by `SkRootAdmin`.
 
 The active login flow:
 
@@ -221,15 +238,21 @@ Important:
 Relevant files:
 
 - [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
+- [RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
 - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
 - [auth_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py)
 - [handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
+- [handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py)
 
 ### Source of Truth
 
 Organisation users are stored in:
 
 - `SkwshOrgUsers`
+
+Root administrator users are stored in:
+
+- `SkRootAdmin`
 
 Current expected columns:
 
@@ -298,6 +321,17 @@ The organisation settings page currently provides:
 - a visible racket-sports launch matrix where only squash is currently active and the other sports are intentionally greyed out
 
 Important: social profile inputs and organisation-level game settings are scaffolded in the UI only right now. They are not yet persisted because the current documented organisation table does not yet include dedicated columns for them.
+
+The root administration portal currently provides:
+
+- a separate root admin login screen with a lightweight built-in human check
+- a protected root admin dashboard at `/rckscoreAdmin/dashboard`
+- platform-wide tenant organisation summary counts
+- tenant organisation creation
+- tenant user creation across organisations
+- tenant user role updates (`admin` / `user`) across organisations
+
+Important: root admin route protection is currently frontend session-based, matching the current tenant-user auth posture. Backend token/session enforcement and later IP restrictions are still future work.
 
 ---
 

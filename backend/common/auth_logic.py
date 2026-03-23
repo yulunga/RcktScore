@@ -11,6 +11,14 @@ def _serialize_org_user(user_row):
     }
 
 
+def _serialize_root_admin(user_row):
+    return {
+        "id": user_row["id"],
+        "username": user_row["rtusername"],
+        "role": "root_admin",
+    }
+
+
 def get_org_user(connection, username):
     with connection.cursor() as cursor:
         cursor.execute(
@@ -33,6 +41,20 @@ def get_org_user(connection, username):
         return cursor.fetchone()
 
 
+def get_root_admin(connection, username):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, rtusername, password_hash
+            FROM "SkRootAdmin"
+            WHERE rtusername = %(username)s
+            LIMIT 1
+            """,
+            {"username": username},
+        )
+        return cursor.fetchone()
+
+
 def authenticate_org_user(connection, username, password):
     user_row = get_org_user(connection, username)
     if not user_row:
@@ -45,3 +67,17 @@ def authenticate_org_user(connection, username, password):
         return None
 
     return _serialize_org_user(user_row)
+
+
+def authenticate_root_admin(connection, username, password):
+    user_row = get_root_admin(connection, username)
+    if not user_row:
+        return None
+
+    if not user_row.get("password_hash"):
+        return None
+
+    if not check_password_hash(user_row["password_hash"], password):
+        return None
+
+    return _serialize_root_admin(user_row)
