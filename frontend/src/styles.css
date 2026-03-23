@@ -479,8 +479,16 @@ select {
   align-items: center;
 }
 
+.root-admin-actions {
+  justify-content: flex-start;
+}
+
 .root-admin-search {
   position: relative;
+}
+
+.root-admin-search-wide {
+  width: min(560px, 100%);
 }
 
 .root-admin-search input {

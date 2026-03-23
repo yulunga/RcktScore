@@ -36,7 +36,7 @@ function formatWebsiteForSave(value) {
 
 export default function RootAdminDashboardPage() {
   const navigate = useNavigate();
-  const { session } = useRootAdmin();
+  useRootAdmin();
   const [dashboard, setDashboard] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,19 +142,15 @@ export default function RootAdminDashboardPage() {
         </p>
         <div className="meta-grid">
           <div className="meta-item">
-            <strong>Signed in as</strong>
-            <div>{session?.username || "Root Admin"}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Tenant Organisations</strong>
+            <strong>Organisations</strong>
             <div>{summary.organization_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Tenant Users</strong>
+            <strong>Org Users</strong>
             <div>{summary.user_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Tenant Admins</strong>
+            <strong>Top Level Admin</strong>
             <div>{summary.admin_count ?? 0}</div>
           </div>
         </div>
@@ -165,53 +161,51 @@ export default function RootAdminDashboardPage() {
       {error ? <div className="notice error">{error}</div> : null}
 
       <section className="panel stack">
+        <div className="button-row root-admin-actions">
+          <button type="button" onClick={() => setShowCreateOverlay(true)}>
+            New Club
+          </button>
+        </div>
+
         <div className="panel-heading">
           <h2>Club Directory</h2>
         </div>
 
-        <div className="root-admin-toolbar">
-          <div className="button-row">
-            <button type="button" onClick={() => setShowCreateOverlay(true)}>
-              New Club
-            </button>
-          </div>
+        <div className="root-admin-search root-admin-search-wide">
+          <input
+            aria-label="Search by Club Name"
+            id="root_admin_search"
+            placeholder="Search by Club Name"
+            value={searchTerm}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              if (error) {
+                setError("");
+              }
+            }}
+          />
 
-          <div className="root-admin-search">
-            <input
-              aria-label="Search by Club Name"
-              id="root_admin_search"
-              placeholder="Search by Club Name"
-              value={searchTerm}
-              onChange={(event) => {
-                setSearchTerm(event.target.value);
-                if (error) {
-                  setError("");
-                }
-              }}
-            />
-
-            {searchTerm.trim() ? (
-              <div className="root-admin-search-results">
-                {searching ? (
-                  <div className="root-admin-search-item helper-text">Searching...</div>
-                ) : visibleClubs.length === 0 ? (
-                  <div className="root-admin-search-item helper-text">No matching clubs found.</div>
-                ) : (
-                  visibleClubs.map((organization) => (
-                    <button
-                      key={organization.id}
-                      className="root-admin-search-item"
-                      type="button"
-                      onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}
-                    >
-                      <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
-                      <span>{organization.org_email || organization.org_contact || `Tenant ${organization.id}`}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            ) : null}
-          </div>
+          {searchTerm.trim() ? (
+            <div className="root-admin-search-results">
+              {searching ? (
+                <div className="root-admin-search-item helper-text">Searching...</div>
+              ) : visibleClubs.length === 0 ? (
+                <div className="root-admin-search-item helper-text">No matching clubs found.</div>
+              ) : (
+                visibleClubs.map((organization) => (
+                  <button
+                    key={organization.id}
+                    className="root-admin-search-item"
+                    type="button"
+                    onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}
+                  >
+                    <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
+                    <span>{organization.org_email || organization.org_contact || `Tenant ${organization.id}`}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="root-admin-club-list">
