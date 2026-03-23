@@ -26,6 +26,13 @@ function formatGameScore(match) {
   };
 }
 
+function splitPlayerName(firstName, surname) {
+  return {
+    firstName: (firstName || "").trim() || "Player",
+    surname: (surname || "").trim(),
+  };
+}
+
 function formatPlayers(match) {
   return `${match.player1_name} ${match.player1_surname || ""}`.trim()
     + " vs "
@@ -166,19 +173,25 @@ export default function DashboardPage() {
                   </div>
                   <div className="dashboard-card-showcase">
                     <div className="dashboard-card-player-card">
-                      <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
-                      <span className="dashboard-score-orb">{formatScore(match).player1}</span>
-                      <span className="dashboard-card-games-inline">
-                        Games won: {formatGameScore(match).player1}
-                      </span>
+                      <div className="dashboard-card-player-row">
+                        <div className="dashboard-card-player-name">
+                          <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
+                          <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "\u00A0"}</span>
+                        </div>
+                        <span className="dashboard-score-inline">{formatScore(match).player1}</span>
+                      </div>
+                      <span className="dashboard-card-games-inline">Games won: {formatGameScore(match).player1}</span>
                     </div>
                     <span className="dashboard-card-versus">vs</span>
                     <div className="dashboard-card-player-card dashboard-card-player-card--right">
-                      <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
-                      <span className="dashboard-score-orb">{formatScore(match).player2}</span>
-                      <span className="dashboard-card-games-inline">
-                        Games won: {formatGameScore(match).player2}
-                      </span>
+                      <div className="dashboard-card-player-row">
+                        <div className="dashboard-card-player-name">
+                          <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
+                          <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "\u00A0"}</span>
+                        </div>
+                        <span className="dashboard-score-inline">{formatScore(match).player2}</span>
+                      </div>
+                      <span className="dashboard-card-games-inline">Games won: {formatGameScore(match).player2}</span>
                     </div>
                   </div>
                   <div className="dashboard-item-meta dashboard-item-meta--stacked dashboard-card-meta-box">
