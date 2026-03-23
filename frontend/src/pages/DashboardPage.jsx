@@ -168,8 +168,12 @@ export default function DashboardPage() {
             <div className="dashboard-card-grid">
               {activeMatches.map((match) => (
                 <article className="dashboard-item dashboard-item--card" key={match.id}>
-                  <div className="dashboard-card-status">
-                    <span className="status-pill status-pill--active">{match.status || "active"}</span>
+                  <div
+                    className="dashboard-card-status"
+                    aria-label={match.status || "active"}
+                    title={match.status || "active"}
+                  >
+                    <span className="dashboard-status-dot status-pill--active" aria-hidden="true" />
                   </div>
                   <div className="dashboard-card-showcase">
                     <div className="dashboard-card-player-card">

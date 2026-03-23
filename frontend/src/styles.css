@@ -261,9 +261,8 @@ select {
 
 .dashboard-card-status {
   justify-self: end;
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  margin-bottom: 2px;
+  padding-right: 6px;
 }
 
 .dashboard-card-showcase {
@@ -271,7 +270,15 @@ select {
   grid-template-columns: 1fr;
   align-items: stretch;
   gap: 6px;
-  margin-top: 28px;
+  margin-top: 0;
+}
+
+.dashboard-status-dot {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #d9eafc;
 }
 
 .dashboard-card-player-card {
