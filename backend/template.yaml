@@ -104,6 +104,18 @@ Resources:
             Path: /root_admin/organizations
             Method: POST
 
+  SearchRootAdminOrganizationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/search_root_admin_organizations/handler.lambda_handler
+      Events:
+        SearchRootAdminOrganizations:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organizations/search
+            Method: GET
+
   CreateRootAdminOrgUserFunction:
     Type: AWS::Serverless::Function
     Properties:

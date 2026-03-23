@@ -154,6 +154,7 @@ Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/sr
 - `/display` -> public spectator display route
 - `/rckscoreAdmin` -> root admin login page
 - `/rckscoreAdmin/dashboard` -> protected root admin dashboard
+- `/rckscoreAdmin/clubs/:organizationId` -> protected root admin club administration page
 
 Auth protection is currently implemented in the frontend with `AuthContext` and `ProtectedRoute`.
 
@@ -168,6 +169,7 @@ Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backe
 - `POST /register_interest`
 - `GET /root_admin/dashboard`
 - `POST /root_admin/organizations`
+- `GET /root_admin/organizations/search?q=...`
 - `POST /root_admin/organization_users`
 - `PUT /root_admin/organization_users/{user_id}`
 - `GET /dashboard/{organization_id}`
@@ -327,9 +329,13 @@ The root administration portal currently provides:
 - a separate root admin login screen with a lightweight built-in human check
 - a protected root admin dashboard at `/rckscoreAdmin/dashboard`
 - platform-wide tenant organisation summary counts
-- tenant organisation creation
+- a New Club overlay flow for tenant organisation creation
+- ajax club search with auto-complete lookup
+- an alphabetical club directory on the dashboard
+- a protected root admin club administration page for all club attributes
 - tenant user creation across organisations
 - tenant user role updates (`admin` / `user`) across organisations
+- club-level organisation detail, user, and court management from the root admin path
 
 Important: root admin route protection is currently frontend session-based, matching the current tenant-user auth posture. Backend token/session enforcement and later IP restrictions are still future work.
 

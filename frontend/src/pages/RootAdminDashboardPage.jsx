@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import { useRootAdmin } from "../hooks/useRootAdmin";
 import {
   createRootAdminOrganization,
-  createRootAdminOrganizationUser,
   getRootAdminDashboard,
-  updateRootAdminOrganizationUserRole,
+  searchRootAdminOrganizations,
 } from "../services/api";
 
 const emptyOrganizationForm = {
@@ -19,30 +19,15 @@ const emptyOrganizationForm = {
   org_webaddress: "",
 };
 
-const emptyUserForm = {
-  organization_id: "",
-  username: "",
-  password: "",
-  role: "user",
-};
-
-function formatDate(value) {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 export default function RootAdminDashboardPage() {
+  const navigate = useNavigate();
   const { session } = useRootAdmin();
   const [dashboard, setDashboard] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
-  const [userForm, setUserForm] = useState(emptyUserForm);
-  const [userRoleDrafts, setUserRoleDrafts] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [showCreateOverlay, setShowCreateOverlay] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
@@ -53,21 +38,7 @@ export default function RootAdminDashboardPage() {
     setError("");
     try {
       const response = await getRootAdminDashboard();
-      const nextDashboard = response.rootAdminDashboard || null;
-      setDashboard(nextDashboard);
-      setUserRoleDrafts(
-        Object.fromEntries(
-          (nextDashboard?.organizations || []).flatMap((organization) =>
-            (organization.users || []).map((user) => [user.id, user.role || "user"]),
-          ),
-        ),
-      );
-      setUserForm((current) => ({
-        ...current,
-        organization_id:
-          current.organization_id
-          || String(nextDashboard?.organizations?.[0]?.id || ""),
-      }));
+      setDashboard(response.rootAdminDashboard || null);
     } catch (requestError) {
       setError(requestError.message || "Failed to load root admin dashboard.");
     } finally {
@@ -78,6 +49,29 @@ export default function RootAdminDashboardPage() {
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    const trimmedSearch = searchTerm.trim();
+    if (!trimmedSearch) {
+      setSearchResults([]);
+      setSearching(false);
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await searchRootAdminOrganizations(trimmedSearch);
+        setSearchResults(response.organizations || []);
+      } catch (requestError) {
+        setError(requestError.message || "Failed to search clubs.");
+      } finally {
+        setSearching(false);
+      }
+    }, 220);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   async function runMutation(section, task, successMessage) {
     setSavingSection(section);
@@ -102,43 +96,20 @@ export default function RootAdminDashboardPage() {
       "Organisation created.",
     );
     setOrganizationForm(emptyOrganizationForm);
+    setShowCreateOverlay(false);
   }
 
-  async function handleCreateUser(event) {
-    event.preventDefault();
-    await runMutation(
-      "create-user",
-      () => createRootAdminOrganizationUser(userForm),
-      "Tenant user created.",
-    );
-    setUserForm((current) => ({
-      ...emptyUserForm,
-      organization_id: current.organization_id,
-    }));
-  }
-
-  async function handleUserRoleSave(user) {
-    await runMutation(
-      `save-user-${user.id}`,
-      () =>
-        updateRootAdminOrganizationUserRole(user.id, {
-          organization_id: user.organization_id,
-          role: userRoleDrafts[user.id],
-        }),
-      "User role updated.",
-    );
-  }
-
-  const organizations = dashboard?.organizations || [];
-  const summary = dashboard?.summary || {};
-  const organizationOptions = useMemo(
+  const organizations = useMemo(
     () =>
-      organizations.map((organization) => ({
-        value: String(organization.id),
-        label: organization.organization_name || `Organisation ${organization.id}`,
-      })),
-    [organizations],
+      [...(dashboard?.organizations || [])].sort((left, right) =>
+        (left.organization_name || "").localeCompare(right.organization_name || "", undefined, {
+          sensitivity: "base",
+        }),
+      ),
+    [dashboard?.organizations],
   );
+  const summary = dashboard?.summary || {};
+  const visibleClubs = searchTerm.trim() ? searchResults : organizations;
 
   return (
     <main className="page-shell stack">
@@ -174,218 +145,180 @@ export default function RootAdminDashboardPage() {
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
-      <section className="dashboard-grid">
-        <section className="panel stack dashboard-primary">
-          <div className="panel-heading">
-            <h2>Create Tenant Organisation</h2>
-            <p className="helper-text">Add a new tenant organisation to the platform.</p>
+      <section className="panel stack">
+        <div className="panel-heading">
+          <h2>Club Directory</h2>
+          <p className="helper-text">Create clubs, search tenants quickly, and jump into full club administration.</p>
+        </div>
+
+        <div className="root-admin-toolbar">
+          <div className="button-row">
+            <button type="button" onClick={() => setShowCreateOverlay(true)}>
+              New Club
+            </button>
           </div>
 
-          <form className="stack" onSubmit={handleCreateOrganization}>
-            <div className="field-grid">
-              <div className="field">
-                <label htmlFor="root_org_name">Club Name</label>
-                <input
-                  id="root_org_name"
-                  required
-                  value={organizationForm.organization_name}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({
-                      ...current,
-                      organization_name: event.target.value,
-                    }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="root_org_contact">Primary Contact</label>
-                <input
-                  id="root_org_contact"
-                  value={organizationForm.org_contact}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="root_org_telephone">Telephone</label>
-                <input
-                  id="root_org_telephone"
-                  value={organizationForm.org_telephone}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="root_org_email">Email</label>
-                <input
-                  id="root_org_email"
-                  type="email"
-                  value={organizationForm.org_email}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
-                />
-              </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="root_org_web">Website</label>
-                <input
-                  id="root_org_web"
-                  type="url"
-                  value={organizationForm.org_webaddress}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
-                />
-              </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="root_org_address">Address</label>
-                <input
-                  id="root_org_address"
-                  value={organizationForm.org_address}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
-                />
-              </div>
-            </div>
+          <div className="field root-admin-search">
+            <label htmlFor="root_admin_search">Search Clubs</label>
+            <input
+              id="root_admin_search"
+              placeholder="Start typing a club name"
+              value={searchTerm}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                if (error) {
+                  setError("");
+                }
+              }}
+            />
 
-            <div className="button-row">
-              <button disabled={savingSection === "create-organization"} type="submit">
-                {savingSection === "create-organization" ? "Creating..." : "Create Organisation"}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Create Tenant User</h2>
-            <p className="helper-text">Add a user directly into any tenant organisation.</p>
+            {searchTerm.trim() ? (
+              <div className="root-admin-search-results">
+                {searching ? (
+                  <div className="root-admin-search-item helper-text">Searching...</div>
+                ) : visibleClubs.length === 0 ? (
+                  <div className="root-admin-search-item helper-text">No matching clubs found.</div>
+                ) : (
+                  visibleClubs.map((organization) => (
+                    <button
+                      key={organization.id}
+                      className="root-admin-search-item"
+                      type="button"
+                      onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}
+                    >
+                      <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
+                      <span>{organization.org_email || organization.org_contact || `Tenant ${organization.id}`}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : null}
           </div>
+        </div>
 
-          <form className="stack" onSubmit={handleCreateUser}>
-            <div className="field">
-              <label htmlFor="root_user_org">Organisation</label>
-              <select
-                id="root_user_org"
-                required
-                value={userForm.organization_id}
-                onChange={(event) =>
-                  setUserForm((current) => ({ ...current, organization_id: event.target.value }))}
-              >
-                <option value="">Select organisation</option>
-                {organizationOptions.map((organization) => (
-                  <option key={organization.value} value={organization.value}>
-                    {organization.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="root_user_name">Username</label>
-              <input
-                id="root_user_name"
-                required
-                value={userForm.username}
-                onChange={(event) =>
-                  setUserForm((current) => ({ ...current, username: event.target.value }))}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="root_user_password">Password</label>
-              <input
-                id="root_user_password"
-                required
-                type="password"
-                value={userForm.password}
-                onChange={(event) =>
-                  setUserForm((current) => ({ ...current, password: event.target.value }))}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="root_user_role">Role</label>
-              <select
-                id="root_user_role"
-                value={userForm.role}
-                onChange={(event) =>
-                  setUserForm((current) => ({ ...current, role: event.target.value }))}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div className="button-row">
-              <button disabled={savingSection === "create-user"} type="submit">
-                {savingSection === "create-user" ? "Creating..." : "Create Tenant User"}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Tenant Organisations</h2>
-            <p className="helper-text">Platform-wide organisation list with current user access.</p>
-          </div>
-
+        <div className="root-admin-club-list">
           {organizations.length === 0 ? (
             <div className="dashboard-empty">No organisations have been created yet.</div>
           ) : (
-            <div className="dashboard-list">
-              {organizations.map((organization) => (
-                <article className="dashboard-item root-admin-org-card" key={organization.id}>
-                  <div className="dashboard-item-head">
-                    <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
-                    <span className="status-pill">Tenant {organization.id}</span>
-                  </div>
-
-                  <div className="dashboard-item-meta">
-                    <span>Email: {organization.org_email || "Not set"}</span>
-                    <span>Contact: {organization.org_contact || "Not set"}</span>
-                    <span>Telephone: {organization.org_telephone || "Not set"}</span>
-                    <span>Courts: {organization.court_count ?? 0}</span>
-                    <span>Users: {organization.user_count ?? 0}</span>
-                    <span>Admins: {organization.admin_count ?? 0}</span>
-                  </div>
-
-                  <div className="root-admin-user-list">
-                    {(organization.users || []).length === 0 ? (
-                      <div className="dashboard-empty">No users for this organisation yet.</div>
-                    ) : (
-                      organization.users.map((user) => (
-                        <div className="root-admin-user-row" key={user.id}>
-                          <div>
-                            <strong>{user.username}</strong>
-                            <span className="helper-text">Created {formatDate(user.created_at)}</span>
-                          </div>
-                          <div className="settings-inline-actions">
-                            <select
-                              value={userRoleDrafts[user.id] || user.role || "user"}
-                              onChange={(event) =>
-                                setUserRoleDrafts((current) => ({
-                                  ...current,
-                                  [user.id]: event.target.value,
-                                }))}
-                            >
-                              <option value="user">User</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                            <button
-                              className="secondary"
-                              disabled={savingSection === `save-user-${user.id}`}
-                              type="button"
-                              onClick={() => handleUserRoleSave(user)}
-                            >
-                              {savingSection === `save-user-${user.id}` ? "Saving..." : "Save Role"}
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
+            organizations.map((organization) => (
+              <button
+                key={organization.id}
+                className="root-admin-club-row"
+                type="button"
+                onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}
+              >
+                <div>
+                  <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
+                  <span>{organization.org_email || organization.org_contact || "No primary contact set"}</span>
+                </div>
+                <div className="root-admin-club-meta">
+                  <span>Users {organization.user_count ?? 0}</span>
+                  <span>Courts {organization.court_count ?? 0}</span>
+                  <span>Admins {organization.admin_count ?? 0}</span>
+                </div>
+              </button>
+            ))
           )}
-        </section>
+        </div>
       </section>
+
+      {showCreateOverlay ? (
+        <div className="overlay-backdrop" role="presentation" onClick={() => setShowCreateOverlay(false)}>
+          <section
+            className="overlay-panel stack"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-club-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-heading">
+              <h2 id="new-club-title">New Club</h2>
+              <p className="helper-text">Create a new tenant organisation for the platform.</p>
+            </div>
+
+            <form className="stack" onSubmit={handleCreateOrganization}>
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="root_org_name">Club Name</label>
+                  <input
+                    id="root_org_name"
+                    required
+                    value={organizationForm.organization_name}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({
+                        ...current,
+                        organization_name: event.target.value,
+                      }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="root_org_contact">Primary Contact</label>
+                  <input
+                    id="root_org_contact"
+                    value={organizationForm.org_contact}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="root_org_telephone">Telephone</label>
+                  <input
+                    id="root_org_telephone"
+                    value={organizationForm.org_telephone}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="root_org_email">Email</label>
+                  <input
+                    id="root_org_email"
+                    type="email"
+                    value={organizationForm.org_email}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
+                  />
+                </div>
+                <div className="field settings-field-wide">
+                  <label htmlFor="root_org_web">Website</label>
+                  <input
+                    id="root_org_web"
+                    type="url"
+                    value={organizationForm.org_webaddress}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
+                  />
+                </div>
+                <div className="field settings-field-wide">
+                  <label htmlFor="root_org_address">Address</label>
+                  <input
+                    id="root_org_address"
+                    value={organizationForm.org_address}
+                    onChange={(event) =>
+                      setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="button-row">
+                <button disabled={savingSection === "create-organization"} type="submit">
+                  {savingSection === "create-organization" ? "Creating..." : "Create Club"}
+                </button>
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={() => {
+                    setShowCreateOverlay(false);
+                    setOrganizationForm(emptyOrganizationForm);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
       <AppFooter />
     </main>

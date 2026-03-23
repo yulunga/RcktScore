@@ -193,6 +193,7 @@ Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/Rckt
 
 - `GET /root_admin/dashboard`
 - `POST /root_admin/organizations`
+- `GET /root_admin/organizations/search?q=...`
 - `POST /root_admin/organization_users`
 - `PUT /root_admin/organization_users/{user_id}`
 

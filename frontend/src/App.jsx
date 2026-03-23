@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
+import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 
@@ -23,6 +24,14 @@ export default function App() {
         element={(
           <RootAdminProtectedRoute>
             <RootAdminDashboardPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/clubs/:organizationId"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminClubPage />
           </RootAdminProtectedRoute>
         )}
       />

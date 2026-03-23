@@ -100,6 +100,35 @@ def get_root_admin_dashboard(connection):
     }
 
 
+def search_root_admin_organizations(connection, query):
+    search_text = (query or "").strip()
+    if not search_text:
+        return []
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, organization_name, org_email, org_contact
+            FROM "SkwshOrgSettings"
+            WHERE organization_name ILIKE %(query)s
+            ORDER BY organization_name ASC, id ASC
+            LIMIT 10
+            """,
+            {"query": f"%{search_text}%"},
+        )
+        rows = cursor.fetchall()
+
+    return [
+        {
+            "id": row["id"],
+            "organization_name": row.get("organization_name") or "",
+            "org_email": row.get("org_email") or "",
+            "org_contact": row.get("org_contact") or "",
+        }
+        for row in rows
+    ]
+
+
 def create_root_admin_organization(connection, payload):
     updates = {
         field: payload[field].strip() if isinstance(payload.get(field), str) else payload.get(field)

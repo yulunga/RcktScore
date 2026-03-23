@@ -71,6 +71,11 @@ export function createRootAdminOrganization(payload) {
   });
 }
 
+export function searchRootAdminOrganizations(query) {
+  const params = new URLSearchParams({ q: query });
+  return apiRequest(`/root_admin/organizations/search?${params.toString()}`);
+}
+
 export function createRootAdminOrganizationUser(payload) {
   return apiRequest("/root_admin/organization_users", {
     method: "POST",
