@@ -55,6 +55,12 @@ const sportOptions = [
   { name: "Badminton", status: "planned", note: "Planned after squash launch" },
 ];
 
+const adminTabs = [
+  { id: "users", label: "Users" },
+  { id: "courts", label: "Courts" },
+  { id: "game-settings", label: "Game Settings" },
+];
+
 function formatDate(value) {
   if (!value) {
     return "Unknown";
@@ -76,6 +82,7 @@ export default function RootAdminClubPage() {
   const [courtDrafts, setCourtDrafts] = useState({});
   const [userRoleDrafts, setUserRoleDrafts] = useState({});
   const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
+  const [activeTab, setActiveTab] = useState("users");
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
@@ -237,10 +244,9 @@ export default function RootAdminClubPage() {
       <RootAdminSessionBar />
 
       <section className="hero-card stack compact">
-        <span className="status-pill">Club Administration</span>
         <div className="settings-header-row">
           <div className="stack compact">
-            <h1>{organizationForm.organization_name || "Club"}</h1>
+            <h1>{organizationForm.organization_name || "Club Administration"}</h1>
             <p className="helper-text">
               Manage all club attributes, users, courts, and launch settings as root admin.
             </p>
@@ -257,8 +263,21 @@ export default function RootAdminClubPage() {
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
-      <section className="settings-grid">
-        <section className="panel stack settings-primary">
+      <section className="root-admin-tab-row" aria-label="Club administration sections">
+        {adminTabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`root-admin-tab ${activeTab === tab.id ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </section>
+
+      <section className="club-admin-overview-grid">
+        <section className="panel stack">
           <div className="panel-heading">
             <h2>Organisation Details</h2>
             <p className="helper-text">Club details used for contact information and venue context.</p>
@@ -335,56 +354,27 @@ export default function RootAdminClubPage() {
 
         <section className="panel stack">
           <div className="panel-heading">
-            <h2>Game Settings</h2>
-            <p className="helper-text">
-              Launch controls for organisation-specific scoring behaviour and future racket sports.
-            </p>
+            <h2>Venue Preview</h2>
+            <p className="helper-text">Google Maps preview based on the saved club address.</p>
           </div>
 
-          <div className="game-settings-grid">
-            <div className="field checkbox-field">
-              <label className="checkbox-label" htmlFor="org_handicap_scoring">
-                <input
-                  checked={handicapScoringEnabled}
-                  id="org_handicap_scoring"
-                  name="org_handicap_scoring"
-                  type="checkbox"
-                  onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
-                />
-                Enable Handicap Scoring
-              </label>
-              <p className="helper-text">
-                Controls whether handicap match setup should be available for this organisation.
-              </p>
+          {mapUrl ? (
+            <div className="map-frame-wrap">
+              <iframe
+                title="Organisation map"
+                className="map-frame"
+                src={mapUrl}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
-
-            <div className="dashboard-empty">
-              This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
-              will be added in a later backend pass.
-            </div>
-          </div>
-
-          <div className="panel-heading">
-            <h3>Racket Sports</h3>
-            <p className="helper-text">
-              Squash is the active launch sport. The others are shown for roadmap visibility only.
-            </p>
-          </div>
-
-          <div className="sport-grid">
-            {sportOptions.map((sport) => (
-              <article
-                key={sport.name}
-                className={`sport-option ${sport.status === "active" ? "active" : "disabled"}`}
-              >
-                <strong>{sport.name}</strong>
-                <span>{sport.status}</span>
-                <p>{sport.note}</p>
-              </article>
-            ))}
-          </div>
+          ) : (
+            <div className="dashboard-empty">Add an address above to show the venue map.</div>
+          )}
         </section>
+      </section>
 
+      {activeTab === "users" ? (
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Organisation Users</h2>
@@ -465,7 +455,9 @@ export default function RootAdminClubPage() {
             )}
           </div>
         </section>
+      ) : null}
 
+      {activeTab === "courts" ? (
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Courts</h2>
@@ -560,28 +552,61 @@ export default function RootAdminClubPage() {
             )}
           </div>
         </section>
+      ) : null}
 
+      {activeTab === "game-settings" ? (
         <section className="panel stack">
           <div className="panel-heading">
-            <h2>Venue Preview</h2>
-            <p className="helper-text">Google Maps preview based on the saved club address.</p>
+            <h2>Game Settings</h2>
+            <p className="helper-text">
+              Launch controls for organisation-specific scoring behaviour and future racket sports.
+            </p>
           </div>
 
-          {mapUrl ? (
-            <div className="map-frame-wrap">
-              <iframe
-                title="Organisation map"
-                className="map-frame"
-                src={mapUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
+          <div className="game-settings-grid">
+            <div className="field checkbox-field">
+              <label className="checkbox-label" htmlFor="org_handicap_scoring">
+                <input
+                  checked={handicapScoringEnabled}
+                  id="org_handicap_scoring"
+                  name="org_handicap_scoring"
+                  type="checkbox"
+                  onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
+                />
+                Enable Handicap Scoring
+              </label>
+              <p className="helper-text">
+                Controls whether handicap match setup should be available for this organisation.
+              </p>
             </div>
-          ) : (
-            <div className="dashboard-empty">Add an address above to show the venue map.</div>
-          )}
+
+            <div className="dashboard-empty">
+              This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
+              will be added in a later backend pass.
+            </div>
+          </div>
+
+          <div className="panel-heading">
+            <h3>Racket Sports</h3>
+            <p className="helper-text">
+              Squash is the active launch sport. The others are shown for roadmap visibility only.
+            </p>
+          </div>
+
+          <div className="sport-grid">
+            {sportOptions.map((sport) => (
+              <article
+                key={sport.name}
+                className={`sport-option ${sport.status === "active" ? "active" : "disabled"}`}
+              >
+                <strong>{sport.name}</strong>
+                <span>{sport.status}</span>
+                <p>{sport.note}</p>
+              </article>
+            ))}
+          </div>
         </section>
-      </section>
+      ) : null}
 
       <AppFooter />
     </main>

@@ -472,6 +472,14 @@ select {
   display: block;
 }
 
+.root-admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .root-admin-toolbar {
   display: grid;
   gap: 16px;
@@ -488,11 +496,21 @@ select {
 }
 
 .root-admin-search-wide {
-  width: min(560px, 100%);
+  width: min(760px, 100%);
 }
 
 .root-admin-search input {
   margin: 0;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-color: #c7d4e2;
+  border-radius: 18px;
+  background: #fdfefe;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.root-admin-search input::placeholder {
+  color: #7b8794;
 }
 
 .root-admin-search-results {
@@ -579,6 +597,35 @@ select {
   justify-content: flex-end;
   color: #486581;
   font-size: 0.92rem;
+}
+
+.root-admin-tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.root-admin-tab {
+  border: 1px solid #c7d4e2;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #fff;
+  color: #486581;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.root-admin-tab.active {
+  background: #e6f0fb;
+  border-color: #7aa5d8;
+  color: #0b4f88;
+}
+
+.club-admin-overview-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+  align-items: start;
 }
 
 .overlay-backdrop {
@@ -681,9 +728,26 @@ select {
 }
 
 .meta-item {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 126px;
   padding: 12px 14px;
   border-radius: 14px;
   background: #f0f4f8;
+  text-align: center;
+}
+
+.meta-item strong {
+  font-size: 1rem;
+}
+
+.meta-item div {
+  color: #1f6fd1;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
 }
 
 .timeline-card {
@@ -762,8 +826,16 @@ select {
     align-items: flex-start;
   }
 
+  .root-admin-section-header {
+    align-items: flex-start;
+  }
+
   .root-admin-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .root-admin-search-wide {
+    width: 100%;
   }
 
   .root-admin-club-row {
@@ -772,6 +844,10 @@ select {
 
   .root-admin-club-meta {
     justify-content: flex-start;
+  }
+
+  .club-admin-overview-grid {
+    grid-template-columns: 1fr;
   }
 }
 

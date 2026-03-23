@@ -161,14 +161,13 @@ export default function RootAdminDashboardPage() {
       {error ? <div className="notice error">{error}</div> : null}
 
       <section className="panel stack">
-        <div className="button-row root-admin-actions">
-          <button type="button" onClick={() => setShowCreateOverlay(true)}>
-            New Club
-          </button>
-        </div>
-
-        <div className="panel-heading">
+        <div className="root-admin-section-header">
           <h2>Club Directory</h2>
+          <div className="button-row root-admin-actions">
+            <button type="button" onClick={() => setShowCreateOverlay(true)}>
+              New Club
+            </button>
+          </div>
         </div>
 
         <div className="root-admin-search root-admin-search-wide">
