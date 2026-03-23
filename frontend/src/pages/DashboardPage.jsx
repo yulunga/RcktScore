@@ -19,7 +19,11 @@ function formatScore(match) {
 function formatGameScore(match) {
   const player1Games = match?.state?.player1_games_won ?? match?.player1_games_won ?? 0;
   const player2Games = match?.state?.player2_games_won ?? match?.player2_games_won ?? 0;
-  return `${player1Games} - ${player2Games}`;
+  return {
+    player1: player1Games,
+    player2: player2Games,
+    label: `${player1Games} - ${player2Games}`,
+  };
 }
 
 function formatPlayers(match) {
@@ -164,15 +168,19 @@ export default function DashboardPage() {
                     <div className="dashboard-card-player-card">
                       <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
                       <span className="dashboard-score-orb">{formatScore(match).player1}</span>
+                      <span className="dashboard-card-games-inline">
+                        Games won: {formatGameScore(match).player1}
+                      </span>
                     </div>
                     <span className="dashboard-card-versus">vs</span>
                     <div className="dashboard-card-player-card dashboard-card-player-card--right">
                       <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
                       <span className="dashboard-score-orb">{formatScore(match).player2}</span>
+                      <span className="dashboard-card-games-inline">
+                        Games won: {formatGameScore(match).player2}
+                      </span>
                     </div>
                   </div>
-                  <div className="dashboard-card-games dashboard-card-games--centered">({formatGameScore(match)})</div>
-                  <div className="dashboard-card-score-strip">{formatScore(match).label}</div>
                   <div className="dashboard-item-meta dashboard-item-meta--stacked dashboard-card-meta-box">
                     <span>Court: {match.court_name || "Unassigned"}</span>
                     <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>

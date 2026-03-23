@@ -268,31 +268,32 @@ select {
 .dashboard-card-showcase {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
-  align-items: end;
+  align-items: center;
   gap: 14px;
   margin-top: 34px;
 }
 
 .dashboard-card-player-card {
   display: grid;
-  justify-items: center;
-  gap: 14px;
+  justify-items: start;
+  gap: 16px;
   min-height: 0;
-  padding: 18px 12px 14px;
+  padding: 18px 18px 16px;
   border-radius: 22px;
-  background: #fff;
-  border: 1px solid #d9e2ec;
-  text-align: center;
+  background: #1f4f82;
+  border: 1px solid #173b60;
+  color: #fff;
+  text-align: left;
 }
 
 .dashboard-card-player-card strong {
   display: block;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   line-height: 1.2;
 }
 
 .dashboard-card-player-card--right {
-  justify-items: center;
+  justify-items: start;
 }
 
 .dashboard-card-versus {
@@ -316,36 +317,27 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  background: #e6f0fb;
-  color: #0b4f88;
-  font-size: 2.6rem;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 4rem;
   font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-card-games-inline {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .dashboard-card-games {
   color: #486581;
   font-size: 0.92rem;
   font-weight: 600;
-}
-
-.dashboard-card-games--centered {
-  justify-self: center;
-  color: #0b4f88;
-  font-size: 1.8rem;
-  font-weight: 700;
-}
-
-.dashboard-card-score-strip {
-  padding: 14px 16px;
-  border-radius: 20px;
-  background: #e6f0fb;
-  color: #0b4f88;
-  font-size: 1.7rem;
-  font-weight: 700;
-  text-align: center;
 }
 
 .dashboard-item-meta--stacked {
@@ -1065,7 +1057,7 @@ select {
 
   .dashboard-card-player-card,
   .dashboard-card-player-card--right {
-    justify-items: center;
+    justify-items: start;
   }
 
   .dashboard-card-versus {
