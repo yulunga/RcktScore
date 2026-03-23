@@ -212,7 +212,7 @@ export default function DashboardPage() {
                     <span>{formatDate(match.updated_at)}</span>
                   </div>
                   <div className="dashboard-item-meta">
-                    <span>Result: {formatScore(match)}</span>
+                    <span>Result: {formatScore(match).label}</span>
                     <span>Court: {match.court_name || "Unassigned"}</span>
                   </div>
                   <div className="button-row">
