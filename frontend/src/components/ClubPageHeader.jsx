@@ -10,25 +10,27 @@ export default function ClubPageHeader({ title, subtitle, actions = [] }) {
   return (
     <>
       <section className="hero-card club-page-header">
-        <div className="club-page-header__meta">
-          <span className="club-page-header__username">{session?.username || "Operator"}</span>
-          <span className="club-page-header__divider" aria-hidden="true">
-            |
-          </span>
-          <button
-            className="session-link-button"
-            type="button"
-            onClick={() => {
-              logout();
-              navigate("/", { replace: true });
-            }}
-          >
-            Log Out
-          </button>
+        <div className="club-page-header__top">
+          <h1>{title}</h1>
+          <div className="club-page-header__meta">
+            <button
+              className="session-link-button"
+              type="button"
+              onClick={() => {
+                logout();
+                navigate("/", { replace: true });
+              }}
+            >
+              Log Out
+            </button>
+            <span className="club-page-header__divider" aria-hidden="true">
+              |
+            </span>
+            <span className="club-page-header__username">{session?.username || "Operator"}</span>
+          </div>
         </div>
 
         <div className="club-page-header__copy">
-          <h1>{title}</h1>
           <p className="helper-text">{subtitle}</p>
         </div>
       </section>

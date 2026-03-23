@@ -155,9 +155,15 @@ select {
   gap: 18px;
 }
 
+.club-page-header__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
 .club-page-header__meta {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   gap: 10px;
 }
@@ -176,6 +182,12 @@ select {
 .club-page-header__copy {
   display: grid;
   gap: 10px;
+}
+
+.club-page-header__top h1 {
+  margin: 0;
+  font-size: clamp(2.8rem, 5vw, 3.7rem);
+  line-height: 1;
 }
 
 .club-page-header__copy p {
@@ -237,6 +249,58 @@ select {
   gap: 8px 16px;
   color: #486581;
   font-size: 0.95rem;
+}
+
+.dashboard-item--card {
+  align-content: start;
+}
+
+.dashboard-card-status {
+  justify-self: start;
+}
+
+.dashboard-card-players {
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-card-players strong,
+.dashboard-card-players span {
+  display: block;
+}
+
+.dashboard-card-players span {
+  color: #7b8794;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.dashboard-card-score {
+  color: #102a43;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-item-meta--stacked {
+  display: grid;
+  gap: 6px;
+}
+
+.dashboard-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-item-actions--compact {
+  flex-wrap: nowrap;
+}
+
+.dashboard-item-actions--compact button {
+  padding: 8px 10px;
+  font-size: 0.82rem;
 }
 
 .dashboard-empty {
@@ -464,6 +528,23 @@ select {
   color: #0b4f88;
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+.status-pill--active {
+  animation: activePulse 3s infinite;
+}
+
+@keyframes activePulse {
+  0%,
+  100% {
+    background: #d9eafc;
+    color: #0b4f88;
+  }
+
+  50% {
+    background: #fff4bf;
+    color: #8d5a00;
+  }
 }
 
 .session-bar {
@@ -848,6 +929,11 @@ select {
   color: #8d5a00;
 }
 
+.match-updated-notice {
+  background: #f0f4f8;
+  color: #486581;
+}
+
 .interest-honeypot {
   position: absolute;
   left: -10000px;
@@ -883,8 +969,17 @@ select {
     justify-content: flex-start;
   }
 
+  .club-page-header__top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .club-page-header {
     align-items: flex-start;
+  }
+
+  .dashboard-item-actions--compact {
+    flex-wrap: wrap;
   }
 
   .session-bar {

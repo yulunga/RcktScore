@@ -9,6 +9,17 @@ import SessionBar from "../components/SessionBar";
 import Timer from "../components/Timer";
 import { useMatch } from "../hooks/useMatch";
 
+function formatDate(value) {
+  if (!value) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export default function MatchScreen() {
   const { matchId } = useParams();
   const {
@@ -57,6 +68,9 @@ export default function MatchScreen() {
 
         <div className="stack">
           <Timer />
+          {currentMatch?.updated_at ? (
+            <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
+          ) : null}
           {loading ? <div className="notice">Syncing match state...</div> : null}
           {error ? <div className="notice error">{error}</div> : null}
           <EventTimeline events={currentMatch?.state?.events || []} />

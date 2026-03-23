@@ -29,12 +29,35 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatRunningTime(value, minuteTick) {
+  void minuteTick;
+  if (!value) {
+    return "0m";
+  }
+
+  const startedAt = new Date(value);
+  if (Number.isNaN(startedAt.getTime())) {
+    return "0m";
+  }
+
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+
+  return `${hours}h ${minutes}m`;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
+  const [minuteTick, setMinuteTick] = useState(Date.now());
 
   useEffect(() => {
     async function loadDashboard() {
@@ -57,6 +80,14 @@ export default function DashboardPage() {
 
     loadDashboard();
   }, [session?.organization_id]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setMinuteTick(Date.now());
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   async function handleEndMatch(matchId) {
     setActionError("");
@@ -125,17 +156,21 @@ export default function DashboardPage() {
           ) : (
             <div className="dashboard-card-grid">
               {activeMatches.map((match) => (
-                <article className="dashboard-item" key={match.id}>
-                  <div className="dashboard-item-head">
-                    <strong>{formatPlayers(match)}</strong>
-                    <span className="status-pill">{match.status || "active"}</span>
+                <article className="dashboard-item dashboard-item--card" key={match.id}>
+                  <div className="dashboard-card-status">
+                    <span className="status-pill status-pill--active">{match.status || "active"}</span>
                   </div>
-                  <div className="dashboard-item-meta">
-                    <span>Score: {formatScore(match)}</span>
+                  <div className="dashboard-card-players">
+                    <strong>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</strong>
+                    <span>vs</span>
+                    <strong>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</strong>
+                  </div>
+                  <div className="dashboard-card-score">{formatScore(match)}</div>
+                  <div className="dashboard-item-meta dashboard-item-meta--stacked">
                     <span>Court: {match.court_name || "Unassigned"}</span>
-                    <span>Updated: {formatDate(match.updated_at)}</span>
+                    <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
                   </div>
-                  <div className="button-row">
+                  <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
                     <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
                       Resume
                     </button>
