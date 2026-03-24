@@ -1541,6 +1541,13 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
+.game-history-strip.match-history-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  grid-template-columns: none;
+}
+
 .matrix-panel {
   margin-top: 8px;
 }

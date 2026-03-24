@@ -411,7 +411,7 @@ export default function MatchScreen() {
               type="button"
               onClick={() => setShowExtraMatchDetails((value) => !value)}
             >
-              More Match Details
+              Match Details
               <span className="match-meta-toggle__arrow" aria-hidden="true">
                 {showExtraMatchDetails ? "^" : "v"}
               </span>
