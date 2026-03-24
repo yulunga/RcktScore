@@ -21,6 +21,26 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function getInitials(value) {
+  if (!value) {
+    return "--";
+  }
+
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return "--";
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+}
+
 const WARMUP_SECONDS = 120;
 const INTERVAL_SECONDS = 90;
 const MATCH_TIMER_STORAGE_KEY = "rcktscore.matchTimer";
@@ -385,30 +405,32 @@ export default function MatchScreen() {
 
       {currentMatch ? (
         <section className="panel stack match-detail-panel">
+          <div className="match-meta-toggle-wrap">
+            <button
+              className="match-meta-toggle"
+              type="button"
+              onClick={() => setShowExtraMatchDetails((value) => !value)}
+            >
+              More Match Details
+              <span className="match-meta-toggle__arrow" aria-hidden="true">
+                {showExtraMatchDetails ? "^" : "v"}
+              </span>
+            </button>
+          </div>
+
           <div className="game-history-strip match-history-strip">
             {gameHistory.length === 0 ? (
               <div className="meta-item meta-item--compact">No completed games yet.</div>
             ) : (
               gameHistory.map((game) => (
                 <div className="meta-item meta-item--compact" key={`game-${game.game_number}`}>
-                  <strong>Game {game.game_number}</strong>
                   <div>
                     {game.player1_score} - {game.player2_score}
                   </div>
-                  <div>{game.winner_name}</div>
+                  <div>{getInitials(game.winner_name)}</div>
                 </div>
               ))
             )}
-          </div>
-
-          <div className="match-meta-toggle-wrap">
-            <button
-              className="dashboard-menu-button match-meta-toggle"
-              type="button"
-              onClick={() => setShowExtraMatchDetails((value) => !value)}
-            >
-              {showExtraMatchDetails ? "Hide Match Details" : "More Match Details"}
-            </button>
           </div>
 
           {showExtraMatchDetails ? (

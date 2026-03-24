@@ -1110,7 +1110,15 @@ select {
 }
 
 .match-history-strip .meta-item--compact {
-  min-width: 74px;
+  min-width: 64px;
+  flex: 0 0 64px;
+  min-height: 56px;
+  padding: 6px 4px;
+  gap: 2px;
+}
+
+.match-history-strip .meta-item--compact div {
+  white-space: nowrap;
 }
 
 .match-timer-panel {
@@ -1186,6 +1194,25 @@ select {
 
 .match-meta-toggle-wrap {
   display: none;
+  justify-content: flex-start;
+}
+
+.match-meta-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #486581;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.match-meta-toggle__arrow {
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 .interest-honeypot {
@@ -1372,23 +1399,20 @@ select {
   }
 
   .match-history-strip .meta-item--compact {
-    min-width: 58px;
+    min-width: 48px;
+    flex-basis: 48px;
     min-height: 54px;
-    padding: 6px 4px;
+    padding: 4px 2px;
     gap: 2px;
   }
 
-  .match-history-strip .meta-item--compact strong {
-    font-size: 0.52rem;
-  }
-
   .match-history-strip .meta-item--compact div {
-    font-size: 0.6rem;
+    font-size: 0.52rem;
     white-space: nowrap;
   }
 
   .match-meta-toggle-wrap {
-    display: block;
+    display: flex;
   }
 
   .match-meta-grid {
@@ -1396,7 +1420,7 @@ select {
   }
 
   .match-meta-toggle {
-    width: 100%;
+    font-size: 0.7rem;
   }
 
   .match-control-grid {
