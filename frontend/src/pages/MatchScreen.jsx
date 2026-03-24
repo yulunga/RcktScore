@@ -37,9 +37,9 @@ export default function MatchScreen() {
   } = useMatch();
   const navigate = useNavigate();
   const displayUrl = `${window.location.origin}/display?match=${matchId}`;
-  const playerLine = currentMatch
-    ? `${currentMatch.player1_name || "Player 1"}${currentMatch.player1_surname ? ` ${currentMatch.player1_surname}` : ""} vs ${currentMatch.player2_name || "Player 2"}${currentMatch.player2_surname ? ` ${currentMatch.player2_surname}` : ""}`
-    : "Live squash match";
+  const live = currentMatch?.state ?? {};
+  const gameHistory = live.game_history || [];
+  const serviceSide = live.service_side || "Right";
 
   useEffect(() => {
     loadMatch(matchId);
@@ -50,9 +50,44 @@ export default function MatchScreen() {
   return (
     <main className="page-shell stack">
       <ClubPageHeader
-        subtitle={playerLine}
+        subtitle="Manage the live scoring session."
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
+
+      {currentMatch ? (
+        <section className="panel stack">
+          <div className="meta-grid match-meta-grid">
+            <div className="meta-item meta-item--compact">
+              <strong>Server</strong>
+              <div>{live.current_server || "Not set"}</div>
+            </div>
+            <div className="meta-item meta-item--compact">
+              <strong>Service Side</strong>
+              <div>{serviceSide}</div>
+            </div>
+            <div className="meta-item meta-item--compact">
+              <strong>Referee</strong>
+              <div>{currentMatch.referee_name || "TBC"}</div>
+            </div>
+          </div>
+
+          <div className="game-history-strip match-history-strip">
+            {gameHistory.length === 0 ? (
+              <div className="meta-item meta-item--compact">No completed games yet.</div>
+            ) : (
+              gameHistory.map((game) => (
+                <div className="meta-item meta-item--compact" key={`game-${game.game_number}`}>
+                  <strong>Game {game.game_number}</strong>
+                  <div>
+                    {game.player1_score} - {game.player2_score}
+                  </div>
+                  <div>{game.winner_name}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid two-column match-top-grid">
         <div className="stack match-primary-column">

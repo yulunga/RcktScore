@@ -260,7 +260,7 @@ select {
 
 .dashboard-card-status {
   justify-self: end;
-  margin-bottom: -2px;
+  margin-bottom: -4px;
   padding-right: 6px;
 }
 
@@ -277,7 +277,7 @@ select {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #7cf29a;
+  background: #54e27a;
 }
 
 .dashboard-card-player-card {
@@ -908,7 +908,7 @@ select {
 .scoreboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
@@ -977,9 +977,15 @@ select {
   font-weight: 700;
 }
 
+.server-badge {
+  background: #d9822b;
+  color: #fff;
+}
+
 .score-series-chip {
   background: #e6f0fb;
   color: #0b4f88;
+  justify-self: end;
 }
 
 .meta-grid {
