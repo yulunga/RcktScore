@@ -1043,6 +1043,18 @@ select {
   font-size: 0.68rem;
 }
 
+.match-timer-panel {
+  gap: 12px;
+}
+
+.match-timer-label {
+  color: #486581;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .timeline-card {
   padding: 24px;
 }

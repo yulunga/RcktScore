@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 function formatSeconds(value) {
   const minutes = String(Math.floor(value / 60)).padStart(2, "0");
@@ -6,40 +6,33 @@ function formatSeconds(value) {
   return `${minutes}:${seconds}`;
 }
 
-export default function Timer() {
-  const [seconds, setSeconds] = useState(0);
-  const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    if (!running) {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setSeconds((value) => value + 1);
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [running]);
-
+export default function Timer({
+  title = "Timer",
+  label = "Match Clock",
+  seconds = 0,
+  running = false,
+  onToggle,
+  onReset,
+  helperText = "",
+}) {
   return (
-    <section className="panel stack">
-      <h2>Timer</h2>
+    <section className="panel stack match-timer-panel">
+      <h2>{title}</h2>
+      <div className="match-timer-label">{label}</div>
       <div className="timer-chip">{formatSeconds(seconds)}</div>
       <div className="button-row">
-        <button onClick={() => setRunning((value) => !value)}>
+        <button type="button" onClick={onToggle}>
           {running ? "Pause" : "Start"}
         </button>
         <button
           className="secondary"
-          onClick={() => {
-            setRunning(false);
-            setSeconds(0);
-          }}
+          type="button"
+          onClick={onReset}
         >
           Reset
         </button>
       </div>
+      {helperText ? <p className="helper-text">{helperText}</p> : null}
     </section>
   );
 }
