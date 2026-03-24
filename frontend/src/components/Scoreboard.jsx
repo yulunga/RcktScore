@@ -1,6 +1,12 @@
 import React from "react";
 
-export default function Scoreboard({ match }) {
+export default function Scoreboard({
+  match,
+  disabled = false,
+  onScorePoint,
+  onToggleServeSide,
+  children,
+}) {
   if (!match) {
     return (
       <section className="scoreboard-card">
@@ -39,14 +45,24 @@ export default function Scoreboard({ match }) {
           </div>
           <div className="player-games">Games: {side === "player1" ? player1GamesWon : player2GamesWon}</div>
           {isServing ? (
-            <span className="server-badge">
+            <button
+              className="server-badge"
+              disabled={disabled}
+              type="button"
+              onClick={onToggleServeSide}
+            >
               Serve {serviceSide}
-            </span>
+            </button>
           ) : null}
         </div>
-        <div className="player-score">
+        <button
+          className="player-score player-score-button"
+          disabled={disabled}
+          type="button"
+          onClick={() => onScorePoint?.(side)}
+        >
           {side === "player1" ? player1Score : player2Score}
-        </div>
+        </button>
       </div>
     );
   }
@@ -71,6 +87,8 @@ export default function Scoreboard({ match }) {
           {renderPlayerName("player2", match.player2_name, match.player2_surname)}
         </article>
       </div>
+
+      {children ? <div className="scoreboard-controls">{children}</div> : null}
     </section>
   );
 }

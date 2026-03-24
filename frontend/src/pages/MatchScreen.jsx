@@ -297,23 +297,32 @@ export default function MatchScreen() {
 
       <div className="grid two-column match-top-grid">
         <div className="stack match-primary-column">
-          <Scoreboard match={currentMatch} />
-          <MatchControls
+          <Scoreboard
             disabled={!currentMatch || loading}
             match={currentMatch}
             onScorePoint={(scorer) => scorePoint(matchId, scorer)}
-            onEventAction={(actionType, payload) =>
-              sendEventAction(matchId, actionType, payload)
+            onToggleServeSide={() =>
+              sendEventAction(matchId, "serve_side", {
+                side: serviceSide === "Left" ? "Right" : "Left",
+              })
             }
-            onUndo={() => undoLastAction(matchId)}
-            onEndMatch={async (payload) => {
-              const updatedMatch = await endMatch(matchId, payload);
-              if (updatedMatch?.status === "completed") {
-                navigate("/dashboard");
+          >
+            <MatchControls
+              disabled={!currentMatch || loading}
+              match={currentMatch}
+              onEventAction={(actionType, payload) =>
+                sendEventAction(matchId, actionType, payload)
               }
-            }}
-            onBackToMatches={() => navigate("/dashboard")}
-          />
+              onUndo={() => undoLastAction(matchId)}
+              onEndMatch={async (payload) => {
+                const updatedMatch = await endMatch(matchId, payload);
+                if (updatedMatch?.status === "completed") {
+                  navigate("/dashboard");
+                }
+              }}
+              onBackToMatches={() => navigate("/dashboard")}
+            />
+          </Scoreboard>
         </div>
 
         <div className="stack match-secondary-column">

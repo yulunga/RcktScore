@@ -958,6 +958,19 @@ select {
   line-height: 1;
 }
 
+.player-score-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.player-score-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .player-games {
   color: rgba(255, 255, 255, 0.86);
   font-weight: 600;
@@ -980,12 +993,23 @@ select {
 .server-badge {
   background: #d9822b;
   color: #fff;
+  border: 0;
+  cursor: pointer;
+}
+
+.server-badge:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .score-series-chip {
   background: #e6f0fb;
   color: #0b4f88;
   justify-self: end;
+}
+
+.scoreboard-controls {
+  padding-top: 6px;
 }
 
 .meta-grid {
