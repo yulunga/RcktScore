@@ -23,6 +23,7 @@ function formatDate(value) {
 
 const WARMUP_SECONDS = 120;
 const INTERVAL_SECONDS = 90;
+const MATCH_TIMER_STORAGE_KEY = "rcktscore.matchTimer";
 
 function isFreshMatch(match) {
   if (!match) {
@@ -53,6 +54,96 @@ function defaultSecondsForPhase(phase) {
   return 0;
 }
 
+function readStoredTimerState(matchId) {
+  try {
+    const raw = window.localStorage.getItem(`${MATCH_TIMER_STORAGE_KEY}.${matchId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTimerState(matchId, state) {
+  try {
+    window.localStorage.setItem(`${MATCH_TIMER_STORAGE_KEY}.${matchId}`, JSON.stringify(state));
+  } catch {
+    // ignore persistence failures
+  }
+}
+
+function clearStoredTimerState(matchId) {
+  try {
+    window.localStorage.removeItem(`${MATCH_TIMER_STORAGE_KEY}.${matchId}`);
+  } catch {
+    // ignore persistence failures
+  }
+}
+
+function advanceTimerSnapshot(snapshot) {
+  if (!snapshot?.running) {
+    return snapshot;
+  }
+
+  const elapsed = Math.max(0, Math.floor((Date.now() - snapshot.updatedAt) / 1000));
+  if (elapsed === 0) {
+    return snapshot;
+  }
+
+  if (snapshot.phase === "match_live") {
+    return {
+      ...snapshot,
+      seconds: snapshot.seconds + elapsed,
+      updatedAt: Date.now(),
+    };
+  }
+
+  let remainingElapsed = elapsed;
+  let phase = snapshot.phase;
+  let seconds = snapshot.seconds;
+
+  while (remainingElapsed > 0) {
+    if (phase === "warmup_side_one") {
+      if (remainingElapsed >= seconds) {
+        remainingElapsed -= seconds;
+        phase = "warmup_side_two";
+        seconds = WARMUP_SECONDS;
+        continue;
+      }
+
+      seconds -= remainingElapsed;
+      remainingElapsed = 0;
+      break;
+    }
+
+    if (phase === "warmup_side_two" || phase === "interval") {
+      if (remainingElapsed >= seconds) {
+        remainingElapsed -= seconds;
+        phase = "match_live";
+        seconds = 0;
+        continue;
+      }
+
+      seconds -= remainingElapsed;
+      remainingElapsed = 0;
+      break;
+    }
+
+    if (phase === "warmup_ready") {
+      break;
+    }
+
+    seconds += remainingElapsed;
+    remainingElapsed = 0;
+  }
+
+  return {
+    ...snapshot,
+    phase,
+    seconds,
+    updatedAt: Date.now(),
+  };
+}
+
 export default function MatchScreen() {
   const { matchId } = useParams();
   const { session } = useAuth();
@@ -76,6 +167,9 @@ export default function MatchScreen() {
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showWarmupOverlay, setShowWarmupOverlay] = useState(false);
+  const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth > 480,
+  );
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
 
@@ -96,6 +190,16 @@ export default function MatchScreen() {
 
     bootstrappedMatchRef.current = currentMatch.id;
     previousGameHistoryCountRef.current = gameHistory.length;
+
+    const storedState = readStoredTimerState(currentMatch.id);
+    if (storedState) {
+      const advancedState = advanceTimerSnapshot(storedState);
+      setTimerPhase(advancedState.phase);
+      setTimerSeconds(advancedState.seconds);
+      setTimerRunning(advancedState.running);
+      setShowWarmupOverlay(false);
+      return;
+    }
 
     if (isFreshMatch(currentMatch)) {
       setTimerPhase("warmup_ready");
@@ -131,6 +235,24 @@ export default function MatchScreen() {
 
     previousGameHistoryCountRef.current = gameHistory.length;
   }, [currentMatch?.id, currentMatch?.state?.match_complete, currentMatch?.status, gameHistory.length]);
+
+  useEffect(() => {
+    if (!currentMatch?.id) {
+      return;
+    }
+
+    if (currentMatch?.state?.match_complete || currentMatch?.status === "completed") {
+      clearStoredTimerState(currentMatch.id);
+      return;
+    }
+
+    writeStoredTimerState(currentMatch.id, {
+      phase: timerPhase,
+      running: timerRunning,
+      seconds: timerSeconds,
+      updatedAt: Date.now(),
+    });
+  }, [currentMatch?.id, currentMatch?.state?.match_complete, currentMatch?.status, timerPhase, timerRunning, timerSeconds]);
 
   useEffect(() => {
     if (!timerRunning) {
@@ -239,6 +361,7 @@ export default function MatchScreen() {
   return (
     <main className="page-shell stack">
       <ClubPageHeader
+        className="club-page-header--match"
         subtitle="Manage the live scoring session."
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
@@ -261,22 +384,7 @@ export default function MatchScreen() {
       ) : null}
 
       {currentMatch ? (
-        <section className="panel stack">
-          <div className="meta-grid match-meta-grid">
-            <div className="meta-item meta-item--compact">
-              <strong>Server</strong>
-              <div>{live.current_server || "Not set"}</div>
-            </div>
-            <div className="meta-item meta-item--compact">
-              <strong>Service Side</strong>
-              <div>{serviceSide}</div>
-            </div>
-            <div className="meta-item meta-item--compact">
-              <strong>Referee</strong>
-              <div>{currentMatch.referee_name || "TBC"}</div>
-            </div>
-          </div>
-
+        <section className="panel stack match-detail-panel">
           <div className="game-history-strip match-history-strip">
             {gameHistory.length === 0 ? (
               <div className="meta-item meta-item--compact">No completed games yet.</div>
@@ -292,6 +400,33 @@ export default function MatchScreen() {
               ))
             )}
           </div>
+
+          <div className="match-meta-toggle-wrap">
+            <button
+              className="dashboard-menu-button match-meta-toggle"
+              type="button"
+              onClick={() => setShowExtraMatchDetails((value) => !value)}
+            >
+              {showExtraMatchDetails ? "Hide Match Details" : "More Match Details"}
+            </button>
+          </div>
+
+          {showExtraMatchDetails ? (
+            <div className="meta-grid match-meta-grid">
+              <div className="meta-item meta-item--compact">
+                <strong>Server</strong>
+                <div>{live.current_server || "Not set"}</div>
+              </div>
+              <div className="meta-item meta-item--compact">
+                <strong>Service Side</strong>
+                <div>{serviceSide}</div>
+              </div>
+              <div className="meta-item meta-item--compact">
+                <strong>Referee</strong>
+                <div>{currentMatch.referee_name || "TBC"}</div>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

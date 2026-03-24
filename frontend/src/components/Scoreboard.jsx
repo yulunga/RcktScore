@@ -71,11 +71,13 @@ export default function Scoreboard({
     <section className="scoreboard-card">
       <div className="scoreboard-header">
         <div>
-          <h2 style={{ marginBottom: 6 }}>{match.court_name || "Court"}</h2>
-          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>{match.status || "active"}</span>
+          <h2 style={{ marginBottom: 0 }}>{match.court_name || "Court"}</h2>
         </div>
-        <div className="score-series-chip">
-          Score to {match.score_type} • Game {currentGameNumber} • Best of {bestOf}
+        <div className="scoreboard-header-meta">
+          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>{match.status || "active"}</span>
+          <div className="score-series-chip">
+            Score to {match.score_type} • Game {currentGameNumber} • Best of {bestOf}
+          </div>
         </div>
       </div>
 

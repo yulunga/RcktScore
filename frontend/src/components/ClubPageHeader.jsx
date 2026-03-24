@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 
-export default function ClubPageHeader({ title, subtitle, actions = [] }) {
+export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
   const navigate = useNavigate();
   const { session, logout } = useAuth();
 
   return (
     <>
-      <section className="hero-card club-page-header">
+      <section className={`hero-card club-page-header ${className}`.trim()}>
         <div className="club-page-header__top">
           <h1>{title}</h1>
           <div className="club-page-header__meta">
@@ -30,9 +30,11 @@ export default function ClubPageHeader({ title, subtitle, actions = [] }) {
           </div>
         </div>
 
-        <div className="club-page-header__copy">
-          <p className="helper-text">{subtitle}</p>
-        </div>
+        {subtitle ? (
+          <div className="club-page-header__copy">
+            <p className="helper-text">{subtitle}</p>
+          </div>
+        ) : null}
       </section>
 
       {actions.length ? (

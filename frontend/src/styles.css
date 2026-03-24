@@ -919,7 +919,9 @@ select {
 }
 
 .scoreboard-header-meta {
+  display: grid;
   justify-items: end;
+  gap: 8px;
 }
 
 .scoreboard-grid {
@@ -1099,6 +1101,18 @@ select {
   font-size: 0.68rem;
 }
 
+.match-history-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.match-history-strip .meta-item--compact {
+  min-width: 74px;
+}
+
 .match-timer-panel {
   gap: 12px;
 }
@@ -1168,6 +1182,10 @@ select {
 .match-secondary-column,
 .match-bottom-stack {
   align-items: stretch;
+}
+
+.match-meta-toggle-wrap {
+  display: none;
 }
 
 .interest-honeypot {
@@ -1270,9 +1288,63 @@ select {
 }
 
 @media (max-width: 480px) {
+  .club-page-header--match {
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .club-page-header--match .club-page-header__top {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .club-page-header--match .club-page-header__top h1 {
+    font-size: clamp(1.45rem, 6vw, 1.85rem);
+    line-height: 1.05;
+  }
+
+  .club-page-header--match .club-page-header__meta {
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .club-page-header--match .club-page-header__username {
+    font-size: 0.76rem;
+  }
+
+  .club-page-header--match .club-page-header__copy {
+    display: none;
+  }
+
   .scoreboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  .scoreboard-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .scoreboard-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .scoreboard-header-meta {
+    gap: 6px;
+  }
+
+  .status-pill {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+
+  .score-series-chip {
+    font-size: 0.64rem;
+    padding: 5px 8px;
+    text-align: right;
   }
 
   .player-card {
@@ -1289,6 +1361,42 @@ select {
 
   .player-score {
     font-size: clamp(1.7rem, 5vw, 2.2rem);
+  }
+
+  .match-detail-panel {
+    gap: 10px;
+  }
+
+  .match-history-strip {
+    gap: 6px;
+  }
+
+  .match-history-strip .meta-item--compact {
+    min-width: 58px;
+    min-height: 54px;
+    padding: 6px 4px;
+    gap: 2px;
+  }
+
+  .match-history-strip .meta-item--compact strong {
+    font-size: 0.52rem;
+  }
+
+  .match-history-strip .meta-item--compact div {
+    font-size: 0.6rem;
+    white-space: nowrap;
+  }
+
+  .match-meta-toggle-wrap {
+    display: block;
+  }
+
+  .match-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-meta-toggle {
+    width: 100%;
   }
 
   .match-control-grid {
