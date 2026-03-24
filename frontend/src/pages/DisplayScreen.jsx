@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -10,6 +10,8 @@ export default function DisplayScreen() {
   const [searchParams] = useSearchParams();
   const matchId = searchParams.get("match");
   const { currentMatch, connectRealtime, error, loadMatch, loading } = useMatch();
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [displayMode, setDisplayMode] = useState("large-scores");
 
   useEffect(() => {
     if (!matchId) {
@@ -22,10 +24,21 @@ export default function DisplayScreen() {
   }, [connectRealtime, loadMatch, matchId]);
 
   return (
-    <main className="page-shell stack">
-      <section className="hero-card">
-        <span className="status-pill">Spectator Display</span>
-        <h1>Live Court Display</h1>
+    <main className={`page-shell stack display-shell display-mode-${displayMode}`}>
+      <section className="hero-card display-header-card">
+        <div className="display-header-card__top">
+          <h1>RcktScore Live Display</h1>
+          <div className="display-header-card__controls">
+            <label className="display-layout-control">
+              <span className="display-layout-control__label">Layout</span>
+              <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
+                <option value="standard">Standard</option>
+                <option value="large-scores">Large Scores</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </section>
       {!matchId ? (
         <div className="notice error">
@@ -35,7 +48,19 @@ export default function DisplayScreen() {
       {loading ? <div className="notice">Loading live match...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
       <Scoreboard match={currentMatch} />
-      <EventTimeline events={currentMatch?.state?.events || []} />
+      <div className="match-meta-toggle-wrap display-timeline-toggle-wrap">
+        <button
+          className="match-meta-toggle"
+          type="button"
+          onClick={() => setShowTimeline((value) => !value)}
+        >
+          {showTimeline ? "Hide Event Timeline" : "Show Event Timeline"}
+          <span className="match-meta-toggle__arrow" aria-hidden="true">
+            {showTimeline ? "^" : "v"}
+          </span>
+        </button>
+      </div>
+      {showTimeline ? <EventTimeline events={currentMatch?.state?.events || []} /> : null}
       <AppFooter />
     </main>
   );

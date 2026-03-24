@@ -194,6 +194,125 @@ select {
   margin: 0;
 }
 
+.display-header-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.display-header-card__top h1 {
+  margin: 0;
+}
+
+.display-header-card__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.display-layout-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.display-layout-control__label {
+  color: #486581;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.display-layout-control select {
+  min-height: 40px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid #c7d4e2;
+  border-radius: 999px;
+  background: #fff;
+  color: #486581;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.display-shell {
+  width: min(100vw - 32px, 1600px);
+}
+
+.display-shell .hero-card {
+  padding: 18px 22px;
+}
+
+.display-shell .display-header-card__top h1 {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+}
+
+.display-shell .app-footer {
+  display: none;
+}
+
+.display-shell .match-meta-toggle-wrap {
+  justify-content: center;
+}
+
+.display-shell .match-meta-toggle {
+  font-size: 0.95rem;
+}
+
+.display-mode-large-scores .scoreboard-card {
+  padding: 28px 32px;
+  gap: 22px;
+}
+
+.display-mode-large-scores .scoreboard-header h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.display-mode-large-scores .status-pill {
+  padding: 10px 16px;
+  font-size: 1rem;
+}
+
+.display-mode-large-scores .score-series-chip {
+  padding: 10px 16px;
+  font-size: 0.98rem;
+}
+
+.display-mode-large-scores .scoreboard-grid {
+  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.display-mode-large-scores .player-card {
+  padding: 26px 28px;
+  border-radius: 24px;
+}
+
+.display-mode-large-scores .player-card h3 {
+  font-size: clamp(1.9rem, 3vw, 2.7rem);
+}
+
+.display-mode-large-scores .player-card-main {
+  gap: 20px;
+}
+
+.display-mode-large-scores .player-score {
+  font-size: clamp(4.4rem, 10vw, 7.5rem);
+}
+
+.display-mode-large-scores .player-games {
+  font-size: 1.05rem;
+}
+
+.display-mode-large-scores .server-badge {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+}
+
+.display-mode-large-scores .scoreboard-controls {
+  display: none;
+}
+
 .dashboard-menu-row {
   display: flex;
   flex-wrap: wrap;
@@ -1197,6 +1316,10 @@ select {
   justify-content: flex-start;
 }
 
+.display-timeline-toggle-wrap {
+  display: flex;
+}
+
 .match-meta-toggle {
   display: inline-flex;
   align-items: center;
@@ -1256,6 +1379,11 @@ select {
   }
 
   .club-page-header {
+    align-items: flex-start;
+  }
+
+  .display-header-card__top {
+    flex-direction: column;
     align-items: flex-start;
   }
 
