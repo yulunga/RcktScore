@@ -523,6 +523,12 @@ select {
   gap: 12px;
 }
 
+.match-control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .button-row button,
 .match-control-grid button {
   border: 0;
@@ -995,6 +1001,8 @@ select {
   color: #fff;
   border: 0;
   cursor: pointer;
+  min-height: 34px;
+  padding: 8px 12px;
 }
 
 .server-badge:disabled {
@@ -1010,6 +1018,30 @@ select {
 
 .scoreboard-controls {
   padding-top: 6px;
+}
+
+.match-control-grid__stroke-left {
+  grid-column: 1;
+}
+
+.match-control-grid__let {
+  grid-column: 2;
+}
+
+.match-control-grid__stroke-right {
+  grid-column: 3;
+}
+
+.match-control-grid__undo {
+  grid-column: 1 / 3;
+}
+
+.match-control-grid__end {
+  grid-column: 3;
+}
+
+.match-control-grid__back {
+  grid-column: 1 / -1;
 }
 
 .meta-grid {
@@ -1234,6 +1266,39 @@ select {
 @media (max-width: 640px) {
   .dashboard-card-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .scoreboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .player-card {
+    padding: 12px;
+  }
+
+  .player-card-main {
+    gap: 10px;
+  }
+
+  .player-card h3 {
+    font-size: 0.98rem;
+  }
+
+  .player-score {
+    font-size: clamp(1.7rem, 5vw, 2.2rem);
+  }
+
+  .match-control-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .match-control-grid button {
+    padding: 11px 8px;
+    font-size: 0.8rem;
   }
 }
 
