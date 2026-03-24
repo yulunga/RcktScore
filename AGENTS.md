@@ -636,6 +636,12 @@ Goal: Shape the post-login dashboard intentionally for mobile, tablet, and deskt
   - Active Matches
   - Recent Matches
   - Organisation Settings summary
+* [ ] Revisit Recent Matches row actions and add a proper stats view
+  Current state:
+  - the temporary `Stats` action has been removed from the dashboard
+  Remaining work:
+  - define the stats screen
+  - decide what match metrics belong in the row vs drill-in view
 
 ---
 

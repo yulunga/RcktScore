@@ -231,22 +231,23 @@ export default function DashboardPage() {
           ) : (
             <div className="dashboard-list">
               {recentMatches.map((match) => (
-                <article className="dashboard-item" key={match.id}>
-                  <div className="dashboard-item-head">
-                    <strong>{formatPlayers(match)}</strong>
-                    <span>{formatDate(match.updated_at)}</span>
-                  </div>
-                  <div className="dashboard-item-meta">
-                    <span>Result: {formatScore(match).label}</span>
-                    <span>Court: {match.court_name || "Unassigned"}</span>
-                  </div>
-                  <div className="button-row">
-                    <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
-                      View
-                    </button>
-                    <button className="secondary" disabled type="button">
-                      Stats
-                    </button>
+                <article className="dashboard-item dashboard-item--history" key={match.id}>
+                  <button
+                    className="dashboard-history-action"
+                    type="button"
+                    onClick={() => navigate(`/match/${match.id}`)}
+                  >
+                    View
+                  </button>
+                  <div className="dashboard-history-content">
+                    <div className="dashboard-item-head">
+                      <strong>{formatPlayers(match)}</strong>
+                      <span>{formatDate(match.updated_at)}</span>
+                    </div>
+                    <div className="dashboard-item-meta">
+                      <span>Result: {formatScore(match).label}</span>
+                      <span>Court: {match.court_name || "Unassigned"}</span>
+                    </div>
                   </div>
                 </article>
               ))}

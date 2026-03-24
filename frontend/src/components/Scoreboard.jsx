@@ -20,17 +20,35 @@ export default function Scoreboard({ match }) {
   const currentServerSide = live.current_server_side;
   const serviceSide = live.service_side || "Right";
   const gameHistory = live.game_history || [];
+  const isActive = (match.status || "").toLowerCase() === "active";
 
-  function renderPlayerName(side, name) {
+  function splitName(name, surname) {
+    return {
+      firstName: (name || "").trim() || "Player",
+      surname: (surname || "").trim(),
+    };
+  }
+
+  function renderPlayerName(side, name, surname) {
     const isServing = currentServerSide === side;
+    const playerName = splitName(name, surname);
     return (
-      <div className="player-name-row">
-        <h3>{name}</h3>
-        {isServing ? (
-          <span className="server-badge">
-            Serve {serviceSide}
-          </span>
-        ) : null}
+      <div className="player-card-main">
+        <div className="player-card-copy">
+          <div className="player-name-stack">
+            <h3>{playerName.firstName}</h3>
+            {playerName.surname ? <h3>{playerName.surname}</h3> : null}
+          </div>
+          <div className="player-games">Games: {side === "player1" ? player1GamesWon : player2GamesWon}</div>
+          {isServing ? (
+            <span className="server-badge">
+              Serve {serviceSide}
+            </span>
+          ) : null}
+        </div>
+        <div className="player-score">
+          {side === "player1" ? player1Score : player2Score}
+        </div>
       </div>
     );
   }
@@ -40,54 +58,46 @@ export default function Scoreboard({ match }) {
       <div className="scoreboard-header">
         <div>
           <h2 style={{ marginBottom: 6 }}>{match.court_name || "Court"}</h2>
-          <span className="status-pill">{match.status || "active"}</span>
+          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>{match.status || "active"}</span>
         </div>
         <div className="stack compact scoreboard-header-meta">
           <div className="timer-chip">Score to {match.score_type}</div>
           <div className="score-series-chip">
-            Game {currentGameNumber} • Best of {bestOf} • First to {gamesToWin}
+            Game {currentGameNumber} • Best of {bestOf}
           </div>
         </div>
       </div>
 
       <div className="scoreboard-grid">
-        <article className="player-card">
-          {renderPlayerName("player1", match.player1_name)}
-          <div className="player-score">{player1Score}</div>
-          <div className="player-games">Games won: {player1GamesWon}</div>
+        <article className="player-card player-card--compact">
+          {renderPlayerName("player1", match.player1_name, match.player1_surname)}
         </article>
-        <article className="player-card">
-          {renderPlayerName("player2", match.player2_name)}
-          <div className="player-score">{player2Score}</div>
-          <div className="player-games">Games won: {player2GamesWon}</div>
+        <article className="player-card player-card--compact">
+          {renderPlayerName("player2", match.player2_name, match.player2_surname)}
         </article>
       </div>
 
-      <div className="meta-grid">
-        <div className="meta-item">
+      <div className="meta-grid match-meta-grid">
+        <div className="meta-item meta-item--compact">
           <strong>Server</strong>
           <div>{live.current_server || "Not set"}</div>
         </div>
-        <div className="meta-item">
+        <div className="meta-item meta-item--compact">
           <strong>Service Side</strong>
           <div>{serviceSide}</div>
         </div>
-        <div className="meta-item">
+        <div className="meta-item meta-item--compact">
           <strong>Referee</strong>
           <div>{match.referee_name || "TBC"}</div>
         </div>
-        <div className="meta-item">
-          <strong>Match Format</strong>
-          <div>Best of {bestOf}</div>
-        </div>
       </div>
 
-      <div className="game-history-strip">
+      <div className="game-history-strip match-history-strip">
         {gameHistory.length === 0 ? (
-          <div className="meta-item">No completed games yet.</div>
+          <div className="meta-item meta-item--compact">No completed games yet.</div>
         ) : (
           gameHistory.map((game) => (
-            <div className="meta-item" key={`game-${game.game_number}`}>
+            <div className="meta-item meta-item--compact" key={`game-${game.game_number}`}>
               <strong>Game {game.game_number}</strong>
               <div>
                 {game.player1_score} - {game.player2_score}

@@ -2,11 +2,12 @@ import React, { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import ClubPageHeader from "../components/ClubPageHeader";
 import EventTimeline from "../components/EventTimeline";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
-import SessionBar from "../components/SessionBar";
 import Timer from "../components/Timer";
+import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 
 function formatDate(value) {
@@ -22,6 +23,7 @@ function formatDate(value) {
 
 export default function MatchScreen() {
   const { matchId } = useParams();
+  const { session } = useAuth();
   const {
     currentMatch,
     error,
@@ -35,6 +37,9 @@ export default function MatchScreen() {
   } = useMatch();
   const navigate = useNavigate();
   const displayUrl = `${window.location.origin}/display?match=${matchId}`;
+  const playerLine = currentMatch
+    ? `${currentMatch.player1_name || "Player 1"}${currentMatch.player1_surname ? ` ${currentMatch.player1_surname}` : ""} vs ${currentMatch.player2_name || "Player 2"}${currentMatch.player2_surname ? ` ${currentMatch.player2_surname}` : ""}`
+    : "Live squash match";
 
   useEffect(() => {
     loadMatch(matchId);
@@ -44,10 +49,20 @@ export default function MatchScreen() {
 
   return (
     <main className="page-shell stack">
-      <div className="grid two-column">
-        <div className="stack">
-          <SessionBar />
+      <ClubPageHeader
+        subtitle={playerLine}
+        title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
+      />
+
+      <div className="grid two-column match-top-grid">
+        <div className="stack match-primary-column">
           <Scoreboard match={currentMatch} />
+        </div>
+
+        <div className="stack match-secondary-column">
+          <Timer />
+          {loading ? <div className="notice">Syncing match state...</div> : null}
+          {error ? <div className="notice error">{error}</div> : null}
           <MatchControls
             disabled={!currentMatch || loading}
             match={currentMatch}
@@ -64,16 +79,6 @@ export default function MatchScreen() {
             }}
             onBackToMatches={() => navigate("/dashboard")}
           />
-        </div>
-
-        <div className="stack">
-          <Timer />
-          {currentMatch?.updated_at ? (
-            <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
-          ) : null}
-          {loading ? <div className="notice">Syncing match state...</div> : null}
-          {error ? <div className="notice error">{error}</div> : null}
-          <EventTimeline events={currentMatch?.state?.events || []} />
           <section className="panel stack">
             <h2>Spectator Display</h2>
             <p className="helper-text">
@@ -82,6 +87,13 @@ export default function MatchScreen() {
             <input className="read-only-input" readOnly value={displayUrl} />
           </section>
         </div>
+      </div>
+
+      <div className="stack match-bottom-stack">
+        {currentMatch?.updated_at ? (
+          <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
+        ) : null}
+        <EventTimeline events={currentMatch?.state?.events || []} />
       </div>
       <AppFooter />
     </main>

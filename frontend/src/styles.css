@@ -255,13 +255,12 @@ select {
   align-content: start;
   position: relative;
   gap: 10px;
-  padding: 14px;
-  padding-top: 16px;
+  padding: 7px 14px;
 }
 
 .dashboard-card-status {
   justify-self: end;
-  margin-bottom: 2px;
+  margin-bottom: -2px;
   padding-right: 6px;
 }
 
@@ -278,13 +277,13 @@ select {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #d9eafc;
+  background: #7cf29a;
 }
 
 .dashboard-card-player-card {
   display: grid;
   justify-items: start;
-  gap: 6px;
+  gap: 0;
   min-height: 0;
   min-width: 0;
   width: 100%;
@@ -368,6 +367,23 @@ select {
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+.dashboard-item--history {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-history-action {
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.dashboard-history-content {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .dashboard-item-meta--stacked {
@@ -641,8 +657,8 @@ select {
   }
 
   50% {
-    background: #dff7e5;
-    color: #1f6b3b;
+    background: #7cf29a;
+    color: #0f5a2a;
   }
 }
 
@@ -884,15 +900,15 @@ select {
 }
 
 .scoreboard-card {
-  padding: 24px;
+  padding: 18px;
   display: grid;
-  gap: 20px;
+  gap: 14px;
 }
 
 .scoreboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -902,39 +918,50 @@ select {
 
 .scoreboard-grid {
   display: grid;
-  gap: 18px;
+  gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .player-card {
-  padding: 20px;
-  border-radius: 20px;
+  padding: 14px 16px;
+  border-radius: 18px;
   background: linear-gradient(160deg, #102a43 0%, #1f4f82 100%);
   color: #fff;
 }
 
 .player-card h3 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.12rem;
 }
 
-.player-name-row {
+.player-card-main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+}
+
+.player-card-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.player-name-stack {
+  display: grid;
+  gap: 2px;
 }
 
 .player-score {
-  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
   font-weight: 800;
   line-height: 1;
 }
 
 .player-games {
-  margin-top: 10px;
   color: rgba(255, 255, 255, 0.86);
   font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .server-badge,
@@ -942,11 +969,11 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 
@@ -957,7 +984,7 @@ select {
 
 .meta-grid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
@@ -982,6 +1009,32 @@ select {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
   line-height: 1;
+}
+
+.match-meta-grid {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.meta-item--compact {
+  min-height: 72px;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.meta-item--compact strong {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.meta-item--compact div {
+  color: #486581;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.match-history-strip .meta-item--compact strong {
+  font-size: 0.68rem;
 }
 
 .timeline-card {
@@ -1031,6 +1084,16 @@ select {
 .match-updated-notice {
   background: #f0f4f8;
   color: #486581;
+}
+
+.match-top-grid {
+  align-items: start;
+}
+
+.match-primary-column,
+.match-secondary-column,
+.match-bottom-stack {
+  align-items: stretch;
 }
 
 .interest-honeypot {
