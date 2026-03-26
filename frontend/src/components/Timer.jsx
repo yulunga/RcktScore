@@ -21,7 +21,7 @@ export default function Timer({
       <div className="match-timer-panel__top">
         <div className="match-timer-panel__copy">
           <h2>{title}</h2>
-          <div className="match-timer-label">{label}</div>
+          {label ? <div className="match-timer-label">{label}</div> : null}
           {helperText ? <p className="helper-text match-timer-helper">{helperText}</p> : null}
         </div>
         <button

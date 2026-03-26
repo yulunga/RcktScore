@@ -151,6 +151,36 @@ select {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.match-setup-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.match-setup-row {
+  display: grid;
+  gap: 14px;
+}
+
+.match-setup-row--player {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.match-setup-row--court,
+.match-setup-row--format {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.match-setup-row--referee {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.match-setup-checkbox-field {
+  justify-content: start;
+  align-self: end;
+  padding-bottom: 10px;
+}
+
 .dashboard-grid {
   display: grid;
   gap: 24px;
@@ -1708,6 +1738,7 @@ select {
   }
 
   .field-grid,
+  .match-setup-row,
   .settings-field-grid-tight,
   .game-settings-grid {
     grid-template-columns: 1fr;

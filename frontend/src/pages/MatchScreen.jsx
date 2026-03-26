@@ -336,7 +336,7 @@ export default function MatchScreen() {
       return "Game Break - 90s";
     }
 
-    return "Match Clock";
+    return "";
   }, [timerPhase]);
 
   const timerHelperText = useMemo(() => {

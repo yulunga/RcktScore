@@ -57,42 +57,6 @@ const initialFormState = {
   player2_offset: 0,
 };
 
-const formFields = [
-  {
-    name: "tenant_id",
-    label: "Tenant ID",
-    placeholder: "club-hq",
-    required: true,
-  },
-  {
-    name: "player1_name",
-    label: "Player 1 First Name",
-    placeholder: "Nour",
-    required: true,
-  },
-  {
-    name: "player1_surname",
-    label: "Player 1 Surname",
-    placeholder: "El Sherbini",
-  },
-  {
-    name: "player2_name",
-    label: "Player 2 First Name",
-    placeholder: "Ali",
-    required: true,
-  },
-  {
-    name: "player2_surname",
-    label: "Player 2 Surname",
-    placeholder: "Farag",
-  },
-  {
-    name: "referee_name",
-    label: "Referee",
-    placeholder: "Match official",
-  },
-];
-
 export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
@@ -238,121 +202,175 @@ export default function NewMatch() {
 
         {courtError ? <div className="notice error">{courtError}</div> : null}
 
-        <div className="field-grid">
-          <div className="field">
-            <label htmlFor="court_id">
-              Court ID
-              <span className="required-mark"> *</span>
-            </label>
-            <select
-              disabled={courtLoading || availableCourts.length === 0}
-              id="court_id"
-              name="court_id"
-              required
-              value={formState.court_id}
-              onChange={(event) => handleCourtChange(event.target.value)}
-            >
-              <option value="">
-                {courtLoading ? "Loading courts..." : "Select a court"}
-              </option>
-              {availableCourts.map((court) => (
-                <option key={court.id} value={String(court.id)}>
-                  {court.court_name || `Court ${court.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="match-setup-grid">
+          <div className="match-setup-row match-setup-row--player">
+            <div className="field">
+              <label htmlFor="player1_name">
+                Player 1 First Name
+                <span className="required-mark"> *</span>
+              </label>
+              <input
+                id="player1_name"
+                name="player1_name"
+                placeholder="Nour"
+                required
+                value={formState.player1_name}
+                onChange={(event) => handleChange("player1_name", event.target.value)}
+              />
+            </div>
 
-          <div className="field">
-            <label htmlFor="court_alias">
-              Court Alias
-              <span className="required-mark"> *</span>
-            </label>
-            <input
-              id="court_alias"
-              name="court_alias"
-              readOnly
-              required
-              value={formState.court_alias}
-            />
-          </div>
+            <div className="field">
+              <label htmlFor="player1_surname">Player 1 Surname</label>
+              <input
+                id="player1_surname"
+                name="player1_surname"
+                placeholder="El Sherbini"
+                value={formState.player1_surname}
+                onChange={(event) => handleChange("player1_surname", event.target.value)}
+              />
+            </div>
 
-          {formFields
-            .filter(({ name }) => name !== "tenant_id")
-            .map(({ name, label, placeholder, required }) => (
-              <div className="field" key={name}>
-                <label htmlFor={name}>
-                  {label}
-                  {required ? <span className="required-mark"> *</span> : null}
-                </label>
+            <div className="field checkbox-field match-setup-checkbox-field">
+              <label className="checkbox-label" htmlFor="player1_handedness">
                 <input
-                  id={name}
-                  name={name}
-                  placeholder={placeholder}
-                  required={required}
-                  value={formState[name]}
-                  onChange={(event) => handleChange(name, event.target.value)}
+                  checked={formState.player1_handedness === "left"}
+                  id="player1_handedness"
+                  name="player1_handedness"
+                  type="checkbox"
+                  onChange={(event) => handleHandednessChange("player1_handedness", event.target.checked)}
                 />
-              </div>
-            ))}
+                Lefty
+              </label>
+            </div>
+          </div>
 
-          <div className="field checkbox-field">
-            <label className="checkbox-label" htmlFor="player1_handedness">
+          <div className="match-setup-row match-setup-row--player">
+            <div className="field">
+              <label htmlFor="player2_name">
+                Player 2 First Name
+                <span className="required-mark"> *</span>
+              </label>
               <input
-                checked={formState.player1_handedness === "left"}
-                id="player1_handedness"
-                name="player1_handedness"
-                type="checkbox"
-                onChange={(event) => handleHandednessChange("player1_handedness", event.target.checked)}
+                id="player2_name"
+                name="player2_name"
+                placeholder="Ali"
+                required
+                value={formState.player2_name}
+                onChange={(event) => handleChange("player2_name", event.target.value)}
               />
-              Player 1 Left-Handed
-            </label>
-          </div>
+            </div>
 
-          <div className="field checkbox-field">
-            <label className="checkbox-label" htmlFor="player2_handedness">
+            <div className="field">
+              <label htmlFor="player2_surname">Player 2 Surname</label>
               <input
-                checked={formState.player2_handedness === "left"}
-                id="player2_handedness"
-                name="player2_handedness"
-                type="checkbox"
-                onChange={(event) => handleHandednessChange("player2_handedness", event.target.checked)}
+                id="player2_surname"
+                name="player2_surname"
+                placeholder="Farag"
+                value={formState.player2_surname}
+                onChange={(event) => handleChange("player2_surname", event.target.value)}
               />
-              Player 2 Left-Handed
-            </label>
+            </div>
+
+            <div className="field checkbox-field match-setup-checkbox-field">
+              <label className="checkbox-label" htmlFor="player2_handedness">
+                <input
+                  checked={formState.player2_handedness === "left"}
+                  id="player2_handedness"
+                  name="player2_handedness"
+                  type="checkbox"
+                  onChange={(event) => handleHandednessChange("player2_handedness", event.target.checked)}
+                />
+                Lefty
+              </label>
+            </div>
           </div>
 
-          <div className="field">
-            <label htmlFor="score_type">Game Format</label>
-            <select
-              disabled={formState.handicap_enabled}
-              id="score_type"
-              name="score_type"
-              value={formState.score_type}
-              onChange={(event) => handleChange("score_type", event.target.value)}
-            >
-              {scoreTypeOptions.map((scoreType) => (
-                <option key={scoreType.value} value={scoreType.value}>
-                  {scoreType.label}
+          <div className="match-setup-row match-setup-row--court">
+            <div className="field">
+              <label htmlFor="court_id">
+                Court ID
+                <span className="required-mark"> *</span>
+              </label>
+              <select
+                disabled={courtLoading || availableCourts.length === 0}
+                id="court_id"
+                name="court_id"
+                required
+                value={formState.court_id}
+                onChange={(event) => handleCourtChange(event.target.value)}
+              >
+                <option value="">
+                  {courtLoading ? "Loading courts..." : "Select a court"}
                 </option>
-              ))}
-            </select>
+                {availableCourts.map((court) => (
+                  <option key={court.id} value={String(court.id)}>
+                    {court.court_name || `Court ${court.id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="court_alias">
+                Court Alias
+                <span className="required-mark"> *</span>
+              </label>
+              <input
+                id="court_alias"
+                name="court_alias"
+                readOnly
+                required
+                value={formState.court_alias}
+              />
+            </div>
           </div>
 
-          <div className="field">
-            <label htmlFor="best_of">Match Format</label>
-            <select
-              id="best_of"
-              name="best_of"
-              value={formState.best_of}
-              onChange={(event) => handleChange("best_of", event.target.value)}
-            >
-              {bestOfOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="match-setup-row match-setup-row--format">
+            <div className="field">
+              <label htmlFor="score_type">Game Format</label>
+              <select
+                disabled={formState.handicap_enabled}
+                id="score_type"
+                name="score_type"
+                value={formState.score_type}
+                onChange={(event) => handleChange("score_type", event.target.value)}
+              >
+                {scoreTypeOptions.map((scoreType) => (
+                  <option key={scoreType.value} value={scoreType.value}>
+                    {scoreType.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="best_of">Match Format</label>
+              <select
+                id="best_of"
+                name="best_of"
+                value={formState.best_of}
+                onChange={(event) => handleChange("best_of", event.target.value)}
+              >
+                {bestOfOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="match-setup-row match-setup-row--referee">
+            <div className="field">
+              <label htmlFor="referee_name">Referee</label>
+              <input
+                id="referee_name"
+                name="referee_name"
+                placeholder="Match official"
+                value={formState.referee_name}
+                onChange={(event) => handleChange("referee_name", event.target.value)}
+              />
+            </div>
           </div>
         </div>
 
