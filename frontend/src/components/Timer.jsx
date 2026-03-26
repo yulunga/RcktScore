@@ -16,11 +16,16 @@ export default function Timer({
   helperText = "",
 }) {
   return (
-    <section className="panel stack match-timer-panel">
-      <h2>{title}</h2>
-      <div className="match-timer-label">{label}</div>
-      <div className="timer-chip">{formatSeconds(seconds)}</div>
-      <div className="button-row">
+    <section className="panel match-timer-panel">
+      <div className="match-timer-panel__top">
+        <div className="match-timer-panel__copy">
+          <h2>{title}</h2>
+          <div className="match-timer-label">{label}</div>
+          {helperText ? <p className="helper-text match-timer-helper">{helperText}</p> : null}
+        </div>
+        <div className="timer-chip">{formatSeconds(seconds)}</div>
+      </div>
+      <div className="button-row match-timer-actions">
         <button type="button" onClick={onToggle}>
           {running ? "Pause" : "Start"}
         </button>
@@ -32,7 +37,6 @@ export default function Timer({
           Reset
         </button>
       </div>
-      {helperText ? <p className="helper-text">{helperText}</p> : null}
     </section>
   );
 }

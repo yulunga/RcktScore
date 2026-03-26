@@ -642,6 +642,53 @@ Goal: Shape the post-login dashboard intentionally for mobile, tablet, and deskt
   Remaining work:
   - define the stats screen
   - decide what match metrics belong in the row vs drill-in view
+* [ ] Build an iPhone-first organisation mobile experience using the iPhone 16e as the reference device
+  Target baseline:
+  - portrait-first layout
+  - primary phone width range around `390px - 430px`
+  - no horizontal scroll for core operator actions
+* [ ] Mobile `/dashboard` implementation plan
+  Requirements:
+  - single-column action-first home screen
+  - compact top header with club name, username, and logout
+  - primary actions visible without scrolling
+  - active matches as stacked cards, one per row
+  - recent matches collapsed or visually deferred behind a toggle where needed
+  - minimal copy and reduced admin density on phone layouts
+  Card behavior:
+  - tapping an active match card should open the match
+  - `Resume` remains the primary action
+  - `End` remains visually separated as destructive
+* [ ] Mobile `/match/:id` implementation plan
+  Requirements:
+  - score-first layout in portrait orientation
+  - both player score areas visible above the fold
+  - point scoring possible with a single tap
+  - scoring controls kept within thumb reach below the score
+  - match details collapsed by default on phone layouts
+  - event timeline pushed to the bottom and collapsed/deferred where needed
+  - spectator controls and secondary metadata visually subordinate to score and controls
+* [ ] Keep one shared backend and route model while allowing mobile-specific rendering
+  Shared layers that must remain common:
+  - `AuthContext`
+  - `MatchContext`
+  - `api.js`
+  - backend scoring/auth routes
+* [ ] Implement the mobile-first build order in this sequence
+  1. `/match/:id`
+  2. `/dashboard`
+  3. `/match/new`
+  4. `/settings`
+* [ ] Define mobile acceptance criteria for organisation users
+  `/dashboard`
+  - top actions visible without scrolling
+  - no zoom required on iPhone 16e
+  - no horizontal scroll
+  `/match/:id`
+  - both scores visible above the fold
+  - one-tap point entry
+  - no dense metadata competing with score controls
+  - usable in portrait orientation throughout a live match
 
 ---
 

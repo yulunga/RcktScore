@@ -379,7 +379,7 @@ export default function MatchScreen() {
   }
 
   return (
-    <main className="page-shell stack">
+    <main className="page-shell stack match-screen-shell">
       <ClubPageHeader
         className="club-page-header--match"
         subtitle="Manage the live scoring session."
@@ -480,9 +480,6 @@ export default function MatchScreen() {
               onBackToMatches={() => navigate("/dashboard")}
             />
           </Scoreboard>
-        </div>
-
-        <div className="stack match-secondary-column">
           <Timer
             helperText={timerHelperText}
             label={timerLabel}
@@ -494,6 +491,9 @@ export default function MatchScreen() {
           />
           {loading ? <div className="notice">Syncing match state...</div> : null}
           {error ? <div className="notice error">{error}</div> : null}
+        </div>
+
+        <div className="stack match-secondary-column">
           <section className="panel stack">
             <h2>Spectator Display</h2>
             <p className="helper-text">

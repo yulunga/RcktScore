@@ -1050,6 +1050,10 @@ select {
   gap: 14px;
 }
 
+.match-screen-shell {
+  gap: 18px;
+}
+
 .scoreboard-header {
   display: flex;
   justify-content: space-between;
@@ -1261,7 +1265,24 @@ select {
 }
 
 .match-timer-panel {
+  display: grid;
   gap: 12px;
+}
+
+.match-timer-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.match-timer-panel__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.match-timer-panel__copy h2 {
+  margin: 0;
 }
 
 .match-timer-label {
@@ -1270,6 +1291,14 @@ select {
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.match-timer-helper {
+  margin: 0;
+}
+
+.match-timer-actions {
+  justify-content: stretch;
 }
 
 .timeline-card {
@@ -1322,6 +1351,7 @@ select {
 }
 
 .match-top-grid {
+  gap: 16px;
   align-items: start;
 }
 
@@ -1463,19 +1493,25 @@ select {
 }
 
 @media (max-width: 480px) {
+  .match-screen-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .club-page-header--match {
-    gap: 8px;
-    padding: 16px;
+    gap: 6px;
+    padding: 14px 16px;
   }
 
   .club-page-header--match .club-page-header__top {
     flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .club-page-header--match .club-page-header__top h1 {
-    font-size: clamp(1.45rem, 6vw, 1.85rem);
+    font-size: clamp(1.3rem, 5.4vw, 1.65rem);
     line-height: 1.05;
   }
 
@@ -1493,53 +1529,130 @@ select {
     display: none;
   }
 
-  .scoreboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .scoreboard-header {
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .scoreboard-header h2 {
-    font-size: 1.2rem;
-  }
-
-  .scoreboard-header-meta {
-    gap: 6px;
-  }
-
-  .status-pill {
-    padding: 6px 10px;
-    font-size: 0.72rem;
-  }
-
-  .score-series-chip {
-    font-size: 0.64rem;
-    padding: 5px 8px;
-    text-align: right;
-  }
-
-  .player-card {
-    padding: 12px;
-  }
-
-  .player-card-main {
-    gap: 10px;
-  }
-
-  .player-card h3 {
-    font-size: 0.98rem;
-  }
-
-  .player-score {
-    font-size: clamp(1.7rem, 5vw, 2.2rem);
+  .match-top-grid {
+    order: 2;
+    gap: 12px;
   }
 
   .match-detail-panel {
+    order: 3;
+  }
+
+  .match-bottom-stack {
+    order: 4;
+  }
+
+  .scoreboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .scoreboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .scoreboard-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .scoreboard-header-meta {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .status-pill {
+    padding: 5px 9px;
+    font-size: 0.68rem;
+  }
+
+  .score-series-chip {
+    justify-self: auto;
+    font-size: 0.6rem;
+    padding: 5px 7px;
+    text-align: right;
+  }
+
+  .scoreboard-card {
+    padding: 14px;
     gap: 10px;
+  }
+
+  .player-card {
+    padding: 10px 11px;
+    border-radius: 16px;
+  }
+
+  .player-card-main {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .player-card h3 {
+    font-size: 0.9rem;
+  }
+
+  .player-score {
+    font-size: clamp(1.55rem, 4.8vw, 1.95rem);
+  }
+
+  .player-games {
+    font-size: 0.72rem;
+  }
+
+  .server-badge {
+    min-height: 30px;
+    padding: 6px 9px;
+    font-size: 0.64rem;
+  }
+
+  .match-timer-panel {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .match-timer-panel__top {
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .match-timer-panel__copy {
+    gap: 3px;
+  }
+
+  .match-timer-panel__copy h2 {
+    font-size: 0.95rem;
+  }
+
+  .match-timer-label {
+    font-size: 0.68rem;
+  }
+
+  .match-timer-helper {
+    display: none;
+  }
+
+  .match-timer-actions {
+    gap: 8px;
+  }
+
+  .match-timer-actions button {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+  }
+
+  .timer-chip {
+    padding: 8px 11px;
+    font-size: 0.88rem;
+  }
+
+  .match-detail-panel {
+    gap: 8px;
+    padding: 14px;
   }
 
   .match-history-strip {
@@ -1577,8 +1690,25 @@ select {
   }
 
   .match-control-grid button {
-    padding: 11px 8px;
-    font-size: 0.8rem;
+    min-height: 44px;
+    padding: 10px 7px;
+    font-size: 0.76rem;
+  }
+
+  .match-secondary-column .panel {
+    padding: 14px;
+  }
+
+  .match-secondary-column .panel h2 {
+    font-size: 0.95rem;
+  }
+
+  .match-secondary-column .helper-text {
+    font-size: 0.78rem;
+  }
+
+  .timeline-scroll {
+    max-height: 260px;
   }
 }
 
