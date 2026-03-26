@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 export default function Scoreboard({
   match,
@@ -25,6 +25,7 @@ export default function Scoreboard({
   const currentServerSide = live.current_server_side;
   const serviceSide = live.service_side || "Right";
   const isActive = (match.status || "").toLowerCase() === "active";
+  const pointStripRef = useRef(null);
   const pointEvents = (live.events || []).filter((event) => {
     if (!["score_point", "stroke"].includes(event.event_type)) {
       return false;
@@ -65,19 +66,31 @@ export default function Scoreboard({
             </div>
           </div>
         </button>
-        {isServing ? (
-          <button
-            className="server-badge"
-            disabled={disabled}
-            type="button"
-            onClick={onToggleServeSide}
-          >
-            Serve {serviceSide}
-          </button>
-        ) : null}
+        <div className="server-badge-slot">
+          {isServing ? (
+            <button
+              className="server-badge"
+              disabled={disabled}
+              type="button"
+              onClick={onToggleServeSide}
+            >
+              Serve {serviceSide}
+            </button>
+          ) : (
+            <span className="server-badge server-badge--placeholder" aria-hidden="true" />
+          )}
+        </div>
       </>
     );
   }
+
+  useEffect(() => {
+    if (!pointStripRef.current) {
+      return;
+    }
+
+    pointStripRef.current.scrollTop = pointStripRef.current.scrollHeight;
+  }, [pointEvents.length]);
 
   function renderPointMarker(side, markerType, active) {
     return (
@@ -114,7 +127,7 @@ export default function Scoreboard({
           {renderPlayerCard("player1", match.player1_name, match.player1_surname)}
         </article>
         <div className="scoreboard-point-strip-wrap">
-          <div className="scoreboard-point-strip" aria-label="Point order">
+          <div ref={pointStripRef} className="scoreboard-point-strip" aria-label="Point order">
             {pointEvents.length === 0 ? (
               <div className="scoreboard-point-empty">No points yet</div>
             ) : (

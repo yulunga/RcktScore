@@ -1045,7 +1045,7 @@ select {
 }
 
 .scoreboard-card {
-  padding: 18px;
+  padding: 14px 18px 18px;
   display: grid;
   gap: 14px;
 }
@@ -1058,7 +1058,7 @@ select {
 .scoreboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -1082,6 +1082,7 @@ select {
   color: #fff;
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
 .player-card h3 {
@@ -1097,6 +1098,7 @@ select {
   cursor: pointer;
   padding: 0;
   text-align: left;
+  min-height: 0;
 }
 
 .player-card-action:disabled {
@@ -1107,6 +1109,7 @@ select {
 .player-card-main {
   display: grid;
   gap: 12px;
+  align-content: start;
 }
 
 .player-card-copy {
@@ -1145,6 +1148,12 @@ select {
   font-size: 0.8rem;
 }
 
+.server-badge-slot {
+  min-height: 34px;
+  display: flex;
+  align-items: flex-start;
+}
+
 .server-badge,
 .score-series-chip {
   display: inline-flex;
@@ -1166,6 +1175,11 @@ select {
   min-height: 34px;
   padding: 8px 12px;
   justify-self: start;
+}
+
+.server-badge--placeholder {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .server-badge:disabled {
@@ -1640,8 +1654,8 @@ select {
   }
 
   .scoreboard-header {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-start;
     gap: 8px;
   }
 
@@ -1650,10 +1664,10 @@ select {
   }
 
   .scoreboard-header-meta {
-    width: 100%;
+    width: auto;
     display: grid;
     justify-items: end;
-    gap: 8px;
+    gap: 6px;
   }
 
   .status-pill {
@@ -1669,8 +1683,8 @@ select {
   }
 
   .scoreboard-card {
-    padding: 14px;
-    gap: 9px;
+    padding: 10px 14px 14px;
+    gap: 8px;
   }
 
   .player-card {
@@ -1705,6 +1719,10 @@ select {
     min-height: 30px;
     padding: 6px 9px;
     font-size: 0.64rem;
+  }
+
+  .server-badge-slot {
+    min-height: 30px;
   }
 
   .match-timer-panel {
