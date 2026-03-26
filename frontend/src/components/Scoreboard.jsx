@@ -22,7 +22,7 @@ export default function Scoreboard({
   const player1GamesWon = live.player1_games_won ?? match.player1_games_won ?? 0;
   const player2GamesWon = live.player2_games_won ?? match.player2_games_won ?? 0;
   const currentGameNumber = live.current_game_number ?? match.current_game_number ?? 1;
-  const currentServerSide = live.current_server_side;
+  const currentServerSide = live.current_server_side || "player1";
   const serviceSide = live.service_side || "Right";
   const isActive = (match.status || "").toLowerCase() === "active";
   const pointStripRef = useRef(null);
@@ -35,6 +35,17 @@ export default function Scoreboard({
     return eventGameNumber === currentGameNumber;
   });
   const gameHistory = live.game_history || [];
+  const pointStripEntries = [
+    ...pointEvents,
+    {
+      id: "current-serve",
+      event_type: "current_serve",
+      payload: {
+        current_server_side: currentServerSide,
+        service_side: serviceSide,
+      },
+    },
+  ];
 
   function splitName(name, surname) {
     return {
@@ -75,7 +86,7 @@ export default function Scoreboard({
               type="button"
               onClick={onToggleServeSide}
             >
-              Serve {serviceSide}
+              Serving {serviceSide}
             </button>
           ) : (
             <span className="server-badge server-badge--placeholder" aria-hidden="true" />
@@ -131,10 +142,32 @@ export default function Scoreboard({
         </article>
         <div className="scoreboard-point-strip-wrap">
           <div ref={pointStripRef} className="scoreboard-point-strip" aria-label="Point order">
-            {pointEvents.length === 0 ? (
-              <div className="scoreboard-point-empty">No points yet</div>
-            ) : (
-              pointEvents.map((event, index) => {
+            {pointStripEntries.map((event, index) => {
+              if (event.event_type === "current_serve") {
+                const serverSide = event.payload?.current_server_side || "player1";
+                const currentServiceSideLabel = String(event.payload?.service_side || "")
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase();
+
+                return (
+                  <div
+                    className="scoreboard-point-token scoreboard-point-token--current"
+                    key={event.id || `current-serve-${index}`}
+                    title={`Current serve: ${serverSide === "player1" ? "P1" : "P2"} ${currentServiceSideLabel}`}
+                  >
+                    <div className="scoreboard-point-row">
+                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? currentServiceSideLabel : "")}
+                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? currentServiceSideLabel : "")}
+                    </div>
+                    <div className="scoreboard-point-row">
+                      {renderPointMarker("player1", "winner", false, "")}
+                      {renderPointMarker("player2", "winner", false, "")}
+                    </div>
+                  </div>
+                );
+              }
+
                 const winnerSide = event.payload?.scorer || event.payload?.player_side;
                 const serverSide = event.payload?.current_server_side || winnerSide;
                 const serviceSideLabel = String(event.payload?.service_side || "").trim().charAt(0).toUpperCase();
@@ -158,8 +191,7 @@ export default function Scoreboard({
                     </div>
                   </div>
                 );
-              })
-            )}
+              })}
           </div>
         </div>
         <article className="player-card player-card--compact">
