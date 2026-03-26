@@ -161,27 +161,43 @@ select {
   gap: 14px;
 }
 
+.match-setup-row--title {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.match-setup-section-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #102a43;
+}
+
 .match-setup-row--player {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: 220px 220px auto;
   align-items: end;
+}
+
+.match-setup-row--labels {
+  grid-template-columns: 220px 220px auto;
+  align-items: end;
+}
+
+.match-setup-inline-label {
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .match-setup-row--format {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: 220px 220px auto;
   align-items: end;
 }
 
-.match-setup-row--court {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+.match-setup-row--court-controls {
+  grid-template-columns: 220px 220px auto;
   align-items: end;
-}
-
-.match-setup-row--court .field:last-child {
-  grid-column: 2 / 4;
 }
 
 .match-setup-row--referee {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: 220px 220px auto;
 }
 
 .match-setup-row--referee .field:first-child {
@@ -1757,7 +1773,7 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .match-setup-row--court .field:last-child {
+  .match-setup-row--referee .field:first-child {
     grid-column: auto;
   }
 

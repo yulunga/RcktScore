@@ -203,12 +203,13 @@ export default function NewMatch() {
         {courtError ? <div className="notice error">{courtError}</div> : null}
 
         <div className="match-setup-grid">
+          <div className="match-setup-row match-setup-row--title">
+            <div className="match-setup-section-title">Player 1</div>
+          </div>
+
           <div className="match-setup-row match-setup-row--player">
             <div className="field">
-              <label htmlFor="player1_name">
-                Player 1 First Name
-                <span className="required-mark"> *</span>
-              </label>
+              <label htmlFor="player1_name">First Name<span className="required-mark"> *</span></label>
               <input
                 id="player1_name"
                 name="player1_name"
@@ -220,7 +221,7 @@ export default function NewMatch() {
             </div>
 
             <div className="field">
-              <label htmlFor="player1_surname">Player 1 Surname</label>
+              <label htmlFor="player1_surname">Surname</label>
               <input
                 id="player1_surname"
                 name="player1_surname"
@@ -244,12 +245,13 @@ export default function NewMatch() {
             </div>
           </div>
 
+          <div className="match-setup-row match-setup-row--title">
+            <div className="match-setup-section-title">Player 2</div>
+          </div>
+
           <div className="match-setup-row match-setup-row--player">
             <div className="field">
-              <label htmlFor="player2_name">
-                Player 2 First Name
-                <span className="required-mark"> *</span>
-              </label>
+              <label htmlFor="player2_name">First Name<span className="required-mark"> *</span></label>
               <input
                 id="player2_name"
                 name="player2_name"
@@ -261,7 +263,7 @@ export default function NewMatch() {
             </div>
 
             <div className="field">
-              <label htmlFor="player2_surname">Player 2 Surname</label>
+              <label htmlFor="player2_surname">Surname</label>
               <input
                 id="player2_surname"
                 name="player2_surname"
@@ -285,12 +287,19 @@ export default function NewMatch() {
             </div>
           </div>
 
-          <div className="match-setup-row match-setup-row--court">
+          <div className="match-setup-row match-setup-row--labels">
+            <div className="match-setup-inline-label">
+              Court ID
+              <span className="required-mark"> *</span>
+            </div>
+            <div className="match-setup-inline-label">
+              Court Alias
+              <span className="required-mark"> *</span>
+            </div>
+          </div>
+
+          <div className="match-setup-row match-setup-row--court-controls">
             <div className="field">
-              <label htmlFor="court_id">
-                Court ID
-                <span className="required-mark"> *</span>
-              </label>
               <select
                 disabled={courtLoading || availableCourts.length === 0}
                 id="court_id"
@@ -311,17 +320,18 @@ export default function NewMatch() {
             </div>
 
             <div className="field">
-              <label htmlFor="court_alias">
-                Court Alias
-                <span className="required-mark"> *</span>
-              </label>
-              <input
+              <select
+                disabled
                 id="court_alias"
                 name="court_alias"
-                readOnly
                 required
                 value={formState.court_alias}
-              />
+                onChange={() => {}}
+              >
+                <option value="">
+                  {formState.court_alias ? formState.court_alias : "Select a court first"}
+                </option>
+              </select>
             </div>
           </div>
 
