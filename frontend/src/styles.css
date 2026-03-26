@@ -43,11 +43,27 @@ select {
 
 .app-footer {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: center;
+  align-items: center;
   padding-top: 8px;
   color: rgba(72, 101, 129, 0.72);
   font-size: 0.72rem;
   letter-spacing: 0.02em;
+}
+
+.app-footer__divider {
+  color: rgba(72, 101, 129, 0.45);
+}
+
+.app-footer__link {
+  color: rgba(72, 101, 129, 0.88);
+  text-decoration: none;
+}
+
+.app-footer__link:hover {
+  text-decoration: underline;
 }
 
 .login-footer-wrap {
@@ -114,6 +130,10 @@ select {
 .interest-panel {
   padding-top: 8px;
   border-top: 1px solid rgba(16, 42, 67, 0.08);
+}
+
+.interest-copy {
+  max-width: 42ch;
 }
 
 .stack {

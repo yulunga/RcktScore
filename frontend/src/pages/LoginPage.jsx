@@ -152,6 +152,11 @@ export default function LoginPage() {
         <div className="stack compact">
           {showInterestForm ? (
             <form className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
+              <p className="helper-text interest-copy">
+                Request early access to RcktScore. We are onboarding clubs in phases and will review
+                each request before opening access to the live scoring platform.
+              </p>
+
               <div className="field">
                 <label htmlFor="interest_email">Email address</label>
                 <input
