@@ -1611,7 +1611,93 @@ select {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 480px), (min-width: 481px) and (max-width: 1024px) and (orientation: portrait) {
+  .page-shell {
+    width: min(calc(100vw - 24px), 560px);
+    padding: 20px 0 32px;
+  }
+
+  .hero-card,
+  .panel,
+  .login-panel,
+  .session-bar {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .club-page-header {
+    gap: 6px;
+    padding: 14px 16px;
+  }
+
+  .club-page-header__top {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .club-page-header__top h1 {
+    font-size: clamp(1.3rem, 5.4vw, 1.65rem);
+    line-height: 1.05;
+  }
+
+  .club-page-header__meta {
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+
+  .club-page-header__username {
+    font-size: 0.76rem;
+  }
+
+  .club-page-header__copy {
+    display: none;
+  }
+
+  .dashboard-menu-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .dashboard-menu-button,
+  .button-row button,
+  .button-link,
+  .match-control-grid button {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+  }
+
+  .field-grid,
+  .settings-field-grid-tight,
+  .game-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-inline-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-item--history {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .dashboard-history-action {
+    justify-self: start;
+  }
+
+  .read-only-input {
+    font-size: 0.82rem;
+  }
+
   .match-screen-shell {
     display: flex;
     flex-direction: column;
@@ -1622,11 +1708,6 @@ select {
     order: 99;
     margin-top: auto;
     padding-top: 16px;
-  }
-
-  .club-page-header--match {
-    gap: 6px;
-    padding: 14px 16px;
   }
 
   .club-page-header--match .club-page-header__top {
