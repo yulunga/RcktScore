@@ -63,6 +63,7 @@ export default function NewMatch() {
   const [availableCourts, setAvailableCourts] = useState([]);
   const [courtLoading, setCourtLoading] = useState(true);
   const [courtError, setCourtError] = useState("");
+  const [showHandicapMatrix, setShowHandicapMatrix] = useState(false);
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
@@ -616,60 +617,70 @@ export default function NewMatch() {
             className="secondary"
             type="button"
             onClick={() => {
-              document.getElementById("handicap-matrix")?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
+              setShowHandicapMatrix((current) => {
+                const next = !current;
+                if (!current) {
+                  window.setTimeout(() => {
+                    document.getElementById("handicap-matrix")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }, 0);
+                }
+                return next;
               });
             }}
           >
-            View Handicap Matrix
+            {showHandicapMatrix ? "Hide Handicap Matrix" : "View Handicap Matrix"}
           </button>
           <button disabled={loading || !requiredFieldsComplete} type="submit">
             {loading ? "Starting..." : "Start Match"}
           </button>
         </div>
 
-        <section className="panel stack compact matrix-panel" id="handicap-matrix">
-          <div className="panel-heading">
-            <h2>2024 Handicap Matrix</h2>
-            <p className="helper-text">
-              Pick each player&apos;s band and use the row-to-column intersection as that player&apos;s starting
-              score. Example: band C versus band G starts Player 1 on -4 and Player 2 on +4.
-            </p>
-          </div>
+        {showHandicapMatrix ? (
+          <section className="panel stack compact matrix-panel" id="handicap-matrix">
+            <div className="panel-heading">
+              <h2>2024 Handicap Matrix</h2>
+              <p className="helper-text">
+                Pick each player&apos;s band and use the row-to-column intersection as that player&apos;s starting
+                score. Example: band C versus band G starts Player 1 on -4 and Player 2 on +4.
+              </p>
+            </div>
 
-          <div className="matrix-scroll">
-            <table className="matrix-table">
-              <thead>
-                <tr>
-                  <th scope="col">Band</th>
-                  {handicapColumns.map((band) => (
-                    <th key={band} scope="col">
-                      {band}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {handicapBands.map((rowBand) => (
-                  <tr key={rowBand}>
-                    <th scope="row">{rowBand}</th>
-                    {handicapColumns.map((columnBand) => {
-                      const value = handicapMatrix[rowBand][columnBand];
-                      const isSelectedPair =
-                        formState.player1_band === rowBand && formState.player2_band === columnBand;
-                      return (
-                        <td className={isSelectedPair ? "selected-cell" : ""} key={`${rowBand}-${columnBand}`}>
-                          {value}
-                        </td>
-                      );
-                    })}
+            <div className="matrix-scroll">
+              <table className="matrix-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Band</th>
+                    {handicapColumns.map((band) => (
+                      <th key={band} scope="col">
+                        {band}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {handicapBands.map((rowBand) => (
+                    <tr key={rowBand}>
+                      <th scope="row">{rowBand}</th>
+                      {handicapColumns.map((columnBand) => {
+                        const value = handicapMatrix[rowBand][columnBand];
+                        const isSelectedPair =
+                          formState.player1_band === rowBand && formState.player2_band === columnBand;
+                        return (
+                          <td className={isSelectedPair ? "selected-cell" : ""} key={`${rowBand}-${columnBand}`}>
+                            {value}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
       </form>
       <AppFooter />
     </main>
