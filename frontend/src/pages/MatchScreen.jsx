@@ -187,9 +187,7 @@ export default function MatchScreen() {
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showWarmupOverlay, setShowWarmupOverlay] = useState(false);
-  const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(() =>
-    typeof window === "undefined" ? true : window.innerWidth > 480,
-  );
+  const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(false);
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
 
@@ -418,36 +416,27 @@ export default function MatchScreen() {
             </button>
           </div>
 
-          <div className="game-history-strip match-history-strip">
-            {gameHistory.length === 0 ? (
-              <div className="meta-item meta-item--compact">No completed games yet.</div>
-            ) : (
-              gameHistory.map((game) => (
-                <div className="meta-item meta-item--compact" key={`game-${game.game_number}`}>
-                  <div>
-                    {game.player1_score} - {game.player2_score}
-                  </div>
-                  <div>{getInitials(game.winner_name)}</div>
-                </div>
-              ))
-            )}
-          </div>
-
           {showExtraMatchDetails ? (
-            <div className="meta-grid match-meta-grid">
-              <div className="meta-item meta-item--compact">
-                <strong>Server</strong>
-                <div>{live.current_server || "Not set"}</div>
+            <>
+              <div className="meta-grid match-meta-grid">
+                <div className="meta-item meta-item--compact">
+                  <strong>Server</strong>
+                  <div>{live.current_server || "Not set"}</div>
+                </div>
+                <div className="meta-item meta-item--compact">
+                  <strong>Service Side</strong>
+                  <div>{serviceSide}</div>
+                </div>
+                <div className="meta-item meta-item--compact">
+                  <strong>Referee</strong>
+                  <div>{currentMatch.referee_name || "TBC"}</div>
+                </div>
               </div>
-              <div className="meta-item meta-item--compact">
-                <strong>Service Side</strong>
-                <div>{serviceSide}</div>
-              </div>
-              <div className="meta-item meta-item--compact">
-                <strong>Referee</strong>
-                <div>{currentMatch.referee_name || "TBC"}</div>
-              </div>
-            </div>
+              {currentMatch?.updated_at ? (
+                <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
+              ) : null}
+              <EventTimeline events={currentMatch?.state?.events || []} />
+            </>
           ) : null}
         </section>
       ) : null}
@@ -504,10 +493,6 @@ export default function MatchScreen() {
       </div>
 
       <div className="stack match-bottom-stack">
-        {currentMatch?.updated_at ? (
-          <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
-        ) : null}
-        <EventTimeline events={currentMatch?.state?.events || []} />
         <button
           className="secondary match-bottom-back-button"
           type="button"

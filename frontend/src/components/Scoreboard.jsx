@@ -34,6 +34,7 @@ export default function Scoreboard({
     const eventGameNumber = event.payload?.game_number;
     return eventGameNumber === currentGameNumber;
   });
+  const gameHistory = live.game_history || [];
 
   function splitName(name, surname) {
     return {
@@ -164,6 +165,21 @@ export default function Scoreboard({
         <article className="player-card player-card--compact">
           {renderPlayerCard("player2", match.player2_name, match.player2_surname)}
         </article>
+      </div>
+
+      <div className="game-history-strip match-history-strip scoreboard-history-strip">
+        {gameHistory.length === 0 ? (
+          <div className="meta-item meta-item--compact">No completed games yet.</div>
+        ) : (
+          gameHistory.map((game) => (
+            <div className="meta-item meta-item--compact" key={`scoreboard-game-${game.game_number}`}>
+              <div>
+                {game.player1_score} - {game.player2_score}
+              </div>
+              <div>{game.winner_name}</div>
+            </div>
+          ))
+        )}
       </div>
 
       {children ? <div className="scoreboard-controls">{children}</div> : null}
