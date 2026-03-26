@@ -1044,6 +1044,24 @@ select {
   box-shadow: 0 24px 60px rgba(16, 42, 67, 0.2);
 }
 
+.overlay-panel--warmup {
+  width: min(360px, 100%);
+  max-height: none;
+  padding: 20px 18px;
+  border-radius: 22px;
+  justify-items: center;
+  text-align: center;
+}
+
+.warmup-overlay__actions {
+  width: 100%;
+  justify-content: center;
+}
+
+.warmup-overlay__actions button {
+  min-width: 132px;
+}
+
 .scoreboard-card {
   padding: 14px 18px 18px;
   display: grid;
@@ -1413,6 +1431,7 @@ select {
 }
 
 .match-timer-actions {
+  display: flex;
   justify-content: stretch;
 }
 
@@ -1446,11 +1465,22 @@ select {
 .timer-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 8px 12px;
   border-radius: 999px;
   background: #102a43;
+  border: 0;
   color: #fff;
   font-weight: 700;
+}
+
+.timer-chip--button {
+  cursor: pointer;
+  min-width: 92px;
+}
+
+.timer-chip--paused {
+  background: #486581;
 }
 
 .notice {

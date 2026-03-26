@@ -41,7 +41,7 @@ function getInitials(value) {
     .join("");
 }
 
-const WARMUP_SECONDS = 120;
+const WARMUP_SECONDS = 60;
 const INTERVAL_SECONDS = 90;
 const MATCH_TIMER_STORAGE_KEY = "rcktscore.matchTimer";
 
@@ -296,7 +296,7 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_one") {
-      window.alert("Two minutes are over. Ask the players to change sides.");
+      window.alert("Warm-up side 1 complete. Ask the players to change sides.");
       setTimerPhase("warmup_side_two");
       setTimerSeconds(WARMUP_SECONDS);
       setTimerRunning(true);
@@ -304,7 +304,7 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_two") {
-      window.alert("Warm-up complete. Start the game.");
+      window.alert("Warm-up complete. The match clock is now live.");
       setTimerPhase("match_live");
       setTimerSeconds(0);
       setTimerRunning(true);
@@ -312,7 +312,7 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "interval") {
-      window.alert("The 90 second interval is complete. Resume play.");
+      window.alert("Game break complete. Resume play.");
       setTimerPhase("match_live");
       setTimerSeconds(0);
       setTimerRunning(true);
@@ -333,7 +333,7 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "interval") {
-      return "Between Games";
+      return "Game Break - 90s";
     }
 
     return "Match Clock";
@@ -341,24 +341,43 @@ export default function MatchScreen() {
 
   const timerHelperText = useMemo(() => {
     if (timerPhase === "warmup_ready") {
-      return "Start the warm-up when both players are ready.";
+      return "Warm-up starts when both players are ready.";
     }
 
     if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
-      return "Warm-up runs for 2 minutes on each side of the court.";
+      return "Warm-up runs for 60 seconds on each side of the court.";
     }
 
     if (timerPhase === "interval") {
-      return "Players have a 90 second interval between games.";
+      return "90 second break between games.";
     }
 
-    return "Pause or reset the current live match clock if needed.";
+    return "Tap the clock to pause or resume the match.";
+  }, [timerPhase]);
+
+  const timerSkipLabel = useMemo(() => {
+    if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
+      return "Skip Warm-Up";
+    }
+
+    if (timerPhase === "interval") {
+      return "Skip Break";
+    }
+
+    return "";
   }, [timerPhase]);
 
   function handleStartWarmup() {
     setShowWarmupOverlay(false);
     setTimerPhase("warmup_side_one");
     setTimerSeconds(WARMUP_SECONDS);
+    setTimerRunning(true);
+  }
+
+  function handleSkipWarmup() {
+    setShowWarmupOverlay(false);
+    setTimerPhase("match_live");
+    setTimerSeconds(0);
     setTimerRunning(true);
   }
 
@@ -371,9 +390,12 @@ export default function MatchScreen() {
     setTimerRunning((value) => !value);
   }
 
-  function handleResetTimer() {
-    setTimerRunning(false);
-    setTimerSeconds(defaultSecondsForPhase(timerPhase));
+  function handleSkipTimedPhase() {
+    if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two" || timerPhase === "interval") {
+      setTimerPhase("match_live");
+      setTimerSeconds(0);
+      setTimerRunning(true);
+    }
   }
 
   return (
@@ -386,15 +408,17 @@ export default function MatchScreen() {
 
       {showWarmupOverlay ? (
         <div className="overlay-backdrop">
-          <div className="overlay-panel stack">
-            <h2>Start Warm-Up</h2>
+          <div className="overlay-panel overlay-panel--warmup stack">
+            <h2>Warm-Up</h2>
             <p className="helper-text">
-              Start the warm-up timer when both players are ready. The timer will run for two minutes,
-              then alert the scorer to change sides for the second two-minute warm-up.
+              Start 60 seconds on side 1, swap sides for another 60 seconds, then go straight into the match.
             </p>
-            <div className="button-row">
+            <div className="button-row warmup-overlay__actions">
               <button type="button" onClick={handleStartWarmup}>
                 Start Warm-Up
+              </button>
+              <button className="secondary" type="button" onClick={handleSkipWarmup}>
+                Skip Warm-Up
               </button>
             </div>
           </div>
@@ -431,10 +455,11 @@ export default function MatchScreen() {
           <Timer
             helperText={timerHelperText}
             label={timerLabel}
-            onReset={handleResetTimer}
+            onSkip={timerSkipLabel ? handleSkipTimedPhase : undefined}
             onToggle={handleToggleTimer}
             running={timerRunning}
             seconds={timerSeconds}
+            skipLabel={timerSkipLabel}
             title="Match Timer"
           />
           {loading ? <div className="notice">Syncing match state...</div> : null}

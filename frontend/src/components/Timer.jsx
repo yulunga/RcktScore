@@ -12,7 +12,8 @@ export default function Timer({
   seconds = 0,
   running = false,
   onToggle,
-  onReset,
+  onSkip,
+  skipLabel = "",
   helperText = "",
 }) {
   return (
@@ -23,20 +24,21 @@ export default function Timer({
           <div className="match-timer-label">{label}</div>
           {helperText ? <p className="helper-text match-timer-helper">{helperText}</p> : null}
         </div>
-        <div className="timer-chip">{formatSeconds(seconds)}</div>
-      </div>
-      <div className="button-row match-timer-actions">
-        <button type="button" onClick={onToggle}>
-          {running ? "Pause" : "Start"}
-        </button>
         <button
-          className="secondary"
+          className={`timer-chip timer-chip--button${running ? "" : " timer-chip--paused"}`}
           type="button"
-          onClick={onReset}
+          onClick={onToggle}
         >
-          Reset
+          {formatSeconds(seconds)}
         </button>
       </div>
+      {skipLabel && onSkip ? (
+        <div className="match-timer-actions">
+          <button className="secondary" type="button" onClick={onSkip}>
+            {skipLabel}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
