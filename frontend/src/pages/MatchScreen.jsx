@@ -401,6 +401,47 @@ export default function MatchScreen() {
         </div>
       ) : null}
 
+      <div className="grid two-column match-top-grid">
+        <div className="stack match-primary-column">
+          <Scoreboard
+            disabled={!currentMatch || loading}
+            match={currentMatch}
+            onScorePoint={(scorer) => scorePoint(matchId, scorer)}
+            onToggleServeSide={() =>
+              sendEventAction(matchId, "serve_side", {
+                side: serviceSide === "Left" ? "Right" : "Left",
+              })
+            }
+          >
+            <MatchControls
+              disabled={!currentMatch || loading}
+              match={currentMatch}
+              onEventAction={(actionType, payload) =>
+                sendEventAction(matchId, actionType, payload)
+              }
+              onUndo={() => undoLastAction(matchId)}
+              onEndMatch={async (payload) => {
+                const updatedMatch = await endMatch(matchId, payload);
+                if (updatedMatch?.status === "completed") {
+                  navigate("/dashboard");
+                }
+              }}
+            />
+          </Scoreboard>
+          <Timer
+            helperText={timerHelperText}
+            label={timerLabel}
+            onReset={handleResetTimer}
+            onToggle={handleToggleTimer}
+            running={timerRunning}
+            seconds={timerSeconds}
+            title="Match Timer"
+          />
+          {loading ? <div className="notice">Syncing match state...</div> : null}
+          {error ? <div className="notice error">{error}</div> : null}
+        </div>
+      </div>
+
       {currentMatch ? (
         <section className="panel stack match-detail-panel">
           <div className="match-meta-toggle-wrap">
@@ -441,55 +482,14 @@ export default function MatchScreen() {
         </section>
       ) : null}
 
-      <div className="grid two-column match-top-grid">
-        <div className="stack match-primary-column">
-          <Scoreboard
-            disabled={!currentMatch || loading}
-            match={currentMatch}
-            onScorePoint={(scorer) => scorePoint(matchId, scorer)}
-            onToggleServeSide={() =>
-              sendEventAction(matchId, "serve_side", {
-                side: serviceSide === "Left" ? "Right" : "Left",
-              })
-            }
-          >
-            <MatchControls
-              disabled={!currentMatch || loading}
-              match={currentMatch}
-              onEventAction={(actionType, payload) =>
-                sendEventAction(matchId, actionType, payload)
-              }
-              onUndo={() => undoLastAction(matchId)}
-              onEndMatch={async (payload) => {
-                const updatedMatch = await endMatch(matchId, payload);
-                if (updatedMatch?.status === "completed") {
-                  navigate("/dashboard");
-                }
-              }}
-            />
-          </Scoreboard>
-          <Timer
-            helperText={timerHelperText}
-            label={timerLabel}
-            onReset={handleResetTimer}
-            onToggle={handleToggleTimer}
-            running={timerRunning}
-            seconds={timerSeconds}
-            title="Match Timer"
-          />
-          {loading ? <div className="notice">Syncing match state...</div> : null}
-          {error ? <div className="notice error">{error}</div> : null}
-        </div>
-
-        <div className="stack match-secondary-column">
-          <section className="panel stack">
-            <h2>Spectator Display</h2>
-            <p className="helper-text">
-              Open this URL on the venue display, TV browser, or secondary tablet.
-            </p>
-            <input className="read-only-input" readOnly value={displayUrl} />
-          </section>
-        </div>
+      <div className="stack match-secondary-column">
+        <section className="panel stack">
+          <h2>Spectator Display</h2>
+          <p className="helper-text">
+            Open this URL on the venue display, TV browser, or secondary tablet.
+          </p>
+          <input className="read-only-input" readOnly value={displayUrl} />
+        </section>
       </div>
 
       <div className="stack match-bottom-stack">
