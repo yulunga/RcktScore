@@ -45,6 +45,7 @@ export default function Scoreboard({
     const isServing = currentServerSide === side;
     const playerName = splitName(name, surname);
     return (
+      <>
         <button
           className="player-card-action"
           disabled={disabled}
