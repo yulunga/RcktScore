@@ -1152,6 +1152,7 @@ select {
   min-height: 34px;
   display: flex;
   align-items: flex-start;
+  width: 100%;
 }
 
 .server-badge,
@@ -1180,6 +1181,14 @@ select {
 .server-badge--placeholder {
   visibility: hidden;
   pointer-events: none;
+}
+
+.server-badge--left {
+  margin-right: auto;
+}
+
+.server-badge--right {
+  margin-left: auto;
 }
 
 .server-badge:disabled {

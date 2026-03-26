@@ -81,12 +81,12 @@ export default function Scoreboard({
         <div className="server-badge-slot">
           {isServing ? (
             <button
-              className="server-badge"
+              className={`server-badge server-badge--${serviceSide.toLowerCase()}`}
               disabled={disabled}
               type="button"
               onClick={onToggleServeSide}
             >
-              Serving {serviceSide}
+              {serviceSide}
             </button>
           ) : (
             <span className="server-badge server-badge--placeholder" aria-hidden="true" />
