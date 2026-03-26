@@ -101,6 +101,11 @@ export function getOrganizationSettings(organizationId) {
   return apiRequest(`/organization_settings/${organizationId}`);
 }
 
+export function searchMatchSetupLookup(organizationId, query) {
+  const params = new URLSearchParams({ q: query });
+  return apiRequest(`/match_setup_lookup/${organizationId}?${params.toString()}`);
+}
+
 export function updateOrganizationDetails(organizationId, payload) {
   return apiRequest(`/organization_details/${organizationId}`, {
     method: "PUT",

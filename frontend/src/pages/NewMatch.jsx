@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
-import { getOrganizationSettings } from "../services/api";
+import { getOrganizationSettings, searchMatchSetupLookup } from "../services/api";
 
 const scoreTypeOptions = [
   { value: 11, label: "PAR-11" },
@@ -49,7 +49,7 @@ const initialFormState = {
   player2_handedness: "right",
   referee_name: "",
   score_type: 15,
-  best_of: 1,
+  best_of: 5,
   handicap_enabled: false,
   player1_band: "",
   player2_band: "",
@@ -63,6 +63,9 @@ export default function NewMatch() {
   const [availableCourts, setAvailableCourts] = useState([]);
   const [courtLoading, setCourtLoading] = useState(true);
   const [courtError, setCourtError] = useState("");
+  const [playerSuggestions, setPlayerSuggestions] = useState([]);
+  const [refereeSuggestions, setRefereeSuggestions] = useState([]);
+  const [activeLookupField, setActiveLookupField] = useState("");
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
@@ -82,16 +85,15 @@ export default function NewMatch() {
       label: "Back to Dashboard",
       onClick: () => navigate("/dashboard"),
     },
-    {
-      label: "View Handicap Matrix",
-      onClick: () => {
-        document.getElementById("handicap-matrix")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      },
-    },
   ];
+  const player1LookupQuery = useMemo(
+    () => [formState.player1_name, formState.player1_surname].filter(Boolean).join(" ").trim(),
+    [formState.player1_name, formState.player1_surname],
+  );
+  const player2LookupQuery = useMemo(
+    () => [formState.player2_name, formState.player2_surname].filter(Boolean).join(" ").trim(),
+    [formState.player2_name, formState.player2_surname],
+  );
 
   function handleChange(name, value) {
     setFormState((current) => ({
@@ -141,6 +143,66 @@ export default function NewMatch() {
     loadCourts();
   }, [organizationId]);
 
+  useEffect(() => {
+    if (!organizationId || activeLookupField !== "player1" || player1LookupQuery.length < 2) {
+      if (activeLookupField === "player1") {
+        setPlayerSuggestions([]);
+      }
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchMatchSetupLookup(organizationId, player1LookupQuery);
+        setPlayerSuggestions(response?.lookups?.players || []);
+      } catch {
+        setPlayerSuggestions([]);
+      }
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeLookupField, organizationId, player1LookupQuery]);
+
+  useEffect(() => {
+    if (!organizationId || activeLookupField !== "player2" || player2LookupQuery.length < 2) {
+      if (activeLookupField === "player2") {
+        setPlayerSuggestions([]);
+      }
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchMatchSetupLookup(organizationId, player2LookupQuery);
+        setPlayerSuggestions(response?.lookups?.players || []);
+      } catch {
+        setPlayerSuggestions([]);
+      }
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeLookupField, organizationId, player2LookupQuery]);
+
+  useEffect(() => {
+    if (!organizationId || activeLookupField !== "referee" || formState.referee_name.trim().length < 2) {
+      if (activeLookupField === "referee") {
+        setRefereeSuggestions([]);
+      }
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchMatchSetupLookup(organizationId, formState.referee_name.trim());
+        setRefereeSuggestions(response?.lookups?.referees || []);
+      } catch {
+        setRefereeSuggestions([]);
+      }
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeLookupField, formState.referee_name, organizationId]);
+
   function handleCourtChange(value) {
     const selectedCourt = availableCourts.find((court) => String(court.id) === value);
     setFormState((current) => ({
@@ -149,6 +211,25 @@ export default function NewMatch() {
       court_name: selectedCourt?.court_name || "",
       court_alias: selectedCourt?.court_alias || selectedCourt?.court_name || "",
     }));
+  }
+
+  function applyPlayerSuggestion(playerKey, suggestion) {
+    setFormState((current) => ({
+      ...current,
+      [`${playerKey}_name`]: suggestion.first_name || "",
+      [`${playerKey}_surname`]: suggestion.surname || "",
+    }));
+    setPlayerSuggestions([]);
+    setActiveLookupField("");
+  }
+
+  function applyRefereeSuggestion(value) {
+    setFormState((current) => ({
+      ...current,
+      referee_name: value,
+    }));
+    setRefereeSuggestions([]);
+    setActiveLookupField("");
   }
 
   function handleHandicapBandChange(name, value) {
@@ -216,6 +297,7 @@ export default function NewMatch() {
                 placeholder="Nour"
                 required
                 value={formState.player1_name}
+                onFocus={() => setActiveLookupField("player1")}
                 onChange={(event) => handleChange("player1_name", event.target.value)}
               />
             </div>
@@ -227,6 +309,7 @@ export default function NewMatch() {
                 name="player1_surname"
                 placeholder="El Sherbini"
                 value={formState.player1_surname}
+                onFocus={() => setActiveLookupField("player1")}
                 onChange={(event) => handleChange("player1_surname", event.target.value)}
               />
             </div>
@@ -245,6 +328,24 @@ export default function NewMatch() {
             </div>
           </div>
 
+          {activeLookupField === "player1" && playerSuggestions.length ? (
+            <div className="match-setup-row match-setup-row--lookup">
+              <div className="lookup-list" role="listbox" aria-label="Player 1 suggestions">
+                {playerSuggestions.map((suggestion) => (
+                  <button
+                    key={`player1-${suggestion.display_name}`}
+                    className="lookup-item"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyPlayerSuggestion("player1", suggestion)}
+                  >
+                    {suggestion.display_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="match-setup-row match-setup-row--title">
             <div className="match-setup-section-title">Player 2</div>
           </div>
@@ -258,6 +359,7 @@ export default function NewMatch() {
                 placeholder="Ali"
                 required
                 value={formState.player2_name}
+                onFocus={() => setActiveLookupField("player2")}
                 onChange={(event) => handleChange("player2_name", event.target.value)}
               />
             </div>
@@ -269,6 +371,7 @@ export default function NewMatch() {
                 name="player2_surname"
                 placeholder="Farag"
                 value={formState.player2_surname}
+                onFocus={() => setActiveLookupField("player2")}
                 onChange={(event) => handleChange("player2_surname", event.target.value)}
               />
             </div>
@@ -286,6 +389,24 @@ export default function NewMatch() {
               </label>
             </div>
           </div>
+
+          {activeLookupField === "player2" && playerSuggestions.length ? (
+            <div className="match-setup-row match-setup-row--lookup">
+              <div className="lookup-list" role="listbox" aria-label="Player 2 suggestions">
+                {playerSuggestions.map((suggestion) => (
+                  <button
+                    key={`player2-${suggestion.display_name}`}
+                    className="lookup-item"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyPlayerSuggestion("player2", suggestion)}
+                  >
+                    {suggestion.display_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="match-setup-row match-setup-row--labels">
             <div className="match-setup-inline-label">
@@ -391,10 +512,29 @@ export default function NewMatch() {
                 name="referee_name"
                 placeholder="Match official"
                 value={formState.referee_name}
+                onFocus={() => setActiveLookupField("referee")}
                 onChange={(event) => handleChange("referee_name", event.target.value)}
               />
             </div>
           </div>
+
+          {activeLookupField === "referee" && refereeSuggestions.length ? (
+            <div className="match-setup-row match-setup-row--lookup">
+              <div className="lookup-list" role="listbox" aria-label="Referee suggestions">
+                {refereeSuggestions.map((suggestion) => (
+                  <button
+                    key={`referee-${suggestion}`}
+                    className="lookup-item"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyRefereeSuggestion(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="field checkbox-field">
@@ -472,6 +612,18 @@ export default function NewMatch() {
         {error ? <div className="notice error">{error}</div> : null}
 
         <div className="button-row">
+          <button
+            className="secondary"
+            type="button"
+            onClick={() => {
+              document.getElementById("handicap-matrix")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+          >
+            View Handicap Matrix
+          </button>
           <button disabled={loading || !requiredFieldsComplete} type="submit">
             {loading ? "Starting..." : "Start Match"}
           </button>

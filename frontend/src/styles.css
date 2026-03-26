@@ -204,6 +204,35 @@ select {
   grid-column: 1;
 }
 
+.match-setup-row--lookup {
+  grid-template-columns: 220px 220px auto;
+}
+
+.lookup-list {
+  grid-column: 1 / 3;
+  display: grid;
+  gap: 6px;
+  max-width: 454px;
+  padding: 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.lookup-item {
+  border: 0;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: #fff;
+  color: #102a43;
+  cursor: pointer;
+  text-align: left;
+}
+
+.lookup-item:hover {
+  background: #eef5fc;
+}
+
 .match-setup-checkbox-field {
   justify-content: start;
   align-self: end;
@@ -1775,6 +1804,11 @@ select {
 
   .match-setup-row--referee .field:first-child {
     grid-column: auto;
+  }
+
+  .lookup-list {
+    grid-column: auto;
+    max-width: none;
   }
 
   .settings-inline-actions {

@@ -228,6 +228,18 @@ Resources:
             Path: /organization_settings/{organization_id}
             Method: GET
 
+  SearchMatchSetupLookupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/search_match_setup_lookup/handler.lambda_handler
+      Events:
+        SearchMatchSetupLookup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /match_setup_lookup/{organization_id}
+            Method: GET
+
   UpdateOrganizationDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
