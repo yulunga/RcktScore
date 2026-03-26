@@ -1052,6 +1052,7 @@ select {
 
 .match-screen-shell {
   gap: 18px;
+  min-height: 100vh;
 }
 
 .scoreboard-header {
@@ -1070,7 +1071,8 @@ select {
 .scoreboard-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .player-card {
@@ -1078,6 +1080,8 @@ select {
   border-radius: 18px;
   background: linear-gradient(160deg, #102a43 0%, #1f4f82 100%);
   color: #fff;
+  display: grid;
+  gap: 10px;
 }
 
 .player-card h3 {
@@ -1085,16 +1089,29 @@ select {
   font-size: 1.12rem;
 }
 
+.player-card-action {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.player-card-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .player-card-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
+  display: grid;
+  gap: 12px;
 }
 
 .player-card-copy {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1104,22 +1121,22 @@ select {
 }
 
 .player-score {
-  font-size: clamp(2.2rem, 4vw, 3.5rem);
+  font-size: clamp(2.8rem, 5vw, 4rem);
   font-weight: 800;
   line-height: 1;
 }
 
 .player-score-button {
-  border: 0;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 96px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.14);
   color: inherit;
-  cursor: pointer;
-  padding: 0;
-}
-
-.player-score-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.72;
+  padding: 10px 12px;
 }
 
 .player-games {
@@ -1148,6 +1165,7 @@ select {
   cursor: pointer;
   min-height: 34px;
   padding: 8px 12px;
+  justify-self: start;
 }
 
 .server-badge:disabled {
@@ -1159,6 +1177,74 @@ select {
   background: #e6f0fb;
   color: #0b4f88;
   justify-self: end;
+}
+
+.status-pill__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.scoreboard-point-strip-wrap {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.scoreboard-point-strip {
+  width: 100%;
+  max-height: 248px;
+  overflow-y: auto;
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 4px 0;
+}
+
+.scoreboard-point-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  color: #829ab1;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.scoreboard-point-token {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  justify-items: center;
+}
+
+.scoreboard-point-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.scoreboard-point-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  opacity: 0.18;
+  justify-self: center;
+}
+
+.scoreboard-point-marker--server {
+  border: 2px solid #2f6fab;
+  background: transparent;
+}
+
+.scoreboard-point-marker--winner {
+  background: #2f6fab;
+}
+
+.scoreboard-point-marker--active {
+  opacity: 1;
 }
 
 .scoreboard-controls {
@@ -1183,10 +1269,6 @@ select {
 
 .match-control-grid__end {
   grid-column: 3;
-}
-
-.match-control-grid__back {
-  grid-column: 1 / -1;
 }
 
 .meta-grid {
@@ -1361,6 +1443,10 @@ select {
   align-items: stretch;
 }
 
+.match-bottom-back-button {
+  width: 100%;
+}
+
 .match-meta-toggle-wrap {
   display: none;
   justify-content: flex-start;
@@ -1499,6 +1585,12 @@ select {
     gap: 12px;
   }
 
+  .match-screen-shell .app-footer {
+    order: 99;
+    margin-top: auto;
+    padding-top: 16px;
+  }
+
   .club-page-header--match {
     gap: 6px;
     padding: 14px 16px;
@@ -1543,8 +1635,8 @@ select {
   }
 
   .scoreboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+    gap: 6px;
   }
 
   .scoreboard-header {
@@ -1559,45 +1651,50 @@ select {
 
   .scoreboard-header-meta {
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    justify-items: end;
     gap: 8px;
   }
 
   .status-pill {
-    padding: 5px 9px;
-    font-size: 0.68rem;
+    padding: 4px 8px;
+    font-size: 0.66rem;
   }
 
   .score-series-chip {
     justify-self: auto;
-    font-size: 0.6rem;
-    padding: 5px 7px;
+    font-size: 0.58rem;
+    padding: 4px 7px;
     text-align: right;
   }
 
   .scoreboard-card {
     padding: 14px;
-    gap: 10px;
+    gap: 9px;
   }
 
   .player-card {
-    padding: 10px 11px;
+    padding: 10px;
     border-radius: 16px;
+    gap: 8px;
   }
 
   .player-card-main {
-    align-items: flex-start;
     gap: 8px;
   }
 
   .player-card h3 {
-    font-size: 0.9rem;
+    font-size: 0.82rem;
   }
 
   .player-score {
-    font-size: clamp(1.55rem, 4.8vw, 1.95rem);
+    font-size: clamp(2rem, 8vw, 2.7rem);
+  }
+
+  .player-score-button {
+    min-height: 82px;
+    border-radius: 18px;
+    padding: 8px 10px;
   }
 
   .player-games {
@@ -1695,6 +1792,20 @@ select {
     font-size: 0.76rem;
   }
 
+  .scoreboard-point-strip {
+    max-height: 214px;
+    gap: 4px;
+  }
+
+  .scoreboard-point-row {
+    gap: 4px;
+  }
+
+  .scoreboard-point-marker {
+    width: 10px;
+    height: 10px;
+  }
+
   .match-secondary-column .panel {
     padding: 14px;
   }
@@ -1709,6 +1820,10 @@ select {
 
   .timeline-scroll {
     max-height: 260px;
+  }
+
+  .match-bottom-back-button {
+    min-height: 44px;
   }
 }
 

@@ -6,7 +6,6 @@ export default function MatchControls({
   onEventAction,
   onUndo,
   onEndMatch,
-  onBackToMatches,
 }) {
   const matchComplete = match?.state?.match_complete || match?.status === "completed";
 
@@ -42,9 +41,6 @@ export default function MatchControls({
         onClick={() => onEndMatch({ ended_early: true, reason: "Ended by operator" })}
       >
         End Match Early
-      </button>
-      <button className="secondary match-control-grid__back" type="button" onClick={onBackToMatches}>
-        Back to All Matches
       </button>
     </div>
   );

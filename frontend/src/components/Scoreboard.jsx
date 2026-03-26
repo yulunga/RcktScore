@@ -25,6 +25,14 @@ export default function Scoreboard({
   const currentServerSide = live.current_server_side;
   const serviceSide = live.service_side || "Right";
   const isActive = (match.status || "").toLowerCase() === "active";
+  const pointEvents = (live.events || []).filter((event) => {
+    if (!["score_point", "stroke"].includes(event.event_type)) {
+      return false;
+    }
+
+    const eventGameNumber = event.payload?.game_number;
+    return eventGameNumber === currentGameNumber;
+  });
 
   function splitName(name, surname) {
     return {
@@ -33,37 +41,53 @@ export default function Scoreboard({
     };
   }
 
-  function renderPlayerName(side, name, surname) {
+  function renderPlayerCard(side, name, surname) {
     const isServing = currentServerSide === side;
     const playerName = splitName(name, surname);
     return (
-      <div className="player-card-main">
-        <div className="player-card-copy">
-          <div className="player-name-stack">
-            <h3>{playerName.firstName}</h3>
-            {playerName.surname ? <h3>{playerName.surname}</h3> : null}
-          </div>
-          <div className="player-games">Games: {side === "player1" ? player1GamesWon : player2GamesWon}</div>
-          {isServing ? (
-            <button
-              className="server-badge"
-              disabled={disabled}
-              type="button"
-              onClick={onToggleServeSide}
-            >
-              Serve {serviceSide}
-            </button>
-          ) : null}
-        </div>
         <button
-          className="player-score player-score-button"
+          className="player-card-action"
           disabled={disabled}
           type="button"
           onClick={() => onScorePoint?.(side)}
         >
-          {side === "player1" ? player1Score : player2Score}
+          <div className="player-card-main">
+            <div className="player-card-copy">
+              <div className="player-name-stack">
+                <h3>{playerName.firstName}</h3>
+                {playerName.surname ? <h3>{playerName.surname}</h3> : null}
+              </div>
+              <div className="player-score player-score-button">
+                {side === "player1" ? player1Score : player2Score}
+              </div>
+              <div className="player-games">Games: {side === "player1" ? player1GamesWon : player2GamesWon}</div>
+            </div>
+          </div>
         </button>
-      </div>
+        {isServing ? (
+          <button
+            className="server-badge"
+            disabled={disabled}
+            type="button"
+            onClick={onToggleServeSide}
+          >
+            Serve {serviceSide}
+          </button>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderPointMarker(side, markerType, active) {
+    return (
+      <span
+        className={[
+          "scoreboard-point-marker",
+          `scoreboard-point-marker--${markerType}`,
+          `scoreboard-point-marker--${side}`,
+          active ? "scoreboard-point-marker--active" : "",
+        ].join(" ").trim()}
+      />
     );
   }
 
@@ -74,7 +98,10 @@ export default function Scoreboard({
           <h2 style={{ marginBottom: 0 }}>{match.court_name || "Court"}</h2>
         </div>
         <div className="scoreboard-header-meta">
-          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>{match.status || "active"}</span>
+          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>
+            <span className="status-pill__dot" aria-hidden="true" />
+            {match.status || "active"}
+          </span>
           <div className="score-series-chip">
             Score to {match.score_type} • Game {currentGameNumber} • Best of {bestOf}
           </div>
@@ -83,10 +110,39 @@ export default function Scoreboard({
 
       <div className="scoreboard-grid">
         <article className="player-card player-card--compact">
-          {renderPlayerName("player1", match.player1_name, match.player1_surname)}
+          {renderPlayerCard("player1", match.player1_name, match.player1_surname)}
         </article>
+        <div className="scoreboard-point-strip-wrap">
+          <div className="scoreboard-point-strip" aria-label="Point order">
+            {pointEvents.length === 0 ? (
+              <div className="scoreboard-point-empty">No points yet</div>
+            ) : (
+              pointEvents.map((event, index) => {
+                const winnerSide = event.payload?.scorer || event.payload?.player_side;
+                const serverSide = event.payload?.current_server_side || winnerSide;
+
+                return (
+                  <div
+                    className="scoreboard-point-token"
+                    key={event.id || `${event.created_at}-${index}`}
+                    title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
+                  >
+                    <div className="scoreboard-point-row">
+                      {renderPointMarker("player1", "server", serverSide === "player1")}
+                      {renderPointMarker("player2", "server", serverSide === "player2")}
+                    </div>
+                    <div className="scoreboard-point-row">
+                      {renderPointMarker("player1", "winner", winnerSide === "player1")}
+                      {renderPointMarker("player2", "winner", winnerSide === "player2")}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
         <article className="player-card player-card--compact">
-          {renderPlayerName("player2", match.player2_name, match.player2_surname)}
+          {renderPlayerCard("player2", match.player2_name, match.player2_surname)}
         </article>
       </div>
 

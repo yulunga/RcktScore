@@ -477,7 +477,6 @@ export default function MatchScreen() {
                   navigate("/dashboard");
                 }
               }}
-              onBackToMatches={() => navigate("/dashboard")}
             />
           </Scoreboard>
           <Timer
@@ -509,6 +508,13 @@ export default function MatchScreen() {
           <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
         ) : null}
         <EventTimeline events={currentMatch?.state?.events || []} />
+        <button
+          className="secondary match-bottom-back-button"
+          type="button"
+          onClick={() => navigate("/dashboard")}
+        >
+          Back to All Matches
+        </button>
       </div>
       <AppFooter />
     </main>
