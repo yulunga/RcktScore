@@ -128,6 +128,27 @@ Important:
 
 ---
 
+## 1B. Ping Us Flow
+
+### Frontend Entry
+
+- [PingUsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/PingUsPage.jsx)
+- [AppFooter.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/AppFooter.jsx)
+- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+
+### Request Path
+
+1. A signed-in user opens `/ping` from the footer.
+2. The page prefills `name` and `email` from the current session when available.
+3. The user selects a feedback category and enters message text.
+4. Frontend calls `POST /feedback`.
+5. API Gateway invokes [send_feedback/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/send_feedback/handler.py).
+6. Handler validates the payload and sends an AWS SES email to the configured feedback inbox.
+7. Handler returns `{"success": true, "data": {"accepted": true}, "error": null, "meta": {}}`.
+8. Frontend shows a confirmation message.
+
+---
+
 ## 2. Dashboard Load
 
 ### Frontend Entry

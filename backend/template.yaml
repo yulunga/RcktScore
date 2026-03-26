@@ -25,6 +25,12 @@ Parameters:
   InterestFromEmail:
     Type: String
     Default: rcktinterest@ucingo.com
+  FeedbackToEmail:
+    Type: String
+    Default: rcktinterest@ucingo.com
+  FeedbackFromEmail:
+    Type: String
+    Default: rcktinterest@ucingo.com
 
 Resources:
   RcktScoreHttpApi:
@@ -161,6 +167,29 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /register_interest
+            Method: POST
+
+  SendFeedbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/send_feedback/handler.lambda_handler
+      Environment:
+        Variables:
+          FEEDBACK_TO_EMAIL: !Ref FeedbackToEmail
+          FEEDBACK_FROM_EMAIL: !Ref FeedbackFromEmail
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+      Events:
+        SendFeedback:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /feedback
             Method: POST
 
   GetMatchFunction:

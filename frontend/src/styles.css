@@ -2026,6 +2026,24 @@ select {
   background: #d9e2ec;
 }
 
+.ping-page-panel {
+  max-width: 760px;
+}
+
+.ping-page-header h2 {
+  margin-bottom: 8px;
+}
+
+.ping-textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+.ping-submit-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (max-width: 840px) {
   .settings-grid {
     grid-template-columns: 1fr;

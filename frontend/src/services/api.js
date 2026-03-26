@@ -56,6 +56,13 @@ export function registerInterest(payload) {
   });
 }
 
+export function submitFeedback(payload) {
+  return apiRequest("/feedback", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getDashboard(organizationId) {
   return apiRequest(`/dashboard/${organizationId}`);
 }

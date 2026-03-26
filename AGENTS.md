@@ -165,6 +165,7 @@ Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/sr
 - `/login` -> login page
 - `/dashboard` -> protected organisation dashboard
 - `/settings` -> protected organisation settings page
+- `/ping` -> protected feedback/contact page
 - `/match/new` -> protected route
 - `/match/:matchId` -> protected route
 - `/display` -> public spectator display route
@@ -183,6 +184,7 @@ Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backe
 - `POST /login`
 - `POST /root_admin/login`
 - `POST /register_interest`
+- `POST /feedback`
 - `GET /root_admin/dashboard`
 - `POST /root_admin/organizations`
 - `GET /root_admin/organizations/search?q=...`
@@ -239,6 +241,10 @@ The active login flow:
    - `role`
    - `organization_id`
    - `organization_name`
+   - `first_name`
+   - `surname`
+   - `full_name`
+   - `email`
 5. Frontend stores that session in `sessionStorage`
 
 The login page also includes a register-interest flow:
@@ -247,6 +253,13 @@ The login page also includes a register-interest flow:
 2. The form captures an email address
 3. A lightweight human-check challenge must be completed before submit
 4. The backend sends an email notification to `rcktinterest@ucingo.com`
+
+The authenticated app also includes a `Ping Us` flow:
+
+1. A signed-in user opens `/ping`
+2. The form prefills user identity fields from the current session when available
+3. The user selects a category and enters message text
+4. The backend sends an SES email to the configured feedback inbox
 
 Important:
 
@@ -730,4 +743,3 @@ Recently completed from this backlog:
 * architecture layers are now documented explicitly
 
 They must be revisited before declaring v2 production-ready.
-

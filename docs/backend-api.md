@@ -184,10 +184,29 @@ Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/Rckt
 - `POST /login`
 - `POST /root_admin/login`
 - `POST /register_interest`
+- `POST /feedback`
 
 `POST /root_admin/login` authenticates against the `SkRootAdmin` table and returns a separate root-admin session payload.
 
 `POST /register_interest` is an unauthenticated prospect-access route. It validates an email address, supports a honeypot field for basic bot filtering, and sends an AWS SES email notification to the configured interest inbox.
+
+`POST /feedback` is the in-app support route used by the protected `Ping Us` page. It validates:
+
+- `name`
+- `email`
+- `category`
+- `message`
+
+and accepts additional context such as:
+
+- `username`
+- `organization_name`
+- `version`
+- `build`
+- `page_url`
+- `user_agent`
+
+It sends an SES email to the configured feedback inbox and returns the shared success envelope.
 
 ### Root Administration
 

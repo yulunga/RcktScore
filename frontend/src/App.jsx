@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
+import PingUsPage from "./pages/PingUsPage";
 import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
@@ -48,6 +49,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <OrganisationSettingsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/ping"
+        element={(
+          <ProtectedRoute>
+            <PingUsPage />
           </ProtectedRoute>
         )}
       />

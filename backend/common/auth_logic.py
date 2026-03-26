@@ -2,12 +2,39 @@ from werkzeug.security import check_password_hash
 
 
 def _serialize_org_user(user_row):
+    user_json = user_row.get("user_json") or {}
+    first_name = (
+        user_json.get("first_name")
+        or user_json.get("firstname")
+        or user_json.get("given_name")
+        or user_json.get("name")
+        or ""
+    )
+    surname = (
+        user_json.get("surname")
+        or user_json.get("last_name")
+        or user_json.get("lastname")
+        or user_json.get("family_name")
+        or ""
+    )
+    email = (
+        user_json.get("email")
+        or user_json.get("user_email")
+        or user_json.get("mail")
+        or ""
+    )
+    full_name = " ".join(part for part in [first_name, surname] if part).strip()
+
     return {
         "id": user_row["id"],
         "username": user_row["clubusername"],
         "role": user_row.get("role") or "user",
         "organization_id": user_row["organization_id"],
         "organization_name": user_row.get("organization_name"),
+        "first_name": first_name,
+        "surname": surname,
+        "full_name": full_name,
+        "email": email,
     }
 
 
@@ -29,7 +56,8 @@ def get_org_user(connection, username):
                 u.password_hash,
                 u.organization_id,
                 u.role,
-                o.organization_name
+                o.organization_name,
+                to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
