@@ -36,8 +36,14 @@ def _player_name(match_like, side):
     return None
 
 
-def _service_side_for_score(score):
-    return "Right" if _coerce_int(score) % 2 == 0 else "Left"
+def _is_left_handed(match_like, side):
+    handedness = str(match_like.get(f"{side}_handedness") or "").strip().lower()
+    return handedness == "left"
+
+
+def _service_side_for_receiver(match_like, current_server_side):
+    receiver_side = "player2" if current_server_side == "player1" else "player1"
+    return "Left" if _is_left_handed(match_like, receiver_side) else "Right"
 
 
 def _initial_scores(match_like):
@@ -139,7 +145,7 @@ def _initial_state(match_row):
         "games_to_win": _coerce_int(match_row.get("games_to_win"), _games_to_win(best_of)),
         "current_server": match_row["player1_name"],
         "current_server_side": "player1",
-        "service_side": "Right",
+        "service_side": _service_side_for_receiver(match_row, "player1"),
         "handicap": {
             "enabled": bool(match_row.get("handicap_enabled")),
             "player1_band": match_row.get("player1_band"),
@@ -211,12 +217,12 @@ def _build_state(match_row, event_rows):
                     state["player1_score"] += 1
                     state["current_server"] = match_row["player1_name"]
                     state["current_server_side"] = "player1"
-                    state["service_side"] = _service_side_for_score(state["player1_score"])
+                    state["service_side"] = _service_side_for_receiver(match_row, "player1")
                 elif scorer == "player2":
                     state["player2_score"] += 1
                     state["current_server"] = match_row["player2_name"]
                     state["current_server_side"] = "player2"
-                    state["service_side"] = _service_side_for_score(state["player2_score"])
+                    state["service_side"] = _service_side_for_receiver(match_row, "player2")
 
         elif event_type == "serve_side":
             state["service_side"] = payload.get("side", state["service_side"])
@@ -248,9 +254,11 @@ def _serialize_match(match_row, event_rows):
         "player1_name": match_row["player1_name"],
         "player1_surname": match_row.get("player1_surname"),
         "player1_country": match_row.get("player1_country"),
+        "player1_handedness": match_row.get("player1_handedness") or "right",
         "player2_name": match_row["player2_name"],
         "player2_surname": match_row.get("player2_surname"),
         "player2_country": match_row.get("player2_country"),
+        "player2_handedness": match_row.get("player2_handedness") or "right",
         "referee_name": match_row.get("referee_name"),
         "score_type": match_row["score_type"],
         "best_of": best_of,
@@ -361,9 +369,11 @@ def create_match(connection, payload, source="api"):
                 player1_name,
                 player1_surname,
                 player1_country,
+                player1_handedness,
                 player2_name,
                 player2_surname,
                 player2_country,
+                player2_handedness,
                 referee_name,
                 score_type,
                 best_of,
@@ -397,9 +407,11 @@ def create_match(connection, payload, source="api"):
                 %(player1_name)s,
                 %(player1_surname)s,
                 %(player1_country)s,
+                %(player1_handedness)s,
                 %(player2_name)s,
                 %(player2_surname)s,
                 %(player2_country)s,
+                %(player2_handedness)s,
                 %(referee_name)s,
                 %(score_type)s,
                 %(best_of)s,
@@ -434,9 +446,11 @@ def create_match(connection, payload, source="api"):
                 "player1_name": payload["player1_name"],
                 "player1_surname": payload.get("player1_surname"),
                 "player1_country": payload.get("player1_country"),
+                "player1_handedness": str(payload.get("player1_handedness") or "right").lower(),
                 "player2_name": payload["player2_name"],
                 "player2_surname": payload.get("player2_surname"),
                 "player2_country": payload.get("player2_country"),
+                "player2_handedness": str(payload.get("player2_handedness") or "right").lower(),
                 "referee_name": payload.get("referee_name"),
                 "score_type": int(payload.get("score_type", 15)),
                 "best_of": best_of,
@@ -478,7 +492,13 @@ def create_match(connection, payload, source="api"):
                     "player2_games_won": 0,
                     "current_server": payload["player1_name"],
                     "current_server_side": "player1",
-                    "service_side": "Right",
+                    "service_side": _service_side_for_receiver(
+                        {
+                            "player1_handedness": payload.get("player1_handedness"),
+                            "player2_handedness": payload.get("player2_handedness"),
+                        },
+                        "player1",
+                    ),
                     "player1_score": player1_offset,
                     "player2_score": player2_offset,
                     "handicap_enabled": handicap_enabled,
@@ -554,12 +574,12 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         player1_score += 1
         current_server = match["player1_name"]
         current_server_side = "player1"
-        service_side = _service_side_for_score(player1_score)
+        service_side = _service_side_for_receiver(match, current_server_side)
     else:
         player2_score += 1
         current_server = match["player2_name"]
         current_server_side = "player2"
-        service_side = _service_side_for_score(player2_score)
+        service_side = _service_side_for_receiver(match, current_server_side)
 
     player1_games_won = state["player1_games_won"]
     player2_games_won = state["player2_games_won"]
@@ -593,7 +613,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
             player1_score, player2_score = _initial_scores(match)
             current_server = winner_name
             current_server_side = winner_side
-            service_side = "Right"
+            service_side = _service_side_for_receiver(match, current_server_side)
             winner_side = None
             winner_name = None
 

@@ -425,6 +425,30 @@ export default function MatchScreen() {
         </div>
       ) : null}
 
+      {timerPhase === "interval" && currentMatch?.status !== "completed" ? (
+        <div className="overlay-backdrop">
+          <div className="overlay-panel overlay-panel--warmup stack">
+            <h2>Game Break</h2>
+            <p className="helper-text">
+              90 second interval between games. Tap the clock to pause or resume if needed.
+            </p>
+            <button
+              className={`timer-chip timer-chip--button timer-chip--overlay${timerRunning ? "" : " timer-chip--paused"}`}
+              type="button"
+              onClick={handleToggleTimer}
+            >
+              {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:
+              {String(timerSeconds % 60).padStart(2, "0")}
+            </button>
+            <div className="button-row warmup-overlay__actions">
+              <button className="secondary" type="button" onClick={handleSkipTimedPhase}>
+                Skip Break
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid two-column match-top-grid">
         <div className="stack match-primary-column">
           <Scoreboard

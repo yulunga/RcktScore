@@ -42,9 +42,11 @@ const initialFormState = {
   player1_name: "",
   player1_surname: "",
   // player1_country: "",
+  player1_handedness: "right",
   player2_name: "",
   player2_surname: "",
   // player2_country: "",
+  player2_handedness: "right",
   referee_name: "",
   score_type: 15,
   best_of: 1,
@@ -131,6 +133,13 @@ export default function NewMatch() {
     setFormState((current) => ({
       ...current,
       [name]: name === "score_type" ? Number(value) : value,
+    }));
+  }
+
+  function handleHandednessChange(name, checked) {
+    setFormState((current) => ({
+      ...current,
+      [name]: checked ? "left" : "right",
     }));
   }
 
@@ -286,6 +295,32 @@ export default function NewMatch() {
                 />
               </div>
             ))}
+
+          <div className="field checkbox-field">
+            <label className="checkbox-label" htmlFor="player1_handedness">
+              <input
+                checked={formState.player1_handedness === "left"}
+                id="player1_handedness"
+                name="player1_handedness"
+                type="checkbox"
+                onChange={(event) => handleHandednessChange("player1_handedness", event.target.checked)}
+              />
+              Player 1 Left-Handed
+            </label>
+          </div>
+
+          <div className="field checkbox-field">
+            <label className="checkbox-label" htmlFor="player2_handedness">
+              <input
+                checked={formState.player2_handedness === "left"}
+                id="player2_handedness"
+                name="player2_handedness"
+                type="checkbox"
+                onChange={(event) => handleHandednessChange("player2_handedness", event.target.checked)}
+              />
+              Player 2 Left-Handed
+            </label>
+          </div>
 
           <div className="field">
             <label htmlFor="score_type">Game Format</label>

@@ -1062,6 +1062,12 @@ select {
   min-width: 132px;
 }
 
+.timer-chip--overlay {
+  min-width: 124px;
+  min-height: 56px;
+  font-size: 1.15rem;
+}
+
 .scoreboard-card {
   padding: 14px 18px 18px;
   display: grid;
