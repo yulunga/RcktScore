@@ -1652,8 +1652,12 @@ select {
     order: 3;
   }
 
-  .match-bottom-stack {
+  .match-secondary-column {
     order: 4;
+  }
+
+  .match-bottom-stack {
+    order: 5;
   }
 
   .scoreboard-grid {

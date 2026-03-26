@@ -1,24 +1,15 @@
-//
-//  ContentView.swift
-//  RcktScoreMobile
-//
-//  Created by Glenn Rowe on 26/03/2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    @EnvironmentObject private var container: AppContainer
 
-#Preview {
-    ContentView()
+    var body: some View {
+        Group {
+            if container.sessionStore.isAuthenticated {
+                DashboardView()
+            } else {
+                LoginView()
+            }
+        }
+    }
 }
