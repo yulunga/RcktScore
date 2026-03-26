@@ -62,6 +62,18 @@ Resources:
             Path: /start_match
             Method: POST
 
+  StartScheduledMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/start_scheduled_match/handler.lambda_handler
+      Events:
+        StartScheduledMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /start_scheduled_match
+            Method: POST
+
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:

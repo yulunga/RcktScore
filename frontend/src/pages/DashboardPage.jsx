@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
-import { endMatch, getDashboard } from "../services/api";
+import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
 function formatScore(match) {
   const player1Score = match?.state?.player1_score ?? 0;
@@ -121,7 +121,18 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleStartScheduledMatch(matchId) {
+    setActionError("");
+    try {
+      await startScheduledMatch({ match_id: matchId });
+      navigate(`/match/${matchId}`);
+    } catch (requestError) {
+      setActionError(requestError.message || "Failed to start scheduled match.");
+    }
+  }
+
   const activeMatches = dashboard?.active_matches || [];
+  const scheduledMatches = dashboard?.scheduled_matches || [];
   const recentMatches = dashboard?.recent_matches || [];
   const organization = dashboard?.organization || {};
   const dashboardActions = [
@@ -213,6 +224,41 @@ export default function DashboardPage() {
                     >
                       End Match
                     </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel stack">
+          <div className="panel-heading">
+            <h2>Scheduled Matches</h2>
+            <p className="helper-text">Matches created for later and ready to be started.</p>
+          </div>
+
+          {scheduledMatches.length === 0 ? (
+            <div className="dashboard-empty">No scheduled matches right now.</div>
+          ) : (
+            <div className="dashboard-list">
+              {scheduledMatches.map((match) => (
+                <article className="dashboard-item dashboard-item--history" key={match.id}>
+                  <button
+                    className="dashboard-history-action"
+                    type="button"
+                    onClick={() => handleStartScheduledMatch(match.id)}
+                  >
+                    Start
+                  </button>
+                  <div className="dashboard-history-content">
+                    <div className="dashboard-item-head">
+                      <strong>{formatPlayers(match)}</strong>
+                      <span>{formatDate(match.created_at)}</span>
+                    </div>
+                    <div className="dashboard-item-meta">
+                      <span>Court: {match.court_name || "Unassigned"}</span>
+                      <span>{match.best_of ? `Match: Best of ${match.best_of}` : "Match scheduled"}</span>
+                    </div>
                   </div>
                 </article>
               ))}

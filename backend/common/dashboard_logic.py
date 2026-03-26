@@ -23,6 +23,12 @@ def get_dashboard_data(connection, organization_id, active_limit=10, recent_limi
         status="active",
         limit=active_limit,
     )
+    scheduled_matches = _safe_list_matches(
+        connection,
+        organization_id=organization_id,
+        status="scheduled",
+        limit=active_limit,
+    )
     recent_matches = _safe_list_matches(
         connection,
         organization_id=organization_id,
@@ -72,5 +78,6 @@ def get_dashboard_data(connection, organization_id, active_limit=10, recent_limi
             "roles": (users_row or {}).get("roles") or [],
         },
         "active_matches": active_matches,
+        "scheduled_matches": scheduled_matches,
         "recent_matches": recent_matches,
     }

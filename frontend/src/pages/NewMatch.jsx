@@ -257,10 +257,23 @@ export default function NewMatch() {
     const createdMatch = await startMatch({
       ...formState,
       sport: "squash",
+      status: "active",
       tenant_id: organizationId,
     });
     if (createdMatch?.id) {
       navigate(`/match/${createdMatch.id}`);
+    }
+  }
+
+  async function handleScheduleMatch() {
+    const createdMatch = await startMatch({
+      ...formState,
+      sport: "squash",
+      status: "scheduled",
+      tenant_id: organizationId,
+    });
+    if (createdMatch?.id) {
+      navigate("/dashboard");
     }
   }
 
@@ -632,6 +645,14 @@ export default function NewMatch() {
             }}
           >
             {showHandicapMatrix ? "Hide Handicap Matrix" : "View Handicap Matrix"}
+          </button>
+          <button
+            className="secondary"
+            disabled={loading || !requiredFieldsComplete}
+            type="button"
+            onClick={handleScheduleMatch}
+          >
+            {loading ? "Saving..." : "Schedule Game"}
           </button>
           <button disabled={loading || !requiredFieldsComplete} type="submit">
             {loading ? "Starting..." : "Start Match"}

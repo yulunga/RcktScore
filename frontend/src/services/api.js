@@ -35,6 +35,13 @@ export function startMatch(payload) {
   });
 }
 
+export function startScheduledMatch(payload) {
+  return apiRequest("/start_scheduled_match", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function login(payload) {
   return apiRequest("/login", {
     method: "POST",

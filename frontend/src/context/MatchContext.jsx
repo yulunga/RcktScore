@@ -12,6 +12,7 @@ import {
   getScore,
   scorePoint as scorePointRequest,
   sendEventAction as sendEventActionRequest,
+  startScheduledMatch as startScheduledMatchRequest,
   startMatch as startMatchRequest,
   undoAction as undoActionRequest,
 } from "../services/api";
@@ -110,6 +111,21 @@ export function MatchProvider({ children }) {
     );
   }, [runMatchMutation]);
 
+  const startScheduledMatch = useCallback(async (matchId) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await startScheduledMatchRequest({ match_id: matchId });
+      setCurrentMatch(response.match);
+      return response.match;
+    } catch (requestError) {
+      setError(requestError.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const connectRealtime = useCallback((matchId) => {
     if (socketRef.current) {
       socketRef.current();
@@ -143,6 +159,7 @@ export function MatchProvider({ children }) {
       sendEventAction,
       undoLastAction,
       endMatch,
+      startScheduledMatch,
       connectRealtime,
     }),
     [
@@ -154,6 +171,7 @@ export function MatchProvider({ children }) {
       scorePoint,
       sendEventAction,
       startMatch,
+      startScheduledMatch,
       undoLastAction,
       endMatch,
     ],

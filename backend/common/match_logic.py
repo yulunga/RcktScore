@@ -6,6 +6,7 @@ from psycopg.types.json import Jsonb
 
 ALLOWED_ACTION_TYPES = {"let", "stroke", "serve_side", "timer"}
 VALID_BEST_OF_OPTIONS = {1, 3, 5}
+VALID_MATCH_STATUSES = {"active", "scheduled", "completed"}
 
 
 def _utcnow():
@@ -22,6 +23,11 @@ def _coerce_int(value, default=0):
 def _best_of_value(value):
     parsed = _coerce_int(value, default=1)
     return parsed if parsed in VALID_BEST_OF_OPTIONS else 1
+
+
+def _match_status_value(value):
+    parsed = str(value or "active").strip().lower()
+    return parsed if parsed in VALID_MATCH_STATUSES else "active"
 
 
 def _games_to_win(best_of):
@@ -352,6 +358,7 @@ def create_match(connection, payload, source="api"):
     now = _utcnow()
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
+    match_status = _match_status_value(payload.get("status"))
     handicap_enabled = bool(payload.get("handicap_enabled"))
     player1_offset = _coerce_int(payload.get("player1_offset")) if handicap_enabled else 0
     player2_offset = _coerce_int(payload.get("player2_offset")) if handicap_enabled else 0
@@ -430,7 +437,7 @@ def create_match(connection, payload, source="api"):
                 %(winner_name)s,
                 false,
                 %(end_reason)s,
-                'active',
+                %(status)s,
                 %(created_at)s,
                 %(completed_at)s,
                 %(updated_at)s
@@ -465,6 +472,7 @@ def create_match(connection, payload, source="api"):
                 "winner_side": None,
                 "winner_name": None,
                 "end_reason": None,
+                "status": match_status,
                 "created_at": now,
                 "completed_at": None,
                 "updated_at": now,
@@ -509,6 +517,32 @@ def create_match(connection, payload, source="api"):
                 }),
                 "event_source": source,
                 "created_at": now,
+            },
+        )
+
+    connection.commit()
+    return get_match(connection, match_id)
+
+
+def activate_scheduled_match(connection, match_id):
+    match_row = _fetch_match_row(connection, match_id)
+    if not match_row:
+        return None
+
+    if match_row["status"] != "scheduled":
+        return get_match(connection, match_id)
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE matches
+            SET status = 'active',
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "match_id": match_id,
+                "updated_at": _utcnow(),
             },
         )
 
