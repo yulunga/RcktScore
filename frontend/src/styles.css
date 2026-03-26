@@ -1174,8 +1174,10 @@ select {
   border: 0;
   cursor: pointer;
   min-height: 34px;
+  min-width: 72px;
   padding: 8px 12px;
   justify-self: start;
+  justify-content: center;
 }
 
 .server-badge--placeholder {
@@ -1738,6 +1740,7 @@ select {
 
   .server-badge {
     min-height: 30px;
+    min-width: 64px;
     padding: 6px 9px;
     font-size: 0.64rem;
   }
