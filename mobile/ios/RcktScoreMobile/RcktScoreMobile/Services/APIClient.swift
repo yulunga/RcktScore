@@ -45,16 +45,17 @@ final class APIClient {
         return dashboard
     }
 
-    private func makeRequest<T: Encodable>(path: String, method: String, body: T? = nil) throws -> URLRequest {
+    private func makeRequest(path: String, method: String) throws -> URLRequest {
         let endpoint = AppConfig.apiBaseURL.appendingPathComponent(path)
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return request
+    }
 
-        if let body {
-            request.httpBody = try JSONEncoder().encode(body)
-        }
-
+    private func makeRequest<T: Encodable>(path: String, method: String, body: T) throws -> URLRequest {
+        var request = try makeRequest(path: path, method: method)
+        request.httpBody = try JSONEncoder().encode(body)
         return request
     }
 
