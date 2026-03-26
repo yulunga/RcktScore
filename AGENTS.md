@@ -56,6 +56,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 
 - `frontend/` React + Vite client
 - `backend/` Lambda handlers, shared backend logic, SAM config
+- `mobile/` native mobile workspace scaffold
 - `infrastructure/` reference deployment notes and older config support files
 - `version1/` legacy Flask code kept for migration/reference
 
@@ -67,6 +68,21 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - `src/context/MatchContext.jsx` match state and API mutations
 - `src/services/api.js` HTTP API client
 - `src/services/websocket.js` browser WebSocket client
+
+### Mobile
+
+- `mobile/ios/` native iOS workspace location
+- `mobile/shared/` mobile-facing shared contracts and state references
+- `docs/mobile/setup.md` mobile onboarding/setup guide
+- `docs/mobile/signing.md` iOS signing placeholder
+- `docs/mobile/build.md` mobile build guidance placeholder
+- `docs/mobile/release-notes.md` future mobile release notes
+- `ios/RcktScoreMobile/` SwiftUI iOS app scaffold for scoring
+- `ios/RcktScoreMobile/Config.plist` runtime configuration (API base URL, build id)
+- `ios/RcktScoreMobile/Models/` API envelope and entities
+- `ios/RcktScoreMobile/Services/` API client (HTTP only; no WebSocket yet)
+- `ios/RcktScoreMobile/State/` session store
+- `ios/RcktScoreMobile/Views/` login, dashboard, and match scoring views
 
 ### Backend
 
@@ -506,7 +522,7 @@ Current SAM config intentionally does not store the real Supabase password in th
 - backend token-based authorization is not yet enforced on protected scoring endpoints
 - WebSocket infrastructure is incomplete in the deployed backend
 - historic match list/detail UX is still basic compared with the richer scoring data now stored
-- AGENTS.md, README, and deployment notes should continue to be kept in sync as v2 expands
+- mobile app currently uses HTTP polling/on-demand fetch; WebSocket live updates to be designed and integrated later
 
 ---
 
@@ -714,3 +730,4 @@ Recently completed from this backlog:
 * architecture layers are now documented explicitly
 
 They must be revisited before declaring v2 production-ready.
+
