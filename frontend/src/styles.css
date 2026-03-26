@@ -166,13 +166,26 @@ select {
   align-items: end;
 }
 
-.match-setup-row--court,
 .match-setup-row--format {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.match-setup-row--court {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.match-setup-row--court .field:last-child {
+  grid-column: 2 / 4;
 }
 
 .match-setup-row--referee {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.match-setup-row--referee .field:first-child {
+  grid-column: 1;
 }
 
 .match-setup-checkbox-field {
@@ -1742,6 +1755,10 @@ select {
   .settings-field-grid-tight,
   .game-settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .match-setup-row--court .field:last-child {
+    grid-column: auto;
   }
 
   .settings-inline-actions {

@@ -327,6 +327,22 @@ export default function NewMatch() {
 
           <div className="match-setup-row match-setup-row--format">
             <div className="field">
+              <label htmlFor="best_of">Match Format</label>
+              <select
+                id="best_of"
+                name="best_of"
+                value={formState.best_of}
+                onChange={(event) => handleChange("best_of", event.target.value)}
+              >
+                {bestOfOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
               <label htmlFor="score_type">Game Format</label>
               <select
                 disabled={formState.handicap_enabled}
@@ -343,20 +359,17 @@ export default function NewMatch() {
               </select>
             </div>
 
-            <div className="field">
-              <label htmlFor="best_of">Match Format</label>
-              <select
-                id="best_of"
-                name="best_of"
-                value={formState.best_of}
-                onChange={(event) => handleChange("best_of", event.target.value)}
-              >
-                {bestOfOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+            <div className="field checkbox-field match-setup-checkbox-field">
+              <label className="checkbox-label" htmlFor="handicap_enabled">
+                <input
+                  checked={formState.handicap_enabled}
+                  id="handicap_enabled"
+                  name="handicap_enabled"
+                  type="checkbox"
+                  onChange={(event) => handleHandicapToggle(event.target.checked)}
+                />
+                Handicap Match
+              </label>
             </div>
           </div>
 
@@ -375,16 +388,6 @@ export default function NewMatch() {
         </div>
 
         <div className="field checkbox-field">
-          <label className="checkbox-label" htmlFor="handicap_enabled">
-            <input
-              checked={formState.handicap_enabled}
-              id="handicap_enabled"
-              name="handicap_enabled"
-              type="checkbox"
-              onChange={(event) => handleHandicapToggle(event.target.checked)}
-            />
-            Handicap Match
-          </label>
           <p className="helper-text">
             Uses the 2024 matrix bands. Handicap matches are locked to PAR-15 scoring.
           </p>
