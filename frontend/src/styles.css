@@ -1241,20 +1241,28 @@ select {
 }
 
 .scoreboard-point-marker {
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   opacity: 0.18;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   justify-self: center;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .scoreboard-point-marker--server {
-  border: 2px solid #2f6fab;
-  background: transparent;
+  background: #d9822b;
+  color: #fff;
 }
 
 .scoreboard-point-marker--winner {
-  background: #2f6fab;
+  border: 2px solid #2f6fab;
+  background: transparent;
+  color: #2f6fab;
 }
 
 .scoreboard-point-marker--active {
@@ -1820,8 +1828,9 @@ select {
   }
 
   .scoreboard-point-marker {
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: 16px;
+    font-size: 0.52rem;
   }
 
   .match-secondary-column .panel {

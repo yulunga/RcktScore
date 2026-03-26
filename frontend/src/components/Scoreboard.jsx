@@ -92,7 +92,7 @@ export default function Scoreboard({
     pointStripRef.current.scrollTop = pointStripRef.current.scrollHeight;
   }, [pointEvents.length]);
 
-  function renderPointMarker(side, markerType, active) {
+  function renderPointMarker(side, markerType, active, label = "") {
     return (
       <span
         className={[
@@ -101,7 +101,9 @@ export default function Scoreboard({
           `scoreboard-point-marker--${side}`,
           active ? "scoreboard-point-marker--active" : "",
         ].join(" ").trim()}
-      />
+      >
+        {label}
+      </span>
     );
   }
 
@@ -134,6 +136,10 @@ export default function Scoreboard({
               pointEvents.map((event, index) => {
                 const winnerSide = event.payload?.scorer || event.payload?.player_side;
                 const serverSide = event.payload?.current_server_side || winnerSide;
+                const serviceSideLabel = String(event.payload?.service_side || "").trim().charAt(0).toUpperCase();
+                const winnerScore = winnerSide === "player1"
+                  ? (event.payload?.game_result?.player1_score ?? event.payload?.player1_score ?? "")
+                  : (event.payload?.game_result?.player2_score ?? event.payload?.player2_score ?? "");
 
                 return (
                   <div
@@ -142,12 +148,12 @@ export default function Scoreboard({
                     title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
                   >
                     <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "server", serverSide === "player1")}
-                      {renderPointMarker("player2", "server", serverSide === "player2")}
+                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
+                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
                     </div>
                     <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "winner", winnerSide === "player1")}
-                      {renderPointMarker("player2", "winner", winnerSide === "player2")}
+                      {renderPointMarker("player1", "winner", winnerSide === "player1", winnerSide === "player1" ? String(winnerScore) : "")}
+                      {renderPointMarker("player2", "winner", winnerSide === "player2", winnerSide === "player2" ? String(winnerScore) : "")}
                     </div>
                   </div>
                 );
