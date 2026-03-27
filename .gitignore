@@ -12,3 +12,6 @@ frontend/dist/
 
 .aws-sam/
 samconfig.toml
+
+
+*.xcuserstate
