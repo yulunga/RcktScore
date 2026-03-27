@@ -13,7 +13,8 @@ struct MatchSummary: Decodable, Identifiable {
     let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id = "match_id"
+        case id
+        case legacyMatchID = "match_id"
         case player1Name = "player1_name"
         case player1Surname = "player1_surname"
         case player2Name = "player2_name"
@@ -23,6 +24,21 @@ struct MatchSummary: Decodable, Identifiable {
         case bestOf = "best_of"
         case scoreType = "score_type"
         case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decode(String.self, forKey: .legacyMatchID)
+        player1Name = try container.decode(String.self, forKey: .player1Name)
+        player1Surname = try container.decodeIfPresent(String.self, forKey: .player1Surname)
+        player2Name = try container.decode(String.self, forKey: .player2Name)
+        player2Surname = try container.decodeIfPresent(String.self, forKey: .player2Surname)
+        courtName = try container.decodeIfPresent(String.self, forKey: .courtName)
+        status = try container.decode(String.self, forKey: .status)
+        bestOf = try container.decodeIfPresent(Int.self, forKey: .bestOf)
+        scoreType = try container.decodeIfPresent(Int.self, forKey: .scoreType)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }
 
