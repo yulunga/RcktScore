@@ -28,6 +28,10 @@ struct LoginResponseData: Decodable {
     let session: UserSession
 }
 
+struct DashboardResponseData: Decodable {
+    let dashboard: DashboardResponse
+}
+
 struct MatchResponseData: Decodable {
     let match: MatchDetail
 }
@@ -101,9 +105,9 @@ final class APIClient {
 
     func getDashboard(organizationID: Int) async throws -> DashboardResponse {
         let request = try makeRequest(path: "/dashboard/\(organizationID)", method: "GET")
-        let envelope: APIEnvelope<DashboardResponse> = try await send(request)
+        let envelope: APIEnvelope<DashboardResponseData> = try await send(request)
 
-        guard let dashboard = envelope.data else {
+        guard let dashboard = envelope.data?.dashboard else {
             throw APIErrorResponse(code: "empty_response", message: "No dashboard payload returned.", details: nil)
         }
 
