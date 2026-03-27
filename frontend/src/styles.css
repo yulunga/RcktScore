@@ -603,8 +603,26 @@ select {
 }
 
 .dashboard-history-action {
-  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  color: #fff;
+  background: #1274d0;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
   white-space: nowrap;
+}
+
+.dashboard-history-action:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-history-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 .dashboard-history-content {

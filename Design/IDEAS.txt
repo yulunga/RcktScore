@@ -2,4 +2,6 @@
 - Start games straight away 
 - Schdule games to be paid later 
 
+- email user when adding a new admin/user to the club
+- MFA needed of sorts
 - 
