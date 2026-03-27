@@ -158,7 +158,10 @@ struct DashboardView: View {
     }
 
     private func loadDashboard() async {
-        guard let organizationID = container.sessionStore.session?.organizationID else { return }
+        guard let organizationID = container.sessionStore.session?.organizationID else {
+            print("DASHBOARD LOAD: missing organization ID in session")
+            return
+        }
 
         await MainActor.run {
             isLoading = true
@@ -166,15 +169,22 @@ struct DashboardView: View {
         }
 
         do {
+            print("DASHBOARD LOAD: requesting organization ID \(organizationID)")
             let dashboard = try await container.apiClient.getDashboard(organizationID: organizationID)
             await MainActor.run {
                 activeMatches = dashboard.activeMatches
                 scheduledMatches = dashboard.scheduledMatches
                 recentMatches = dashboard.recentMatches
                 isLoading = false
+                print(
+                    "DASHBOARD LOAD: active=\(dashboard.activeMatches.count) " +
+                    "scheduled=\(dashboard.scheduledMatches.count) " +
+                    "recent=\(dashboard.recentMatches.count)"
+                )
             }
         } catch {
             await MainActor.run {
+                print("DASHBOARD LOAD ERROR:", error)
                 errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to fetch dashboard data."
                 isLoading = false
             }
