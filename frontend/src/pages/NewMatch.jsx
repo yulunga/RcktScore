@@ -626,6 +626,17 @@ export default function NewMatch() {
         {error ? <div className="notice error">{error}</div> : null}
 
         <div className="button-row">
+          <button disabled={loading || !requiredFieldsComplete} type="submit">
+            {loading ? "Starting..." : "Start Match"}
+          </button>
+          <button
+            className="secondary"
+            disabled={loading || !requiredFieldsComplete}
+            type="button"
+            onClick={handleScheduleMatch}
+          >
+            {loading ? "Saving..." : "Schedule Match"}
+          </button>
           <button
             className="secondary"
             type="button"
@@ -645,17 +656,6 @@ export default function NewMatch() {
             }}
           >
             {showHandicapMatrix ? "Hide Handicap Matrix" : "View Handicap Matrix"}
-          </button>
-          <button
-            className="secondary"
-            disabled={loading || !requiredFieldsComplete}
-            type="button"
-            onClick={handleScheduleMatch}
-          >
-            {loading ? "Saving..." : "Schedule Game"}
-          </button>
-          <button disabled={loading || !requiredFieldsComplete} type="submit">
-            {loading ? "Starting..." : "Start Match"}
           </button>
         </div>
 
