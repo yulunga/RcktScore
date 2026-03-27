@@ -219,7 +219,7 @@ struct MatchScoringView: View {
                     proxy.scrollTo(last, anchor: .bottom)
                 }
             }
-            .onChange(of: pointRailSignature) { _ in
+            .onChange(of: pointRailSignature) {
                 if let last = pointRailEntries.last?.id {
                     withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(last, anchor: .bottom)

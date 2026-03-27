@@ -24,6 +24,10 @@ struct DashboardResponse: Decodable {
     }
 }
 
+struct LoginResponseData: Decodable {
+    let session: UserSession
+}
+
 struct MatchResponseData: Decodable {
     let match: MatchDetail
 }
@@ -86,9 +90,9 @@ final class APIClient {
     func login(username: String, password: String) async throws -> UserSession {
         let payload = LoginRequest(username: username, password: password)
         let request = try makeRequest(path: "/login", method: "POST", body: payload)
-        let envelope: APIEnvelope<UserSession> = try await send(request)
+        let envelope: APIEnvelope<LoginResponseData> = try await send(request)
 
-        guard let user = envelope.data else {
+        guard let user = envelope.data?.session else {
             throw APIErrorResponse(code: "empty_response", message: "No user session returned.", details: nil)
         }
 
@@ -177,7 +181,8 @@ final class APIClient {
     }
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
-        let endpoint = AppConfig.apiBaseURL.appendingPathComponent(path)
+        let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let endpoint = AppConfig.apiBaseURL.appendingPathComponent(normalizedPath)
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
