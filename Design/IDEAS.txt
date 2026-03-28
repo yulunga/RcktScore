@@ -5,3 +5,16 @@
 - email user when adding a new admin/user to the club
 - MFA needed of sorts
 - 
+
+
+
+Guest access 
+- with adverts 
+- Only one game at a time 
+
+Single User license 
+- 
+
+Club License 
+- User or court count ??
+- up t x Coirts and x Users and scale S M L 
