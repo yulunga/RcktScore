@@ -352,16 +352,47 @@ def list_matches(connection, tenant_id, status=None, limit=10):
     ]
 
 
+def _find_active_match_on_court(connection, tenant_id, court_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT *
+            FROM matches
+            WHERE tenant_id = %(tenant_id)s
+              AND court_id = %(court_id)s
+              AND status = 'active'
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT 1
+            """,
+            {
+                "tenant_id": tenant_id,
+                "court_id": court_id,
+            },
+        )
+        return cursor.fetchone()
+
+
 def create_match(connection, payload, source="api"):
     match_id = str(uuid4())
     tenant_id = payload["tenant_id"]
     now = _utcnow()
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
-    match_status = _match_status_value(payload.get("status"))
+    requested_status = _match_status_value(payload.get("status"))
+    conflicting_match = None
+    match_status = requested_status
     handicap_enabled = bool(payload.get("handicap_enabled"))
     player1_offset = _coerce_int(payload.get("player1_offset")) if handicap_enabled else 0
     player2_offset = _coerce_int(payload.get("player2_offset")) if handicap_enabled else 0
+
+    if requested_status == "active":
+        conflicting_match = _find_active_match_on_court(
+            connection,
+            tenant_id=tenant_id,
+            court_id=payload["court_id"],
+        )
+        if conflicting_match:
+            match_status = "scheduled"
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -521,7 +552,17 @@ def create_match(connection, payload, source="api"):
         )
 
     connection.commit()
-    return get_match(connection, match_id)
+    match = get_match(connection, match_id)
+    if match and conflicting_match:
+        match["auto_scheduled"] = True
+        match["requested_status"] = requested_status
+        match["auto_schedule_reason"] = (
+            f"There is an active game currently on {payload['court_name']}. "
+            "The new match has been set up as a scheduled match ready to start later."
+        )
+        match["conflicting_match_id"] = str(conflicting_match["id"])
+        match["conflicting_court_name"] = conflicting_match.get("court_name") or payload["court_name"]
+    return match
 
 
 def activate_scheduled_match(connection, match_id):

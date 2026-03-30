@@ -73,7 +73,7 @@ export function MatchProvider({ children }) {
     try {
       const response = await startMatchRequest(payload);
       setCurrentMatch(response.match);
-      return response.match;
+      return response;
     } catch (requestError) {
       setError(requestError.message);
       return null;

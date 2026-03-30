@@ -5,7 +5,7 @@ import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
-import { getOrganizationSettings, searchMatchSetupLookup } from "../services/api";
+import { getDashboard, getOrganizationSettings, searchMatchSetupLookup } from "../services/api";
 
 const scoreTypeOptions = [
   { value: 11, label: "PAR-11" },
@@ -50,6 +50,7 @@ const initialFormState = {
   referee_name: "",
   score_type: 15,
   best_of: 5,
+  schedule_match: false,
   handicap_enabled: false,
   player1_band: "",
   player2_band: "",
@@ -61,8 +62,10 @@ export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
   const [availableCourts, setAvailableCourts] = useState([]);
+  const [activeMatches, setActiveMatches] = useState([]);
   const [courtLoading, setCourtLoading] = useState(true);
   const [courtError, setCourtError] = useState("");
+  const [setupNotice, setSetupNotice] = useState("");
   const [showHandicapMatrix, setShowHandicapMatrix] = useState(false);
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
@@ -95,6 +98,11 @@ export default function NewMatch() {
     () => [formState.player2_name, formState.player2_surname].filter(Boolean).join(" ").trim(),
     [formState.player2_name, formState.player2_surname],
   );
+  const activeCourtMatch = useMemo(
+    () => activeMatches.find((match) => String(match.court_id) === formState.court_id),
+    [activeMatches, formState.court_id],
+  );
+  const shouldScheduleMatch = Boolean(formState.schedule_match || activeCourtMatch);
 
   function handleChange(name, value) {
     setFormState((current) => ({
@@ -143,6 +151,35 @@ export default function NewMatch() {
 
     loadCourts();
   }, [organizationId]);
+
+  useEffect(() => {
+    async function loadActiveMatches() {
+      if (!organizationId) {
+        return;
+      }
+
+      try {
+        const response = await getDashboard(organizationId);
+        setActiveMatches(response?.dashboard?.active_matches || []);
+      } catch {
+        setActiveMatches([]);
+      }
+    }
+
+    loadActiveMatches();
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (activeCourtMatch) {
+      setSetupNotice(
+        `There is an active game currently on ${activeCourtMatch.court_name || formState.court_name}. `
+        + "The new match will be set up as a scheduled match ready to start once the active match finishes.",
+      );
+      return;
+    }
+
+    setSetupNotice("");
+  }, [activeCourtMatch, formState.court_name]);
 
   useEffect(() => {
     if (!organizationId || activeLookupField !== "player1" || player1LookupQuery.length < 2) {
@@ -254,26 +291,23 @@ export default function NewMatch() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const createdMatch = await startMatch({
+    const response = await startMatch({
       ...formState,
       sport: "squash",
-      status: "active",
+      status: shouldScheduleMatch ? "scheduled" : "active",
       tenant_id: organizationId,
     });
-    if (createdMatch?.id) {
-      navigate(`/match/${createdMatch.id}`);
+    if (response?.match?.auto_scheduled && response?.match?.auto_schedule_reason) {
+      setSetupNotice(response.match.auto_schedule_reason);
     }
-  }
 
-  async function handleScheduleMatch() {
-    const createdMatch = await startMatch({
-      ...formState,
-      sport: "squash",
-      status: "scheduled",
-      tenant_id: organizationId,
-    });
-    if (createdMatch?.id) {
-      navigate("/dashboard");
+    if (response?.match?.id) {
+      if (response.match.status === "scheduled" || response.match.auto_scheduled) {
+        navigate("/dashboard");
+        return;
+      }
+
+      navigate(`/match/${response.match.id}`);
     }
   }
 
@@ -296,6 +330,7 @@ export default function NewMatch() {
         </div>
 
         {courtError ? <div className="notice error">{courtError}</div> : null}
+        {setupNotice ? <div className="notice">{setupNotice}</div> : null}
 
         <div className="match-setup-grid">
           <div className="match-setup-row match-setup-row--title">
@@ -625,17 +660,22 @@ export default function NewMatch() {
 
         {error ? <div className="notice error">{error}</div> : null}
 
+        <div className="field checkbox-field">
+          <label className="checkbox-label" htmlFor="schedule_match">
+            <input
+              checked={Boolean(formState.schedule_match)}
+              id="schedule_match"
+              name="schedule_match"
+              type="checkbox"
+              onChange={(event) => handleChange("schedule_match", event.target.checked)}
+            />
+            Schedule Match
+          </label>
+        </div>
+
         <div className="button-row">
           <button disabled={loading || !requiredFieldsComplete} type="submit">
-            {loading ? "Starting..." : "Start Match"}
-          </button>
-          <button
-            className="secondary"
-            disabled={loading || !requiredFieldsComplete}
-            type="button"
-            onClick={handleScheduleMatch}
-          >
-            {loading ? "Saving..." : "Schedule Match"}
+            {loading ? "Saving..." : "Start Match"}
           </button>
           <button
             className="secondary"
