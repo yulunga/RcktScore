@@ -325,10 +325,6 @@ export default function NewMatch() {
           <p>Complete the required court and player fields before opening the live scoring screen.</p>
         </div>
 
-        <div className="notice">
-          Organisation: {session?.organization_name || "Unknown"} ({organizationId || "No organisation id"})
-        </div>
-
         {courtError ? <div className="notice error">{courtError}</div> : null}
         {setupNotice ? <div className="notice">{setupNotice}</div> : null}
 
@@ -584,13 +580,6 @@ export default function NewMatch() {
               </div>
             </div>
           ) : null}
-        </div>
-
-        <div className="field checkbox-field">
-          <p className="helper-text">
-            Uses the 2024 matrix bands. Handicap matches are locked to PAR-15 scoring.
-          </p>
-          <p className="helper-text">{handicapSummary}</p>
         </div>
 
         {formState.handicap_enabled ? (
