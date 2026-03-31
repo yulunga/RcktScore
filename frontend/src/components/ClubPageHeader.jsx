@@ -6,28 +6,36 @@ import { useAuth } from "../hooks/useAuth";
 export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
   const navigate = useNavigate();
   const { session, logout } = useAuth();
+  const organizationName = session?.organization_name || "";
+  const pageTitle = title && title !== organizationName ? title : "";
 
   return (
     <>
+      <span className="beta-badge page-beta-badge">Beta</span>
       <section className={`hero-card club-page-header ${className}`.trim()}>
         <div className="club-page-header__top">
-          <h1>{title}</h1>
-          <div className="club-page-header__meta">
-            <span className="beta-badge">Beta</span>
-            <button
-              className="session-link-button"
-              type="button"
-              onClick={() => {
-                logout();
-                navigate("/", { replace: true });
-              }}
-            >
-              Log Out
-            </button>
-            <span className="club-page-header__divider" aria-hidden="true">
-              |
-            </span>
-            <span className="club-page-header__username">{session?.username || "Operator"}</span>
+          <div className="club-page-header__branding">
+            <h1>PointPal</h1>
+            {pageTitle ? <p className="club-page-header__page-title">{pageTitle}</p> : null}
+          </div>
+          <div className="club-page-header__account">
+            <div className="club-page-header__meta">
+              <button
+                className="session-link-button"
+                type="button"
+                onClick={() => {
+                  logout();
+                  navigate("/", { replace: true });
+                }}
+              >
+                Log Out
+              </button>
+              <span className="club-page-header__divider" aria-hidden="true">
+                |
+              </span>
+              <span className="club-page-header__username">{session?.username || "Operator"}</span>
+            </div>
+            <span className="club-page-header__organization-name">{organizationName || "Club"}</span>
           </div>
         </div>
 

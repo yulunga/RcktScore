@@ -39,6 +39,7 @@ select {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 32px 0 48px;
+  position: relative;
 }
 
 .app-footer {
@@ -149,6 +150,13 @@ select {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.page-beta-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
 }
 
 .interest-panel {
@@ -320,11 +328,22 @@ select {
   gap: 18px;
 }
 
+.club-page-header__branding {
+  display: grid;
+  gap: 6px;
+}
+
 .club-page-header__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
+}
+
+.club-page-header__account {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
 }
 
 .club-page-header__meta {
@@ -344,6 +363,13 @@ select {
   font-size: 0.95rem;
 }
 
+.club-page-header__organization-name {
+  color: #7b8794;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
 .club-page-header__copy {
   display: grid;
   gap: 10px;
@@ -353,6 +379,13 @@ select {
   margin: 0;
   font-size: clamp(2.8rem, 5vw, 3.7rem);
   line-height: 1;
+}
+
+.club-page-header__page-title {
+  margin: 0;
+  color: #486581;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .club-page-header__copy p {
@@ -1750,6 +1783,10 @@ select {
     align-items: flex-start;
   }
 
+  .club-page-header__account {
+    justify-items: start;
+  }
+
   .display-header-card__top {
     flex-direction: column;
     align-items: flex-start;
@@ -1849,6 +1886,14 @@ select {
 
   .club-page-header__username {
     font-size: 0.76rem;
+  }
+
+  .club-page-header__organization-name {
+    font-size: 0.62rem;
+  }
+
+  .club-page-header__page-title {
+    font-size: 0.72rem;
   }
 
   .club-page-header__copy {
