@@ -101,10 +101,10 @@ export default function LoginPage() {
 
   return (
     <main className="page-shell login-shell">
+      <span className="beta-badge page-beta-badge">Beta</span>
       <section className="login-panel stack">
         <div className="login-panel__top">
           <h1 className="login-title">Rckt Score Login</h1>
-          <span className="beta-badge">Beta</span>
         </div>
 
         {requiresOrganizationSelection ? (
