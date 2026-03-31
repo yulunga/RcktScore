@@ -29,6 +29,7 @@ export default function DisplayScreen() {
         <div className="display-header-card__top">
           <h1>RcktScore Live Display</h1>
           <div className="display-header-card__controls">
+            <span className="beta-badge">Beta</span>
             <label className="display-layout-control">
               <span className="display-layout-control__label">Layout</span>
               <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>

@@ -8,13 +8,57 @@
 
 
 
+
+
+Users 
+
+- Can belong to multiple organisations 
+- read only users canot get to admin settings in the org 
+- top level root org (rckscore) that will have all the guest trial guest uers in
+   - guest users do not have external screen feature 
+   - 
+
+
 Guest access 
 - with adverts 
 - Only one game at a time 
 
 Single User license 
 - 
+Outputs:
+   
+   
+Tournamenmt mode 
+- start building and tracking tournaments
+- knock-out and monrad
+
 
 Club License 
 - User or court count ??
 - up t x Coirts and x Users and scale S M L 
+
+
+External Screens 
+
+Need a pin number to access so it is protected
+Display options 
+- option to show all ative court games and primary on that is close to game
+- all court scores same size 
+- 
+
+- TV 
+  
+
+
+- ESP32 devices 
+
+
+
+
+Top Level Administrator of system
+Build a seperate section called reports to get some stats from how the system is been used
+- show current users that are logged in 
+ - show club that the logged in users are from (muti-org show active clib)
+ - build basic reporting to see how many times a user logged in
+ - basic reporting to show how many mathes a organisation has scored for
+ - 

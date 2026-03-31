@@ -149,11 +149,14 @@ export default function DashboardPage() {
         });
       },
     },
-    {
+  ];
+
+  if (session?.role === "admin") {
+    dashboardActions.push({
       label: "Settings",
       onClick: () => navigate("/settings"),
-    },
-  ];
+    });
+  }
 
   return (
     <main className="page-shell stack">

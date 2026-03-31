@@ -27,7 +27,15 @@ export default function LoginPage() {
   const [interestError, setInterestError] = useState("");
   const [interestMessage, setInterestMessage] = useState("");
   const [interestLoading, setInterestLoading] = useState(false);
-  const { isAuthenticated, loading, login } = useAuth();
+  const {
+    isAuthenticated,
+    loading,
+    login,
+    pendingSelection,
+    requiresOrganizationSelection,
+    selectOrganization,
+    cancelOrganizationSelection,
+  } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/dashboard";
@@ -42,6 +50,11 @@ export default function LoginPage() {
 
     if (!result.ok) {
       setError(result.message);
+      return;
+    }
+
+    if (result.requiresOrganizationSelection) {
+      setError("");
       return;
     }
 
@@ -89,65 +102,104 @@ export default function LoginPage() {
   return (
     <main className="page-shell login-shell">
       <section className="login-panel stack">
-        <h1 className="login-title">Rckt Score Login</h1>
+        <div className="login-panel__top">
+          <h1 className="login-title">Rckt Score Login</h1>
+          <span className="beta-badge">Beta</span>
+        </div>
 
-        <form className="stack" onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="username">Username</label>
-            <input
-              autoComplete="username"
-              id="username"
-              name="username"
-              placeholder="Enter username"
-              value={username}
-              onChange={(event) => {
-                setUsername(event.target.value);
-                if (error) {
-                  setError("");
-                }
-              }}
-            />
+        {requiresOrganizationSelection ? (
+          <div className="stack">
+            <div className="panel stack compact login-choice-panel">
+              <div className="panel-heading">
+                <h2>Choose Organisation</h2>
+                <p className="helper-text">
+                  {pendingSelection?.username || "This user"} belongs to multiple organisations. Choose one to continue.
+                </p>
+              </div>
+
+              <div className="stack compact">
+                {(pendingSelection?.memberships || []).map((membership) => (
+                  <button
+                    key={`${membership.organization_id}-${membership.id}`}
+                    className="login-org-choice"
+                    type="button"
+                    onClick={() => {
+                      selectOrganization(membership);
+                      navigate(redirectTo, { replace: true });
+                    }}
+                  >
+                    <strong>{membership.organization_name || `Organisation ${membership.organization_id}`}</strong>
+                    <span>{membership.role || "user"}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="button-row">
+                <button className="secondary" type="button" onClick={cancelOrganizationSelection}>
+                  Back to Login
+                </button>
+              </div>
+            </div>
           </div>
+        ) : (
+          <form className="stack" onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="username">Username</label>
+              <input
+                autoComplete="username"
+                id="username"
+                name="username"
+                placeholder="Enter username"
+                value={username}
+                onChange={(event) => {
+                  setUsername(event.target.value);
+                  if (error) {
+                    setError("");
+                  }
+                }}
+              />
+            </div>
 
-          <div className="field">
-            <label htmlFor="password">Password</label>
-            <input
-              autoComplete="current-password"
-              id="password"
-              name="password"
-              placeholder="Enter password"
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                if (error) {
-                  setError("");
-                }
-              }}
-            />
-          </div>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input
+                autoComplete="current-password"
+                id="password"
+                name="password"
+                placeholder="Enter password"
+                type="password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  if (error) {
+                    setError("");
+                  }
+                }}
+              />
+            </div>
 
-          {error ? <div className="notice error">{error}</div> : null}
+            {error ? <div className="notice error">{error}</div> : null}
 
-          <div className="button-row login-action-row">
-            <button disabled={loading} type="submit">
-              {loading ? "Signing In..." : "Sign In"}
-            </button>
-            <button
-              className="text-link-button login-inline-link"
-              type="button"
-              onClick={() => {
-                setShowInterestForm((current) => !current);
-                setInterestError("");
-                setInterestMessage("");
-                setInterestCaptcha(createCaptchaChallenge());
-                setInterestAnswer("");
-              }}
-            >
-              Want In
-            </button>
-          </div>
-        </form>
+            <div className="button-row login-action-row">
+              <button disabled={loading} type="submit">
+                {loading ? "Signing In..." : "Sign In"}
+              </button>
+              <button
+                className="text-link-button login-inline-link"
+                type="button"
+                onClick={() => {
+                  setShowInterestForm((current) => !current);
+                  setInterestError("");
+                  setInterestMessage("");
+                  setInterestCaptcha(createCaptchaChallenge());
+                  setInterestAnswer("");
+                }}
+              >
+                Want In
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="stack compact">
           {showInterestForm ? (

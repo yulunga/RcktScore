@@ -13,6 +13,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         <div className="club-page-header__top">
           <h1>{title}</h1>
           <div className="club-page-header__meta">
+            <span className="beta-badge">Beta</span>
             <button
               className="session-link-button"
               type="button"

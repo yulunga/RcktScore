@@ -16,16 +16,19 @@ export default function RootAdminSessionBar() {
           {session?.role ? ` • ${session.role}` : ""}
         </span>
       </div>
-      <button
-        className="session-link-button"
-        type="button"
-        onClick={() => {
-          logout();
-          navigate("/rckscoreAdmin", { replace: true });
-        }}
-      >
-        Log Out
-      </button>
+      <div className="club-page-header__meta">
+        <span className="beta-badge">Beta</span>
+        <button
+          className="session-link-button"
+          type="button"
+          onClick={() => {
+            logout();
+            navigate("/rckscoreAdmin", { replace: true });
+          }}
+        >
+          Log Out
+        </button>
+      </div>
     </section>
   );
 }

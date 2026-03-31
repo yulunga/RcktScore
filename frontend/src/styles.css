@@ -115,6 +115,13 @@ select {
   width: min(100%, 440px);
 }
 
+.login-panel__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .login-title {
   margin: 0;
   padding: 12px 20px;
@@ -127,9 +134,59 @@ select {
   line-height: 1.1;
 }
 
+.beta-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #fff3c4;
+  border: 1px solid rgba(153, 102, 0, 0.18);
+  color: #8a5b00;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .interest-panel {
   padding-top: 8px;
   border-top: 1px solid rgba(16, 42, 67, 0.08);
+}
+
+.login-choice-panel {
+  padding: 18px;
+}
+
+.login-org-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #d9e2ec;
+  border-radius: 16px;
+  background: #fff;
+  color: #102a43;
+  cursor: pointer;
+  text-align: left;
+}
+
+.login-org-choice strong {
+  font-size: 1rem;
+}
+
+.login-org-choice span {
+  color: #486581;
+  font-size: 0.92rem;
+  text-transform: capitalize;
+}
+
+.login-org-choice:hover {
+  background: #eef5fc;
 }
 
 .interest-copy {

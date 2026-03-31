@@ -46,7 +46,7 @@ def _serialize_root_admin(user_row):
     }
 
 
-def get_org_user(connection, username):
+def get_org_users(connection, username):
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -62,11 +62,11 @@ def get_org_user(connection, username):
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
             WHERE u.clubusername = %(username)s
-            LIMIT 1
+            ORDER BY o.organization_name ASC, u.organization_id ASC, u.id ASC
             """,
             {"username": username},
         )
-        return cursor.fetchone()
+        return cursor.fetchall()
 
 
 def get_root_admin(connection, username):
@@ -83,18 +83,20 @@ def get_root_admin(connection, username):
         return cursor.fetchone()
 
 
-def authenticate_org_user(connection, username, password):
-    user_row = get_org_user(connection, username)
-    if not user_row:
-        return None
+def authenticate_org_user_memberships(connection, username, password):
+    user_rows = get_org_users(connection, username)
+    if not user_rows:
+        return []
 
-    if not user_row.get("password_hash"):
-        return None
+    authenticated_rows = []
+    for user_row in user_rows:
+        if not user_row.get("password_hash"):
+            continue
 
-    if not check_password_hash(user_row["password_hash"], password):
-        return None
+        if check_password_hash(user_row["password_hash"], password):
+            authenticated_rows.append(user_row)
 
-    return _serialize_org_user(user_row)
+    return [_serialize_org_user(user_row) for user_row in authenticated_rows]
 
 
 def authenticate_root_admin(connection, username, password):

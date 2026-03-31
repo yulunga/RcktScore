@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 VALID_ROLES = {"admin", "user"}
@@ -145,16 +145,23 @@ def create_organization_user(connection, organization_id, username, password, ro
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id
+            SELECT id, organization_id, password_hash
             FROM "SkwshOrgUsers"
             WHERE clubusername = %(username)s
-            LIMIT 1
+            ORDER BY organization_id ASC, id ASC
             """,
             {"username": trimmed_username},
         )
-        existing_user = cursor.fetchone()
-        if existing_user:
-            raise ValueError("Username already exists")
+        existing_users = cursor.fetchall()
+        existing_hash = None
+        for existing_user in existing_users:
+            if int(existing_user["organization_id"]) == org_id:
+                raise ValueError("Username already exists in this organisation")
+            if existing_user.get("password_hash") and existing_hash is None:
+                existing_hash = existing_user["password_hash"]
+
+        if existing_hash and not check_password_hash(existing_hash, password):
+            raise ValueError("Username already exists with a different password")
 
         cursor.execute(
             """
@@ -165,7 +172,7 @@ def create_organization_user(connection, organization_id, username, password, ro
             {
                 "created_at": _utcnow(),
                 "username": trimmed_username,
-                "password_hash": generate_password_hash(password),
+                "password_hash": existing_hash or generate_password_hash(password),
                 "organization_id": org_id,
                 "role": normalized_role,
             },

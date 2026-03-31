@@ -69,6 +69,12 @@ export default function OrganisationSettingsPage() {
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
 
+  useEffect(() => {
+    if (organizationId && !isAdmin) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAdmin, navigate, organizationId]);
+
   const mapUrl = useMemo(() => {
     const address = organizationForm.org_address || settings?.organization?.org_address;
     if (!address) {
@@ -77,6 +83,10 @@ export default function OrganisationSettingsPage() {
 
     return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
   }, [organizationForm.org_address, settings?.organization?.org_address]);
+
+  if (organizationId && !isAdmin) {
+    return null;
+  }
 
   const syncLocalState = useCallback((response) => {
     const nextSettings = response?.organizationSettings || response || null;
