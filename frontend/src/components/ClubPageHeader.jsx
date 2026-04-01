@@ -15,7 +15,14 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       <section className={`hero-card club-page-header ${className}`.trim()}>
         <div className="club-page-header__top">
           <div className="club-page-header__branding">
-            <h1>PointPal</h1>
+            <div className="club-page-header__brand-row">
+              <img
+                className="club-page-header__logo"
+                src="/branding/logo/test_logo_2.png"
+                alt="Hit n Score"
+              />
+              <h1>Hit n Score</h1>
+            </div>
             {pageTitle ? <p className="club-page-header__page-title">{pageTitle}</p> : null}
           </div>
           <div className="club-page-header__account">
