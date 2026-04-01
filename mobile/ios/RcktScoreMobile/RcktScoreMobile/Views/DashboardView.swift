@@ -83,13 +83,23 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("PointPal")
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.dashboardBrand)
+                    HStack(spacing: 12) {
+                        Image("BrandLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 44, height: 44)
 
-                    Text("Live scoring dashboard")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Hit n Score")
+                                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Color.dashboardBrand)
+
+                            Text("Live scoring dashboard")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                 }
 
                 Spacer()

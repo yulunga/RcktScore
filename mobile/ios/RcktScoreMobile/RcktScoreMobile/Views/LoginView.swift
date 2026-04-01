@@ -24,112 +24,129 @@ struct LoginView: View {
             VStack {
                 Spacer(minLength: 40)
 
-                VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("BETA")
-                            .font(.caption2.weight(.black))
-                            .tracking(1.2)
-                            .foregroundStyle(Color.loginAction)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.loginAction.opacity(colorScheme == .dark ? 0.2 : 0.12))
-                            .clipShape(Capsule())
+                ZStack(alignment: .topTrailing) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        VStack(alignment: .center, spacing: 12) {
+                            Image("BrandLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 132, height: 132)
 
-                        Text("PointPal")
-                            .font(.largeTitle.weight(.heavy))
-                            .foregroundStyle(.primary)
-
-                        Text("Live squash scoring for clubs, referees, and match operators.")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    VStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Username")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-
-                            TextField("Enter username", text: $username)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled(true)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 14)
-                                .background(Color(.tertiarySystemBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            Text("Hit n Score")
+                                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                .foregroundStyle(Color.loginAction)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 12)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                                         .stroke(Color.loginBorder, lineWidth: 1)
                                 )
-                        }
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Password")
-                                .font(.caption.weight(.semibold))
+                            Text("Organisation login")
+                                .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.secondary)
-
-                            SecureField("Enter password", text: $password)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 14)
-                                .background(Color(.tertiarySystemBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.loginBorder, lineWidth: 1)
-                                )
                         }
-                    }
 
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                        VStack(spacing: 14) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Username")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
 
-                    Button(action: submit) {
-                        Group {
-                            if isLoading {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Sign in")
-                                    .font(.headline.weight(.semibold))
+                                TextField("Enter username", text: $username)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled(true)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 14)
+                                    .background(Color(.tertiarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.loginBorder, lineWidth: 1)
+                                    )
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Password")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                SecureField("Enter password", text: $password)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 14)
+                                    .background(Color(.tertiarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.loginBorder, lineWidth: 1)
+                                    )
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.loginAction)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLoading || username.isEmpty || password.isEmpty)
-                    .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Organisation login")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.loginAction)
-                        Text("Use your PointPal organisation credentials to continue.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        Button(action: submit) {
+                            Group {
+                                if isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Sign in")
+                                        .font(.headline.weight(.semibold))
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.loginAction)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isLoading || username.isEmpty || password.isEmpty)
+                        .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Organisation login")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.loginAction)
+                            Text("Use your Hit n Score organisation credentials to continue.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .padding(24)
+                    .frame(maxWidth: 420)
+                    .background(Color.loginCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.loginBorder, lineWidth: 1)
+                    )
+                    .shadow(
+                        color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
+                        radius: 24,
+                        x: 0,
+                        y: 14
+                    )
+
+                    Text("BETA")
+                        .font(.caption2.weight(.black))
+                        .tracking(1.2)
+                        .foregroundStyle(Color.loginAction)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.loginAction.opacity(colorScheme == .dark ? 0.2 : 0.12))
+                        .clipShape(Capsule())
+                        .offset(x: 10, y: -12)
                 }
-                .padding(24)
-                .frame(maxWidth: 420)
-                .background(Color.loginCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(Color.loginBorder, lineWidth: 1)
-                )
-                .shadow(
-                    color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
-                    radius: 24,
-                    x: 0,
-                    y: 14
-                )
 
                 Spacer()
             }
