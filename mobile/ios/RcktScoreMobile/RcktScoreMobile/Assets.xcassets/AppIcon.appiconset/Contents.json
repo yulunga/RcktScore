@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "hit_n_score_1024.png",
+      "filename" : "hit_n_score_master_1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "hit_n_score_dark_1024.png",
+      "filename" : "hit_n_score_master_1024 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
