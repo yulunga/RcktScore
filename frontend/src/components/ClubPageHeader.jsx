@@ -21,7 +21,11 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                 src="/branding/logo/test_logo_2.png"
                 alt="Hit n Score"
               />
-              <h1>Hit n Score</h1>
+              <h1 className="club-page-header__wordmark" aria-label="Hit n Score">
+                <span className="club-page-header__wordmark-hit">Hit</span>
+                <span className="club-page-header__wordmark-n">n</span>
+                <span className="club-page-header__wordmark-score">Score</span>
+              </h1>
             </div>
             {pageTitle ? <p className="club-page-header__page-title">{pageTitle}</p> : null}
           </div>
