@@ -5,12 +5,12 @@ import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import {
   createOrganizationCourt,
-  createOrganizationUser,
+  createRootAdminOrganizationUser,
   deleteOrganizationCourt,
   getOrganizationSettings,
   updateOrganizationCourt,
   updateOrganizationDetails,
-  updateOrganizationUserRole,
+  updateRootAdminOrganizationUserRole,
 } from "../services/api";
 
 const emptyOrganizationForm = {
@@ -190,7 +190,7 @@ export default function RootAdminClubPage() {
     event.preventDefault();
     await runMutation(
       "user-create",
-      () => createOrganizationUser({
+      () => createRootAdminOrganizationUser({
         organization_id: organizationId,
         username: userForm.username,
         password: userForm.password,
@@ -204,7 +204,7 @@ export default function RootAdminClubPage() {
   async function handleUserRoleSave(userId) {
     await runMutation(
       `user-role-${userId}`,
-      () => updateOrganizationUserRole(userId, {
+      () => updateRootAdminOrganizationUserRole(userId, {
         organization_id: organizationId,
         role: userRoleDrafts[userId],
       }),
