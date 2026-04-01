@@ -31,6 +31,12 @@ Parameters:
   FeedbackFromEmail:
     Type: String
     Default: rcktinterest@ucingo.com
+  UserInvitationFromEmail:
+    Type: String
+    Default: rcktinterest@ucingo.com
+  UserApprovalBaseUrl:
+    Type: String
+    Default: ""
 
 Resources:
   RcktScoreHttpApi:
@@ -86,6 +92,18 @@ Resources:
             Path: /login
             Method: POST
 
+  ApproveOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/approve_org_user/handler.lambda_handler
+      Events:
+        ApproveOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_users/approve
+            Method: GET
+
   RootAdminLoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -138,6 +156,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: functions/create_root_admin_org_user/handler.lambda_handler
+      Environment:
+        Variables:
+          USER_INVITATION_FROM_EMAIL: !Ref UserInvitationFromEmail
+          USER_APPROVAL_BASE_URL: !Ref UserApprovalBaseUrl
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
       Events:
         CreateRootAdminOrgUser:
           Type: HttpApi
@@ -268,6 +297,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: functions/create_org_user/handler.lambda_handler
+      Environment:
+        Variables:
+          USER_INVITATION_FROM_EMAIL: !Ref UserInvitationFromEmail
+          USER_APPROVAL_BASE_URL: !Ref UserApprovalBaseUrl
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
       Events:
         CreateOrgUser:
           Type: HttpApi

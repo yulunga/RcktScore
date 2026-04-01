@@ -162,7 +162,25 @@ select {
   text-align: center;
   font-size: clamp(1.9rem, 3vw, 2.25rem);
   line-height: 1.1;
-  border: 1px solid rgba(16, 42, 67, 0.08);
+  border: 0;
+}
+
+.login-title--wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.login-title__hit,
+.login-title__score {
+  color: #0b5fb3;
+}
+
+.login-title__n {
+  color: #ec5ea8;
 }
 
 .beta-badge {
@@ -180,6 +198,18 @@ select {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.dashboard-status-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-pill.warning {
+  background: #fff3c4;
+  color: #8a5b00;
 }
 
 .page-beta-badge {

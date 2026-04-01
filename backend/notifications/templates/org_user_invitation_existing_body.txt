@@ -1,0 +1,19 @@
+Hi,
+
+Your existing $app_name account has been invited to join another organisation.
+
+New organisation:
+$organization_name
+
+To confirm this association and approve access, open the link below:
+$approval_url
+
+Your sign-in email is:
+$username
+
+Once approved, you can choose this organisation when you sign in.
+
+If you were not expecting this invitation, you can ignore this email.
+
+Thanks,
+$app_name

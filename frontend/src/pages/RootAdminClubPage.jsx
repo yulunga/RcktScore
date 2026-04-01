@@ -55,6 +55,7 @@ const sportOptions = [
   { name: "Racketball", status: "planned", note: "Planned after squash launch" },
   { name: "Badminton", status: "planned", note: "Planned after squash launch" },
 ];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const adminTabs = [
   { id: "club-details", label: "Club Details" },
@@ -188,15 +189,23 @@ export default function RootAdminClubPage() {
 
   async function handleUserSubmit(event) {
     event.preventDefault();
+    const normalizedUsername = userForm.username.trim().toLowerCase();
+
+    if (!EMAIL_PATTERN.test(normalizedUsername)) {
+      setMessage("");
+      setError("Enter a valid email address for the user.");
+      return;
+    }
+
     await runMutation(
       "user-create",
       () => createRootAdminOrganizationUser({
         organization_id: organizationId,
-        username: userForm.username,
+        username: normalizedUsername,
         password: userForm.password,
         role: userForm.role,
       }),
-      "User added to organisation.",
+      "User added to organisation. Invitation email sent and access is pending approval.",
     );
     setUserForm(emptyUserForm);
   }
@@ -399,17 +408,19 @@ export default function RootAdminClubPage() {
           <div className="panel-heading">
             <h2>Organisation Users</h2>
             <p className="helper-text">
-              Create users, link existing usernames to this club, and update club roles.
+              Create users, link existing email addresses to this club, and update club roles.
             </p>
           </div>
 
           <form className="stack" onSubmit={handleUserSubmit}>
             <div className="field-grid settings-field-grid-tight">
               <div className="field">
-                <label htmlFor="club_user_username">Username</label>
+                <label htmlFor="club_user_username">Email Address</label>
                 <input
                   id="club_user_username"
                   required
+                  placeholder="user@club.com"
+                  type="email"
                   value={userForm.username}
                   onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
                 />
@@ -452,7 +463,12 @@ export default function RootAdminClubPage() {
                 <article className="dashboard-item" key={user.id}>
                   <div className="dashboard-item-head">
                     <strong>{user.username}</strong>
-                    <span>{formatDate(user.created_at)}</span>
+                    <div className="dashboard-status-group">
+                      <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
+                        {user.status || "approved"}
+                      </span>
+                      <span>{formatDate(user.created_at)}</span>
+                    </div>
                   </div>
                   <div className="settings-inline-actions">
                     <select

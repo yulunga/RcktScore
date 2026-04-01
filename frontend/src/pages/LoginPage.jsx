@@ -112,7 +112,11 @@ export default function LoginPage() {
                   src="/branding/logo/test_logo_2.png"
                   alt="Hit n Score"
                 />
-                <h1 className="login-title">Hit n Score</h1>
+                <h1 className="login-title login-title--wordmark" aria-label="HitnScore">
+                  <span className="login-title__hit">Hit</span>
+                  <span className="login-title__n">n</span>
+                  <span className="login-title__score">Score</span>
+                </h1>
               </div>
             </div>
             {requiresOrganizationSelection ? (

@@ -191,7 +191,16 @@ def create_root_admin_organization(connection, payload):
     return _serialize_organization(organization_row)
 
 
-def create_root_admin_org_user(connection, organization_id, username, password, role):
+def create_root_admin_org_user(
+    connection,
+    organization_id,
+    username,
+    password,
+    role,
+    *,
+    invitation_source_email=None,
+    approval_base_url=None,
+):
     return create_organization_user(
         connection,
         organization_id,
@@ -199,6 +208,8 @@ def create_root_admin_org_user(connection, organization_id, username, password, 
         password,
         role,
         allow_existing_password_reuse=True,
+        invitation_source_email=invitation_source_email,
+        approval_base_url=approval_base_url,
     )
 
 

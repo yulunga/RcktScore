@@ -39,6 +39,7 @@ const sportOptions = [
   { name: "Racketball", status: "planned", note: "Planned after squash launch" },
   { name: "Badminton", status: "planned", note: "Planned after squash launch" },
 ];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function formatDate(value) {
   if (!value) {
@@ -164,15 +165,23 @@ export default function OrganisationSettingsPage() {
 
   async function handleUserSubmit(event) {
     event.preventDefault();
+    const normalizedUsername = userForm.username.trim().toLowerCase();
+
+    if (!EMAIL_PATTERN.test(normalizedUsername)) {
+      setMessage("");
+      setError("Enter a valid email address for the user.");
+      return;
+    }
+
     await runMutation(
       "user-create",
       () => createOrganizationUser({
         organization_id: organizationId,
-        username: userForm.username,
+        username: normalizedUsername,
         password: userForm.password,
         role: userForm.role,
       }),
-      "User added to organisation.",
+      "User added to organisation. Invitation email sent and access is pending approval.",
     );
     setUserForm(emptyUserForm);
   }
@@ -400,25 +409,28 @@ export default function OrganisationSettingsPage() {
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Organisation Users</h2>
-            <p className="helper-text">Add users to this organisation and assign admin or user roles.</p>
+            <p className="helper-text">Add users by email address and assign admin or user roles.</p>
           </div>
 
           <form className="stack" onSubmit={handleUserSubmit}>
             <div className="field-grid">
               <div className="field">
-                <label htmlFor="new_username">Username</label>
+                <label htmlFor="new_username">Email Address</label>
                 <input
                   disabled={!isAdmin}
                   id="new_username"
+                  placeholder="user@club.com"
+                  type="email"
                   value={userForm.username}
                   onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
                 />
               </div>
               <div className="field">
-                <label htmlFor="new_password">Password</label>
+                <label htmlFor="new_password">Password (new users only)</label>
                 <input
                   disabled={!isAdmin}
                   id="new_password"
+                  placeholder="Optional when email already exists"
                   type="password"
                   value={userForm.password}
                   onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
@@ -451,10 +463,16 @@ export default function OrganisationSettingsPage() {
               <article className="dashboard-item" key={user.id}>
                 <div className="dashboard-item-head">
                   <strong>{user.username}</strong>
-                  <span className="status-pill">{user.role}</span>
+                  <div className="dashboard-status-group">
+                    <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
+                      {user.status || "approved"}
+                    </span>
+                    <span className="status-pill">{user.role}</span>
+                  </div>
                 </div>
                 <div className="dashboard-item-meta">
                   <span>Created: {formatDate(user.created_at)}</span>
+                  {user.status === "pending" ? <span>Awaiting email approval</span> : null}
                 </div>
                 <div className="settings-inline-actions">
                   <select

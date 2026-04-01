@@ -1,0 +1,18 @@
+Hi,
+
+Welcome to $app_name.
+
+You have been invited to join $organization_name.
+
+To confirm your email address and approve access to this organisation, open the link below:
+$approval_url
+
+Your sign-in email is:
+$username
+
+Once approved, you can sign in and use the live scoring platform for this organisation.
+
+If you were not expecting this invitation, you can ignore this email.
+
+Thanks,
+$app_name

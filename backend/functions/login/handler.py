@@ -18,9 +18,19 @@ def lambda_handler(event, context):
     password = payload["password"]
 
     with get_db_connection() as connection:
-        memberships = authenticate_org_user_memberships(connection, username, password)
+        auth_result = authenticate_org_user_memberships(connection, username, password)
+
+    memberships = auth_result["approved_memberships"]
+    pending_memberships = auth_result["pending_memberships"]
 
     if not memberships:
+        if pending_memberships:
+            logger.warning("Pending approval login attempt for username=%s", username)
+            return error_response(
+                403,
+                "PENDING_APPROVAL",
+                "Your organisation access is pending email approval. Please check your email and accept the invitation.",
+            )
         logger.warning("Invalid login attempt for username=%s", username)
         return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
 

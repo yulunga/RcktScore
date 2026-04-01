@@ -1,5 +1,7 @@
 from werkzeug.security import check_password_hash
 
+from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
+
 
 def _serialize_org_user(user_row):
     user_json = user_row.get("user_json") or {}
@@ -21,6 +23,7 @@ def _serialize_org_user(user_row):
         user_json.get("email")
         or user_json.get("user_email")
         or user_json.get("mail")
+        or user_row.get("clubusername")
         or ""
     )
     full_name = " ".join(part for part in [first_name, surname] if part).strip()
@@ -31,6 +34,7 @@ def _serialize_org_user(user_row):
         "role": user_row.get("role") or "user",
         "organization_id": user_row["organization_id"],
         "organization_name": user_row.get("organization_name"),
+        "status": user_row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": first_name,
         "surname": surname,
         "full_name": full_name,
@@ -56,15 +60,16 @@ def get_org_users(connection, username):
                 u.password_hash,
                 u.organization_id,
                 u.role,
+                u.approval_status,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
-            WHERE u.clubusername = %(username)s
+            WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY o.organization_name ASC, u.organization_id ASC, u.id ASC
             """,
-            {"username": username},
+            {"username": normalize_email_address(username)},
         )
         return cursor.fetchall()
 
@@ -86,17 +91,28 @@ def get_root_admin(connection, username):
 def authenticate_org_user_memberships(connection, username, password):
     user_rows = get_org_users(connection, username)
     if not user_rows:
-        return []
+        return {
+            "approved_memberships": [],
+            "pending_memberships": [],
+        }
 
-    authenticated_rows = []
+    approved_memberships = []
+    pending_memberships = []
     for user_row in user_rows:
         if not user_row.get("password_hash"):
             continue
 
         if check_password_hash(user_row["password_hash"], password):
-            authenticated_rows.append(user_row)
+            serialized_user = _serialize_org_user(user_row)
+            if serialized_user["status"] == USER_STATUS_APPROVED:
+                approved_memberships.append(serialized_user)
+            else:
+                pending_memberships.append(serialized_user)
 
-    return [_serialize_org_user(user_row) for user_row in authenticated_rows]
+    return {
+        "approved_memberships": approved_memberships,
+        "pending_memberships": pending_memberships,
+    }
 
 
 def authenticate_root_admin(connection, username, password):
