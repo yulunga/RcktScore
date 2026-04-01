@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
   const [minuteTick, setMinuteTick] = useState(Date.now());
+  const [expandedScheduledMatches, setExpandedScheduledMatches] = useState({});
 
   useEffect(() => {
     async function loadDashboard() {
@@ -129,6 +130,13 @@ export default function DashboardPage() {
     } catch (requestError) {
       setActionError(requestError.message || "Failed to start scheduled match.");
     }
+  }
+
+  function toggleScheduledDetails(matchId) {
+    setExpandedScheduledMatches((current) => ({
+      ...current,
+      [matchId]: !current[matchId],
+    }));
   }
 
   const activeMatches = dashboard?.active_matches || [];
@@ -256,12 +264,29 @@ export default function DashboardPage() {
                   <div className="dashboard-history-content">
                     <div className="dashboard-item-head">
                       <strong>{formatPlayers(match)}</strong>
-                      <span>{formatDate(match.created_at)}</span>
+                      <button
+                        aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
+                        aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
+                        className="dashboard-match-menu-button"
+                        type="button"
+                        onClick={() => toggleScheduledDetails(match.id)}
+                      >
+                        <span aria-hidden="true">⋮</span>
+                      </button>
                     </div>
                     <div className="dashboard-item-meta">
                       <span>Court: {match.court_name || "Unassigned"}</span>
-                      <span>{match.best_of ? `Match: Best of ${match.best_of}` : "Match scheduled"}</span>
+                      <span>Ready to start</span>
                     </div>
+                    {expandedScheduledMatches[match.id] ? (
+                      <div className="dashboard-match-details">
+                        <span>Scheduled: {formatDate(match.created_at)}</span>
+                        <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
+                        <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
+                        <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
+                        <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               ))}

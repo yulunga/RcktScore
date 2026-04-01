@@ -370,13 +370,13 @@ select {
 
 .club-page-header__brand-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 14px;
 }
 
 .club-page-header__logo {
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
   flex: 0 0 auto;
 }
@@ -384,7 +384,7 @@ select {
 .club-page-header__wordmark {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.26em;
+  gap: 0;
   color: #0b5fb3;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -443,8 +443,8 @@ select {
 
 .club-page-header__top h1 {
   margin: 0;
-  font-size: clamp(2.2rem, 4.2vw, 2.9rem);
-  line-height: 1.05;
+  font-size: clamp(2.4rem, 4.5vw, 3.25rem);
+  line-height: 0.95;
   font-weight: 500;
 }
 
@@ -786,6 +786,35 @@ select {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.dashboard-match-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.dashboard-match-menu-button:hover {
+  background: rgba(18, 116, 208, 0.08);
+  color: #1274d0;
+}
+
+.dashboard-match-details {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  font-size: 0.88rem;
+  color: #486581;
 }
 
 .dashboard-item-meta--stacked {
