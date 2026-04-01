@@ -123,6 +123,20 @@ select {
   gap: 16px;
 }
 
+.login-branding {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.login-branding__logo {
+  display: block;
+  width: min(100%, 184px);
+  height: auto;
+  object-fit: contain;
+}
+
 .login-title {
   margin: 0;
   padding: 12px 20px;

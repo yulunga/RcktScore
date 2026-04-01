@@ -16,6 +16,7 @@ private enum RailMarkerKind {
 
 struct MatchScoringView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.colorScheme) private var colorScheme
 
     let matchID: String
 
@@ -182,13 +183,13 @@ struct MatchScoringView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Color.rcktCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 16, x: 0, y: 8)
+        .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.05), radius: 16, x: 0, y: 8)
     }
 
     @ViewBuilder
@@ -316,7 +317,7 @@ struct MatchScoringView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Color.rcktCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -587,5 +588,19 @@ private extension Color {
     static let rcktDanger = Color(red: 214 / 255, green: 69 / 255, blue: 69 / 255)
     static let rcktServe = Color(red: 217 / 255, green: 130 / 255, blue: 43 / 255)
     static let rcktActive = Color(red: 82 / 255, green: 205 / 255, blue: 120 / 255)
-    static let rcktBorder = Color(red: 217 / 255, green: 226 / 255, blue: 236 / 255)
+    static let rcktCardBackground = Color(UIColor.secondarySystemGroupedBackground)
+    static let rcktBorder = Color(
+        UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor.white.withAlphaComponent(0.08)
+            }
+
+            return UIColor(
+                red: 217 / 255,
+                green: 226 / 255,
+                blue: 236 / 255,
+                alpha: 1
+            )
+        }
+    )
 }
