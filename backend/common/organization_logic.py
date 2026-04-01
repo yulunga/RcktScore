@@ -48,6 +48,20 @@ def _serialize_user(row):
     }
 
 
+def get_existing_org_users_by_username(connection, username):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, organization_id, password_hash
+            FROM "SkwshOrgUsers"
+            WHERE clubusername = %(username)s
+            ORDER BY organization_id ASC, id ASC
+            """,
+            {"username": username},
+        )
+        return cursor.fetchall()
+
+
 def _serialize_court(row):
     created_at = row.get("created_at")
     return {
@@ -130,7 +144,15 @@ def update_organization_details(connection, organization_id, payload):
     return get_organization_settings(connection, org_id)
 
 
-def create_organization_user(connection, organization_id, username, password, role):
+def create_organization_user(
+    connection,
+    organization_id,
+    username,
+    password,
+    role,
+    *,
+    allow_existing_password_reuse=False,
+):
     org_id = int(organization_id)
     normalized_role = (role or "user").strip().lower()
     if normalized_role not in VALID_ROLES:
@@ -139,30 +161,25 @@ def create_organization_user(connection, organization_id, username, password, ro
     trimmed_username = username.strip()
     if not trimmed_username:
         raise ValueError("username is required")
-    if not password:
+
+    existing_users = get_existing_org_users_by_username(connection, trimmed_username)
+    existing_hash = None
+    for existing_user in existing_users:
+        if int(existing_user["organization_id"]) == org_id:
+            raise ValueError("Username already exists in this organisation")
+        if existing_user.get("password_hash") and existing_hash is None:
+            existing_hash = existing_user["password_hash"]
+
+    if existing_hash:
+        if not allow_existing_password_reuse:
+            if not password:
+                raise ValueError("Password is required when adding an existing username")
+            if not check_password_hash(existing_hash, password):
+                raise ValueError("Username already exists with a different password")
+    elif not password:
         raise ValueError("password is required")
 
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id, organization_id, password_hash
-            FROM "SkwshOrgUsers"
-            WHERE clubusername = %(username)s
-            ORDER BY organization_id ASC, id ASC
-            """,
-            {"username": trimmed_username},
-        )
-        existing_users = cursor.fetchall()
-        existing_hash = None
-        for existing_user in existing_users:
-            if int(existing_user["organization_id"]) == org_id:
-                raise ValueError("Username already exists in this organisation")
-            if existing_user.get("password_hash") and existing_hash is None:
-                existing_hash = existing_user["password_hash"]
-
-        if existing_hash and not check_password_hash(existing_hash, password):
-            raise ValueError("Username already exists with a different password")
-
         cursor.execute(
             """
             INSERT INTO "SkwshOrgUsers" (created_at, clubusername, password_hash, organization_id, role)

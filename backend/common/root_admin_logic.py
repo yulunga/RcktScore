@@ -192,7 +192,14 @@ def create_root_admin_organization(connection, payload):
 
 
 def create_root_admin_org_user(connection, organization_id, username, password, role):
-    return create_organization_user(connection, organization_id, username, password, role)
+    return create_organization_user(
+        connection,
+        organization_id,
+        username,
+        password,
+        role,
+        allow_existing_password_reuse=True,
+    )
 
 
 def update_root_admin_org_user_role(connection, organization_id, user_id, role):

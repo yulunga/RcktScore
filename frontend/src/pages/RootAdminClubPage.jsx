@@ -398,7 +398,9 @@ export default function RootAdminClubPage() {
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Organisation Users</h2>
-            <p className="helper-text">Create users and update club roles.</p>
+            <p className="helper-text">
+              Create users, link existing usernames to this club, and update club roles.
+            </p>
           </div>
 
           <form className="stack" onSubmit={handleUserSubmit}>
@@ -413,10 +415,10 @@ export default function RootAdminClubPage() {
                 />
               </div>
               <div className="field">
-                <label htmlFor="club_user_password">Password</label>
+                <label htmlFor="club_user_password">Password (new users only)</label>
                 <input
                   id="club_user_password"
-                  required
+                  placeholder="Optional when username already exists"
                   type="password"
                   value={userForm.password}
                   onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}

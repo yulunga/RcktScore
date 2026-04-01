@@ -5,7 +5,7 @@ from common.utils import error_response, parse_body, require_fields, success_res
 
 def lambda_handler(event, context):
     payload = parse_body(event)
-    missing_fields = require_fields(payload, ["organization_id", "username", "password", "role"])
+    missing_fields = require_fields(payload, ["organization_id", "username", "role"])
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
 
