@@ -243,8 +243,12 @@ export default function LoginPage() {
             <div className="stack compact">
               {showInterestForm ? (
                 <form className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
+                  <h2 className="interest-panel__heading">Let me in</h2>
                   <p className="helper-text interest-copy">
-                    We are cuurently in a beta phase. Request early access by submitting your details—approved users will be granted access to the platform.
+                    We are currently in a beta phase. Request early access by submitting your details.
+                    <br />
+                    <br />
+                    Approved users will be granted access to the platform.
                   </p>
 
                   <div className="field-grid">
@@ -300,7 +304,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="field">
-                    <label htmlFor="interest_use_type">Use type</label>
+                    <label htmlFor="interest_use_type">App Use</label>
                     <select
                       id="interest_use_type"
                       name="interest_use_type"

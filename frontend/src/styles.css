@@ -112,14 +112,16 @@ select {
   justify-content: space-between;
   align-items: center;
   gap: 24px;
-  padding-top: 0;
+  padding-top: 24px;
 }
 
 .login-shell__content {
   flex: 1;
   width: 100%;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
+  padding-top: 12px;
 }
 
 .login-panel-wrap {
@@ -220,13 +222,22 @@ select {
 }
 
 .login-panel-wrap .page-beta-badge {
-  top: -14px;
+  top: -10px;
   right: -12px;
 }
 
 .interest-panel {
-  padding-top: 8px;
-  border-top: 1px solid rgba(16, 42, 67, 0.08);
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(236, 94, 168, 0.24);
+  box-shadow: inset 0 10px 18px -18px rgba(16, 42, 67, 0.42);
+}
+
+.interest-panel__heading {
+  margin: 0;
+  color: #0b5fb3;
+  font-size: 1.25rem;
+  line-height: 1.1;
 }
 
 .login-choice-panel {
