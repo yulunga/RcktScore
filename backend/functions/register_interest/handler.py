@@ -3,6 +3,8 @@ import re
 from datetime import datetime, timezone
 
 from aws_lambda_powertools import Logger
+from botocore.exceptions import BotoCoreError, ClientError
+from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
@@ -182,14 +184,36 @@ def lambda_handler(event, context):
         "user_agent": user_agent,
     }
 
-    with get_db_connection() as connection:
-        interest_row = _upsert_interest_request(connection, request_payload)
-        _send_interest_emails(
-            payload=request_payload,
-            destination_email=destination_email,
-            source_email=source_email,
+    try:
+        with get_db_connection() as connection:
+            interest_row = _upsert_interest_request(connection, request_payload)
+            _send_interest_emails(
+                payload=request_payload,
+                destination_email=destination_email,
+                source_email=source_email,
+            )
+            connection.commit()
+    except UndefinedTable:
+        logger.exception("Interest request table is missing")
+        return error_response(
+            500,
+            "INTEREST_REQUESTS_TABLE_MISSING",
+            "Interest request storage is not ready. Please run the interest requests database migration.",
         )
-        connection.commit()
+    except (BotoCoreError, ClientError):
+        logger.exception("Interest request email failed")
+        return error_response(
+            500,
+            "INTEREST_EMAIL_FAILED",
+            "Unable to send confirmation email. Please check the email sender configuration.",
+        )
+    except Exception:
+        logger.exception("Interest request failed")
+        return error_response(
+            500,
+            "INTEREST_REQUEST_FAILED",
+            "Unable to register interest right now.",
+        )
 
     logger.info(
         "Interest request accepted id=%s email=%s use_type=%s",
