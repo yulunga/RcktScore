@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -43,6 +43,30 @@ export default function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/dashboard";
+  const hasInterestDraft = Boolean(
+    interestFirstName.trim()
+    || interestSurname.trim()
+    || interestEmail.trim()
+    || interestClubName.trim()
+    || interestAnswer.trim()
+    || interestUseType !== "personal",
+  );
+
+  useEffect(() => {
+    if (!showInterestForm || hasInterestDraft) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowInterestForm(false);
+      setInterestError("");
+      setInterestMessage("");
+      setInterestCaptcha(createCaptchaChallenge());
+      setInterestAnswer("");
+    }, 15000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [hasInterestDraft, showInterestForm]);
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />;
@@ -119,6 +143,11 @@ export default function LoginPage() {
       setInterestAnswer("");
       setInterestHoneypot("");
       setInterestCaptcha(createCaptchaChallenge());
+      window.setTimeout(() => {
+        setShowInterestForm(false);
+        setInterestMessage("");
+        setInterestError("");
+      }, 5000);
     } catch (requestError) {
       setInterestError(requestError.message || "Unable to submit your interest right now.");
     } finally {
