@@ -1,0 +1,18 @@
+Hi $first_name,
+
+Thanks for requesting early access to HitnScore.
+
+We are currently in a beta phase and are onboarding approved users gradually.
+
+HitnScore helps clubs and players manage live racket-sport scoring, match setup, scheduled matches, scoreboards, and match history from one shared platform.
+
+Your request details:
+Name: $first_name $surname
+Email: $email
+Use type: $use_type
+Club: $club_name
+
+We will review your request and contact you when access is available.
+
+Thanks,
+HitnScore

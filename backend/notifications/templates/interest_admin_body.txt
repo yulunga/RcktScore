@@ -1,0 +1,10 @@
+A new HitnScore early access request has been submitted.
+
+Name: $first_name $surname
+Email: $email
+Use type: $use_type
+Club: $club_name
+Approval status: pending
+Email validated: false
+Page URL: $page_url
+User Agent: $user_agent

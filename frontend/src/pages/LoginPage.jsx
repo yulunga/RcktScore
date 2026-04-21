@@ -20,7 +20,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showInterestForm, setShowInterestForm] = useState(false);
+  const [interestFirstName, setInterestFirstName] = useState("");
+  const [interestSurname, setInterestSurname] = useState("");
   const [interestEmail, setInterestEmail] = useState("");
+  const [interestUseType, setInterestUseType] = useState("personal");
+  const [interestClubName, setInterestClubName] = useState("");
   const [interestCaptcha, setInterestCaptcha] = useState(() => createCaptchaChallenge());
   const [interestAnswer, setInterestAnswer] = useState("");
   const [interestHoneypot, setInterestHoneypot] = useState("");
@@ -64,8 +68,23 @@ export default function LoginPage() {
   async function handleInterestSubmit(event) {
     event.preventDefault();
 
+    if (!interestFirstName.trim()) {
+      setInterestError("Name is required.");
+      return;
+    }
+
+    if (!interestSurname.trim()) {
+      setInterestError("Surname is required.");
+      return;
+    }
+
     if (!interestEmail.trim()) {
       setInterestError("Email address is required.");
+      return;
+    }
+
+    if (interestUseType === "club" && !interestClubName.trim()) {
+      setInterestError("Club name is required for club use.");
       return;
     }
 
@@ -82,13 +101,21 @@ export default function LoginPage() {
 
     try {
       await registerInterest({
+        first_name: interestFirstName.trim(),
+        surname: interestSurname.trim(),
         email: interestEmail.trim(),
+        use_type: interestUseType,
+        club_name: interestUseType === "club" ? interestClubName.trim() : "",
         company: interestHoneypot,
         page_url: typeof window !== "undefined" ? window.location.href : "",
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       });
       setInterestMessage("Thanks. We have recorded your interest and will be in touch.");
+      setInterestFirstName("");
+      setInterestSurname("");
       setInterestEmail("");
+      setInterestUseType("personal");
+      setInterestClubName("");
       setInterestAnswer("");
       setInterestHoneypot("");
       setInterestCaptcha(createCaptchaChallenge());
@@ -217,15 +244,50 @@ export default function LoginPage() {
               {showInterestForm ? (
                 <form className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
                   <p className="helper-text interest-copy">
-                    Request early access to RcktScore. We are cuurently in a beta phase. Request early access by submitting your details—approved users will be granted access to the platform.
+                    We are cuurently in a beta phase. Request early access by submitting your details—approved users will be granted access to the platform.
                   </p>
+
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="interest_first_name">Name</label>
+                      <input
+                        id="interest_first_name"
+                        name="interest_first_name"
+                        required
+                        value={interestFirstName}
+                        onChange={(event) => {
+                          setInterestFirstName(event.target.value);
+                          if (interestError) {
+                            setInterestError("");
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="interest_surname">Surname</label>
+                      <input
+                        id="interest_surname"
+                        name="interest_surname"
+                        required
+                        value={interestSurname}
+                        onChange={(event) => {
+                          setInterestSurname(event.target.value);
+                          if (interestError) {
+                            setInterestError("");
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   <div className="field">
                     <label htmlFor="interest_email">Email address</label>
                     <input
                       id="interest_email"
                       name="interest_email"
-                      placeholder="you@club.com"
+                      placeholder="you@email.com"
+                      required
                       type="email"
                       value={interestEmail}
                       onChange={(event) => {
@@ -236,6 +298,42 @@ export default function LoginPage() {
                       }}
                     />
                   </div>
+
+                  <div className="field">
+                    <label htmlFor="interest_use_type">Use type</label>
+                    <select
+                      id="interest_use_type"
+                      name="interest_use_type"
+                      value={interestUseType}
+                      onChange={(event) => {
+                        setInterestUseType(event.target.value);
+                        if (interestError) {
+                          setInterestError("");
+                        }
+                      }}
+                    >
+                      <option value="personal">Personal use</option>
+                      <option value="club">Club use</option>
+                    </select>
+                  </div>
+
+                  {interestUseType === "club" ? (
+                    <div className="field">
+                      <label htmlFor="interest_club_name">Club name</label>
+                      <input
+                        id="interest_club_name"
+                        name="interest_club_name"
+                        required
+                        value={interestClubName}
+                        onChange={(event) => {
+                          setInterestClubName(event.target.value);
+                          if (interestError) {
+                            setInterestError("");
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="interest-honeypot" aria-hidden="true">
                     <label htmlFor="company">Company</label>
