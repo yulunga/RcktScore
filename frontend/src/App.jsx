@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RootAdminProtectedRoute from "./components/RootAdminProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
 import DashboardPage from "./pages/DashboardPage";
+import HelpPage from "./pages/HelpPage";
 import LoginPage from "./pages/LoginPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
@@ -19,6 +20,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/help" element={<HelpPage />} />
       <Route path="/rckscoreAdmin" element={<RootAdminLoginPage />} />
       <Route
         path="/rckscoreAdmin/dashboard"

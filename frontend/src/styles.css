@@ -262,6 +262,71 @@ select {
   background: #eef5fc;
 }
 
+.login-help-link,
+.help-login-link {
+  padding-top: 4px;
+  text-align: center;
+}
+
+.login-help-link a,
+.help-login-link a {
+  color: #ec5ea8;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-help-link a:hover,
+.help-login-link a:hover {
+  text-decoration: underline;
+}
+
+.help-shell .login-shell__content {
+  align-items: start;
+  padding-top: 24px;
+}
+
+.help-panel {
+  width: min(100%, 620px);
+}
+
+.help-branding__logo {
+  width: min(100%, 96px);
+}
+
+.help-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.help-nav button {
+  padding: 9px 14px;
+  border: 1px solid rgba(236, 94, 168, 0.26);
+  border-radius: 999px;
+  background: #fff;
+  color: #ec5ea8;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-nav button.active {
+  background: rgba(236, 94, 168, 0.12);
+  border-color: rgba(236, 94, 168, 0.46);
+}
+
+.help-copy {
+  color: #486581;
+  line-height: 1.55;
+}
+
+.help-copy h2 {
+  margin: 0;
+  color: #102a43;
+}
+
 .interest-copy {
   max-width: 42ch;
 }

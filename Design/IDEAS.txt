@@ -61,4 +61,4 @@ Build a seperate section called reports to get some stats from how the system is
  - show club that the logged in users are from (muti-org show active clib)
  - build basic reporting to see how many times a user logged in
  - basic reporting to show how many mathes a organisation has scored for
- - 
+ - email system setup with email activation in SES - read doc(email) in yulunga mail

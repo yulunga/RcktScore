@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import { useAuth } from "../hooks/useAuth";
@@ -277,6 +277,10 @@ export default function LoginPage() {
                   </div>
                 </form>
               ) : null}
+            </div>
+
+            <div className="login-help-link">
+              <Link to="/help">Need help?</Link>
             </div>
           </section>
         </div>

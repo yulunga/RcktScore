@@ -70,6 +70,20 @@ export function submitFeedback(payload) {
   });
 }
 
+export function requestPasswordReset(payload) {
+  return apiRequest("/password_reset/request", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function confirmPasswordReset(payload) {
+  return apiRequest("/password_reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getDashboard(organizationId) {
   return apiRequest(`/dashboard/${organizationId}`);
 }
