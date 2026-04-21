@@ -187,11 +187,6 @@ def lambda_handler(event, context):
     try:
         with get_db_connection() as connection:
             interest_row = _upsert_interest_request(connection, request_payload)
-            _send_interest_emails(
-                payload=request_payload,
-                destination_email=destination_email,
-                source_email=source_email,
-            )
             connection.commit()
     except UndefinedTable:
         logger.exception("Interest request table is missing")
@@ -199,6 +194,20 @@ def lambda_handler(event, context):
             500,
             "INTEREST_REQUESTS_TABLE_MISSING",
             "Interest request storage is not ready. Please run the interest requests database migration.",
+        )
+    except Exception:
+        logger.exception("Interest request database write failed")
+        return error_response(
+            500,
+            "INTEREST_REQUEST_FAILED",
+            "Unable to register interest right now.",
+        )
+
+    try:
+        _send_interest_emails(
+            payload=request_payload,
+            destination_email=destination_email,
+            source_email=source_email,
         )
     except (BotoCoreError, ClientError):
         logger.exception("Interest request email failed")
@@ -208,11 +217,11 @@ def lambda_handler(event, context):
             "Unable to send confirmation email. Please check the email sender configuration.",
         )
     except Exception:
-        logger.exception("Interest request failed")
+        logger.exception("Interest request email failed unexpectedly")
         return error_response(
             500,
-            "INTEREST_REQUEST_FAILED",
-            "Unable to register interest right now.",
+            "INTEREST_EMAIL_FAILED",
+            "Unable to send confirmation email. Please check the email sender configuration.",
         )
 
     logger.info(
