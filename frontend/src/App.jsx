@@ -13,6 +13,7 @@ import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
 import PingUsPage from "./pages/PingUsPage";
 import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
+import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 
 export default function App() {
@@ -35,6 +36,14 @@ export default function App() {
         element={(
           <RootAdminProtectedRoute>
             <RootAdminClubPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/interests"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminInterestRequestsPage />
           </RootAdminProtectedRoute>
         )}
       />

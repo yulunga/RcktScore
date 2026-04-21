@@ -228,6 +228,30 @@ Resources:
             Path: /root_admin/organization_users/{user_id}
             Method: PUT
 
+  GetRootAdminInterestRequestsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_interest_requests/handler.lambda_handler
+      Events:
+        GetRootAdminInterestRequests:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/interest_requests
+            Method: GET
+
+  UpdateRootAdminInterestRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_interest_request/handler.lambda_handler
+      Events:
+        UpdateRootAdminInterestRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/interest_requests/{request_id}
+            Method: PUT
+
   RegisterInterestFunction:
     Type: AWS::Serverless::Function
     Properties:

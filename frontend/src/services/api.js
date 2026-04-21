@@ -92,6 +92,19 @@ export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
 }
 
+export function getRootAdminInterestRequests(status = "") {
+  const params = status ? new URLSearchParams({ status }) : null;
+  const suffix = params ? `?${params.toString()}` : "";
+  return apiRequest(`/root_admin/interest_requests${suffix}`);
+}
+
+export function updateRootAdminInterestRequestStatus(requestId, payload) {
+  return apiRequest(`/root_admin/interest_requests/${requestId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createRootAdminOrganization(payload) {
   return apiRequest("/root_admin/organizations", {
     method: "POST",

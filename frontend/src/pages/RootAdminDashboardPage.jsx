@@ -154,6 +154,19 @@ export default function RootAdminDashboardPage() {
             <strong>Top Level Admin</strong>
             <div>{summary.admin_count ?? 0}</div>
           </div>
+          <div className="meta-item">
+            <strong>Interested Users</strong>
+            <button
+              className="root-admin-summary-count"
+              type="button"
+              onClick={() => navigate("/rckscoreAdmin/interests")}
+            >
+              {summary.interest_count ?? 0}
+            </button>
+            <span className="root-admin-summary-note">
+              Pending {summary.pending_interest_count ?? 0}
+            </span>
+          </div>
         </div>
       </section>
 

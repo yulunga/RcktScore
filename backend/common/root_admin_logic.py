@@ -7,6 +7,9 @@ from common.organization_logic import (
 )
 
 
+INTEREST_STATUSES = {"pending", "approved", "denied"}
+
+
 def _serialize_root_admin_user(row):
     created_at = row.get("created_at")
     return {
@@ -71,6 +74,28 @@ def get_root_admin_dashboard(connection):
         )
         user_rows = cursor.fetchall()
 
+        cursor.execute(
+            """
+            SELECT to_regclass(%(table_name)s) AS table_exists
+            """,
+            {"table_name": '"HitnScoreInterestRequests"'},
+        )
+        interest_table = cursor.fetchone()
+        interest_count = 0
+        pending_interest_count = 0
+        if interest_table and interest_table.get("table_exists"):
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) AS interest_count,
+                    COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count
+                FROM "HitnScoreInterestRequests"
+                """
+            )
+            interest_summary = cursor.fetchone() or {}
+            interest_count = interest_summary.get("interest_count") or 0
+            pending_interest_count = interest_summary.get("pending_interest_count") or 0
+
     organizations = []
     organizations_by_id = {}
     for row in organization_rows:
@@ -97,9 +122,136 @@ def get_root_admin_dashboard(connection):
             "organization_count": len(organizations),
             "user_count": len(users),
             "admin_count": total_admins,
+            "interest_count": interest_count,
+            "pending_interest_count": pending_interest_count,
         },
         "organizations": organizations,
     }
+
+
+def _serialize_interest_request(row):
+    created_at = row.get("created_at")
+    updated_at = row.get("updated_at")
+    email_validated_at = row.get("email_validated_at")
+    approved_at = row.get("approved_at")
+    first_name = row.get("first_name") or ""
+    surname = row.get("surname") or ""
+
+    return {
+        "id": row["id"],
+        "first_name": first_name,
+        "surname": surname,
+        "full_name": f"{first_name} {surname}".strip(),
+        "email": row.get("email") or "",
+        "use_type": row.get("use_type") or "personal",
+        "club_name": row.get("club_name") or "",
+        "approval_status": row.get("approval_status") or "pending",
+        "email_validated": bool(row.get("email_validated")),
+        "email_validated_at": email_validated_at.isoformat() if email_validated_at else None,
+        "approved_at": approved_at.isoformat() if approved_at else None,
+        "approved_by": row.get("approved_by") or "",
+        "page_url": row.get("page_url") or "",
+        "user_agent": row.get("user_agent") or "",
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
+    }
+
+
+def get_root_admin_interest_requests(connection, status=None):
+    requested_status = (status or "").strip().lower()
+    params = {}
+    where_clause = ""
+    if requested_status in INTEREST_STATUSES:
+        where_clause = "WHERE approval_status = %(status)s"
+        params["status"] = requested_status
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT
+                id,
+                created_at,
+                updated_at,
+                first_name,
+                surname,
+                email,
+                use_type,
+                club_name,
+                approval_status,
+                email_validated,
+                email_validated_at,
+                approved_at,
+                approved_by,
+                page_url,
+                user_agent
+            FROM "HitnScoreInterestRequests"
+            {where_clause}
+            ORDER BY
+                CASE approval_status
+                    WHEN 'pending' THEN 1
+                    WHEN 'approved' THEN 2
+                    WHEN 'denied' THEN 3
+                    ELSE 4
+                END,
+                created_at DESC,
+                id DESC
+            """,
+            params,
+        )
+        rows = cursor.fetchall()
+
+    return [_serialize_interest_request(row) for row in rows]
+
+
+def update_root_admin_interest_request_status(connection, request_id, status, updated_by=None):
+    requested_status = (status or "").strip().lower()
+    if requested_status not in INTEREST_STATUSES:
+        raise ValueError("approval_status must be pending, approved, or denied")
+
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "HitnScoreInterestRequests"
+            SET updated_at = %(updated_at)s,
+                approval_status = %(approval_status)s,
+                approved_at = CASE
+                    WHEN %(approval_status)s = 'approved' THEN %(updated_at)s
+                    ELSE NULL
+                END,
+                approved_by = %(updated_by)s
+            WHERE id = %(id)s
+            RETURNING
+                id,
+                created_at,
+                updated_at,
+                first_name,
+                surname,
+                email,
+                use_type,
+                club_name,
+                approval_status,
+                email_validated,
+                email_validated_at,
+                approved_at,
+                approved_by,
+                page_url,
+                user_agent
+            """,
+            {
+                "id": request_id,
+                "updated_at": now,
+                "approval_status": requested_status,
+                "updated_by": (updated_by or "").strip() or None,
+            },
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        raise LookupError("Interest request not found")
+
+    connection.commit()
+    return _serialize_interest_request(row)
 
 
 def search_root_admin_organizations(connection, query):

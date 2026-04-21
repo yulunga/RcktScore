@@ -1414,6 +1414,93 @@ select {
   color: #0b4f88;
 }
 
+.root-admin-summary-count {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1f6fd1;
+  cursor: pointer;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.root-admin-summary-count:hover {
+  color: #0b4f88;
+  text-decoration: underline;
+}
+
+.root-admin-summary-note {
+  color: #486581;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.root-admin-interest-summary .meta-item {
+  min-height: 94px;
+}
+
+.root-admin-interest-list {
+  display: grid;
+  gap: 12px;
+}
+
+.root-admin-interest-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.3fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid #d9e2ec;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.root-admin-interest-main {
+  display: grid;
+  gap: 6px;
+}
+
+.root-admin-interest-main h3,
+.root-admin-interest-main p {
+  margin: 0;
+}
+
+.root-admin-interest-main p,
+.root-admin-interest-details {
+  color: #486581;
+}
+
+.root-admin-interest-status {
+  justify-self: start;
+}
+
+.root-admin-interest-status--approved {
+  background: #dff6e7;
+  color: #1f6f3f;
+}
+
+.root-admin-interest-status--denied {
+  background: #fde2e2;
+  color: #a61b1b;
+}
+
+.root-admin-interest-status--pending {
+  background: #fff3c4;
+  color: #8a5a00;
+}
+
+.root-admin-interest-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.92rem;
+}
+
+.root-admin-interest-actions {
+  justify-content: flex-end;
+}
+
 .club-admin-overview-grid {
   display: grid;
   gap: 24px;
@@ -2035,6 +2122,15 @@ select {
   }
 
   .root-admin-club-meta {
+    justify-content: flex-start;
+  }
+
+  .root-admin-interest-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .root-admin-interest-actions {
     justify-content: flex-start;
   }
 
