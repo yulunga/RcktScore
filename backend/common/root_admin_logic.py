@@ -1,3 +1,5 @@
+from psycopg.errors import UndefinedTable
+
 from common.organization_logic import (
     ORGANIZATION_FIELDS,
     _serialize_organization,
@@ -74,16 +76,9 @@ def get_root_admin_dashboard(connection):
         )
         user_rows = cursor.fetchall()
 
-        cursor.execute(
-            """
-            SELECT to_regclass(%(table_name)s) AS table_exists
-            """,
-            {"table_name": '"HitnScoreInterestRequests"'},
-        )
-        interest_table = cursor.fetchone()
         interest_count = 0
         pending_interest_count = 0
-        if interest_table and interest_table.get("table_exists"):
+        try:
             cursor.execute(
                 """
                 SELECT
@@ -95,6 +90,8 @@ def get_root_admin_dashboard(connection):
             interest_summary = cursor.fetchone() or {}
             interest_count = interest_summary.get("interest_count") or 0
             pending_interest_count = interest_summary.get("pending_interest_count") or 0
+        except UndefinedTable:
+            connection.rollback()
 
     organizations = []
     organizations_by_id = {}

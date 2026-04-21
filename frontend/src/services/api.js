@@ -8,10 +8,19 @@ async function apiRequest(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (requestError) {
+    const error = new Error(
+      "Unable to reach the API endpoint. Please check the backend deployment and API base URL.",
+    );
+    error.cause = requestError;
+    throw error;
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
