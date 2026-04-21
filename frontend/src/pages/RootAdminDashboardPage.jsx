@@ -167,6 +167,17 @@ export default function RootAdminDashboardPage() {
               Pending {summary.pending_interest_count ?? 0}
             </span>
           </div>
+          <div className="meta-item">
+            <strong>Personal Accounts</strong>
+            <button
+              className="root-admin-summary-count"
+              type="button"
+              onClick={() => navigate("/rckscoreAdmin/personal-accounts")}
+            >
+              {summary.personal_account_count ?? 0}
+            </button>
+            <span className="root-admin-summary-note">Approved personal</span>
+          </div>
         </div>
       </section>
 

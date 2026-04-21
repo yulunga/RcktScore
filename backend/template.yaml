@@ -252,6 +252,30 @@ Resources:
             Path: /root_admin/interest_requests/{request_id}
             Method: PUT
 
+  GetRootAdminPersonalAccountsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_personal_accounts/handler.lambda_handler
+      Events:
+        GetRootAdminPersonalAccounts:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/personal_accounts
+            Method: GET
+
+  UpdateRootAdminPersonalAccountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_personal_account/handler.lambda_handler
+      Events:
+        UpdateRootAdminPersonalAccount:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/personal_accounts/{request_id}
+            Method: PUT
+
   RegisterInterestFunction:
     Type: AWS::Serverless::Function
     Properties:

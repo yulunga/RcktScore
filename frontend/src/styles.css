@@ -1490,6 +1490,16 @@ select {
   color: #8a5a00;
 }
 
+.root-admin-plan-status--personal_free {
+  background: #d9eafc;
+  color: #0b4f88;
+}
+
+.root-admin-plan-status--personal_plus {
+  background: #ffe0f0;
+  color: #b83280;
+}
+
 .root-admin-interest-details {
   display: flex;
   flex-wrap: wrap;

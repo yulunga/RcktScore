@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS "HitnScoreInterestRequests" (
     email text NOT NULL,
     use_type text NOT NULL DEFAULT 'personal',
     club_name text,
+    personal_plan text NOT NULL DEFAULT 'personal_free',
     approval_status text NOT NULL DEFAULT 'pending',
     email_validated boolean NOT NULL DEFAULT false,
     email_validated_at timestamptz,
@@ -21,3 +22,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS hitnscore_interest_requests_email_key
 
 CREATE INDEX IF NOT EXISTS hitnscore_interest_requests_approval_status_idx
     ON "HitnScoreInterestRequests" (approval_status);
+
+ALTER TABLE "HitnScoreInterestRequests"
+    DROP CONSTRAINT IF EXISTS hitnscore_interest_requests_personal_plan_check;
+
+ALTER TABLE "HitnScoreInterestRequests"
+    ADD CONSTRAINT hitnscore_interest_requests_personal_plan_check
+    CHECK (personal_plan IN ('personal_free', 'personal_plus'));

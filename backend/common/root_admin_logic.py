@@ -10,6 +10,7 @@ from common.organization_logic import (
 
 
 INTEREST_STATUSES = {"pending", "approved", "denied"}
+PERSONAL_PLANS = {"personal_free", "personal_plus"}
 
 
 def _serialize_root_admin_user(row):
@@ -78,18 +79,24 @@ def get_root_admin_dashboard(connection):
 
         interest_count = 0
         pending_interest_count = 0
+        personal_account_count = 0
         try:
             cursor.execute(
                 """
                 SELECT
                     COUNT(*) AS interest_count,
-                    COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count
+                    COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count,
+                    COUNT(*) FILTER (
+                        WHERE approval_status = 'approved'
+                            AND use_type = 'personal'
+                    ) AS personal_account_count
                 FROM "HitnScoreInterestRequests"
                 """
             )
             interest_summary = cursor.fetchone() or {}
             interest_count = interest_summary.get("interest_count") or 0
             pending_interest_count = interest_summary.get("pending_interest_count") or 0
+            personal_account_count = interest_summary.get("personal_account_count") or 0
         except UndefinedTable:
             connection.rollback()
 
@@ -121,6 +128,7 @@ def get_root_admin_dashboard(connection):
             "admin_count": total_admins,
             "interest_count": interest_count,
             "pending_interest_count": pending_interest_count,
+            "personal_account_count": personal_account_count,
         },
         "organizations": organizations,
     }
@@ -142,6 +150,7 @@ def _serialize_interest_request(row):
         "email": row.get("email") or "",
         "use_type": row.get("use_type") or "personal",
         "club_name": row.get("club_name") or "",
+        "personal_plan": row.get("personal_plan") or "personal_free",
         "approval_status": row.get("approval_status") or "pending",
         "email_validated": bool(row.get("email_validated")),
         "email_validated_at": email_validated_at.isoformat() if email_validated_at else None,
@@ -174,6 +183,7 @@ def get_root_admin_interest_requests(connection, status=None):
                 email,
                 use_type,
                 club_name,
+                personal_plan,
                 approval_status,
                 email_validated,
                 email_validated_at,
@@ -191,6 +201,51 @@ def get_root_admin_interest_requests(connection, status=None):
                     ELSE 4
                 END,
                 created_at DESC,
+                id DESC
+            """,
+            params,
+        )
+        rows = cursor.fetchall()
+
+    return [_serialize_interest_request(row) for row in rows]
+
+
+def get_root_admin_personal_accounts(connection, plan=None):
+    requested_plan = (plan or "").strip().lower()
+    params = {}
+    plan_clause = ""
+    if requested_plan in PERSONAL_PLANS:
+        plan_clause = "AND COALESCE(personal_plan, 'personal_free') = %(plan)s"
+        params["plan"] = requested_plan
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT
+                id,
+                created_at,
+                updated_at,
+                first_name,
+                surname,
+                email,
+                use_type,
+                club_name,
+                personal_plan,
+                approval_status,
+                email_validated,
+                email_validated_at,
+                approved_at,
+                approved_by,
+                page_url,
+                user_agent
+            FROM "HitnScoreInterestRequests"
+            WHERE approval_status = 'approved'
+                AND use_type = 'personal'
+                {plan_clause}
+            ORDER BY
+                COALESCE(approved_at, updated_at, created_at) DESC,
+                surname ASC,
+                first_name ASC,
                 id DESC
             """,
             params,
@@ -227,6 +282,7 @@ def update_root_admin_interest_request_status(connection, request_id, status, up
                 email,
                 use_type,
                 club_name,
+                personal_plan,
                 approval_status,
                 email_validated,
                 email_validated_at,
@@ -246,6 +302,56 @@ def update_root_admin_interest_request_status(connection, request_id, status, up
 
     if not row:
         raise LookupError("Interest request not found")
+
+    connection.commit()
+    return _serialize_interest_request(row)
+
+
+def update_root_admin_personal_account_plan(connection, request_id, personal_plan, updated_by=None):
+    requested_plan = (personal_plan or "").strip().lower()
+    if requested_plan not in PERSONAL_PLANS:
+        raise ValueError("personal_plan must be personal_free or personal_plus")
+
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "HitnScoreInterestRequests"
+            SET updated_at = %(updated_at)s,
+                personal_plan = %(personal_plan)s,
+                approved_by = COALESCE(%(updated_by)s, approved_by)
+            WHERE id = %(id)s
+                AND approval_status = 'approved'
+                AND use_type = 'personal'
+            RETURNING
+                id,
+                created_at,
+                updated_at,
+                first_name,
+                surname,
+                email,
+                use_type,
+                club_name,
+                personal_plan,
+                approval_status,
+                email_validated,
+                email_validated_at,
+                approved_at,
+                approved_by,
+                page_url,
+                user_agent
+            """,
+            {
+                "id": request_id,
+                "updated_at": now,
+                "personal_plan": requested_plan,
+                "updated_by": (updated_by or "").strip() or None,
+            },
+        )
+        row = cursor.fetchone()
+
+    if not row:
+        raise LookupError("Approved personal account not found")
 
     connection.commit()
     return _serialize_interest_request(row)

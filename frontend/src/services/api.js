@@ -114,6 +114,19 @@ export function updateRootAdminInterestRequestStatus(requestId, payload) {
   });
 }
 
+export function getRootAdminPersonalAccounts(plan = "") {
+  const params = plan ? new URLSearchParams({ plan }) : null;
+  const suffix = params ? `?${params.toString()}` : "";
+  return apiRequest(`/root_admin/personal_accounts${suffix}`);
+}
+
+export function updateRootAdminPersonalAccount(requestId, payload) {
+  return apiRequest(`/root_admin/personal_accounts/${requestId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createRootAdminOrganization(payload) {
   return apiRequest("/root_admin/organizations", {
     method: "POST",
