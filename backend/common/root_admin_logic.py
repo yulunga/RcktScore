@@ -1,16 +1,25 @@
+import secrets
+
+from common.mailer import send_email_message
+from common.notification_templates import render_notification_template
 from psycopg.errors import UndefinedTable
 
 from common.organization_logic import (
+    APP_DISPLAY_NAME,
     ORGANIZATION_FIELDS,
     _serialize_organization,
     _utcnow,
     create_organization_user,
     update_organization_user_role,
 )
+from common.password_reset_logic import RESET_TOKEN_TTL_HOURS
 
 
 INTEREST_STATUSES = {"pending", "approved", "denied"}
 PERSONAL_PLANS = {"personal_free", "personal_plus"}
+PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL = "pending_email_validation"
+PERSONAL_ACCOUNT_STATUS_LIVE = "live"
+PERSONAL_ORG_ID_SEQUENCE = "hitnscore_personal_org_id_seq"
 
 
 def _serialize_root_admin_user(row):
@@ -46,6 +55,7 @@ def get_root_admin_dashboard(connection):
                 ON u.organization_id = o.id
             LEFT JOIN "SkwshCourts" AS c
                 ON c.organization_name = o.id
+            WHERE COALESCE(o.org_type, 'club') <> 'personal'
             GROUP BY
                 o.id,
                 o.organization_name,
@@ -72,6 +82,7 @@ def get_root_admin_dashboard(connection):
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
+            WHERE COALESCE(o.org_type, 'club') <> 'personal'
             ORDER BY o.organization_name ASC, u.clubusername ASC, u.id ASC
             """
         )
@@ -85,18 +96,26 @@ def get_root_admin_dashboard(connection):
                 """
                 SELECT
                     COUNT(*) AS interest_count,
-                    COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count,
-                    COUNT(*) FILTER (
-                        WHERE approval_status = 'approved'
-                            AND use_type = 'personal'
-                    ) AS personal_account_count
+                    COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count
                 FROM "HitnScoreInterestRequests"
                 """
             )
             interest_summary = cursor.fetchone() or {}
             interest_count = interest_summary.get("interest_count") or 0
             pending_interest_count = interest_summary.get("pending_interest_count") or 0
-            personal_account_count = interest_summary.get("personal_account_count") or 0
+        except UndefinedTable:
+            connection.rollback()
+
+        try:
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS personal_account_count
+                FROM "SkwshOrgSettings"
+                WHERE org_type = 'personal'
+                """
+            )
+            personal_summary = cursor.fetchone() or {}
+            personal_account_count = personal_summary.get("personal_account_count") or 0
         except UndefinedTable:
             connection.rollback()
 
@@ -163,6 +182,66 @@ def _serialize_interest_request(row):
     }
 
 
+def _serialize_personal_account(row):
+    created_at = row.get("created_at")
+    updated_at = row.get("updated_at")
+    email_validated_at = row.get("email_validated_at")
+    approved_at = row.get("approved_at")
+    approval_email_sent_at = row.get("approval_email_sent_at")
+    first_name = row.get("first_name") or ""
+    surname = row.get("surname") or ""
+
+    return {
+        "id": row["organization_id"],
+        "organization_id": row["organization_id"],
+        "user_id": row.get("user_id"),
+        "interest_request_id": row.get("interest_request_id"),
+        "first_name": first_name,
+        "surname": surname,
+        "full_name": f"{first_name} {surname}".strip(),
+        "email": row.get("username") or "",
+        "username": row.get("username") or "",
+        "organization_name": row.get("organization_name") or "",
+        "use_type": "personal",
+        "personal_plan": row.get("personal_plan") or "personal_free",
+        "account_status": row.get("account_status") or PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL,
+        "approval_status": row.get("account_status") or PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL,
+        "email_validated": bool(row.get("email_validated")),
+        "email_validated_at": email_validated_at.isoformat() if email_validated_at else None,
+        "approved_at": approved_at.isoformat() if approved_at else None,
+        "approved_by": row.get("approved_by") or "",
+        "approval_email_sent_at": approval_email_sent_at.isoformat() if approval_email_sent_at else None,
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
+    }
+
+
+def _build_set_password_url(base_url, token):
+    if not base_url:
+        raise ValueError("PASSWORD_RESET_BASE_URL must be configured")
+
+    return f"{base_url.rstrip('/')}/help?mode=reset&token={token}"
+
+
+def _send_personal_account_approved_email(*, account, set_password_url, source_email):
+    context = {
+        "app_name": APP_DISPLAY_NAME,
+        "expires_hours": RESET_TOKEN_TTL_HOURS,
+        "first_name": account.get("first_name") or "there",
+        "set_password_url": set_password_url,
+        "username": account.get("username") or account.get("email") or "",
+    }
+    subject = render_notification_template("personal_account_approved_subject.txt", context).strip()
+    body_text = render_notification_template("personal_account_approved_body.txt", context).strip()
+
+    send_email_message(
+        destination_email=account["username"],
+        source_email=source_email,
+        subject=subject,
+        text_body=body_text,
+    )
+
+
 def get_root_admin_interest_requests(connection, status=None):
     requested_status = (status or "").strip().lower()
     params = {}
@@ -215,47 +294,276 @@ def get_root_admin_personal_accounts(connection, plan=None):
     params = {}
     plan_clause = ""
     if requested_plan in PERSONAL_PLANS:
-        plan_clause = "AND COALESCE(personal_plan, 'personal_free') = %(plan)s"
+        plan_clause = "AND COALESCE(o.plan, 'personal_free') = %(plan)s"
         params["plan"] = requested_plan
 
     with connection.cursor() as cursor:
         cursor.execute(
             f"""
             SELECT
-                id,
-                created_at,
-                updated_at,
-                first_name,
-                surname,
-                email,
-                use_type,
-                club_name,
-                personal_plan,
-                approval_status,
-                email_validated,
-                email_validated_at,
-                approved_at,
-                approved_by,
-                page_url,
-                user_agent
-            FROM "HitnScoreInterestRequests"
-            WHERE approval_status = 'approved'
-                AND use_type = 'personal'
+                o.id AS organization_id,
+                o.organization_name,
+                o.created_at,
+                COALESCE(i.updated_at, o.created_at) AS updated_at,
+                o.interest_request_id,
+                i.first_name,
+                i.surname,
+                o.owner_username AS username,
+                o.plan AS personal_plan,
+                u.id AS user_id,
+                CASE
+                    WHEN u.approval_status = 'approved' THEN 'live'
+                    ELSE 'pending_email_validation'
+                END AS account_status,
+                COALESCE(i.email_validated, false) AS email_validated,
+                i.email_validated_at,
+                COALESCE(i.approved_at, u.approved_at) AS approved_at,
+                i.approved_by,
+                u.invitation_sent_at AS approval_email_sent_at
+            FROM "SkwshOrgSettings" AS o
+            LEFT JOIN "HitnScoreInterestRequests" AS i
+                ON i.id = o.interest_request_id
+            LEFT JOIN "SkwshOrgUsers" AS u
+                ON u.organization_id = o.id
+                AND LOWER(u.clubusername) = LOWER(o.owner_username)
+            WHERE o.org_type = 'personal'
                 {plan_clause}
             ORDER BY
-                COALESCE(approved_at, updated_at, created_at) DESC,
-                surname ASC,
-                first_name ASC,
-                id DESC
+                COALESCE(i.approved_at, u.approved_at, i.updated_at, o.created_at) DESC,
+                i.surname ASC,
+                i.first_name ASC,
+                o.id DESC
             """,
             params,
         )
         rows = cursor.fetchall()
 
-    return [_serialize_interest_request(row) for row in rows]
+    return [_serialize_personal_account(row) for row in rows]
 
 
-def update_root_admin_interest_request_status(connection, request_id, status, updated_by=None):
+def _create_or_refresh_personal_account_for_interest(connection, interest_row, *, updated_by, reset_base_url, source_email):
+    now = _utcnow()
+    reset_token = secrets.token_urlsafe(32)
+    username = (interest_row.get("email") or "").strip().lower()
+    full_name = " ".join(
+        part for part in [interest_row.get("first_name"), interest_row.get("surname")] if part
+    ).strip()
+    organization_name = f"{full_name or username} Personal"
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshOrgSettings"
+            WHERE org_type = 'personal'
+                AND LOWER(owner_username) = LOWER(%(username)s)
+            LIMIT 1
+            """,
+            {"username": username},
+        )
+        organization_row = cursor.fetchone()
+
+        if organization_row:
+            personal_org_id = organization_row["id"]
+            cursor.execute(
+                """
+                UPDATE "SkwshOrgSettings"
+                SET organization_name = %(organization_name)s,
+                    org_email = %(username)s,
+                    org_contact = %(contact_name)s,
+                    plan = CASE
+                        WHEN plan IN ('personal_free', 'personal_plus') THEN plan
+                        ELSE %(personal_plan)s
+                    END,
+                    interest_request_id = %(interest_request_id)s,
+                    is_hidden = true
+                WHERE id = %(organization_id)s
+                """,
+                {
+                    "organization_id": personal_org_id,
+                    "organization_name": organization_name,
+                    "username": username,
+                    "contact_name": full_name or username,
+                    "personal_plan": interest_row.get("personal_plan") or "personal_free",
+                    "interest_request_id": interest_row["id"],
+                },
+            )
+        else:
+            cursor.execute(
+                f"SELECT nextval('{PERSONAL_ORG_ID_SEQUENCE}') AS organization_id"
+            )
+            personal_org_id = cursor.fetchone()["organization_id"]
+            cursor.execute(
+                """
+                INSERT INTO "SkwshOrgSettings" (
+                    id,
+                    created_at,
+                    organization_name,
+                    org_contact,
+                    org_email,
+                    org_type,
+                    plan,
+                    owner_username,
+                    interest_request_id,
+                    is_hidden
+                )
+                VALUES (
+                    %(organization_id)s,
+                    %(created_at)s,
+                    %(organization_name)s,
+                    %(org_contact)s,
+                    %(org_email)s,
+                    'personal',
+                    %(plan)s,
+                    %(owner_username)s,
+                    %(interest_request_id)s,
+                    true
+                )
+                """,
+                {
+                    "organization_id": personal_org_id,
+                    "created_at": now,
+                    "organization_name": organization_name,
+                    "org_contact": full_name or username,
+                    "org_email": username,
+                    "plan": interest_row.get("personal_plan") or "personal_free",
+                    "owner_username": username,
+                    "interest_request_id": interest_row["id"],
+                },
+            )
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshOrgUsers"
+            WHERE organization_id = %(organization_id)s
+                AND LOWER(clubusername) = LOWER(%(username)s)
+            LIMIT 1
+            """,
+            {"organization_id": personal_org_id, "username": username},
+        )
+        user_row = cursor.fetchone()
+
+        if user_row:
+            cursor.execute(
+                """
+                UPDATE "SkwshOrgUsers"
+                SET role = 'admin',
+                    approval_status = CASE
+                        WHEN approval_status = 'approved' THEN approval_status
+                        ELSE 'pending'
+                    END,
+                    approval_token = NULL,
+                    invitation_sent_at = %(invitation_sent_at)s,
+                    password_reset_token = %(password_reset_token)s,
+                    password_reset_requested_at = %(password_reset_requested_at)s
+                WHERE id = %(user_id)s
+                RETURNING
+                    id AS user_id,
+                    organization_id,
+                    clubusername AS username,
+                    role,
+                    approval_status,
+                    invitation_sent_at,
+                    approved_at
+                """,
+                {
+                    "user_id": user_row["id"],
+                    "invitation_sent_at": now,
+                    "password_reset_token": reset_token,
+                    "password_reset_requested_at": now,
+                },
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO "SkwshOrgUsers" (
+                created_at,
+                clubusername,
+                password_hash,
+                organization_id,
+                role,
+                approval_status,
+                approval_token,
+                invitation_sent_at,
+                password_reset_token,
+                password_reset_requested_at
+            )
+            VALUES (
+                %(created_at)s,
+                %(username)s,
+                NULL,
+                %(organization_id)s,
+                'admin',
+                'pending',
+                NULL,
+                %(invitation_sent_at)s,
+                %(password_reset_token)s,
+                %(password_reset_requested_at)s
+            )
+            RETURNING
+                id AS user_id,
+                organization_id,
+                clubusername AS username,
+                role,
+                approval_status,
+                invitation_sent_at,
+                approved_at,
+                password_reset_requested_at
+            """,
+                {
+                    "created_at": now,
+                    "username": username,
+                    "organization_id": personal_org_id,
+                    "invitation_sent_at": now,
+                    "password_reset_token": reset_token,
+                    "password_reset_requested_at": now,
+                },
+            )
+        account_user_row = cursor.fetchone()
+
+    set_password_url = _build_set_password_url(reset_base_url, reset_token)
+    account = {
+        "username": username,
+        "first_name": interest_row.get("first_name") or "",
+    }
+    _send_personal_account_approved_email(
+        account=account,
+        set_password_url=set_password_url,
+        source_email=source_email,
+    )
+    return {
+        "organization_id": personal_org_id,
+        "user_id": account_user_row.get("user_id"),
+        "interest_request_id": interest_row["id"],
+        "username": username,
+        "organization_name": organization_name,
+        "first_name": interest_row.get("first_name") or "",
+        "surname": interest_row.get("surname") or "",
+        "personal_plan": interest_row.get("personal_plan") or "personal_free",
+        "account_status": (
+            PERSONAL_ACCOUNT_STATUS_LIVE
+            if account_user_row.get("approval_status") == "approved"
+            else PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL
+        ),
+        "email_validated": bool(interest_row.get("email_validated")),
+        "approved_at": interest_row.get("approved_at"),
+        "approved_by": (updated_by or "").strip() or "",
+        "approval_email_sent_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+def update_root_admin_interest_request_status(
+    connection,
+    request_id,
+    status,
+    updated_by=None,
+    *,
+    source_email=None,
+    reset_base_url=None,
+):
     requested_status = (status or "").strip().lower()
     if requested_status not in INTEREST_STATUSES:
         raise ValueError("approval_status must be pending, approved, or denied")
@@ -303,8 +611,23 @@ def update_root_admin_interest_request_status(connection, request_id, status, up
     if not row:
         raise LookupError("Interest request not found")
 
+    personal_account = None
+    if requested_status == "approved" and (row.get("use_type") or "personal") == "personal":
+        if not source_email:
+            raise ValueError("INTEREST_FROM_EMAIL must be configured")
+        personal_account = _create_or_refresh_personal_account_for_interest(
+            connection,
+            row,
+            updated_by=updated_by,
+            reset_base_url=reset_base_url,
+            source_email=source_email,
+        )
+
     connection.commit()
-    return _serialize_interest_request(row)
+    result = _serialize_interest_request(row)
+    if personal_account:
+        result["personal_account"] = _serialize_personal_account(personal_account)
+    return result
 
 
 def update_root_admin_personal_account_plan(connection, request_id, personal_plan, updated_by=None):
@@ -316,45 +639,67 @@ def update_root_admin_personal_account_plan(connection, request_id, personal_pla
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            UPDATE "HitnScoreInterestRequests"
-            SET updated_at = %(updated_at)s,
-                personal_plan = %(personal_plan)s,
-                approved_by = COALESCE(%(updated_by)s, approved_by)
+            UPDATE "SkwshOrgSettings"
+            SET plan = %(personal_plan)s
             WHERE id = %(id)s
-                AND approval_status = 'approved'
-                AND use_type = 'personal'
+                AND org_type = 'personal'
             RETURNING
-                id,
+                id AS organization_id,
+                organization_name,
                 created_at,
-                updated_at,
-                first_name,
-                surname,
-                email,
-                use_type,
-                club_name,
-                personal_plan,
-                approval_status,
-                email_validated,
-                email_validated_at,
-                approved_at,
-                approved_by,
-                page_url,
-                user_agent
+                interest_request_id,
+                owner_username AS username,
+                plan AS personal_plan
             """,
             {
                 "id": request_id,
-                "updated_at": now,
                 "personal_plan": requested_plan,
-                "updated_by": (updated_by or "").strip() or None,
             },
         )
-        row = cursor.fetchone()
+        organization_row = cursor.fetchone()
+
+        if not organization_row:
+            row = None
+        else:
+            cursor.execute(
+                """
+                SELECT
+                    o.id AS organization_id,
+                    o.organization_name,
+                    o.created_at,
+                    %(updated_at)s AS updated_at,
+                    o.interest_request_id,
+                    i.first_name,
+                    i.surname,
+                    o.owner_username AS username,
+                    o.plan AS personal_plan,
+                    u.id AS user_id,
+                    CASE
+                        WHEN u.approval_status = 'approved' THEN 'live'
+                        ELSE 'pending_email_validation'
+                    END AS account_status,
+                    COALESCE(i.email_validated, false) AS email_validated,
+                    i.email_validated_at,
+                    COALESCE(i.approved_at, u.approved_at) AS approved_at,
+                    i.approved_by,
+                    u.invitation_sent_at AS approval_email_sent_at
+                FROM "SkwshOrgSettings" AS o
+                LEFT JOIN "HitnScoreInterestRequests" AS i
+                    ON i.id = o.interest_request_id
+                LEFT JOIN "SkwshOrgUsers" AS u
+                    ON u.organization_id = o.id
+                    AND LOWER(u.clubusername) = LOWER(o.owner_username)
+                WHERE o.id = %(organization_id)s
+                """,
+                {"organization_id": organization_row["organization_id"], "updated_at": now},
+            )
+            row = cursor.fetchone()
 
     if not row:
         raise LookupError("Approved personal account not found")
 
     connection.commit()
-    return _serialize_interest_request(row)
+    return _serialize_personal_account(row)
 
 
 def search_root_admin_organizations(connection, query):
@@ -368,6 +713,7 @@ def search_root_admin_organizations(connection, query):
             SELECT id, organization_name, org_email, org_contact
             FROM "SkwshOrgSettings"
             WHERE organization_name ILIKE %(query)s
+                AND COALESCE(org_type, 'club') <> 'personal'
             ORDER BY organization_name ASC, id ASC
             LIMIT 10
             """,

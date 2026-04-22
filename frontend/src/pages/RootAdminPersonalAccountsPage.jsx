@@ -20,6 +20,12 @@ const PLAN_LABELS = {
   personal_plus: "Personal+ Paid",
 };
 
+const ACCOUNT_STATUS_LABELS = {
+  pending_email_validation: "Waiting on Email Validation",
+  live: "Live",
+  disabled: "Disabled",
+};
+
 function formatDateTime(value) {
   if (!value) {
     return "Not set";
@@ -162,6 +168,7 @@ export default function RootAdminPersonalAccountsPage() {
         <div className="root-admin-interest-list">
           {visiblePersonalAccounts.map((account) => {
             const currentPlan = account.personal_plan || "personal_free";
+            const currentStatus = account.account_status || "pending_email_validation";
             return (
               <article key={account.id} className="root-admin-interest-row">
                 <div className="root-admin-interest-main">
@@ -173,8 +180,9 @@ export default function RootAdminPersonalAccountsPage() {
                 </div>
 
                 <div className="root-admin-interest-details">
-                  <span>Status: {account.approval_status || "approved"}</span>
+                  <span>Status: {ACCOUNT_STATUS_LABELS[currentStatus] || currentStatus}</span>
                   <span>Email validated: {account.email_validated ? "Yes" : "No"}</span>
+                  <span>Approval email sent: {formatDateTime(account.approval_email_sent_at)}</span>
                   <span>Approved: {formatDateTime(account.approved_at)}</span>
                   <span>Updated: {formatDateTime(account.updated_at)}</span>
                   <span>Approved by: {account.approved_by || "Not recorded"}</span>

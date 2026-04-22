@@ -244,6 +244,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: functions/update_root_admin_interest_request/handler.lambda_handler
+      Environment:
+        Variables:
+          INTEREST_FROM_EMAIL: !Ref InterestFromEmail
+          PASSWORD_RESET_BASE_URL: !Ref PasswordResetBaseUrl
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
       Events:
         UpdateRootAdminInterestRequest:
           Type: HttpApi

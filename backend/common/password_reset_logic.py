@@ -115,17 +115,43 @@ def confirm_password_reset(connection, token, password):
             raise ValueError("Reset link has expired")
 
         username = normalize_email_address(user_row["clubusername"])
+        password_hash = generate_password_hash(password)
+        validated_at = _utcnow()
         cursor.execute(
             """
             UPDATE "SkwshOrgUsers"
             SET password_hash = %(password_hash)s,
                 password_reset_token = NULL,
-                password_reset_requested_at = NULL
+                password_reset_requested_at = NULL,
+                approval_status = CASE
+                    WHEN approval_status = 'pending' THEN 'approved'
+                    ELSE approval_status
+                END,
+                approved_at = CASE
+                    WHEN approval_status = 'pending' THEN %(validated_at)s
+                    ELSE approved_at
+                END
             WHERE LOWER(clubusername) = LOWER(%(username)s)
+              AND password_reset_token = %(reset_token)s
             """,
             {
-                "password_hash": generate_password_hash(password),
+                "password_hash": password_hash,
                 "username": username,
+                "reset_token": reset_token,
+                "validated_at": validated_at,
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE "HitnScoreInterestRequests"
+            SET email_validated = true,
+                email_validated_at = COALESCE(email_validated_at, %(validated_at)s),
+                updated_at = %(validated_at)s
+            WHERE LOWER(email) = LOWER(%(username)s)
+            """,
+            {
+                "username": username,
+                "validated_at": validated_at,
             },
         )
 

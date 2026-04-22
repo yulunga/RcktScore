@@ -196,7 +196,7 @@ export default function RootAdminInterestRequestsPage() {
                     disabled={savingId === request.id || currentStatus === "approved"}
                     onClick={() => updateStatus(request.id, "approved")}
                   >
-                    Approve
+                    Approve & Email
                   </button>
                   <button
                     type="button"

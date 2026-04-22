@@ -1,0 +1,18 @@
+Hi $first_name,
+
+Your HitnScore early access request has been approved.
+
+Your username is:
+$username
+
+To validate your email address and choose your password, open the secure link below:
+$set_password_url
+
+This link expires in $expires_hours hours.
+
+Once your password is set, your personal account will be live.
+
+If you were not expecting this email, you can ignore it.
+
+Thanks,
+$app_name
