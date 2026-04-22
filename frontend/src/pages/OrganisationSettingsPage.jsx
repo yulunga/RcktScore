@@ -54,7 +54,7 @@ function formatDate(value) {
 
 export default function OrganisationSettingsPage() {
   const navigate = useNavigate();
-  const { session } = useAuth();
+  const { session, logout } = useAuth();
   const [settings, setSettings] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
   const [userForm, setUserForm] = useState(emptyUserForm);
@@ -69,12 +69,14 @@ export default function OrganisationSettingsPage() {
 
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
+  const isPersonalSession = session?.organization_type === "personal";
+  const isPersonalAccount = isPersonalSession || settings?.organization?.org_type === "personal";
 
   useEffect(() => {
-    if (organizationId && !isAdmin) {
+    if (organizationId && !isAdmin && !isPersonalSession) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAdmin, navigate, organizationId]);
+  }, [isAdmin, isPersonalSession, navigate, organizationId]);
 
   const mapUrl = useMemo(() => {
     const address = organizationForm.org_address || settings?.organization?.org_address;
@@ -85,7 +87,7 @@ export default function OrganisationSettingsPage() {
     return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
   }, [organizationForm.org_address, settings?.organization?.org_address]);
 
-  if (organizationId && !isAdmin) {
+  if (organizationId && !isAdmin && !isPersonalSession) {
     return null;
   }
 
@@ -231,20 +233,29 @@ export default function OrganisationSettingsPage() {
     );
   }
 
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
   const users = settings?.users || [];
   const courts = settings?.courts || [];
+  const personalPlan = settings?.organization?.plan || session?.plan || "personal_free";
+  const personalPlanLabel = personalPlan === "personal_plus" ? "Personal+" : "Personal Free";
 
   return (
     <main className="page-shell stack">
       <SessionBar />
 
       <section className="hero-card stack compact">
-        <span className="status-pill">Organisation Settings</span>
+        <span className="status-pill">{isPersonalAccount ? "Personal Settings" : "Organisation Settings"}</span>
         <div className="settings-header-row">
           <div className="stack compact">
-            <h1>{organizationForm.organization_name || session?.organization_name || "Organisation"}</h1>
+            <h1>{isPersonalAccount ? "Settings" : organizationForm.organization_name || session?.organization_name || "Organisation"}</h1>
             <p className="helper-text">
-              Manage organisation details, court inventory, and user access for this club.
+              {isPersonalAccount
+                ? "Manage your profile, plan options, and account access."
+                : "Manage organisation details, court inventory, and user access for this club."}
             </p>
           </div>
           <div className="button-row">
@@ -260,6 +271,60 @@ export default function OrganisationSettingsPage() {
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
+      {isPersonalAccount ? (
+        <section className="settings-grid">
+          <section className="panel stack settings-primary">
+            <div className="panel-heading">
+              <h2>Profile</h2>
+              <p className="helper-text">Basic account details used for personal scoring.</p>
+            </div>
+            <div className="dashboard-list">
+              <article className="dashboard-item">
+                <div className="dashboard-item-head">
+                  <strong>{session?.full_name || session?.username || "Personal user"}</strong>
+                  <span className="status-pill">{personalPlanLabel}</span>
+                </div>
+                <div className="dashboard-item-meta">
+                  <span>Email: {session?.username || "Not available"}</span>
+                  <span>Account: Single-user personal workspace</span>
+                </div>
+              </article>
+            </div>
+            <div className="button-row">
+              <button className="secondary" type="button" onClick={() => navigate("/ping")}>Ping Us</button>
+              <button className="danger" type="button" onClick={handleLogout}>Log Out</button>
+            </div>
+          </section>
+
+          <section className="panel stack">
+            <div className="panel-heading">
+              <h2>Upgrade Options</h2>
+              <p className="helper-text">Personal scoring is free. Upgrade when you need deeper history or club tools.</p>
+            </div>
+            <div className="dashboard-list">
+              <article className="dashboard-item">
+                <div className="dashboard-item-head">
+                  <strong>Personal+</strong>
+                  <span className="status-pill">Paid</span>
+                </div>
+                <div className="dashboard-item-meta">
+                  <span>Up to 100 completed matches</span>
+                  <span>Match history filters, saved players, stats, and export access are planned for this tier.</span>
+                </div>
+              </article>
+              <article className="dashboard-item">
+                <div className="dashboard-item-head">
+                  <strong>Club Subscription</strong>
+                  <span className="status-pill">Contact us</span>
+                </div>
+                <div className="dashboard-item-meta">
+                  <span>Club workspace with multiple users, roles, courts, scheduled matches, live display, and club-level administration.</span>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+      ) : (
       <section className="settings-grid">
         <section className="panel stack settings-primary">
           <div className="panel-heading">
@@ -617,6 +682,7 @@ export default function OrganisationSettingsPage() {
           </div>
         </section>
       </section>
+      )}
 
       <AppFooter />
     </main>

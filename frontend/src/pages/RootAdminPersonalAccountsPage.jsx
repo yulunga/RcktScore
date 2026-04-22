@@ -180,6 +180,7 @@ export default function RootAdminPersonalAccountsPage() {
                 </div>
 
                 <div className="root-admin-interest-details">
+                  <span>Personal Org ID: {account.organization_id || account.id}</span>
                   <span>Status: {ACCOUNT_STATUS_LABELS[currentStatus] || currentStatus}</span>
                   <span>Email validated: {account.email_validated ? "Yes" : "No"}</span>
                   <span>Approval email sent: {formatDateTime(account.approval_email_sent_at)}</span>

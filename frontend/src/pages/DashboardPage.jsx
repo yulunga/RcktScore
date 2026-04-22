@@ -143,12 +143,28 @@ export default function DashboardPage() {
   const scheduledMatches = dashboard?.scheduled_matches || [];
   const recentMatches = dashboard?.recent_matches || [];
   const organization = dashboard?.organization || {};
+  const organizationType = organization.type || session?.organization_type || "club";
+  const organizationPlan = organization.plan || session?.plan || "club_essentials";
+  const isPersonalAccount = organizationType === "personal";
+  const historyLimit = organization.history_limit;
+  const historyTitle = isPersonalAccount
+    ? (organizationPlan === "personal_plus" ? "Match History" : "Historical Matches")
+    : "Recent Matches";
+  const historyHelper = isPersonalAccount
+    ? `Showing the latest ${historyLimit || (organizationPlan === "personal_plus" ? 100 : 3)} completed matches for your plan.`
+    : "Completed matches for this organisation.";
+  const dashboardSubtitle = isPersonalAccount
+    ? "Score matches, resume active games, and review your personal match history."
+    : "Manage live scoring, keep an eye on active courts, and review recent matches.";
   const dashboardActions = [
     {
       label: "Start New Match",
       onClick: () => navigate("/match/new"),
     },
-    {
+  ];
+
+  if (!isPersonalAccount) {
+    dashboardActions.push({
       label: "Match History",
       onClick: () => {
         document.getElementById("match-history-section")?.scrollIntoView({
@@ -156,10 +172,10 @@ export default function DashboardPage() {
           block: "start",
         });
       },
-    },
-  ];
+    });
+  }
 
-  if (session?.role === "admin") {
+  if (session?.role === "admin" || isPersonalAccount) {
     dashboardActions.push({
       label: "Settings",
       onClick: () => navigate("/settings"),
@@ -170,7 +186,7 @@ export default function DashboardPage() {
     <main className="page-shell stack">
       <ClubPageHeader
         actions={dashboardActions}
-        subtitle="Manage live scoring, keep an eye on active courts, and review recent matches."
+        subtitle={dashboardSubtitle}
         title={organization.name || session?.organization_name || "Club Dashboard"}
       />
 
@@ -242,62 +258,64 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Scheduled Matches</h2>
-            <p className="helper-text">Matches created for later and ready to be started.</p>
-          </div>
-
-          {scheduledMatches.length === 0 ? (
-            <div className="dashboard-empty">No scheduled matches right now.</div>
-          ) : (
-            <div className="dashboard-list">
-              {scheduledMatches.map((match) => (
-                <article className="dashboard-item dashboard-item--history" key={match.id}>
-                  <button
-                    className="dashboard-history-action"
-                    type="button"
-                    onClick={() => handleStartScheduledMatch(match.id)}
-                  >
-                    Start
-                  </button>
-                  <div className="dashboard-history-content">
-                    <div className="dashboard-item-head">
-                      <strong>{formatPlayers(match)}</strong>
-                      <button
-                        aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
-                        aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
-                        className="dashboard-match-menu-button"
-                        type="button"
-                        onClick={() => toggleScheduledDetails(match.id)}
-                      >
-                        <span aria-hidden="true">⋮</span>
-                      </button>
-                    </div>
-                    <div className="dashboard-item-meta">
-                      <span>Court: {match.court_name || "Unassigned"}</span>
-                      <span>Ready to start</span>
-                    </div>
-                    {expandedScheduledMatches[match.id] ? (
-                      <div className="dashboard-match-details">
-                        <span>Scheduled: {formatDate(match.created_at)}</span>
-                        <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
-                        <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
-                        <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
-                        <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
+        {!isPersonalAccount ? (
+          <section className="panel stack">
+            <div className="panel-heading">
+              <h2>Scheduled Matches</h2>
+              <p className="helper-text">Matches created for later and ready to be started.</p>
             </div>
-          )}
-        </section>
+
+            {scheduledMatches.length === 0 ? (
+              <div className="dashboard-empty">No scheduled matches right now.</div>
+            ) : (
+              <div className="dashboard-list">
+                {scheduledMatches.map((match) => (
+                  <article className="dashboard-item dashboard-item--history" key={match.id}>
+                    <button
+                      className="dashboard-history-action"
+                      type="button"
+                      onClick={() => handleStartScheduledMatch(match.id)}
+                    >
+                      Start
+                    </button>
+                    <div className="dashboard-history-content">
+                      <div className="dashboard-item-head">
+                        <strong>{formatPlayers(match)}</strong>
+                        <button
+                          aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
+                          aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
+                          className="dashboard-match-menu-button"
+                          type="button"
+                          onClick={() => toggleScheduledDetails(match.id)}
+                        >
+                          <span aria-hidden="true">⋮</span>
+                        </button>
+                      </div>
+                      <div className="dashboard-item-meta">
+                        <span>Court: {match.court_name || "Unassigned"}</span>
+                        <span>Ready to start</span>
+                      </div>
+                      {expandedScheduledMatches[match.id] ? (
+                        <div className="dashboard-match-details">
+                          <span>Scheduled: {formatDate(match.created_at)}</span>
+                          <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
+                          <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
+                          <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
+                          <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
 
         <section className="panel stack" id="match-history-section">
           <div className="panel-heading">
-            <h2>Recent Matches</h2>
-            <p className="helper-text">Completed matches for this organisation.</p>
+            <h2>{historyTitle}</h2>
+            <p className="helper-text">{historyHelper}</p>
           </div>
 
           {recentMatches.length === 0 ? (

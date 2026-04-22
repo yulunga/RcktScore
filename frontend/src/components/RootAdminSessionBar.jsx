@@ -17,7 +17,6 @@ export default function RootAdminSessionBar() {
         </span>
       </div>
       <div className="club-page-header__meta">
-        <span className="beta-badge">Beta</span>
         <button
           className="session-link-button"
           type="button"

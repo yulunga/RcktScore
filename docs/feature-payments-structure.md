@@ -50,8 +50,10 @@ It is intentionally split into:
 
 ### Implementation Notes
 
-- Retention should be enforced server-side (not only hidden in UI).
-- Easiest first release: keep all data in storage, but API returns only latest 3 for Personal users.
+- Retention is enforced server-side through the dashboard API.
+- Personal accounts are represented as hidden single-user organisations so they can later be upgraded or attached to a club without changing the auth model.
+- Personal organisation IDs are allocated from the 50000+ range.
+- Current first release keeps all data in storage, but API returns only latest 3 for Personal users.
 - Later hard-retention option: scheduled purge/archive job by account plan.
 
 ### Positioning
@@ -74,8 +76,9 @@ It is intentionally split into:
 
 ### Implementation Notes
 
-- Same pattern as Personal: enforce historical-return limits by plan at API layer.
+- Same pattern as Personal: historical-return limits are enforced by plan at API layer.
 - Keep feature flags plan-based so additional premium features can be added without reworking core auth.
+- Match filtering, saved players, exports, and lightweight stats remain planned implementation items.
 
 ### Positioning
 
@@ -151,11 +154,12 @@ It is intentionally split into:
 ## Gaps to Close Before Pricing Launch
 
 1. **Plan/entitlement model**
-   - Add a source of truth for plan on organisation and (if needed) personal account records.
+   - Source of truth now exists on organisation records via `org_type` and `plan`.
 2. **Server-side enforcement**
-   - Enforce historical limits and usage caps in backend query/service layer.
+   - Personal match-history limits are enforced in the dashboard query/service layer.
+   - Saved-player limits, export permissions, and advanced filtering limits still need dedicated endpoints.
 3. **Personal vs Club identity model**
-   - Decide whether Personal users are single-user organisations or a separate account type.
+   - Personal users are modelled as hidden single-user organisations.
 4. **Player management scope**
    - Define whether this is lightweight lookup/history reuse or a full CRUD player registry.
 5. **Realtime promise by tier**

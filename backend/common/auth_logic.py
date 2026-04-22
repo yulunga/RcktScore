@@ -34,6 +34,8 @@ def _serialize_org_user(user_row):
         "role": user_row.get("role") or "user",
         "organization_id": user_row["organization_id"],
         "organization_name": user_row.get("organization_name"),
+        "organization_type": user_row.get("org_type") or "club",
+        "plan": user_row.get("plan") or "club_essentials",
         "status": user_row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": first_name,
         "surname": surname,
@@ -61,6 +63,8 @@ def get_org_users(connection, username):
                 u.organization_id,
                 u.role,
                 u.approval_status,
+                o.org_type,
+                o.plan,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u

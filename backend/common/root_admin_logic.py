@@ -522,6 +522,36 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
             )
         account_user_row = cursor.fetchone()
 
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshCourts"
+            WHERE organization_name = %(organization_id)s
+            ORDER BY id ASC
+            LIMIT 1
+            """,
+            {"organization_id": personal_org_id},
+        )
+        court_row = cursor.fetchone()
+        if not court_row:
+            cursor.execute(
+                """
+                INSERT INTO "SkwshCourts" (
+                    created_at,
+                    court_name,
+                    court_alias,
+                    organization_name
+                )
+                VALUES (
+                    %(created_at)s,
+                    'Personal Court',
+                    'Personal Court',
+                    %(organization_id)s
+                )
+                """,
+                {"created_at": now, "organization_id": personal_org_id},
+            )
+
     set_password_url = _build_set_password_url(reset_base_url, reset_token)
     account = {
         "username": username,

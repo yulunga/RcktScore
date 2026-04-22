@@ -340,7 +340,10 @@ def list_matches(connection, tenant_id, status=None, limit=10):
         query.append("AND status = %(status)s")
         params["status"] = status
 
-    query.append("ORDER BY updated_at DESC, created_at DESC LIMIT %(limit)s")
+    if status == "completed":
+        query.append("ORDER BY COALESCE(completed_at, updated_at) DESC, updated_at DESC LIMIT %(limit)s")
+    else:
+        query.append("ORDER BY updated_at DESC, created_at DESC LIMIT %(limit)s")
 
     with connection.cursor() as cursor:
         cursor.execute("\n".join(query), params)
@@ -372,20 +375,41 @@ def _find_active_match_on_court(connection, tenant_id, court_id):
         return cursor.fetchone()
 
 
+def _fetch_tenant_plan(connection, tenant_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT org_type, plan
+            FROM "SkwshOrgSettings"
+            WHERE id = %(tenant_id)s
+            LIMIT 1
+            """,
+            {"tenant_id": tenant_id},
+        )
+        row = cursor.fetchone()
+
+    return {
+        "org_type": (row or {}).get("org_type") or "club",
+        "plan": (row or {}).get("plan") or "club_essentials",
+    }
+
+
 def create_match(connection, payload, source="api"):
     match_id = str(uuid4())
     tenant_id = payload["tenant_id"]
     now = _utcnow()
+    tenant_plan = _fetch_tenant_plan(connection, tenant_id)
+    is_personal_tenant = tenant_plan["org_type"] == "personal"
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
-    requested_status = _match_status_value(payload.get("status"))
+    requested_status = "active" if is_personal_tenant else _match_status_value(payload.get("status"))
     conflicting_match = None
     match_status = requested_status
-    handicap_enabled = bool(payload.get("handicap_enabled"))
+    handicap_enabled = False if is_personal_tenant else bool(payload.get("handicap_enabled"))
     player1_offset = _coerce_int(payload.get("player1_offset")) if handicap_enabled else 0
     player2_offset = _coerce_int(payload.get("player2_offset")) if handicap_enabled else 0
 
-    if requested_status == "active":
+    if requested_status == "active" and not is_personal_tenant:
         conflicting_match = _find_active_match_on_court(
             connection,
             tenant_id=tenant_id,

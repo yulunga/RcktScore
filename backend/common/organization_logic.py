@@ -38,6 +38,9 @@ def _serialize_organization(row):
         "org_telephone": row.get("org_telephone") or "",
         "org_email": row.get("org_email") or "",
         "org_webaddress": row.get("org_webaddress") or "",
+        "org_type": row.get("org_type") or "club",
+        "plan": row.get("plan") or "club_essentials",
+        "is_hidden": bool(row.get("is_hidden")),
         "social_profiles": {
             "facebook": "",
             "instagram": "",
@@ -149,7 +152,18 @@ def get_organization_settings(connection, organization_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, organization_name, org_address, org_postcode, org_contact, org_telephone, org_email, org_webaddress
+            SELECT
+                id,
+                organization_name,
+                org_address,
+                org_postcode,
+                org_contact,
+                org_telephone,
+                org_email,
+                org_webaddress,
+                org_type,
+                plan,
+                is_hidden
             FROM "SkwshOrgSettings"
             WHERE id = %(organization_id)s
             LIMIT 1

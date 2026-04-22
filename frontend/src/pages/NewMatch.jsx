@@ -70,9 +70,11 @@ export default function NewMatch() {
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
+  const [organizationType, setOrganizationType] = useState(session?.organization_type || "club");
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
+  const isPersonalAccount = organizationType === "personal";
   const requiredFieldsComplete =
     organizationId &&
     formState.court_id.trim() &&
@@ -102,7 +104,7 @@ export default function NewMatch() {
     () => activeMatches.find((match) => String(match.court_id) === formState.court_id),
     [activeMatches, formState.court_id],
   );
-  const shouldScheduleMatch = Boolean(formState.schedule_match || activeCourtMatch);
+  const shouldScheduleMatch = !isPersonalAccount && Boolean(formState.schedule_match || activeCourtMatch);
 
   function handleChange(name, value) {
     setFormState((current) => ({
@@ -119,6 +121,10 @@ export default function NewMatch() {
   }
 
   function handleHandicapToggle(checked) {
+    if (isPersonalAccount) {
+      return;
+    }
+
     setFormState((current) => ({
       ...current,
       handicap_enabled: checked,
@@ -131,6 +137,32 @@ export default function NewMatch() {
   }
 
   useEffect(() => {
+    if (!isPersonalAccount) {
+      return;
+    }
+
+    setFormState((current) => {
+      if (!current.schedule_match && !current.handicap_enabled) {
+        return current;
+      }
+
+      return {
+        ...current,
+        schedule_match: false,
+        handicap_enabled: false,
+        player1_band: "",
+        player2_band: "",
+        player1_offset: 0,
+        player2_offset: 0,
+      };
+    });
+  }, [isPersonalAccount]);
+
+  useEffect(() => {
+    setOrganizationType(session?.organization_type || "club");
+  }, [session?.organization_type]);
+
+  useEffect(() => {
     async function loadCourts() {
       if (!organizationId) {
         setCourtLoading(false);
@@ -141,7 +173,9 @@ export default function NewMatch() {
       setCourtError("");
       try {
         const response = await getOrganizationSettings(organizationId);
-        setAvailableCourts(response?.organizationSettings?.courts || []);
+        const organizationSettings = response?.organizationSettings || {};
+        setAvailableCourts(organizationSettings?.courts || []);
+        setOrganizationType(organizationSettings?.organization?.org_type || session?.organization_type || "club");
       } catch (requestError) {
         setCourtError(requestError.message || "Failed to load organisation courts.");
       } finally {
@@ -150,7 +184,7 @@ export default function NewMatch() {
     }
 
     loadCourts();
-  }, [organizationId]);
+  }, [organizationId, session?.organization_type]);
 
   useEffect(() => {
     async function loadActiveMatches() {
@@ -170,6 +204,11 @@ export default function NewMatch() {
   }, [organizationId]);
 
   useEffect(() => {
+    if (isPersonalAccount) {
+      setSetupNotice("");
+      return;
+    }
+
     if (activeCourtMatch) {
       setSetupNotice(
         `There is an active game currently on ${activeCourtMatch.court_name || formState.court_name}. `
@@ -179,7 +218,7 @@ export default function NewMatch() {
     }
 
     setSetupNotice("");
-  }, [activeCourtMatch, formState.court_name]);
+  }, [activeCourtMatch, formState.court_name, isPersonalAccount]);
 
   useEffect(() => {
     if (!organizationId || activeLookupField !== "player1" || player1LookupQuery.length < 2) {
@@ -293,6 +332,12 @@ export default function NewMatch() {
     event.preventDefault();
     const response = await startMatch({
       ...formState,
+      handicap_enabled: isPersonalAccount ? false : formState.handicap_enabled,
+      schedule_match: isPersonalAccount ? false : formState.schedule_match,
+      player1_band: isPersonalAccount ? "" : formState.player1_band,
+      player2_band: isPersonalAccount ? "" : formState.player2_band,
+      player1_offset: isPersonalAccount ? 0 : formState.player1_offset,
+      player2_offset: isPersonalAccount ? 0 : formState.player2_offset,
       sport: "squash",
       status: shouldScheduleMatch ? "scheduled" : "active",
       tenant_id: organizationId,
@@ -535,18 +580,20 @@ export default function NewMatch() {
               </select>
             </div>
 
-            <div className="field checkbox-field match-setup-checkbox-field">
-              <label className="checkbox-label" htmlFor="handicap_enabled">
-                <input
-                  checked={formState.handicap_enabled}
-                  id="handicap_enabled"
-                  name="handicap_enabled"
-                  type="checkbox"
-                  onChange={(event) => handleHandicapToggle(event.target.checked)}
-                />
-                Handicap Match
-              </label>
-            </div>
+            {!isPersonalAccount ? (
+              <div className="field checkbox-field match-setup-checkbox-field">
+                <label className="checkbox-label" htmlFor="handicap_enabled">
+                  <input
+                    checked={formState.handicap_enabled}
+                    id="handicap_enabled"
+                    name="handicap_enabled"
+                    type="checkbox"
+                    onChange={(event) => handleHandicapToggle(event.target.checked)}
+                  />
+                  Handicap Match
+                </label>
+              </div>
+            ) : null}
           </div>
 
           <div className="match-setup-row match-setup-row--referee">
@@ -582,7 +629,7 @@ export default function NewMatch() {
           ) : null}
         </div>
 
-        {formState.handicap_enabled ? (
+        {!isPersonalAccount && formState.handicap_enabled ? (
           <div className="panel stack compact">
             <div className="panel-heading">
               <h2>Handicap Setup</h2>
@@ -649,46 +696,50 @@ export default function NewMatch() {
 
         {error ? <div className="notice error">{error}</div> : null}
 
-        <div className="field checkbox-field">
-          <label className="checkbox-label" htmlFor="schedule_match">
-            <input
-              checked={Boolean(formState.schedule_match)}
-              id="schedule_match"
-              name="schedule_match"
-              type="checkbox"
-              onChange={(event) => handleChange("schedule_match", event.target.checked)}
-            />
-            Schedule Match
-          </label>
-        </div>
+        {!isPersonalAccount ? (
+          <div className="field checkbox-field">
+            <label className="checkbox-label" htmlFor="schedule_match">
+              <input
+                checked={Boolean(formState.schedule_match)}
+                id="schedule_match"
+                name="schedule_match"
+                type="checkbox"
+                onChange={(event) => handleChange("schedule_match", event.target.checked)}
+              />
+              Schedule Match
+            </label>
+          </div>
+        ) : null}
 
         <div className="button-row">
           <button disabled={loading || !requiredFieldsComplete} type="submit">
             {loading ? "Saving..." : "Start Match"}
           </button>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() => {
-              setShowHandicapMatrix((current) => {
-                const next = !current;
-                if (!current) {
-                  window.setTimeout(() => {
-                    document.getElementById("handicap-matrix")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }, 0);
-                }
-                return next;
-              });
-            }}
-          >
-            {showHandicapMatrix ? "Hide Handicap Matrix" : "View Handicap Matrix"}
-          </button>
+          {!isPersonalAccount ? (
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => {
+                setShowHandicapMatrix((current) => {
+                  const next = !current;
+                  if (!current) {
+                    window.setTimeout(() => {
+                      document.getElementById("handicap-matrix")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }, 0);
+                  }
+                  return next;
+                });
+              }}
+            >
+              {showHandicapMatrix ? "Hide Handicap Matrix" : "View Handicap Matrix"}
+            </button>
+          ) : null}
         </div>
 
-        {showHandicapMatrix ? (
+        {!isPersonalAccount && showHandicapMatrix ? (
           <section className="panel stack compact matrix-panel" id="handicap-matrix">
             <div className="panel-heading">
               <h2>2024 Handicap Matrix</h2>
