@@ -146,6 +146,47 @@ def _serialize_court(row):
     }
 
 
+def _ensure_personal_default_court(connection, organization_id, organization_row):
+    if (organization_row or {}).get("org_type") != "personal":
+        return
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshCourts"
+            WHERE organization_name = %(organization_id)s
+            LIMIT 1
+            """,
+            {"organization_id": organization_id},
+        )
+        if cursor.fetchone():
+            return
+
+        cursor.execute(
+            """
+            INSERT INTO "SkwshCourts" (
+                created_at,
+                court_name,
+                court_alias,
+                organization_name
+            )
+            VALUES (
+                %(created_at)s,
+                'Personal Match',
+                'Personal Match',
+                %(organization_id)s
+            )
+            """,
+            {
+                "created_at": _utcnow(),
+                "organization_id": organization_id,
+            },
+        )
+
+    connection.commit()
+
+
 def get_organization_settings(connection, organization_id):
     org_id = int(organization_id)
 
@@ -175,6 +216,9 @@ def get_organization_settings(connection, organization_id):
         if not organization_row:
             return None
 
+    _ensure_personal_default_court(connection, org_id, organization_row)
+
+    with connection.cursor() as cursor:
         cursor.execute(
             """
             SELECT id, clubusername, role, approval_status, created_at, invitation_sent_at, approved_at

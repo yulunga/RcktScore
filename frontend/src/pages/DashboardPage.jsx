@@ -72,6 +72,14 @@ function formatRunningTime(value, minuteTick) {
   return `${hours}h ${minutes}m`;
 }
 
+function inferOrganizationType(session) {
+  if (session?.organization_type) {
+    return session.organization_type;
+  }
+
+  return Number(session?.organization_id) >= 50000 ? "personal" : "club";
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -143,8 +151,8 @@ export default function DashboardPage() {
   const scheduledMatches = dashboard?.scheduled_matches || [];
   const recentMatches = dashboard?.recent_matches || [];
   const organization = dashboard?.organization || {};
-  const organizationType = organization.type || session?.organization_type || "club";
-  const organizationPlan = organization.plan || session?.plan || "club_essentials";
+  const organizationType = organization.type || inferOrganizationType(session);
+  const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
   const isPersonalAccount = organizationType === "personal";
   const historyLimit = organization.history_limit;
   const historyTitle = isPersonalAccount
