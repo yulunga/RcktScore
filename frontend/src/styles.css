@@ -63,6 +63,11 @@ select {
   text-decoration: none;
 }
 
+.app-footer__help-label,
+.app-footer__link--support {
+  color: #ec5ea8;
+}
+
 .app-footer__link:hover {
   text-decoration: underline;
 }
@@ -984,6 +989,11 @@ select {
   border: 1px solid #cbd2d9;
   border-radius: 14px;
   background: #fff;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(72, 101, 129, 0.42);
 }
 
 .prefixed-input {

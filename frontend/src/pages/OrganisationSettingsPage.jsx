@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import ClubPageHeader from "../components/ClubPageHeader";
 import SessionBar from "../components/SessionBar";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -9,6 +10,7 @@ import {
   createOrganizationUser,
   deleteOrganizationCourt,
   getOrganizationSettings,
+  updatePersonalProfile,
   updateOrganizationCourt,
   updateOrganizationDetails,
   updateOrganizationUserRole,
@@ -54,9 +56,15 @@ function formatDate(value) {
 
 export default function OrganisationSettingsPage() {
   const navigate = useNavigate();
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const [settings, setSettings] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
+  const [personalProfileForm, setPersonalProfileForm] = useState({
+    first_name: "",
+    surname: "",
+    country: "",
+    city_location: "",
+  });
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [courtForm, setCourtForm] = useState(emptyCourtForm);
   const [courtDrafts, setCourtDrafts] = useState({});
@@ -233,38 +241,87 @@ export default function OrganisationSettingsPage() {
     );
   }
 
-  function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
-  }
-
   const users = settings?.users || [];
   const courts = settings?.courts || [];
+  const currentPersonalUser = users.find(
+    (user) => user.username?.toLowerCase() === session?.username?.toLowerCase(),
+  ) || {};
+  const personalEmail = session?.email || currentPersonalUser.username || session?.username || "";
   const personalPlan = settings?.organization?.plan || session?.plan || "personal_free";
   const personalPlanLabel = personalPlan === "personal_plus" ? "Personal+" : "Personal Free";
+  const personalHeaderActions = [
+    {
+      label: "Back to Dashboard",
+      onClick: () => navigate("/dashboard"),
+    },
+  ];
+
+  useEffect(() => {
+    if (!isPersonalAccount) {
+      return;
+    }
+
+    setPersonalProfileForm({
+      first_name: currentPersonalUser.first_name || session?.first_name || "",
+      surname: currentPersonalUser.surname || session?.surname || "",
+      country: currentPersonalUser.country || "",
+      city_location: currentPersonalUser.city_location || "",
+    });
+  }, [
+    currentPersonalUser.city_location,
+    currentPersonalUser.country,
+    currentPersonalUser.first_name,
+    currentPersonalUser.surname,
+    isPersonalAccount,
+    session?.first_name,
+    session?.surname,
+  ]);
+
+  async function handlePersonalProfileSubmit(event) {
+    event.preventDefault();
+    await runMutation(
+      "personal-profile",
+      () => updatePersonalProfile(organizationId, {
+        username: session?.username,
+        first_name: personalProfileForm.first_name,
+        surname: personalProfileForm.surname,
+        country: personalProfileForm.country,
+        city_location: personalProfileForm.city_location,
+      }),
+      "Profile updated.",
+    );
+  }
 
   return (
     <main className="page-shell stack">
-      <SessionBar />
+      {isPersonalAccount ? (
+        <ClubPageHeader
+          actions={personalHeaderActions}
+          subtitle="Manage your profile, plan options, and account access."
+          title="Settings"
+        />
+      ) : (
+        <>
+          <SessionBar />
 
-      <section className="hero-card stack compact">
-        <span className="status-pill">{isPersonalAccount ? "Personal Settings" : "Organisation Settings"}</span>
-        <div className="settings-header-row">
-          <div className="stack compact">
-            <h1>{isPersonalAccount ? "Settings" : organizationForm.organization_name || session?.organization_name || "Organisation"}</h1>
-            <p className="helper-text">
-              {isPersonalAccount
-                ? "Manage your profile, plan options, and account access."
-                : "Manage organisation details, court inventory, and user access for this club."}
-            </p>
-          </div>
-          <div className="button-row">
-            <button className="secondary" type="button" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
-          </div>
-        </div>
-      </section>
+          <section className="hero-card stack compact">
+            <span className="status-pill">Organisation Settings</span>
+            <div className="settings-header-row">
+              <div className="stack compact">
+                <h1>{organizationForm.organization_name || session?.organization_name || "Organisation"}</h1>
+                <p className="helper-text">
+                  Manage organisation details, court inventory, and user access for this club.
+                </p>
+              </div>
+              <div className="button-row">
+                <button className="secondary" type="button" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
-      {!isAdmin ? (
+      {!isAdmin && !isPersonalAccount ? (
         <div className="notice">You are in view-only mode. Only organisation admins can save changes.</div>
       ) : null}
       {loading ? <div className="notice">Loading organisation settings...</div> : null}
@@ -278,22 +335,83 @@ export default function OrganisationSettingsPage() {
               <h2>Profile</h2>
               <p className="helper-text">Basic account details used for personal scoring.</p>
             </div>
-            <div className="dashboard-list">
-              <article className="dashboard-item">
-                <div className="dashboard-item-head">
-                  <strong>{session?.full_name || session?.username || "Personal user"}</strong>
-                  <span className="status-pill">{personalPlanLabel}</span>
+            <form className="stack" onSubmit={handlePersonalProfileSubmit}>
+              <div className="field-grid">
+                <div className="field">
+                  <label htmlFor="personal_first_name">Name</label>
+                  <input
+                    id="personal_first_name"
+                    placeholder="Name"
+                    value={personalProfileForm.first_name}
+                    onChange={(event) => setPersonalProfileForm((current) => ({
+                      ...current,
+                      first_name: event.target.value,
+                    }))}
+                  />
                 </div>
-                <div className="dashboard-item-meta">
-                  <span>Email: {session?.username || "Not available"}</span>
-                  <span>Account: Single-user personal workspace</span>
+                <div className="field">
+                  <label htmlFor="personal_surname">Surname</label>
+                  <input
+                    id="personal_surname"
+                    placeholder="Surname"
+                    value={personalProfileForm.surname}
+                    onChange={(event) => setPersonalProfileForm((current) => ({
+                      ...current,
+                      surname: event.target.value,
+                    }))}
+                  />
                 </div>
-              </article>
-            </div>
-            <div className="button-row">
-              <button className="secondary" type="button" onClick={() => navigate("/ping")}>Ping Us</button>
-              <button className="danger" type="button" onClick={handleLogout}>Log Out</button>
-            </div>
+                <div className="field">
+                  <label htmlFor="personal_email">Email</label>
+                  <input
+                    id="personal_email"
+                    readOnly
+                    value={personalEmail || "Not available"}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="personal_username">User</label>
+                  <input
+                    id="personal_username"
+                    readOnly
+                    value={session?.username || "Not available"}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="personal_country">Country</label>
+                  <input
+                    id="personal_country"
+                    placeholder="Country"
+                    value={personalProfileForm.country}
+                    onChange={(event) => setPersonalProfileForm((current) => ({
+                      ...current,
+                      country: event.target.value,
+                    }))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="personal_city_location">City / Location</label>
+                  <input
+                    id="personal_city_location"
+                    placeholder="City or location"
+                    value={personalProfileForm.city_location}
+                    onChange={(event) => setPersonalProfileForm((current) => ({
+                      ...current,
+                      city_location: event.target.value,
+                    }))}
+                  />
+                </div>
+              </div>
+              <div className="dashboard-item-meta">
+                <span>Plan: {personalPlanLabel}</span>
+                <span>Account: Single-user personal workspace</span>
+              </div>
+              <div className="button-row">
+                <button disabled={savingSection === "personal-profile"} type="submit">
+                  {savingSection === "personal-profile" ? "Saving..." : "Save Profile"}
+                </button>
+              </div>
+            </form>
           </section>
 
           <section className="panel stack">

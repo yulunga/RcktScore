@@ -3,10 +3,35 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 
+function inferOrganizationType(session) {
+  if (session?.organization_type) {
+    return session.organization_type;
+  }
+
+  return Number(session?.organization_id) >= 50000 ? "personal" : "club";
+}
+
+function planLabel(plan) {
+  if (plan === "personal_plus") {
+    return "Personal+";
+  }
+  if (plan === "personal_free") {
+    return "Personal Free";
+  }
+  if (plan === "club_pro") {
+    return "Club Pro";
+  }
+  return "Club Essentials";
+}
+
 export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
   const navigate = useNavigate();
   const { session, logout } = useAuth();
   const organizationName = session?.organization_name || "";
+  const organizationType = inferOrganizationType(session);
+  const accountSubline = organizationType === "personal"
+    ? planLabel(session?.plan || "personal_free")
+    : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
 
   return (
@@ -46,7 +71,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               </span>
               <span className="club-page-header__username">{session?.username || "Operator"}</span>
             </div>
-            <span className="club-page-header__organization-name">{organizationName || "Club"}</span>
+            <span className="club-page-header__organization-name">{accountSubline}</span>
           </div>
         </div>
 

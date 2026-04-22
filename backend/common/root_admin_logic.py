@@ -449,6 +449,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                 """
                 UPDATE "SkwshOrgUsers"
                 SET role = 'admin',
+                    first_name = COALESCE(NULLIF(%(first_name)s, ''), first_name),
+                    surname = COALESCE(NULLIF(%(surname)s, ''), surname),
                     approval_status = CASE
                         WHEN approval_status = 'approved' THEN approval_status
                         ELSE 'pending'
@@ -472,6 +474,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     "invitation_sent_at": now,
                     "password_reset_token": reset_token,
                     "password_reset_requested_at": now,
+                    "first_name": interest_row.get("first_name") or "",
+                    "surname": interest_row.get("surname") or "",
                 },
             )
         else:
@@ -482,6 +486,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                 clubusername,
                 password_hash,
                 organization_id,
+                first_name,
+                surname,
                 role,
                 approval_status,
                 approval_token,
@@ -494,6 +500,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                 %(username)s,
                 NULL,
                 %(organization_id)s,
+                %(first_name)s,
+                %(surname)s,
                 'admin',
                 'pending',
                 NULL,
@@ -515,6 +523,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     "created_at": now,
                     "username": username,
                     "organization_id": personal_org_id,
+                    "first_name": interest_row.get("first_name") or "",
+                    "surname": interest_row.get("surname") or "",
                     "invitation_sent_at": now,
                     "password_reset_token": reset_token,
                     "password_reset_requested_at": now,

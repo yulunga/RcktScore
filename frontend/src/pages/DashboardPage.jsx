@@ -195,7 +195,7 @@ export default function DashboardPage() {
       <ClubPageHeader
         actions={dashboardActions}
         subtitle={dashboardSubtitle}
-        title={organization.name || session?.organization_name || "Club Dashboard"}
+        title={isPersonalAccount ? "Dashboard" : organization.name || session?.organization_name || "Club Dashboard"}
       />
 
       {loading ? <div className="notice">Loading dashboard...</div> : null}

@@ -393,6 +393,18 @@ Resources:
             Path: /organization_details/{organization_id}
             Method: PUT
 
+  UpdatePersonalProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_personal_profile/handler.lambda_handler
+      Events:
+        UpdatePersonalProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /personal_profile/{organization_id}
+            Method: PUT
+
   CreateOrgUserFunction:
     Type: AWS::Serverless::Function
     Properties:

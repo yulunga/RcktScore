@@ -169,6 +169,13 @@ export function updateOrganizationDetails(organizationId, payload) {
   });
 }
 
+export function updatePersonalProfile(organizationId, payload) {
+  return apiRequest(`/personal_profile/${organizationId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createOrganizationUser(payload) {
   return apiRequest("/organization_users", {
     method: "POST",

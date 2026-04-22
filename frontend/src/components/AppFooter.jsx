@@ -16,7 +16,16 @@ export default function AppFooter() {
       {isAuthenticated ? (
         <>
           <span className="app-footer__divider" aria-hidden="true">|</span>
-          <Link className="app-footer__link" to="/ping">
+          <span className="app-footer__help-label">Need help?</span>
+          <Link className="app-footer__link app-footer__link--support" to="/help?section=terms">
+            Terms
+          </Link>
+          <span className="app-footer__divider" aria-hidden="true">/</span>
+          <Link className="app-footer__link app-footer__link--support" to="/help?section=privacy">
+            Privacy
+          </Link>
+          <span className="app-footer__divider" aria-hidden="true">/</span>
+          <Link className="app-footer__link app-footer__link--support" to="/ping">
             Ping Us
           </Link>
         </>

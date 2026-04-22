@@ -59,6 +59,10 @@ def _serialize_user(row):
         "username": row["clubusername"],
         "role": row.get("role") or "user",
         "status": row.get("approval_status") or USER_STATUS_APPROVED,
+        "first_name": row.get("first_name") or "",
+        "surname": row.get("surname") or "",
+        "country": row.get("country") or "",
+        "city_location": row.get("city_location") or "",
         "created_at": created_at.isoformat() if created_at else None,
         "approved_at": approved_at.isoformat() if approved_at else None,
         "invitation_sent_at": invitation_sent_at.isoformat() if invitation_sent_at else None,
@@ -221,7 +225,18 @@ def get_organization_settings(connection, organization_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, clubusername, role, approval_status, created_at, invitation_sent_at, approved_at
+            SELECT
+                id,
+                clubusername,
+                role,
+                approval_status,
+                first_name,
+                surname,
+                country,
+                city_location,
+                created_at,
+                invitation_sent_at,
+                approved_at
             FROM "SkwshOrgUsers"
             WHERE organization_id = %(organization_id)s
             ORDER BY clubusername ASC
@@ -270,6 +285,42 @@ def update_organization_details(connection, organization_id, payload):
             )
         connection.commit()
 
+    return get_organization_settings(connection, org_id)
+
+
+def update_personal_profile(connection, organization_id, username, payload):
+    org_id = int(organization_id)
+    normalized_username = normalize_email_address(username)
+    if not normalized_username:
+        raise ValueError("username is required")
+
+    updates = {
+        field: payload[field].strip() if isinstance(payload.get(field), str) else payload.get(field)
+        for field in ["first_name", "surname", "country", "city_location"]
+        if field in payload
+    }
+
+    if not updates:
+        return get_organization_settings(connection, org_id)
+
+    set_clause = ", ".join(f"{field} = %({field})s" for field in updates)
+    params = {
+        **updates,
+        "organization_id": org_id,
+        "username": normalized_username,
+    }
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f'''
+            UPDATE "SkwshOrgUsers"
+            SET {set_clause}
+            WHERE organization_id = %(organization_id)s
+                AND LOWER(clubusername) = LOWER(%(username)s)
+            ''',
+            params,
+        )
+
+    connection.commit()
     return get_organization_settings(connection, org_id)
 
 

@@ -9,7 +9,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function HelpPage() {
   const [searchParams] = useSearchParams();
   const resetToken = searchParams.get("token") || "";
-  const defaultMode = searchParams.get("mode") === "reset" || resetToken ? "reset" : "overview";
+  const requestedSection = searchParams.get("section");
+  const defaultMode = searchParams.get("mode") === "reset" || resetToken
+    ? "reset"
+    : ["terms", "privacy"].includes(requestedSection)
+      ? requestedSection
+      : "overview";
   const policyYear = new Date().getFullYear();
   const [activeSection, setActiveSection] = useState(defaultMode);
   const [resetEmail, setResetEmail] = useState("");
