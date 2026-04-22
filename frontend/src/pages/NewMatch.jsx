@@ -58,6 +58,14 @@ const initialFormState = {
   player2_offset: 0,
 };
 
+function inferOrganizationType(session) {
+  if (session?.organization_type) {
+    return session.organization_type;
+  }
+
+  return Number(session?.organization_id) >= 50000 ? "personal" : "club";
+}
+
 export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
@@ -70,7 +78,7 @@ export default function NewMatch() {
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
-  const [organizationType, setOrganizationType] = useState(session?.organization_type || "club");
+  const [organizationType, setOrganizationType] = useState(() => inferOrganizationType(session));
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
@@ -92,6 +100,13 @@ export default function NewMatch() {
       onClick: () => navigate("/dashboard"),
     },
   ];
+
+  if (isPersonalAccount) {
+    headerActions.push({
+      label: "Settings",
+      onClick: () => navigate("/settings"),
+    });
+  }
   const player1LookupQuery = useMemo(
     () => [formState.player1_name, formState.player1_surname].filter(Boolean).join(" ").trim(),
     [formState.player1_name, formState.player1_surname],
@@ -159,8 +174,8 @@ export default function NewMatch() {
   }, [isPersonalAccount]);
 
   useEffect(() => {
-    setOrganizationType(session?.organization_type || "club");
-  }, [session?.organization_type]);
+    setOrganizationType(inferOrganizationType(session));
+  }, [session]);
 
   useEffect(() => {
     async function loadCourts() {
@@ -174,8 +189,26 @@ export default function NewMatch() {
       try {
         const response = await getOrganizationSettings(organizationId);
         const organizationSettings = response?.organizationSettings || {};
-        setAvailableCourts(organizationSettings?.courts || []);
-        setOrganizationType(organizationSettings?.organization?.org_type || session?.organization_type || "club");
+        const courts = organizationSettings?.courts || [];
+        const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);
+        setAvailableCourts(courts);
+        setOrganizationType(nextOrganizationType);
+
+        if (nextOrganizationType === "personal") {
+          const personalCourt = courts[0];
+          if (!personalCourt) {
+            setCourtError("Personal scoring workspace is not ready yet. Please Ping Us if this continues.");
+            return;
+          }
+
+          setFormState((current) => ({
+            ...current,
+            court_id: String(personalCourt.id),
+            court_name: personalCourt.court_name || "Personal Match",
+            court_alias: personalCourt.court_alias || personalCourt.court_name || "Personal Match",
+            referee_name: "",
+          }));
+        }
       } catch (requestError) {
         setCourtError(requestError.message || "Failed to load organisation courts.");
       } finally {
@@ -261,7 +294,12 @@ export default function NewMatch() {
   }, [activeLookupField, organizationId, player2LookupQuery]);
 
   useEffect(() => {
-    if (!organizationId || activeLookupField !== "referee" || formState.referee_name.trim().length < 2) {
+    if (
+      isPersonalAccount
+      || !organizationId
+      || activeLookupField !== "referee"
+      || formState.referee_name.trim().length < 2
+    ) {
       if (activeLookupField === "referee") {
         setRefereeSuggestions([]);
       }
@@ -357,17 +395,25 @@ export default function NewMatch() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell stack">
       <ClubPageHeader
         actions={headerActions}
-        subtitle="Start the next court session and publish it to the scoring console, spectator display, and device clients from one shared match record."
+        subtitle={
+          isPersonalAccount
+            ? "Create a personal match and open the live scoring screen."
+            : "Start the next court session and publish it to the scoring console, spectator display, and device clients from one shared match record."
+        }
         title="Create a New Match"
       />
 
       <form className="panel stack" onSubmit={handleSubmit}>
         <div className="section-heading stack compact">
           <h2>Match Setup</h2>
-          <p>Complete the required court and player fields before opening the live scoring screen.</p>
+          <p>
+            {isPersonalAccount
+              ? "Enter both players and choose the match format before opening the live scoring screen."
+              : "Complete the required court and player fields before opening the live scoring screen."}
+          </p>
         </div>
 
         {courtError ? <div className="notice error">{courtError}</div> : null}
@@ -498,53 +544,57 @@ export default function NewMatch() {
             </div>
           ) : null}
 
-          <div className="match-setup-row match-setup-row--labels">
-            <div className="match-setup-inline-label">
-              Court ID
-              <span className="required-mark"> *</span>
-            </div>
-            <div className="match-setup-inline-label">
-              Court Alias
-              <span className="required-mark"> *</span>
-            </div>
-          </div>
+          {!isPersonalAccount ? (
+            <>
+              <div className="match-setup-row match-setup-row--labels">
+                <div className="match-setup-inline-label">
+                  Court ID
+                  <span className="required-mark"> *</span>
+                </div>
+                <div className="match-setup-inline-label">
+                  Court Alias
+                  <span className="required-mark"> *</span>
+                </div>
+              </div>
 
-          <div className="match-setup-row match-setup-row--court-controls">
-            <div className="field">
-              <select
-                disabled={courtLoading || availableCourts.length === 0}
-                id="court_id"
-                name="court_id"
-                required
-                value={formState.court_id}
-                onChange={(event) => handleCourtChange(event.target.value)}
-              >
-                <option value="">
-                  {courtLoading ? "Loading courts..." : "Select a court"}
-                </option>
-                {availableCourts.map((court) => (
-                  <option key={court.id} value={String(court.id)}>
-                    {court.court_name || `Court ${court.id}`}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="match-setup-row match-setup-row--court-controls">
+                <div className="field">
+                  <select
+                    disabled={courtLoading || availableCourts.length === 0}
+                    id="court_id"
+                    name="court_id"
+                    required
+                    value={formState.court_id}
+                    onChange={(event) => handleCourtChange(event.target.value)}
+                  >
+                    <option value="">
+                      {courtLoading ? "Loading courts..." : "Select a court"}
+                    </option>
+                    {availableCourts.map((court) => (
+                      <option key={court.id} value={String(court.id)}>
+                        {court.court_name || `Court ${court.id}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="field">
-              <select
-                disabled
-                id="court_alias"
-                name="court_alias"
-                required
-                value={formState.court_alias}
-                onChange={() => {}}
-              >
-                <option value="">
-                  {formState.court_alias ? formState.court_alias : "Select a court first"}
-                </option>
-              </select>
-            </div>
-          </div>
+                <div className="field">
+                  <select
+                    disabled
+                    id="court_alias"
+                    name="court_alias"
+                    required
+                    value={formState.court_alias}
+                    onChange={() => {}}
+                  >
+                    <option value="">
+                      {formState.court_alias ? formState.court_alias : "Select a court first"}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="match-setup-row match-setup-row--format">
             <div className="field">
@@ -596,36 +646,40 @@ export default function NewMatch() {
             ) : null}
           </div>
 
-          <div className="match-setup-row match-setup-row--referee">
-            <div className="field">
-              <label htmlFor="referee_name">Referee</label>
-              <input
-                id="referee_name"
-                name="referee_name"
-                placeholder="Match official"
-                value={formState.referee_name}
-                onFocus={() => setActiveLookupField("referee")}
-                onChange={(event) => handleChange("referee_name", event.target.value)}
-              />
-            </div>
-          </div>
-
-          {activeLookupField === "referee" && refereeSuggestions.length ? (
-            <div className="match-setup-row match-setup-row--lookup">
-              <div className="lookup-list" role="listbox" aria-label="Referee suggestions">
-                {refereeSuggestions.map((suggestion) => (
-                  <button
-                    key={`referee-${suggestion}`}
-                    className="lookup-item"
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => applyRefereeSuggestion(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+          {!isPersonalAccount ? (
+            <>
+              <div className="match-setup-row match-setup-row--referee">
+                <div className="field">
+                  <label htmlFor="referee_name">Referee</label>
+                  <input
+                    id="referee_name"
+                    name="referee_name"
+                    placeholder="Match official"
+                    value={formState.referee_name}
+                    onFocus={() => setActiveLookupField("referee")}
+                    onChange={(event) => handleChange("referee_name", event.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+
+              {activeLookupField === "referee" && refereeSuggestions.length ? (
+                <div className="match-setup-row match-setup-row--lookup">
+                  <div className="lookup-list" role="listbox" aria-label="Referee suggestions">
+                    {refereeSuggestions.map((suggestion) => (
+                      <button
+                        key={`referee-${suggestion}`}
+                        className="lookup-item"
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => applyRefereeSuggestion(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
 
