@@ -187,6 +187,7 @@ export default function MatchScreen() {
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showWarmupOverlay, setShowWarmupOverlay] = useState(false);
+  const [showFirstServerOverlay, setShowFirstServerOverlay] = useState(false);
   const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(false);
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
@@ -216,6 +217,7 @@ export default function MatchScreen() {
       setTimerSeconds(advancedState.seconds);
       setTimerRunning(advancedState.running);
       setShowWarmupOverlay(false);
+      setShowFirstServerOverlay(false);
       return;
     }
 
@@ -231,6 +233,7 @@ export default function MatchScreen() {
     setTimerSeconds(0);
     setTimerRunning(true);
     setShowWarmupOverlay(false);
+    setShowFirstServerOverlay(false);
   }, [currentMatch, gameHistory.length]);
 
   useEffect(() => {
@@ -304,10 +307,9 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_two") {
-      window.alert("Warm-up complete. The match clock is now live.");
-      setTimerPhase("match_live");
-      setTimerSeconds(0);
-      setTimerRunning(true);
+      window.alert("Warm-up complete. Choose which player serves first.");
+      setTimerRunning(false);
+      setShowFirstServerOverlay(true);
       return;
     }
 
@@ -376,9 +378,8 @@ export default function MatchScreen() {
 
   function handleSkipWarmup() {
     setShowWarmupOverlay(false);
-    setTimerPhase("match_live");
-    setTimerSeconds(0);
-    setTimerRunning(true);
+    setTimerRunning(false);
+    setShowFirstServerOverlay(true);
   }
 
   function handleToggleTimer() {
@@ -392,10 +393,36 @@ export default function MatchScreen() {
 
   function handleSkipTimedPhase() {
     if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two" || timerPhase === "interval") {
+      if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
+        setTimerRunning(false);
+        setShowFirstServerOverlay(true);
+        return;
+      }
+
       setTimerPhase("match_live");
       setTimerSeconds(0);
       setTimerRunning(true);
     }
+  }
+
+  async function handleChooseFirstServer(playerSide) {
+    const selectedPlayerName = playerSide === "player2"
+      ? currentMatch?.player2_name
+      : currentMatch?.player1_name;
+    const receiverHandedness = playerSide === "player2"
+      ? currentMatch?.player1_handedness
+      : currentMatch?.player2_handedness;
+    const serviceSideForServer = receiverHandedness === "left" ? "Left" : "Right";
+
+    await sendEventAction(matchId, "server", {
+      current_server: selectedPlayerName,
+      current_server_side: playerSide,
+      service_side: serviceSideForServer,
+    });
+    setShowFirstServerOverlay(false);
+    setTimerPhase("match_live");
+    setTimerSeconds(0);
+    setTimerRunning(true);
   }
 
   return (
@@ -419,6 +446,34 @@ export default function MatchScreen() {
               </button>
               <button className="secondary" type="button" onClick={handleSkipWarmup}>
                 Skip Warm-Up
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showFirstServerOverlay && currentMatch ? (
+        <div className="overlay-backdrop">
+          <div className="overlay-panel overlay-panel--warmup stack">
+            <h2>First Server</h2>
+            <p className="helper-text">
+              Choose which player starts serving. The match clock will start after this selection.
+            </p>
+            <div className="first-server-options">
+              <button
+                disabled={loading}
+                type="button"
+                onClick={() => handleChooseFirstServer("player1")}
+              >
+                {`${currentMatch.player1_name} ${currentMatch.player1_surname || ""}`.trim()}
+              </button>
+              <button
+                className="secondary"
+                disabled={loading}
+                type="button"
+                onClick={() => handleChooseFirstServer("player2")}
+              >
+                {`${currentMatch.player2_name} ${currentMatch.player2_surname || ""}`.trim()}
               </button>
             </div>
           </div>

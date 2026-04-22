@@ -4,7 +4,7 @@ from uuid import uuid4
 from psycopg.types.json import Jsonb
 
 
-ALLOWED_ACTION_TYPES = {"let", "stroke", "serve_side", "timer"}
+ALLOWED_ACTION_TYPES = {"let", "stroke", "server", "serve_side", "timer"}
 VALID_BEST_OF_OPTIONS = {1, 3, 5}
 VALID_MATCH_STATUSES = {"active", "scheduled", "completed"}
 
@@ -121,6 +121,11 @@ def _event_summary(match_row, event_type, payload):
             return f"Stroke awarded to {scorer_name}"
     if event_type == "serve_side":
         return f"Serve changed to {payload.get('side', 'Right')}"
+    if event_type == "server":
+        server_side = payload.get("current_server_side")
+        if server_side == "player2":
+            return f"{match_row['player2_name']} selected to serve first"
+        return f"{match_row['player1_name']} selected to serve first"
     if event_type == "timer":
         return payload.get("note") or "Timer event"
     return event_type.replace("_", " ").title()
@@ -232,6 +237,13 @@ def _build_state(match_row, event_rows):
 
         elif event_type == "serve_side":
             state["service_side"] = payload.get("side", state["service_side"])
+
+        elif event_type == "server":
+            server_side = payload.get("current_server_side")
+            if server_side in {"player1", "player2"}:
+                state["current_server_side"] = server_side
+                state["current_server"] = _player_name(match_row, server_side)
+                state["service_side"] = _service_side_for_receiver(match_row, server_side)
 
         elif event_type == "match_ended":
             state["match_complete"] = True

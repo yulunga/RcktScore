@@ -298,7 +298,7 @@ export default function OrganisationSettingsPage() {
         <ClubPageHeader
           actions={personalHeaderActions}
           subtitle="Manage your profile, plan options, and account access."
-          title="Settings"
+          title=""
         />
       ) : (
         <>
