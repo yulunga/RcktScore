@@ -394,12 +394,74 @@ def _fetch_tenant_plan(connection, tenant_id):
     }
 
 
+def _is_personal_tenant(tenant_id, tenant_plan):
+    if (tenant_plan or {}).get("org_type") == "personal":
+        return True
+
+    return _coerce_int(tenant_id) >= 50000
+
+
+def is_personal_tenant(connection, tenant_id):
+    return _is_personal_tenant(tenant_id, _fetch_tenant_plan(connection, tenant_id))
+
+
+def _ensure_personal_match_court(connection, tenant_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, court_name, court_alias
+            FROM "SkwshCourts"
+            WHERE organization_name = %(tenant_id)s
+            ORDER BY id ASC
+            LIMIT 1
+            """,
+            {"tenant_id": int(tenant_id)},
+        )
+        court_row = cursor.fetchone()
+        if court_row:
+            return court_row
+
+        cursor.execute(
+            """
+            INSERT INTO "SkwshCourts" (
+                created_at,
+                court_name,
+                court_alias,
+                organization_name
+            )
+            VALUES (
+                %(created_at)s,
+                'Personal Match',
+                'Personal Match',
+                %(tenant_id)s
+            )
+            RETURNING id, court_name, court_alias
+            """,
+            {
+                "created_at": _utcnow(),
+                "tenant_id": int(tenant_id),
+            },
+        )
+        return cursor.fetchone()
+
+
 def create_match(connection, payload, source="api"):
     match_id = str(uuid4())
     tenant_id = payload["tenant_id"]
     now = _utcnow()
     tenant_plan = _fetch_tenant_plan(connection, tenant_id)
-    is_personal_tenant = tenant_plan["org_type"] == "personal"
+    is_personal_tenant = _is_personal_tenant(tenant_id, tenant_plan)
+    match_payload = {**payload}
+
+    if is_personal_tenant:
+        personal_court = _ensure_personal_match_court(connection, tenant_id)
+        match_payload.update({
+            "court_id": personal_court["id"],
+            "court_name": personal_court.get("court_name") or "Personal Match",
+            "court_alias": personal_court.get("court_alias") or personal_court.get("court_name") or "Personal Match",
+            "referee_name": None,
+        })
+
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
     requested_status = "active" if is_personal_tenant else _match_status_value(payload.get("status"))
@@ -413,7 +475,7 @@ def create_match(connection, payload, source="api"):
         conflicting_match = _find_active_match_on_court(
             connection,
             tenant_id=tenant_id,
-            court_id=payload["court_id"],
+            court_id=match_payload["court_id"],
         )
         if conflicting_match:
             match_status = "scheduled"
@@ -501,25 +563,25 @@ def create_match(connection, payload, source="api"):
             {
                 "id": match_id,
                 "tenant_id": tenant_id,
-                "court_id": payload["court_id"],
-                "court_name": payload["court_name"],
-                "court_alias": payload.get("court_alias"),
-                "sport": payload.get("sport") or "squash",
-                "player1_name": payload["player1_name"],
-                "player1_surname": payload.get("player1_surname"),
-                "player1_country": payload.get("player1_country"),
-                "player1_handedness": str(payload.get("player1_handedness") or "right").lower(),
-                "player2_name": payload["player2_name"],
-                "player2_surname": payload.get("player2_surname"),
-                "player2_country": payload.get("player2_country"),
-                "player2_handedness": str(payload.get("player2_handedness") or "right").lower(),
-                "referee_name": payload.get("referee_name"),
-                "score_type": int(payload.get("score_type", 15)),
+                "court_id": match_payload["court_id"],
+                "court_name": match_payload["court_name"],
+                "court_alias": match_payload.get("court_alias"),
+                "sport": match_payload.get("sport") or "squash",
+                "player1_name": match_payload["player1_name"],
+                "player1_surname": match_payload.get("player1_surname"),
+                "player1_country": match_payload.get("player1_country"),
+                "player1_handedness": str(match_payload.get("player1_handedness") or "right").lower(),
+                "player2_name": match_payload["player2_name"],
+                "player2_surname": match_payload.get("player2_surname"),
+                "player2_country": match_payload.get("player2_country"),
+                "player2_handedness": str(match_payload.get("player2_handedness") or "right").lower(),
+                "referee_name": match_payload.get("referee_name"),
+                "score_type": int(match_payload.get("score_type", 15)),
                 "best_of": best_of,
                 "games_to_win": games_to_win,
                 "handicap_enabled": handicap_enabled,
-                "player1_band": payload.get("player1_band"),
-                "player2_band": payload.get("player2_band"),
+                "player1_band": match_payload.get("player1_band"),
+                "player2_band": match_payload.get("player2_band"),
                 "player1_offset": player1_offset,
                 "player2_offset": player2_offset,
                 "player1_final_score": None,
@@ -544,29 +606,29 @@ def create_match(connection, payload, source="api"):
                 "match_id": match_id,
                 "tenant_id": tenant_id,
                 "payload": Jsonb({
-                    "court_id": payload["court_id"],
-                    "court_name": payload["court_name"],
-                    "court_alias": payload.get("court_alias"),
-                    "sport": payload.get("sport") or "squash",
+                    "court_id": match_payload["court_id"],
+                    "court_name": match_payload["court_name"],
+                    "court_alias": match_payload.get("court_alias"),
+                    "sport": match_payload.get("sport") or "squash",
                     "best_of": best_of,
                     "games_to_win": games_to_win,
                     "current_game_number": 1,
                     "player1_games_won": 0,
                     "player2_games_won": 0,
-                    "current_server": payload["player1_name"],
+                    "current_server": match_payload["player1_name"],
                     "current_server_side": "player1",
                     "service_side": _service_side_for_receiver(
                         {
-                            "player1_handedness": payload.get("player1_handedness"),
-                            "player2_handedness": payload.get("player2_handedness"),
+                            "player1_handedness": match_payload.get("player1_handedness"),
+                            "player2_handedness": match_payload.get("player2_handedness"),
                         },
                         "player1",
                     ),
                     "player1_score": player1_offset,
                     "player2_score": player2_offset,
                     "handicap_enabled": handicap_enabled,
-                    "player1_band": payload.get("player1_band"),
-                    "player2_band": payload.get("player2_band"),
+                    "player1_band": match_payload.get("player1_band"),
+                    "player2_band": match_payload.get("player2_band"),
                     "player1_offset": player1_offset,
                     "player2_offset": player2_offset,
                 }),
@@ -581,11 +643,11 @@ def create_match(connection, payload, source="api"):
         match["auto_scheduled"] = True
         match["requested_status"] = requested_status
         match["auto_schedule_reason"] = (
-            f"There is an active game currently on {payload['court_name']}. "
+            f"There is an active game currently on {match_payload['court_name']}. "
             "The new match has been set up as a scheduled match ready to start later."
         )
         match["conflicting_match_id"] = str(conflicting_match["id"])
-        match["conflicting_court_name"] = conflicting_match.get("court_name") or payload["court_name"]
+        match["conflicting_court_name"] = conflicting_match.get("court_name") or match_payload["court_name"]
     return match
 
 

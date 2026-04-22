@@ -85,8 +85,7 @@ export default function NewMatch() {
   const isPersonalAccount = organizationType === "personal";
   const requiredFieldsComplete =
     organizationId &&
-    formState.court_id.trim() &&
-    formState.court_name.trim() &&
+    (isPersonalAccount || (formState.court_id.trim() && formState.court_name.trim())) &&
     formState.player1_name.trim() &&
     formState.player2_name.trim() &&
     (!formState.handicap_enabled || (formState.player1_band && formState.player2_band));
@@ -197,7 +196,13 @@ export default function NewMatch() {
         if (nextOrganizationType === "personal") {
           const personalCourt = courts[0];
           if (!personalCourt) {
-            setCourtError("Personal scoring workspace is not ready yet. Please Ping Us if this continues.");
+            setFormState((current) => ({
+              ...current,
+              court_id: "",
+              court_name: "Personal Match",
+              court_alias: "Personal Match",
+              referee_name: "",
+            }));
             return;
           }
 
@@ -316,7 +321,7 @@ export default function NewMatch() {
     }, 180);
 
     return () => window.clearTimeout(timeoutId);
-  }, [activeLookupField, formState.referee_name, organizationId]);
+  }, [activeLookupField, formState.referee_name, isPersonalAccount, organizationId]);
 
   function handleCourtChange(value) {
     const selectedCourt = availableCourts.find((court) => String(court.id) === value);
