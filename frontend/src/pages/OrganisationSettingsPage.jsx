@@ -455,8 +455,9 @@ export default function OrganisationSettingsPage() {
             <form className="stack" onSubmit={handlePersonalProfileSubmit}>
               <div className="field-grid">
                 <div className="field settings-field-wide">
-                  <label htmlFor="personal_username">User</label>
+                  <label htmlFor="personal_username">Username</label>
                   <input
+                    className="settings-input-compact"
                     id="personal_username"
                     readOnly
                     value={session?.username || "Not available"}
@@ -489,6 +490,7 @@ export default function OrganisationSettingsPage() {
                 <div className="field settings-field-wide">
                   <label htmlFor="personal_email">Email</label>
                   <input
+                    className="settings-input-compact"
                     id="personal_email"
                     readOnly
                     value={personalEmail || "Not available"}
@@ -561,10 +563,6 @@ export default function OrganisationSettingsPage() {
                   ) : null}
                 </div>
               </div>
-              <div className="dashboard-item-meta">
-                <span>Plan: {personalPlanLabel}</span>
-                <span>Account: Single-user personal workspace</span>
-              </div>
               <div className="button-row">
                 <button disabled={savingSection === "personal-profile"} type="submit">
                   {savingSection === "personal-profile" ? "Saving..." : "Save Profile"}
@@ -607,6 +605,16 @@ export default function OrganisationSettingsPage() {
               <h2>Upgrade Options</h2>
               <p className="helper-text">Personal scoring is free. Upgrade when you need deeper history or club tools.</p>
             </div>
+            <article className="dashboard-item">
+              <div className="dashboard-item-head">
+                <strong>Current Plan</strong>
+                <span className="status-pill">{personalPlanLabel}</span>
+              </div>
+              <div className="dashboard-item-meta">
+                <span>Plan: {personalPlanLabel}</span>
+                <span>Account: Single-user personal workspace</span>
+              </div>
+            </article>
             <div className="dashboard-list">
               <article className="dashboard-item">
                 <div className="dashboard-item-head">

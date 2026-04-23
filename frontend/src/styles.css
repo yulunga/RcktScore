@@ -545,6 +545,14 @@ textarea {
   grid-template-columns: 220px 220px auto;
 }
 
+.match-setup-row--country {
+  grid-template-columns: 220px 220px auto;
+}
+
+.match-setup-row--country .field:first-child {
+  grid-column: 1;
+}
+
 .lookup-list {
   grid-column: 1 / 3;
   display: grid;
@@ -2878,6 +2886,10 @@ textarea {
 
 .settings-field-wide {
   grid-column: 1 / -1;
+}
+
+.settings-input-compact {
+  width: min(100%, 280px);
 }
 
 .settings-inline-actions {
