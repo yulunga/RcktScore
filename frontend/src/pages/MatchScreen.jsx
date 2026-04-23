@@ -7,6 +7,10 @@ import EventTimeline from "../components/EventTimeline";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
 import Timer from "../components/Timer";
+import {
+  DEFAULT_PLAYER_SHIRT_COLORS,
+  PLAYER_SHIRT_COLORS,
+} from "../constants/playerShirtColors";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 
@@ -49,9 +53,23 @@ function inferOrganizationType(session) {
   return Number(session?.organization_id) >= 50000 ? "personal" : "club";
 }
 
+function canChooseShirtColors(session) {
+  const organizationType = inferOrganizationType(session);
+  return organizationType !== "personal" || session?.plan === "personal_plus";
+}
+
 const WARMUP_SECONDS = 60;
 const INTERVAL_SECONDS = 90;
 const MATCH_TIMER_STORAGE_KEY = "rcktscore.matchTimer";
+const scoreTypeOptions = [
+  { value: 11, label: "PAR-11" },
+  { value: 15, label: "PAR-15" },
+];
+const bestOfOptions = [
+  { value: 1, label: "Best of 1" },
+  { value: 3, label: "Best of 3" },
+  { value: 5, label: "Best of 5" },
+];
 
 function isFreshMatch(match) {
   if (!match) {
@@ -204,12 +222,20 @@ export default function MatchScreen() {
   const gameHistory = live.game_history || [];
   const serviceSide = live.service_side || "Right";
   const isPersonalAccount = inferOrganizationType(session) === "personal";
+  const canChoosePlayerShirtColors = canChooseShirtColors(session);
   const displayUrl = !isPersonalAccount ? `${window.location.origin}/display?match=${matchId}` : "";
   const [timerPhase, setTimerPhase] = useState("warmup_ready");
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showWarmupOverlay, setShowWarmupOverlay] = useState(false);
   const [showFirstServerOverlay, setShowFirstServerOverlay] = useState(false);
+  const [showGameSettingsOverlay, setShowGameSettingsOverlay] = useState(false);
+  const [gameSettingsForm, setGameSettingsForm] = useState({
+    score_type: 15,
+    best_of: 5,
+    player1_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player1,
+    player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
+  });
   const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(false);
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
@@ -435,6 +461,78 @@ export default function MatchScreen() {
     }
   }
 
+  function openGameSettings() {
+    setGameSettingsForm({
+      score_type: currentMatch?.score_type ?? currentMatch?.state?.score_type ?? 15,
+      best_of: currentMatch?.best_of ?? currentMatch?.state?.best_of ?? 5,
+      player1_shirt_color: currentMatch?.player1_shirt_color
+        ?? currentMatch?.state?.player1_shirt_color
+        ?? DEFAULT_PLAYER_SHIRT_COLORS.player1,
+      player2_shirt_color: currentMatch?.player2_shirt_color
+        ?? currentMatch?.state?.player2_shirt_color
+        ?? DEFAULT_PLAYER_SHIRT_COLORS.player2,
+    });
+    setShowGameSettingsOverlay(true);
+  }
+
+  async function handleSaveGameSettings(event) {
+    event.preventDefault();
+    const settingsPayload = {
+      score_type: Number(gameSettingsForm.score_type),
+      best_of: Number(gameSettingsForm.best_of),
+    };
+
+    if (canChoosePlayerShirtColors) {
+      settingsPayload.player1_shirt_color = gameSettingsForm.player1_shirt_color;
+      settingsPayload.player2_shirt_color = gameSettingsForm.player2_shirt_color;
+    }
+
+    const updatedMatch = await sendEventAction(matchId, "match_settings", settingsPayload);
+
+    if (updatedMatch) {
+      setShowGameSettingsOverlay(false);
+    }
+  }
+
+  function renderShirtColorField(playerKey, label) {
+    const fieldName = `${playerKey}_shirt_color`;
+    return (
+      <div className="field shirt-color-field">
+        <label>{label}</label>
+        <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
+          {PLAYER_SHIRT_COLORS.map((color) => {
+            const selected = gameSettingsForm[fieldName] === color.value;
+            return (
+              <button
+                aria-checked={selected}
+                className={`shirt-color-option${selected ? " shirt-color-option--selected" : ""}`}
+                key={`${fieldName}-${color.value}`}
+                role="radio"
+                type="button"
+                onClick={() =>
+                  setGameSettingsForm((current) => ({
+                    ...current,
+                    [fieldName]: color.value,
+                  }))
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className="shirt-color-swatch"
+                  style={{
+                    background: color.background,
+                    borderColor: color.border,
+                  }}
+                />
+                <span>{color.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   async function handleChooseFirstServer(playerSide) {
     const selectedPlayerName = playerSide === "player2"
       ? currentMatch?.player2_name
@@ -572,6 +670,84 @@ export default function MatchScreen() {
         </div>
       ) : null}
 
+      {showGameSettingsOverlay ? (
+        <div className="overlay-backdrop">
+          <form className="overlay-panel overlay-panel--game-settings stack" onSubmit={handleSaveGameSettings}>
+            <div className="settings-header-row">
+              <h2>Game Settings</h2>
+              <button
+                aria-label="Close game settings"
+                className="help-close-button"
+                type="button"
+                onClick={() => setShowGameSettingsOverlay(false)}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="game-settings-match-grid">
+              <div className="field">
+                <label htmlFor="live_best_of">Match Format</label>
+                <select
+                  id="live_best_of"
+                  value={gameSettingsForm.best_of}
+                  onChange={(event) =>
+                    setGameSettingsForm((current) => ({
+                      ...current,
+                      best_of: Number(event.target.value),
+                    }))
+                  }
+                >
+                  {bestOfOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="live_score_type">Game Format</label>
+                <select
+                  id="live_score_type"
+                  value={gameSettingsForm.score_type}
+                  onChange={(event) =>
+                    setGameSettingsForm((current) => ({
+                      ...current,
+                      score_type: Number(event.target.value),
+                    }))
+                  }
+                >
+                  {scoreTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {canChoosePlayerShirtColors ? (
+              <div className="game-settings-shirt-grid">
+                {renderShirtColorField("player1", "Player 1 Shirt")}
+                {renderShirtColorField("player2", "Player 2 Shirt")}
+              </div>
+            ) : null}
+            {error ? <div className="notice error">{error}</div> : null}
+            <div className="button-row game-settings-actions">
+              <button disabled={loading} type="submit">
+                Save
+              </button>
+              <button
+                className="secondary"
+                disabled={loading}
+                type="button"
+                onClick={() => setShowGameSettingsOverlay(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       <div className="match-top-grid">
         <div className="stack match-primary-column">
           <Scoreboard
@@ -597,6 +773,7 @@ export default function MatchScreen() {
                   navigate("/dashboard");
                 }
               }}
+              onOpenSettings={openGameSettings}
             />
           </Scoreboard>
           <Timer

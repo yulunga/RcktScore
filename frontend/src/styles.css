@@ -524,6 +524,10 @@ textarea {
   align-items: end;
 }
 
+.match-setup-row--shirt-colors {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .match-setup-row--court-controls {
   grid-template-columns: 220px 220px auto;
   align-items: end;
@@ -1116,6 +1120,44 @@ textarea {
 .field input::placeholder,
 .field textarea::placeholder {
   color: rgba(72, 101, 129, 0.42);
+}
+
+.shirt-color-field {
+  align-content: start;
+}
+
+.shirt-color-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+}
+
+.shirt-color-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid #cbd2d9;
+  border-radius: 999px;
+  background: #fff;
+  color: #102a43;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
+.shirt-color-option--selected {
+  border-color: #1274d0;
+  box-shadow: 0 0 0 2px rgba(18, 116, 208, 0.16);
+}
+
+.shirt-color-swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
 
 .prefixed-input {
@@ -1783,8 +1825,9 @@ textarea {
 .player-card {
   padding: 14px 16px;
   border-radius: 18px;
-  background: linear-gradient(160deg, #102a43 0%, #1f4f82 100%);
-  color: #fff;
+  background: var(--player-card-bg, #102a43);
+  border: 1px solid var(--player-card-border, #102a43);
+  color: var(--player-card-fg, #fff);
   display: grid;
   gap: 10px;
   align-content: start;
@@ -1848,7 +1891,7 @@ textarea {
 }
 
 .player-games {
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, currentColor 84%, transparent);
   font-weight: 600;
   font-size: 0.8rem;
 }
@@ -1927,7 +1970,8 @@ textarea {
   max-height: 248px;
   overflow-y: auto;
   display: grid;
-  gap: 5px;
+  align-content: start;
+  gap: 6px;
   justify-items: center;
   padding: 4px 0;
 }
@@ -1944,7 +1988,7 @@ textarea {
 
 .scoreboard-point-token {
   display: grid;
-  gap: 1px;
+  gap: 0;
   width: 100%;
   justify-items: center;
 }
@@ -1953,6 +1997,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
+  min-height: 18px;
   width: 100%;
 }
 
@@ -1990,7 +2035,7 @@ textarea {
 }
 
 .scoreboard-point-marker--winner.scoreboard-point-marker--active {
-  transform: translate(5px, -1px);
+  transform: translate(5px, -2px);
 }
 
 .scoreboard-controls {
@@ -2015,6 +2060,42 @@ textarea {
 
 .match-control-grid__end {
   grid-column: 3;
+}
+
+.match-control-grid__settings {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.match-control-grid__settings-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.overlay-panel--game-settings {
+  width: min(420px, 100%);
+  border-radius: 22px;
+}
+
+.game-settings-match-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.game-settings-shirt-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.game-settings-actions {
+  justify-content: flex-end;
 }
 
 .meta-grid {
@@ -2435,9 +2516,17 @@ textarea {
     font-size: 0.82rem;
   }
 
+  .match-control-grid .match-control-grid__settings {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
   .field-grid,
   .match-setup-row,
   .settings-field-grid-tight,
+  .game-settings-match-grid,
   .game-settings-grid {
     grid-template-columns: 1fr;
   }
@@ -2687,6 +2776,17 @@ textarea {
     min-height: 44px;
     padding: 10px 7px;
     font-size: 0.76rem;
+  }
+
+  .match-control-grid .match-control-grid__settings {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .game-settings-match-grid {
+    grid-template-columns: 1fr;
   }
 
   .scoreboard-point-strip {

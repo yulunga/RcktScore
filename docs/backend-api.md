@@ -118,6 +118,7 @@ Current persistence tables include:
 Schema bootstrap for match persistence is in:
 
 - [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql)
+- [010_match_shirt_colors.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/010_match_shirt_colors.sql)
 
 ---
 
@@ -277,9 +278,11 @@ Important current `matches` fields:
 - `player1_name`
 - `player1_surname`
 - `player1_handedness`
+- `player1_shirt_color`
 - `player2_name`
 - `player2_surname`
 - `player2_handedness`
+- `player2_shirt_color`
 - `referee_name`
 - `score_type`
 - `best_of`
@@ -392,6 +395,8 @@ Implemented in [match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/
 - matches support `best_of` `1`, `3`, and `5`
 - first player to the required number of game wins completes the match
 - manual early match end is supported
+- Personal account match creation is blocked when the tenant already has an active match.
+- Player shirt colours are stored on `matches`; choosing colours is available to Personal+ and club plans.
 
 Tracked live state includes:
 
@@ -401,6 +406,7 @@ Tracked live state includes:
 - current server
 - current server side
 - service side
+- player shirt colours
 - completed game history
 - winner state when the match completes
 
@@ -409,6 +415,7 @@ Supported non-point event actions include:
 - `let`
 - `serve_side`
 - `server`
+- `match_settings`
 - `timer`
 
 `stroke` is also sent through `POST /event_action`, but it is scoring-aware and

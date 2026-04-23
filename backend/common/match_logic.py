@@ -4,9 +4,26 @@ from uuid import uuid4
 from psycopg.types.json import Jsonb
 
 
-ALLOWED_ACTION_TYPES = {"let", "stroke", "server", "serve_side", "timer"}
+ALLOWED_ACTION_TYPES = {"let", "match_settings", "stroke", "server", "serve_side", "timer"}
 VALID_BEST_OF_OPTIONS = {1, 3, 5}
+VALID_SCORE_TYPE_OPTIONS = {11, 15}
 VALID_MATCH_STATUSES = {"active", "scheduled", "completed"}
+VALID_SHIRT_COLORS = {
+    "navy",
+    "blue",
+    "red",
+    "green",
+    "black",
+    "white",
+    "yellow",
+    "orange",
+    "purple",
+    "pink",
+}
+DEFAULT_PLAYER_SHIRT_COLORS = {
+    "player1": "navy",
+    "player2": "white",
+}
 
 
 def _utcnow():
@@ -23,6 +40,16 @@ def _coerce_int(value, default=0):
 def _best_of_value(value):
     parsed = _coerce_int(value, default=1)
     return parsed if parsed in VALID_BEST_OF_OPTIONS else 1
+
+
+def _score_type_value(value):
+    parsed = _coerce_int(value, default=15)
+    return parsed if parsed in VALID_SCORE_TYPE_OPTIONS else 15
+
+
+def _shirt_color_value(value, default):
+    parsed = str(value or "").strip().lower()
+    return parsed if parsed in VALID_SHIRT_COLORS else default
 
 
 def _match_status_value(value):
@@ -105,6 +132,11 @@ def _event_summary(match_row, event_type, payload):
             f"{match_row['player1_name']} vs {match_row['player2_name']} started "
             f"(best of {payload.get('best_of', 1)})"
         )
+    if event_type == "match_settings":
+        return (
+            f"Match settings updated: PAR-{payload.get('score_type', match_row['score_type'])}, "
+            f"best of {payload.get('best_of', match_row['best_of'])}"
+        )
     if event_type == "match_ended":
         if payload.get("ended_early"):
             return payload.get("reason") or "Match ended early"
@@ -156,10 +188,20 @@ def _serialize_event(match_row, event_row):
 
 def _initial_state(match_row):
     best_of = _best_of_value(match_row.get("best_of", 1))
+    score_type = _score_type_value(match_row.get("score_type", 15))
     player1_score, player2_score = _initial_scores(match_row)
     return {
         "player1_score": player1_score,
         "player2_score": player2_score,
+        "score_type": score_type,
+        "player1_shirt_color": _shirt_color_value(
+            match_row.get("player1_shirt_color"),
+            DEFAULT_PLAYER_SHIRT_COLORS["player1"],
+        ),
+        "player2_shirt_color": _shirt_color_value(
+            match_row.get("player2_shirt_color"),
+            DEFAULT_PLAYER_SHIRT_COLORS["player2"],
+        ),
         "player1_games_won": _coerce_int(match_row.get("player1_games_won")),
         "player2_games_won": _coerce_int(match_row.get("player2_games_won")),
         "current_game_number": _coerce_int(match_row.get("current_game_number"), 1),
@@ -204,6 +246,14 @@ def _build_state(match_row, event_rows):
             state["service_side"] = payload.get("service_side", state["service_side"])
             state["player1_score"] = _coerce_int(payload.get("player1_score"), state["player1_score"])
             state["player2_score"] = _coerce_int(payload.get("player2_score"), state["player2_score"])
+            state["player1_shirt_color"] = _shirt_color_value(
+                payload.get("player1_shirt_color"),
+                state["player1_shirt_color"],
+            )
+            state["player2_shirt_color"] = _shirt_color_value(
+                payload.get("player2_shirt_color"),
+                state["player2_shirt_color"],
+            )
             if payload.get("handicap_enabled"):
                 state["handicap"] = {
                     "enabled": True,
@@ -212,6 +262,19 @@ def _build_state(match_row, event_rows):
                     "player1_offset": _coerce_int(payload.get("player1_offset")),
                     "player2_offset": _coerce_int(payload.get("player2_offset")),
                 }
+
+        elif event_type == "match_settings":
+            state["score_type"] = _score_type_value(payload.get("score_type", state["score_type"]))
+            state["best_of"] = _best_of_value(payload.get("best_of", state["best_of"]))
+            state["games_to_win"] = _coerce_int(payload.get("games_to_win"), _games_to_win(state["best_of"]))
+            state["player1_shirt_color"] = _shirt_color_value(
+                payload.get("player1_shirt_color"),
+                state["player1_shirt_color"],
+            )
+            state["player2_shirt_color"] = _shirt_color_value(
+                payload.get("player2_shirt_color"),
+                state["player2_shirt_color"],
+            )
 
         elif event_type in {"score_point", "stroke"}:
             game_result = payload.get("game_result")
@@ -294,10 +357,18 @@ def _serialize_match(match_row, event_rows):
         "player1_surname": match_row.get("player1_surname"),
         "player1_country": match_row.get("player1_country"),
         "player1_handedness": match_row.get("player1_handedness") or "right",
+        "player1_shirt_color": _shirt_color_value(
+            match_row.get("player1_shirt_color"),
+            DEFAULT_PLAYER_SHIRT_COLORS["player1"],
+        ),
         "player2_name": match_row["player2_name"],
         "player2_surname": match_row.get("player2_surname"),
         "player2_country": match_row.get("player2_country"),
         "player2_handedness": match_row.get("player2_handedness") or "right",
+        "player2_shirt_color": _shirt_color_value(
+            match_row.get("player2_shirt_color"),
+            DEFAULT_PLAYER_SHIRT_COLORS["player2"],
+        ),
         "referee_name": match_row.get("referee_name"),
         "score_type": match_row["score_type"],
         "best_of": best_of,
@@ -408,6 +479,22 @@ def _find_active_match_on_court(connection, tenant_id, court_id):
         return cursor.fetchone()
 
 
+def _find_active_match_for_tenant(connection, tenant_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT *
+            FROM matches
+            WHERE tenant_id = %(tenant_id)s
+              AND status = 'active'
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT 1
+            """,
+            {"tenant_id": tenant_id},
+        )
+        return cursor.fetchone()
+
+
 def _fetch_tenant_plan(connection, tenant_id):
     with connection.cursor() as cursor:
         cursor.execute(
@@ -436,6 +523,13 @@ def _is_personal_tenant(tenant_id, tenant_plan):
 
 def is_personal_tenant(connection, tenant_id):
     return _is_personal_tenant(tenant_id, _fetch_tenant_plan(connection, tenant_id))
+
+
+def _can_choose_shirt_colors(tenant_plan, tenant_id=None):
+    org_type = (tenant_plan or {}).get("org_type") or "club"
+    plan = (tenant_plan or {}).get("plan") or ("personal_free" if org_type == "personal" else "club_essentials")
+    is_personal = org_type == "personal" or _coerce_int(tenant_id) >= 50000
+    return not is_personal or plan == "personal_plus"
 
 
 def _ensure_personal_match_court(connection, tenant_id):
@@ -484,9 +578,14 @@ def create_match(connection, payload, source="api"):
     now = _utcnow()
     tenant_plan = _fetch_tenant_plan(connection, tenant_id)
     is_personal_tenant = _is_personal_tenant(tenant_id, tenant_plan)
+    can_choose_shirt_colors = _can_choose_shirt_colors(tenant_plan, tenant_id)
     match_payload = {**payload}
 
     if is_personal_tenant:
+        active_match = _find_active_match_for_tenant(connection, tenant_id)
+        if active_match:
+            raise ValueError("Personal accounts can only have one active match at a time")
+
         personal_court = _ensure_personal_match_court(connection, tenant_id)
         match_payload.update({
             "court_id": personal_court["id"],
@@ -503,6 +602,14 @@ def create_match(connection, payload, source="api"):
     handicap_enabled = False if is_personal_tenant else bool(payload.get("handicap_enabled"))
     player1_offset = _coerce_int(payload.get("player1_offset")) if handicap_enabled else 0
     player2_offset = _coerce_int(payload.get("player2_offset")) if handicap_enabled else 0
+    player1_shirt_color = _shirt_color_value(
+        match_payload.get("player1_shirt_color") if can_choose_shirt_colors else None,
+        DEFAULT_PLAYER_SHIRT_COLORS["player1"],
+    )
+    player2_shirt_color = _shirt_color_value(
+        match_payload.get("player2_shirt_color") if can_choose_shirt_colors else None,
+        DEFAULT_PLAYER_SHIRT_COLORS["player2"],
+    )
 
     if requested_status == "active" and not is_personal_tenant:
         conflicting_match = _find_active_match_on_court(
@@ -527,10 +634,12 @@ def create_match(connection, payload, source="api"):
                 player1_surname,
                 player1_country,
                 player1_handedness,
+                player1_shirt_color,
                 player2_name,
                 player2_surname,
                 player2_country,
                 player2_handedness,
+                player2_shirt_color,
                 referee_name,
                 score_type,
                 best_of,
@@ -565,10 +674,12 @@ def create_match(connection, payload, source="api"):
                 %(player1_surname)s,
                 %(player1_country)s,
                 %(player1_handedness)s,
+                %(player1_shirt_color)s,
                 %(player2_name)s,
                 %(player2_surname)s,
                 %(player2_country)s,
                 %(player2_handedness)s,
+                %(player2_shirt_color)s,
                 %(referee_name)s,
                 %(score_type)s,
                 %(best_of)s,
@@ -604,10 +715,12 @@ def create_match(connection, payload, source="api"):
                 "player1_surname": match_payload.get("player1_surname"),
                 "player1_country": match_payload.get("player1_country"),
                 "player1_handedness": str(match_payload.get("player1_handedness") or "right").lower(),
+                "player1_shirt_color": player1_shirt_color,
                 "player2_name": match_payload["player2_name"],
                 "player2_surname": match_payload.get("player2_surname"),
                 "player2_country": match_payload.get("player2_country"),
                 "player2_handedness": str(match_payload.get("player2_handedness") or "right").lower(),
+                "player2_shirt_color": player2_shirt_color,
                 "referee_name": match_payload.get("referee_name"),
                 "score_type": int(match_payload.get("score_type", 15)),
                 "best_of": best_of,
@@ -651,6 +764,8 @@ def create_match(connection, payload, source="api"):
                     "current_server": match_payload["player1_name"],
                     "current_server_side": "player1",
                     "service_side": _service_side_for_receiver(match_payload, "player1"),
+                    "player1_shirt_color": player1_shirt_color,
+                    "player2_shirt_color": player2_shirt_color,
                     "player1_score": player1_offset,
                     "player2_score": player2_offset,
                     "handicap_enabled": handicap_enabled,
@@ -934,9 +1049,103 @@ def score_point(connection, match_id, scorer, source="api"):
     )
 
 
+def _update_match_settings(connection, match_id, payload, source="api"):
+    match = get_match(connection, match_id)
+    if not match:
+        return None
+
+    if match["state"].get("match_complete") or match.get("status") == "completed":
+        raise ValueError("Completed matches cannot be changed")
+
+    score_type = _coerce_int(payload.get("score_type"), match["score_type"])
+    best_of = _coerce_int(payload.get("best_of"), match["best_of"])
+    if score_type not in VALID_SCORE_TYPE_OPTIONS:
+        raise ValueError("score_type must be one of: 11, 15")
+    if best_of not in VALID_BEST_OF_OPTIONS:
+        raise ValueError("best_of must be one of: 1, 3, 5")
+
+    games_to_win = _games_to_win(best_of)
+    games_already_won = max(
+        _coerce_int(match["state"].get("player1_games_won")),
+        _coerce_int(match["state"].get("player2_games_won")),
+    )
+    if games_already_won >= games_to_win:
+        raise ValueError("Match format cannot be lower than games already won")
+
+    tenant_plan = _fetch_tenant_plan(connection, match["tenant_id"])
+    includes_shirt_colors = "player1_shirt_color" in payload or "player2_shirt_color" in payload
+    if includes_shirt_colors and not _can_choose_shirt_colors(tenant_plan, match["tenant_id"]):
+        raise ValueError("Player shirt colors are not available on this plan")
+
+    player1_shirt_color = _shirt_color_value(
+        payload.get("player1_shirt_color"),
+        match.get("player1_shirt_color") or DEFAULT_PLAYER_SHIRT_COLORS["player1"],
+    )
+    player2_shirt_color = _shirt_color_value(
+        payload.get("player2_shirt_color"),
+        match.get("player2_shirt_color") or DEFAULT_PLAYER_SHIRT_COLORS["player2"],
+    )
+
+    now = _utcnow()
+    settings_payload = {
+        "score_type": score_type,
+        "best_of": best_of,
+        "games_to_win": games_to_win,
+        "player1_shirt_color": player1_shirt_color,
+        "player2_shirt_color": player2_shirt_color,
+        "previous_score_type": match["score_type"],
+        "previous_best_of": match["best_of"],
+        "previous_player1_shirt_color": match.get("player1_shirt_color"),
+        "previous_player2_shirt_color": match.get("player2_shirt_color"),
+    }
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE matches
+            SET score_type = %(score_type)s,
+                best_of = %(best_of)s,
+                games_to_win = %(games_to_win)s,
+                player1_shirt_color = %(player1_shirt_color)s,
+                player2_shirt_color = %(player2_shirt_color)s,
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "score_type": score_type,
+                "best_of": best_of,
+                "games_to_win": games_to_win,
+                "player1_shirt_color": player1_shirt_color,
+                "player2_shirt_color": player2_shirt_color,
+                "updated_at": now,
+                "match_id": match_id,
+            },
+        )
+        cursor.execute(
+            """
+            INSERT INTO match_events (id, match_id, tenant_id, event_type, payload, event_source, created_at)
+            VALUES (%(id)s, %(match_id)s, %(tenant_id)s, 'match_settings', %(payload)s, %(event_source)s, %(created_at)s)
+            """,
+            {
+                "id": str(uuid4()),
+                "match_id": match_id,
+                "tenant_id": match["tenant_id"],
+                "payload": Jsonb(settings_payload),
+                "event_source": source,
+                "created_at": now,
+            },
+        )
+
+    connection.commit()
+    return get_match(connection, match_id)
+
+
 def event_action(connection, match_id, action_type, payload, source="api"):
     if action_type not in ALLOWED_ACTION_TYPES:
         raise ValueError(f"action_type must be one of: {', '.join(sorted(ALLOWED_ACTION_TYPES))}")
+
+    if action_type == "match_settings":
+        return _update_match_settings(connection, match_id, payload, source=source)
 
     if action_type == "stroke":
         scorer_side = payload.get("player_side")

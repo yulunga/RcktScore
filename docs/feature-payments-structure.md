@@ -45,6 +45,7 @@ It is intentionally split into:
 ### Suggested Included Features
 
 - Create and score matches for personal use.
+- One active personal match at a time.
 - View current scoreboards and completed match summaries.
 - Personal historical retention: **last 3 completed matches**.
 
@@ -53,6 +54,7 @@ It is intentionally split into:
 - Retention is enforced server-side through the dashboard API.
 - Personal accounts are represented as hidden single-user organisations so they can later be upgraded or attached to a club without changing the auth model.
 - Personal organisation IDs are allocated from the 50000+ range.
+- Match creation is blocked for Personal accounts when an active match already exists.
 - Current first release keeps all data in storage, but API returns only latest 3 for Personal users.
 - Later hard-retention option: scheduled purge/archive job by account plan.
 
@@ -69,6 +71,7 @@ It is intentionally split into:
 
 - Everything in Personal.
 - Personal historical retention: **last 100 completed matches**.
+- Player shirt colour selection during match setup and live match settings.
 - Candidate premium features (to decide in product discovery):
   - richer match stats/history filtering
   - export/download of match history
@@ -141,6 +144,7 @@ It is intentionally split into:
 |---|---:|---:|---:|---:|
 | Match scoring (core) | ✅ | ✅ | ✅ | ✅ |
 | Historic matches retained | 3 | 100 | Club policy | Extended club policy |
+| Player shirt colour selection | ❌ | ✅ | ✅ | ✅ |
 | Court management | ❌ | ❌ | ✅ | ✅ |
 | Multi-user organisation roles | ❌ | ❌ | ✅ | ✅ |
 | Public display screen | Limited | Limited | ✅ | ✅ |

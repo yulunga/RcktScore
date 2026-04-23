@@ -6,6 +6,7 @@ export default function MatchControls({
   onEventAction,
   onUndo,
   onEndMatch,
+  onOpenSettings,
 }) {
   const matchComplete = match?.state?.match_complete || match?.status === "completed";
 
@@ -41,6 +42,18 @@ export default function MatchControls({
         onClick={() => onEndMatch({ ended_early: true, reason: "Ended by operator" })}
       >
         End Match Early
+      </button>
+      <button
+        aria-label="Game settings"
+        className="secondary match-control-grid__settings"
+        disabled={disabled || matchComplete}
+        onClick={onOpenSettings}
+        title="Game settings"
+        type="button"
+      >
+        <svg aria-hidden="true" className="match-control-grid__settings-icon" viewBox="0 0 24 24">
+          <path d="M19.4 13.5c.1-.5.1-1 .1-1.5s0-1-.1-1.5l2-1.5-2-3.5-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A8 8 0 0 0 7 6.5l-2.4-1-2 3.5 2 1.5c-.1.5-.1 1-.1 1.5s0 1 .1 1.5l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a8 8 0 0 0 2.6-1.5l2.4 1 2-3.5-2-1.5ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z" />
+        </svg>
       </button>
     </div>
   );

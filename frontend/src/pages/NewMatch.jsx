@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
+import {
+  DEFAULT_PLAYER_SHIRT_COLORS,
+  PLAYER_SHIRT_COLORS,
+} from "../constants/playerShirtColors";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 import { getDashboard, getOrganizationSettings, searchMatchSetupLookup } from "../services/api";
@@ -43,10 +47,12 @@ const initialFormState = {
   player1_surname: "",
   // player1_country: "",
   player1_handedness: "right",
+  player1_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player1,
   player2_name: "",
   player2_surname: "",
   // player2_country: "",
   player2_handedness: "right",
+  player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
   referee_name: "",
   score_type: 15,
   best_of: 5,
@@ -79,10 +85,15 @@ export default function NewMatch() {
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
   const [organizationType, setOrganizationType] = useState(() => inferOrganizationType(session));
+  const [organizationPlan, setOrganizationPlan] = useState(
+    () => session?.plan || (inferOrganizationType(session) === "personal" ? "personal_free" : "club_essentials"),
+  );
   const navigate = useNavigate();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
   const isPersonalAccount = organizationType === "personal";
+  const canChooseShirtColors = !isPersonalAccount || organizationPlan === "personal_plus";
+  const personalActiveMatch = isPersonalAccount ? activeMatches[0] : null;
   const requiredFieldsComplete =
     organizationId &&
     (isPersonalAccount || (formState.court_id.trim() && formState.court_name.trim())) &&
@@ -119,11 +130,12 @@ export default function NewMatch() {
     [activeMatches, formState.court_id],
   );
   const shouldScheduleMatch = !isPersonalAccount && Boolean(formState.schedule_match || activeCourtMatch);
+  const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
 
   function handleChange(name, value) {
     setFormState((current) => ({
       ...current,
-      [name]: name === "score_type" ? Number(value) : value,
+      [name]: ["score_type", "best_of"].includes(name) ? Number(value) : value,
     }));
   }
 
@@ -173,7 +185,9 @@ export default function NewMatch() {
   }, [isPersonalAccount]);
 
   useEffect(() => {
-    setOrganizationType(inferOrganizationType(session));
+    const nextOrganizationType = inferOrganizationType(session);
+    setOrganizationType(nextOrganizationType);
+    setOrganizationPlan(session?.plan || (nextOrganizationType === "personal" ? "personal_free" : "club_essentials"));
   }, [session]);
 
   useEffect(() => {
@@ -190,8 +204,12 @@ export default function NewMatch() {
         const organizationSettings = response?.organizationSettings || {};
         const courts = organizationSettings?.courts || [];
         const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);
+        const nextOrganizationPlan = organizationSettings?.organization?.plan
+          || session?.plan
+          || (nextOrganizationType === "personal" ? "personal_free" : "club_essentials");
         setAvailableCourts(courts);
         setOrganizationType(nextOrganizationType);
+        setOrganizationPlan(nextOrganizationPlan);
 
         if (nextOrganizationType === "personal") {
           const personalCourt = courts[0];
@@ -243,7 +261,11 @@ export default function NewMatch() {
 
   useEffect(() => {
     if (isPersonalAccount) {
-      setSetupNotice("");
+      setSetupNotice(
+        personalActiveMatch
+          ? "You already have an active match running. End it before starting a new personal match."
+          : "",
+      );
       return;
     }
 
@@ -256,7 +278,7 @@ export default function NewMatch() {
     }
 
     setSetupNotice("");
-  }, [activeCourtMatch, formState.court_name, isPersonalAccount]);
+  }, [activeCourtMatch, formState.court_name, isPersonalAccount, personalActiveMatch]);
 
   useEffect(() => {
     if (!organizationId || activeLookupField !== "player1" || player1LookupQuery.length < 2) {
@@ -371,10 +393,55 @@ export default function NewMatch() {
     });
   }
 
+  function renderShirtColorField(playerKey, label) {
+    const fieldName = `${playerKey}_shirt_color`;
+    return (
+      <div className="field shirt-color-field">
+        <label>{label}</label>
+        <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
+          {PLAYER_SHIRT_COLORS.map((color) => {
+            const selected = formState[fieldName] === color.value;
+            return (
+              <button
+                aria-checked={selected}
+                className={`shirt-color-option${selected ? " shirt-color-option--selected" : ""}`}
+                key={`${fieldName}-${color.value}`}
+                role="radio"
+                type="button"
+                onClick={() => handleChange(fieldName, color.value)}
+              >
+                <span
+                  aria-hidden="true"
+                  className="shirt-color-swatch"
+                  style={{
+                    background: color.background,
+                    borderColor: color.border,
+                  }}
+                />
+                <span>{color.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
+    if (personalActiveMatch) {
+      setSetupNotice("You already have an active match running. End it before starting a new personal match.");
+      return;
+    }
+
     const response = await startMatch({
       ...formState,
+      player1_shirt_color: canChooseShirtColors
+        ? formState.player1_shirt_color
+        : DEFAULT_PLAYER_SHIRT_COLORS.player1,
+      player2_shirt_color: canChooseShirtColors
+        ? formState.player2_shirt_color
+        : DEFAULT_PLAYER_SHIRT_COLORS.player2,
       handicap_enabled: isPersonalAccount ? false : formState.handicap_enabled,
       schedule_match: isPersonalAccount ? false : formState.schedule_match,
       player1_band: isPersonalAccount ? "" : formState.player1_band,
@@ -546,6 +613,13 @@ export default function NewMatch() {
                   </button>
                 ))}
               </div>
+            </div>
+          ) : null}
+
+          {canChooseShirtColors ? (
+            <div className="match-setup-row match-setup-row--shirt-colors">
+              {renderShirtColorField("player1", "Player 1 Shirt")}
+              {renderShirtColorField("player2", "Player 2 Shirt")}
             </div>
           ) : null}
 
@@ -771,9 +845,18 @@ export default function NewMatch() {
         ) : null}
 
         <div className="button-row">
-          <button disabled={loading || !requiredFieldsComplete} type="submit">
+          <button disabled={loading || !canSubmitMatch} type="submit">
             {loading ? "Saving..." : "Start Match"}
           </button>
+          {personalActiveMatch?.id ? (
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => navigate(`/match/${personalActiveMatch.id}`)}
+            >
+              Resume Active Match
+            </button>
+          ) : null}
           {!isPersonalAccount ? (
             <button
               className="secondary"

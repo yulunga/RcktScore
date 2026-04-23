@@ -1,5 +1,10 @@
 import React, { useEffect, useRef } from "react";
 
+import {
+  DEFAULT_PLAYER_SHIRT_COLORS,
+  getPlayerShirtColor,
+} from "../constants/playerShirtColors";
+
 export default function Scoreboard({
   match,
   disabled = false,
@@ -7,46 +12,28 @@ export default function Scoreboard({
   onToggleServeSide,
   children,
 }) {
-  if (!match) {
-    return (
-      <section className="scoreboard-card">
-        <p className="notice">No live match is currently loaded.</p>
-      </section>
-    );
-  }
-
-  const live = match.state ?? {};
+  const pointStripRef = useRef(null);
+  const live = match?.state ?? {};
   const player1Score = live.player1_score ?? 0;
   const player2Score = live.player2_score ?? 0;
-  const bestOf = live.best_of ?? match.best_of ?? 1;
-  const player1GamesWon = live.player1_games_won ?? match.player1_games_won ?? 0;
-  const player2GamesWon = live.player2_games_won ?? match.player2_games_won ?? 0;
-  const currentGameNumber = live.current_game_number ?? match.current_game_number ?? 1;
+  const bestOf = live.best_of ?? match?.best_of ?? 1;
+  const player1GamesWon = live.player1_games_won ?? match?.player1_games_won ?? 0;
+  const player2GamesWon = live.player2_games_won ?? match?.player2_games_won ?? 0;
+  const currentGameNumber = live.current_game_number ?? match?.current_game_number ?? 1;
   const currentServerSide = live.current_server_side || "player1";
   const serviceSide = live.service_side || "Right";
-  const isActive = (match.status || "").toLowerCase() === "active";
-  const pointStripRef = useRef(null);
-  const pointEvents = (live.events || []).filter((event) => {
-    if (!["score_point", "stroke"].includes(event.event_type)) {
-      return false;
-    }
-
-    const eventGameNumber = event.payload?.game_number;
-    return eventGameNumber === currentGameNumber;
-  });
+  const player1ShirtColor = live.player1_shirt_color
+    ?? match?.player1_shirt_color
+    ?? DEFAULT_PLAYER_SHIRT_COLORS.player1;
+  const player2ShirtColor = live.player2_shirt_color
+    ?? match?.player2_shirt_color
+    ?? DEFAULT_PLAYER_SHIRT_COLORS.player2;
+  const isActive = (match?.status || "").toLowerCase() === "active";
   const gameHistory = live.game_history || [];
-  const pointStripEntries = [
-    ...pointEvents,
-    {
-      id: "current-serve",
-      event_type: "current_serve",
-      payload: {
-        current_server_side: currentServerSide,
-        service_side: serviceSide,
-      },
-    },
-  ];
-  const canToggleServiceSide = canCurrentServerChooseServiceSide(live.events || [], currentServerSide);
+  const pointStripEntries = match ? buildPointStripEntries(live.events || []) : [];
+  const canToggleServiceSide = match
+    ? canCurrentServerChooseServiceSide(live.events || [], currentServerSide)
+    : true;
 
   function splitName(name, surname) {
     return {
@@ -100,6 +87,80 @@ export default function Scoreboard({
     return scorerSide !== previousServerSide;
   }
 
+  function serviceSideInitial(value) {
+    return String(value || "").trim().charAt(0).toUpperCase();
+  }
+
+  function getWinnerScore(payload, winnerSide) {
+    if (winnerSide === "player1") {
+      return payload?.game_result?.player1_score ?? payload?.player1_score ?? "";
+    }
+
+    if (winnerSide === "player2") {
+      return payload?.game_result?.player2_score ?? payload?.player2_score ?? "";
+    }
+
+    return "";
+  }
+
+  function buildPointStripEntries(events) {
+    let runningServerSide = "player1";
+    let runningServiceSide = "Right";
+    const entries = [];
+
+    events.forEach((event, index) => {
+      const payload = event.payload || {};
+
+      if (event.event_type === "match_started") {
+        runningServerSide = payload.current_server_side || runningServerSide;
+        runningServiceSide = payload.service_side || runningServiceSide;
+        return;
+      }
+
+      if (event.event_type === "server") {
+        runningServerSide = payload.current_server_side || runningServerSide;
+        runningServiceSide = payload.service_side || runningServiceSide;
+        return;
+      }
+
+      if (event.event_type === "serve_side") {
+        runningServiceSide = payload.side || runningServiceSide;
+        return;
+      }
+
+      if (!["score_point", "stroke"].includes(event.event_type)) {
+        return;
+      }
+
+      const winnerSide = payload.scorer || payload.player_side;
+      const eventGameNumber = payload.game_number ?? currentGameNumber;
+
+      if (eventGameNumber === currentGameNumber) {
+        entries.push({
+          id: event.id || `${event.created_at}-${index}`,
+          event_type: "scored_rally",
+          rally_server_side: runningServerSide,
+          rally_service_side: runningServiceSide,
+          winner_side: winnerSide,
+          winner_score: getWinnerScore(payload, winnerSide),
+          created_at: event.created_at,
+        });
+      }
+
+      runningServerSide = payload.current_server_side || winnerSide || runningServerSide;
+      runningServiceSide = payload.service_side || runningServiceSide;
+    });
+
+    entries.push({
+      id: "current-serve",
+      event_type: "current_serve",
+      current_server_side: currentServerSide,
+      service_side: serviceSide,
+    });
+
+    return entries;
+  }
+
   function renderPlayerCard(side, name, surname) {
     const isServing = currentServerSide === side;
     const playerName = splitName(name, surname);
@@ -143,13 +204,30 @@ export default function Scoreboard({
     );
   }
 
+  function playerCardStyle(colorValue) {
+    const color = getPlayerShirtColor(colorValue);
+    return {
+      "--player-card-bg": color.background,
+      "--player-card-fg": color.foreground,
+      "--player-card-border": color.border,
+    };
+  }
+
   useEffect(() => {
     if (!pointStripRef.current) {
       return;
     }
 
     pointStripRef.current.scrollTop = pointStripRef.current.scrollHeight;
-  }, [pointEvents.length]);
+  }, [pointStripEntries.length]);
+
+  if (!match) {
+    return (
+      <section className="scoreboard-card">
+        <p className="notice">No live match is currently loaded.</p>
+      </section>
+    );
+  }
 
   function renderPointMarker(side, markerType, active, label = "") {
     return (
@@ -185,18 +263,18 @@ export default function Scoreboard({
       </div>
 
       <div className="scoreboard-grid">
-        <article className="player-card player-card--compact">
+        <article
+          className="player-card player-card--compact"
+          style={playerCardStyle(player1ShirtColor)}
+        >
           {renderPlayerCard("player1", match.player1_name, match.player1_surname)}
         </article>
         <div className="scoreboard-point-strip-wrap">
           <div ref={pointStripRef} className="scoreboard-point-strip" aria-label="Point order">
             {pointStripEntries.map((event, index) => {
               if (event.event_type === "current_serve") {
-                const serverSide = event.payload?.current_server_side || "player1";
-                const currentServiceSideLabel = String(event.payload?.service_side || "")
-                  .trim()
-                  .charAt(0)
-                  .toUpperCase();
+                const serverSide = event.current_server_side || "player1";
+                const currentServiceSideLabel = serviceSideInitial(event.service_side);
 
                 return (
                   <div
@@ -212,33 +290,34 @@ export default function Scoreboard({
                 );
               }
 
-                const winnerSide = event.payload?.scorer || event.payload?.player_side;
-                const serverSide = event.payload?.current_server_side || winnerSide;
-                const serviceSideLabel = String(event.payload?.service_side || "").trim().charAt(0).toUpperCase();
-                const winnerScore = winnerSide === "player1"
-                  ? (event.payload?.game_result?.player1_score ?? event.payload?.player1_score ?? "")
-                  : (event.payload?.game_result?.player2_score ?? event.payload?.player2_score ?? "");
+              const winnerSide = event.winner_side;
+              const serverSide = event.rally_server_side || winnerSide;
+              const serviceSideLabel = serviceSideInitial(event.rally_service_side);
+              const winnerScore = event.winner_score;
 
-                return (
-                  <div
-                    className="scoreboard-point-token"
-                    key={event.id || `${event.created_at}-${index}`}
-                    title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
-                  >
-                    <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
-                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
-                    </div>
-                    <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "winner", winnerSide === "player1", winnerSide === "player1" ? String(winnerScore) : "")}
-                      {renderPointMarker("player2", "winner", winnerSide === "player2", winnerSide === "player2" ? String(winnerScore) : "")}
-                    </div>
+              return (
+                <div
+                  className="scoreboard-point-token"
+                  key={event.id || `${event.created_at}-${index}`}
+                  title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
+                >
+                  <div className="scoreboard-point-row">
+                    {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
+                    {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
                   </div>
-                );
+                  <div className="scoreboard-point-row">
+                    {renderPointMarker("player1", "winner", winnerSide === "player1", winnerSide === "player1" ? String(winnerScore) : "")}
+                    {renderPointMarker("player2", "winner", winnerSide === "player2", winnerSide === "player2" ? String(winnerScore) : "")}
+                  </div>
+                </div>
+              );
               })}
           </div>
         </div>
-        <article className="player-card player-card--compact">
+        <article
+          className="player-card player-card--compact"
+          style={playerCardStyle(player2ShirtColor)}
+        >
           {renderPlayerCard("player2", match.player2_name, match.player2_surname)}
         </article>
       </div>

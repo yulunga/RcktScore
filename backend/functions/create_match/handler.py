@@ -28,7 +28,10 @@ def lambda_handler(event, context):
                     {"fields": missing_court_fields},
                 )
 
-        match = create_match(connection, payload, source="lambda")
+        try:
+            match = create_match(connection, payload, source="lambda")
+        except ValueError as exc:
+            return error_response(400, "INVALID_INPUT", str(exc))
 
     logger.info("Created match %s", match["id"])
     return success_response(201, {"match": match, "broadcast": websocket_payload(match)})
