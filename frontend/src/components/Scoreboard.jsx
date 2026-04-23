@@ -210,6 +210,8 @@ export default function Scoreboard({
       "--player-card-bg": color.background,
       "--player-card-fg": color.foreground,
       "--player-card-border": color.border,
+      "--player-card-score-border": color.scoreBorder || "rgba(255, 255, 255, 0.26)",
+      "--player-card-score-bg": color.scoreBackground || "rgba(255, 255, 255, 0.14)",
     };
   }
 
