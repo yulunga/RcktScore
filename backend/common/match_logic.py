@@ -52,6 +52,17 @@ def _service_side_for_receiver(match_like, current_server_side):
     return "Left" if _is_left_handed(match_like, receiver_side) else "Right"
 
 
+def _opposite_service_side(side):
+    return "Left" if str(side or "Right").strip().lower() == "right" else "Right"
+
+
+def _next_service_side_after_point(match_like, previous_server_side, previous_service_side, scorer_side):
+    if scorer_side == previous_server_side:
+        return _opposite_service_side(previous_service_side)
+
+    return _service_side_for_receiver(match_like, scorer_side)
+
+
 def _initial_scores(match_like):
     if match_like.get("handicap_enabled"):
         return (
@@ -228,12 +239,22 @@ def _build_state(match_row, event_rows):
                     state["player1_score"] += 1
                     state["current_server"] = match_row["player1_name"]
                     state["current_server_side"] = "player1"
-                    state["service_side"] = _service_side_for_receiver(match_row, "player1")
+                    state["service_side"] = _next_service_side_after_point(
+                        match_row,
+                        state.get("current_server_side"),
+                        state.get("service_side"),
+                        "player1",
+                    )
                 elif scorer == "player2":
                     state["player2_score"] += 1
                     state["current_server"] = match_row["player2_name"]
                     state["current_server_side"] = "player2"
-                    state["service_side"] = _service_side_for_receiver(match_row, "player2")
+                    state["service_side"] = _next_service_side_after_point(
+                        match_row,
+                        state.get("current_server_side"),
+                        state.get("service_side"),
+                        "player2",
+                    )
 
         elif event_type == "serve_side":
             state["service_side"] = payload.get("side", state["service_side"])
@@ -243,7 +264,7 @@ def _build_state(match_row, event_rows):
             if server_side in {"player1", "player2"}:
                 state["current_server_side"] = server_side
                 state["current_server"] = _player_name(match_row, server_side)
-                state["service_side"] = _service_side_for_receiver(match_row, server_side)
+                state["service_side"] = payload.get("service_side") or _service_side_for_receiver(match_row, server_side)
 
         elif event_type == "match_ended":
             state["match_complete"] = True
@@ -629,13 +650,7 @@ def create_match(connection, payload, source="api"):
                     "player2_games_won": 0,
                     "current_server": match_payload["player1_name"],
                     "current_server_side": "player1",
-                    "service_side": _service_side_for_receiver(
-                        {
-                            "player1_handedness": match_payload.get("player1_handedness"),
-                            "player2_handedness": match_payload.get("player2_handedness"),
-                        },
-                        "player1",
-                    ),
+                    "service_side": _service_side_for_receiver(match_payload, "player1"),
                     "player1_score": player1_offset,
                     "player2_score": player2_offset,
                     "handicap_enabled": handicap_enabled,
@@ -742,17 +757,29 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     scoring_game_number = state["current_game_number"]
     player1_score = state["player1_score"]
     player2_score = state["player2_score"]
+    previous_server_side = state.get("current_server_side")
+    previous_service_side = state.get("service_side")
 
     if scorer_side == "player1":
         player1_score += 1
         current_server = match["player1_name"]
         current_server_side = "player1"
-        service_side = _service_side_for_receiver(match, current_server_side)
+        service_side = _next_service_side_after_point(
+            match,
+            previous_server_side,
+            previous_service_side,
+            "player1",
+        )
     else:
         player2_score += 1
         current_server = match["player2_name"]
         current_server_side = "player2"
-        service_side = _service_side_for_receiver(match, current_server_side)
+        service_side = _next_service_side_after_point(
+            match,
+            previous_server_side,
+            previous_service_side,
+            "player2",
+        )
 
     player1_games_won = state["player1_games_won"]
     player2_games_won = state["player2_games_won"]

@@ -46,12 +46,58 @@ export default function Scoreboard({
       },
     },
   ];
+  const canToggleServiceSide = canCurrentServerChooseServiceSide(live.events || [], currentServerSide);
 
   function splitName(name, surname) {
     return {
       firstName: (name || "").trim() || "Player",
       surname: (surname || "").trim(),
     };
+  }
+
+  function findServerBeforeEvent(events, eventIndex) {
+    for (let index = eventIndex - 1; index >= 0; index -= 1) {
+      const event = events[index];
+
+      if (event.event_type === "server" && event.payload?.current_server_side) {
+        return event.payload.current_server_side;
+      }
+
+      if (["score_point", "stroke"].includes(event.event_type) && event.payload?.current_server_side) {
+        return event.payload.current_server_side;
+      }
+    }
+
+    return "player1";
+  }
+
+  function canCurrentServerChooseServiceSide(events, serverSide) {
+    let latestScoringEventIndex = -1;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      if (["score_point", "stroke"].includes(events[index].event_type)) {
+        latestScoringEventIndex = index;
+        break;
+      }
+    }
+
+    if (latestScoringEventIndex === -1) {
+      return true;
+    }
+
+    const latestScoringEvent = events[latestScoringEventIndex];
+    if (latestScoringEvent.payload?.game_completed && !latestScoringEvent.payload?.match_completed) {
+      return true;
+    }
+
+    const previousServerSide = findServerBeforeEvent(events, latestScoringEventIndex);
+    const scorerSide = latestScoringEvent.payload?.scorer || latestScoringEvent.payload?.player_side;
+    const serverAfterRally = latestScoringEvent.payload?.current_server_side || scorerSide;
+
+    if (serverAfterRally !== serverSide) {
+      return true;
+    }
+
+    return scorerSide !== previousServerSide;
   }
 
   function renderPlayerCard(side, name, surname) {
@@ -82,9 +128,10 @@ export default function Scoreboard({
           {isServing ? (
             <button
               className={`server-badge server-badge--${serviceSide.toLowerCase()}`}
-              disabled={disabled}
+              disabled={disabled || !canToggleServiceSide}
               type="button"
               onClick={onToggleServeSide}
+              title={canToggleServiceSide ? "Choose service side" : "Service side is set by the previous rally"}
             >
               {serviceSide}
             </button>
@@ -112,6 +159,7 @@ export default function Scoreboard({
           `scoreboard-point-marker--${markerType}`,
           `scoreboard-point-marker--${side}`,
           active ? "scoreboard-point-marker--active" : "",
+          active ? "" : "scoreboard-point-marker--inactive",
         ].join(" ").trim()}
       >
         {label}
@@ -160,10 +208,6 @@ export default function Scoreboard({
                       {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? currentServiceSideLabel : "")}
                       {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? currentServiceSideLabel : "")}
                     </div>
-                    <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "winner", false, "")}
-                      {renderPointMarker("player2", "winner", false, "")}
-                    </div>
                   </div>
                 );
               }
@@ -201,7 +245,7 @@ export default function Scoreboard({
 
       <div className="game-history-strip match-history-strip scoreboard-history-strip">
         {gameHistory.length === 0 ? (
-          <div className="meta-item meta-item--compact">No completed games yet.</div>
+          <div className="meta-item meta-item--compact">Playing</div>
         ) : (
           gameHistory.map((game) => (
             <div className="meta-item meta-item--compact" key={`scoreboard-game-${game.game_number}`}>

@@ -1734,6 +1734,21 @@ textarea {
   font-size: 1.15rem;
 }
 
+.timer-chip--warmup-warning {
+  animation: warmupCountdownPulse 0.8s steps(2, start) infinite;
+}
+
+@keyframes warmupCountdownPulse {
+  0%,
+  100% {
+    background: #ec5ea8;
+  }
+
+  50% {
+    background: #102a43;
+  }
+}
+
 .scoreboard-card {
   padding: 14px 18px 18px;
   display: grid;
@@ -1929,7 +1944,7 @@ textarea {
 
 .scoreboard-point-token {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   width: 100%;
   justify-items: center;
 }
@@ -1937,7 +1952,7 @@ textarea {
 .scoreboard-point-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
+  gap: 4px;
   width: 100%;
 }
 
@@ -1968,6 +1983,14 @@ textarea {
 
 .scoreboard-point-marker--active {
   opacity: 1;
+}
+
+.scoreboard-point-marker--inactive {
+  visibility: hidden;
+}
+
+.scoreboard-point-marker--winner.scoreboard-point-marker--active {
+  transform: translate(5px, -1px);
 }
 
 .scoreboard-controls {

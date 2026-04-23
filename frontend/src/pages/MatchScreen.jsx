@@ -460,6 +460,10 @@ export default function MatchScreen() {
     || showFirstServerOverlay
     || timerPhase === "warmup_side_one"
     || timerPhase === "warmup_side_two";
+  const isWarmupCountdownWarning = timerRunning
+    && (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two")
+    && timerSeconds <= 10
+    && timerSeconds > 0;
 
   return (
     <main className="page-shell stack match-screen-shell">
@@ -518,7 +522,13 @@ export default function MatchScreen() {
                 ) : (
                   <>
                     <button
-                      className={`timer-chip timer-chip--button timer-chip--overlay${timerRunning ? "" : " timer-chip--paused"}`}
+                      className={[
+                        "timer-chip",
+                        "timer-chip--button",
+                        "timer-chip--overlay",
+                        timerRunning ? "" : "timer-chip--paused",
+                        isWarmupCountdownWarning ? "timer-chip--warmup-warning" : "",
+                      ].join(" ").trim()}
                       type="button"
                       onClick={handleToggleTimer}
                     >
