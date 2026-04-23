@@ -27,6 +27,7 @@ export default function HelpPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const isPolicySection = ["terms", "privacy", "cookies"].includes(activeSection);
 
   function goBack() {
     if (window.history.length > 1) {
@@ -108,6 +109,12 @@ export default function HelpPage() {
     <main className="page-shell login-shell help-shell">
       <div className="login-shell__content">
         <section className="login-panel help-panel stack">
+          {isPolicySection ? (
+            <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
+              ×
+            </button>
+          ) : null}
+
           <div className="login-panel__top">
             <div className="login-branding">
               <img
@@ -219,9 +226,6 @@ export default function HelpPage() {
 
           {activeSection === "terms" ? (
             <section className="help-copy stack compact policy-section">
-              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
-                ×
-              </button>
               <h2>Terms & Conditions</h2>
               <p>
                 <strong>Last updated:</strong> {policyYear}
@@ -485,9 +489,6 @@ export default function HelpPage() {
 
           {activeSection === "privacy" ? (
             <section className="help-copy stack compact policy-section">
-              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
-                ×
-              </button>
               <h2>Privacy Policy</h2>
               <p>
                 <strong>Last updated:</strong> {policyYear}
@@ -620,9 +621,6 @@ export default function HelpPage() {
 
           {activeSection === "cookies" ? (
             <section className="help-copy stack compact policy-section">
-              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
-                ×
-              </button>
               <h2>Cookie Policy</h2>
               <p>
                 <strong>Last updated:</strong> {policyYear}

@@ -398,6 +398,7 @@ textarea {
 }
 
 .help-panel {
+  position: relative;
   width: min(100%, 620px);
 }
 
@@ -438,13 +439,8 @@ textarea {
   color: #102a43;
 }
 
-.policy-section,
 .ping-page-panel {
   position: relative;
-}
-
-.policy-section {
-  padding-right: 48px;
 }
 
 .page-close-button {
