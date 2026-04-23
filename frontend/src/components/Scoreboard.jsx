@@ -28,7 +28,9 @@ export default function Scoreboard({
   const player2ShirtColor = live.player2_shirt_color
     ?? match?.player2_shirt_color
     ?? DEFAULT_PLAYER_SHIRT_COLORS.player2;
-  const isActive = (match?.status || "").toLowerCase() === "active";
+  const matchStatus = (match?.status || "active").toLowerCase();
+  const isActive = matchStatus === "active";
+  const isCompleted = matchStatus === "completed" || Boolean(live.match_complete);
   const gameHistory = live.game_history || [];
   const pointStripEntries = match ? buildPointStripEntries(live.events || []) : [];
   const canToggleServiceSide = match
@@ -254,7 +256,13 @@ export default function Scoreboard({
           <h2 style={{ marginBottom: 0 }}>{match.court_name || "Court"}</h2>
         </div>
         <div className="scoreboard-header-meta">
-          <span className={`status-pill${isActive ? " status-pill--active" : ""}`}>
+          <span
+            className={[
+              "status-pill",
+              isActive ? "status-pill--active" : "",
+              isCompleted ? "status-pill--completed" : "",
+            ].join(" ").trim()}
+          >
             <span className="status-pill__dot" aria-hidden="true" />
             {match.status || "active"}
           </span>

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 export default function MatchControls({
   match,
   disabled = false,
+  undoDisabled = false,
   onEventAction,
   onUndo,
   onEndMatch,
@@ -72,7 +73,13 @@ export default function MatchControls({
         >
           Stroke P2
         </button>
-        <button className="danger match-control-grid__undo" disabled={disabled} onClick={onUndo}>
+        <button
+          className="danger match-control-grid__undo"
+          disabled={disabled || undoDisabled}
+          onClick={onUndo}
+          title={undoDisabled ? "Undo is only available for 5 minutes after match completion." : undefined}
+          type="button"
+        >
           Undo Last Action
         </button>
         <button

@@ -228,6 +228,10 @@ export default function MatchScreen() {
   const gameHistory = live.game_history || [];
   const serviceSide = live.service_side || "Right";
   const matchComplete = currentMatch?.state?.match_complete || currentMatch?.status === "completed";
+  const completedAtTimestamp = currentMatch?.completed_at ? new Date(currentMatch.completed_at).getTime() : NaN;
+  const undoLocked = matchComplete
+    && Number.isFinite(completedAtTimestamp)
+    && (Date.now() - completedAtTimestamp) > (5 * 60 * 1000);
   const recordedMatchDurationSeconds = live.match_duration_seconds ?? currentMatch?.match_duration_seconds ?? 0;
   const isPersonalAccount = inferOrganizationType(session) === "personal";
   const canChoosePlayerShirtColors = canChooseShirtColors(session);
@@ -840,6 +844,7 @@ export default function MatchScreen() {
             <MatchControls
               disabled={!currentMatch || loading}
               match={currentMatch}
+              undoDisabled={undoLocked}
               onEventAction={(actionType, payload) =>
                 sendEventAction(matchId, actionType, payload)
               }

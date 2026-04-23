@@ -633,11 +633,11 @@ export default function OrganisationSettingsPage() {
                 <div className="dashboard-item-head">
                   <strong>Club Subscription</strong>
                   <button
-                    className="status-pill status-pill-button"
+                    className="status-pill status-pill-button status-pill-button--accent"
                     type="button"
                     onClick={() => navigate("/ping?subject=club-subscription")}
                   >
-                    Contact us
+                    Enquire
                   </button>
                 </div>
                 <div className="dashboard-item-meta">

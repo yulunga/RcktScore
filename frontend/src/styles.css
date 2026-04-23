@@ -1394,8 +1394,22 @@ textarea {
   background: #c8e0f6;
 }
 
+.status-pill-button--accent {
+  background: #f7d4e7;
+  color: #ad2f7b;
+}
+
+.status-pill-button--accent:hover {
+  background: #f2c0dd;
+}
+
 .status-pill--active {
   animation: activePulse 3s infinite;
+}
+
+.status-pill--completed {
+  background: #f7d8dd;
+  color: #b4233d;
 }
 
 @keyframes activePulse {
