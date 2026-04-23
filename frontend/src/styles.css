@@ -2565,11 +2565,16 @@ textarea {
   }
 
   .field-grid,
+  .settings-profile-grid,
   .match-setup-row,
   .settings-field-grid-tight,
   .game-settings-match-grid,
   .game-settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-profile-field--solo {
+    width: 100%;
   }
 
   .match-setup-row--referee .field:first-child {
@@ -2894,8 +2899,14 @@ textarea {
   grid-column: 1 / -1;
 }
 
-.settings-field-single {
-  grid-column: 1;
+.settings-profile-grid {
+  grid-template-columns: repeat(2, minmax(0, 360px));
+  justify-content: start;
+}
+
+.settings-profile-field--solo {
+  grid-column: 1 / -1;
+  width: min(100%, 360px);
 }
 
 .settings-input-compact {

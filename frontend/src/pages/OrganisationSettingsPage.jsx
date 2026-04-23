@@ -453,8 +453,8 @@ export default function OrganisationSettingsPage() {
               <p className="helper-text">Basic account details.</p>
             </div>
             <form className="stack" onSubmit={handlePersonalProfileSubmit}>
-              <div className="field-grid">
-                <div className="field settings-field-single">
+              <div className="field-grid settings-profile-grid">
+                <div className="field settings-profile-field--solo">
                   <label htmlFor="personal_username">Username</label>
                   <input
                     className="settings-input-compact"
@@ -487,7 +487,7 @@ export default function OrganisationSettingsPage() {
                     }))}
                   />
                 </div>
-                <div className="field settings-field-single">
+                <div className="field settings-profile-field--solo">
                   <label htmlFor="personal_email">Email</label>
                   <input
                     className="settings-input-compact"
@@ -604,9 +604,6 @@ export default function OrganisationSettingsPage() {
           </div>
 
           <section className="panel stack">
-            <div className="panel-heading">
-              <h2>Upgrade Options</h2>
-            </div>
             <article className="dashboard-item">
               <div className="dashboard-item-head">
                 <strong>Current Plan</strong>
@@ -629,7 +626,7 @@ export default function OrganisationSettingsPage() {
                 </div>
                 <div className="dashboard-item-meta">
                   <span>Up to 100 completed matches</span>
-                  <span>Match history filters, saved players, stats, and export access are planned for this tier.</span>
+                  <span>Match history filters, saved players, stats, and export access are included in this tier.</span>
                 </div>
               </article>
               <article className="dashboard-item">
@@ -644,7 +641,7 @@ export default function OrganisationSettingsPage() {
                   </button>
                 </div>
                 <div className="dashboard-item-meta">
-                  <span>Club workspace with multiple users, roles, courts, scheduled matches, live display, and club-level administration.</span>
+                  <span>Multi-user club workspace with roles, courts, scheduled matches, live display, and club administration tools.</span>
                 </div>
               </article>
             </div>
