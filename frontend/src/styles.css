@@ -3027,8 +3027,16 @@ textarea {
 }
 
 .ping-page-panel {
-  max-width: 760px;
+  max-width: 680px;
   margin: 0 auto;
+}
+
+.ping-page-panel .ping-page-header,
+.ping-page-panel .notice,
+.ping-page-panel form,
+.ping-page-panel .ping-back-link {
+  width: min(100%, 620px);
+  margin-inline: auto;
 }
 
 .ping-page-header h2 {
@@ -3063,6 +3071,16 @@ textarea {
 .ping-page-panel textarea:focus {
   border-color: #1274d0;
   box-shadow: 0 0 0 3px rgba(18, 116, 208, 0.14);
+}
+
+.ping-page-panel input:disabled,
+.ping-page-panel input[readonly] {
+  border-color: #d7e3f0;
+  background: #f8fbff;
+  color: #486581;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .ping-textarea {
