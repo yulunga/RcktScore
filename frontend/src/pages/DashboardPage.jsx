@@ -26,6 +26,20 @@ function formatGameScore(match) {
   };
 }
 
+function formatMatchHistoryResult(match) {
+  const gameHistory = match?.state?.game_history || [];
+  const overallGameScore = formatGameScore(match).label;
+  const completedGameScores = gameHistory
+    .map((game) => `${game.player1_score}-${game.player2_score}`)
+    .join(" | ");
+  const liveScore = formatScore(match).label;
+
+  return {
+    winnerName: match?.winner_name || match?.state?.winner_name || "Winner not set",
+    scoreLine: `${overallGameScore} [${completedGameScores || liveScore}]`,
+  };
+}
+
 function splitPlayerName(firstName, surname) {
   return {
     firstName: (firstName || "").trim() || "Player",
@@ -155,9 +169,7 @@ export default function DashboardPage() {
   const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
   const isPersonalAccount = organizationType === "personal";
   const historyLimit = organization.history_limit;
-  const historyTitle = isPersonalAccount
-    ? (organizationPlan === "personal_plus" ? "Match History" : "Historical Matches")
-    : "Recent Matches";
+  const historyTitle = isPersonalAccount ? "Match History" : "Recent Matches";
   const historyHelper = isPersonalAccount
     ? `Showing the latest ${historyLimit || (organizationPlan === "personal_plus" ? 100 : 3)} completed matches for your plan.`
     : "Completed matches for this organisation.";
@@ -345,8 +357,11 @@ export default function DashboardPage() {
                       <span>{formatDate(match.updated_at)}</span>
                     </div>
                     <div className="dashboard-item-meta">
-                      <span>Result: {formatScore(match).label}</span>
-                      <span>Court: {match.court_name || "Unassigned"}</span>
+                      <span>Winner: {formatMatchHistoryResult(match).winnerName}</span>
+                      <span>Result: {formatMatchHistoryResult(match).scoreLine}</span>
+                      {!isPersonalAccount ? (
+                        <span>Court: {match.court_name || "Unassigned"}</span>
+                      ) : null}
                     </div>
                   </div>
                 </article>
