@@ -1308,6 +1308,10 @@ textarea {
   transform: none;
 }
 
+.personal-password-reset-button {
+  min-width: 116px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1318,6 +1322,16 @@ textarea {
   color: #0b4f88;
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+.status-pill-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.status-pill-button:hover {
+  background: #c8e0f6;
 }
 
 .status-pill--active {
@@ -2154,8 +2168,11 @@ textarea {
 }
 
 .match-top-grid {
+  display: grid;
   gap: 16px;
   align-items: start;
+  width: min(100%, 920px);
+  margin: 0 auto;
 }
 
 .match-primary-column,
@@ -2165,7 +2182,22 @@ textarea {
 }
 
 .match-bottom-back-button {
-  width: 100%;
+  justify-self: center;
+  width: min(100%, 220px);
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  color: #fff;
+  background: #1274d0;
+  cursor: pointer;
+  font-weight: 700;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
+}
+
+.match-bottom-back-button:hover {
+  transform: translateY(-1px);
 }
 
 .match-meta-toggle-wrap {

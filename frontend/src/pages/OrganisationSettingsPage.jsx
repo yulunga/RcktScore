@@ -456,11 +456,12 @@ export default function OrganisationSettingsPage() {
               </div>
               <div className="button-row">
                 <button
+                  className="personal-password-reset-button"
                   disabled={savingSection === "personal-password-reset" || !personalEmail}
                   type="button"
                   onClick={handlePersonalPasswordResetRequest}
                 >
-                  {savingSection === "personal-password-reset" ? "Sending..." : "Send Password Reset Email"}
+                  {savingSection === "personal-password-reset" ? "Sending..." : "Send Reset"}
                 </button>
               </div>
             </div>
@@ -485,7 +486,13 @@ export default function OrganisationSettingsPage() {
               <article className="dashboard-item">
                 <div className="dashboard-item-head">
                   <strong>Club Subscription</strong>
-                  <span className="status-pill">Contact us</span>
+                  <button
+                    className="status-pill status-pill-button"
+                    type="button"
+                    onClick={() => navigate("/ping?subject=club-subscription")}
+                  >
+                    Contact us
+                  </button>
                 </div>
                 <div className="dashboard-item-meta">
                   <span>Club workspace with multiple users, roles, courts, scheduled matches, live display, and club-level administration.</span>

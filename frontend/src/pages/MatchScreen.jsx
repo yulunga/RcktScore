@@ -41,6 +41,14 @@ function getInitials(value) {
     .join("");
 }
 
+function inferOrganizationType(session) {
+  if (session?.organization_type) {
+    return session.organization_type;
+  }
+
+  return Number(session?.organization_id) >= 50000 ? "personal" : "club";
+}
+
 const WARMUP_SECONDS = 60;
 const INTERVAL_SECONDS = 90;
 const MATCH_TIMER_STORAGE_KEY = "rcktscore.matchTimer";
@@ -135,7 +143,20 @@ function advanceTimerSnapshot(snapshot) {
       break;
     }
 
-    if (phase === "warmup_side_two" || phase === "interval") {
+    if (phase === "warmup_side_two") {
+      if (remainingElapsed >= seconds) {
+        remainingElapsed -= seconds;
+        phase = "first_server";
+        seconds = 0;
+        break;
+      }
+
+      seconds -= remainingElapsed;
+      remainingElapsed = 0;
+      break;
+    }
+
+    if (phase === "interval") {
       if (remainingElapsed >= seconds) {
         remainingElapsed -= seconds;
         phase = "match_live";
@@ -148,7 +169,7 @@ function advanceTimerSnapshot(snapshot) {
       break;
     }
 
-    if (phase === "warmup_ready") {
+    if (phase === "warmup_ready" || phase === "first_server") {
       break;
     }
 
@@ -179,10 +200,11 @@ export default function MatchScreen() {
     undoLastAction,
   } = useMatch();
   const navigate = useNavigate();
-  const displayUrl = `${window.location.origin}/display?match=${matchId}`;
   const live = currentMatch?.state ?? {};
   const gameHistory = live.game_history || [];
   const serviceSide = live.service_side || "Right";
+  const isPersonalAccount = inferOrganizationType(session) === "personal";
+  const displayUrl = !isPersonalAccount ? `${window.location.origin}/display?match=${matchId}` : "";
   const [timerPhase, setTimerPhase] = useState("warmup_ready");
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -213,11 +235,12 @@ export default function MatchScreen() {
     const storedState = readStoredTimerState(currentMatch.id);
     if (storedState) {
       const advancedState = advanceTimerSnapshot(storedState);
-      setTimerPhase(advancedState.phase);
-      setTimerSeconds(advancedState.seconds);
-      setTimerRunning(advancedState.running);
-      setShowWarmupOverlay(false);
-      setShowFirstServerOverlay(false);
+      const needsFirstServer = advancedState.phase === "first_server";
+      setTimerPhase(needsFirstServer ? "warmup_side_two" : advancedState.phase);
+      setTimerSeconds(needsFirstServer ? 0 : advancedState.seconds);
+      setTimerRunning(needsFirstServer ? false : advancedState.running);
+      setShowWarmupOverlay(["warmup_ready", "warmup_side_one", "warmup_side_two"].includes(advancedState.phase));
+      setShowFirstServerOverlay(needsFirstServer);
       return;
     }
 
@@ -268,12 +291,20 @@ export default function MatchScreen() {
     }
 
     writeStoredTimerState(currentMatch.id, {
-      phase: timerPhase,
+      phase: showFirstServerOverlay ? "first_server" : timerPhase,
       running: timerRunning,
       seconds: timerSeconds,
       updatedAt: Date.now(),
     });
-  }, [currentMatch?.id, currentMatch?.state?.match_complete, currentMatch?.status, timerPhase, timerRunning, timerSeconds]);
+  }, [
+    currentMatch?.id,
+    currentMatch?.state?.match_complete,
+    currentMatch?.status,
+    showFirstServerOverlay,
+    timerPhase,
+    timerRunning,
+    timerSeconds,
+  ]);
 
   useEffect(() => {
     if (!timerRunning) {
@@ -299,7 +330,6 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_one") {
-      window.alert("Warm-up side 1 complete. Ask the players to change sides.");
       setTimerPhase("warmup_side_two");
       setTimerSeconds(WARMUP_SECONDS);
       setTimerRunning(true);
@@ -307,7 +337,6 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_two") {
-      window.alert("Warm-up complete. Choose which player serves first.");
       setTimerRunning(false);
       setShowFirstServerOverlay(true);
       return;
@@ -370,7 +399,8 @@ export default function MatchScreen() {
   }, [timerPhase]);
 
   function handleStartWarmup() {
-    setShowWarmupOverlay(false);
+    setShowWarmupOverlay(true);
+    setShowFirstServerOverlay(false);
     setTimerPhase("warmup_side_one");
     setTimerSeconds(WARMUP_SECONDS);
     setTimerRunning(true);
@@ -419,11 +449,17 @@ export default function MatchScreen() {
       current_server_side: playerSide,
       service_side: serviceSideForServer,
     });
+    setShowWarmupOverlay(false);
     setShowFirstServerOverlay(false);
     setTimerPhase("match_live");
     setTimerSeconds(0);
     setTimerRunning(true);
   }
+
+  const showWarmupFlowOverlay = showWarmupOverlay
+    || showFirstServerOverlay
+    || timerPhase === "warmup_side_one"
+    || timerPhase === "warmup_side_two";
 
   return (
     <main className="page-shell stack match-screen-shell">
@@ -433,49 +469,71 @@ export default function MatchScreen() {
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
 
-      {showWarmupOverlay ? (
+      {showWarmupFlowOverlay ? (
         <div className="overlay-backdrop">
           <div className="overlay-panel overlay-panel--warmup stack">
-            <h2>Warm-Up</h2>
-            <p className="helper-text">
-              Start 60 seconds on side 1, swap sides for another 60 seconds, then go straight into the match.
-            </p>
-            <div className="button-row warmup-overlay__actions">
-              <button type="button" onClick={handleStartWarmup}>
-                Start Warm-Up
-              </button>
-              <button className="secondary" type="button" onClick={handleSkipWarmup}>
-                Skip Warm-Up
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showFirstServerOverlay && currentMatch ? (
-        <div className="overlay-backdrop">
-          <div className="overlay-panel overlay-panel--warmup stack">
-            <h2>First Server</h2>
-            <p className="helper-text">
-              Choose which player starts serving. The match clock will start after this selection.
-            </p>
-            <div className="first-server-options">
-              <button
-                disabled={loading}
-                type="button"
-                onClick={() => handleChooseFirstServer("player1")}
-              >
-                {`${currentMatch.player1_name} ${currentMatch.player1_surname || ""}`.trim()}
-              </button>
-              <button
-                className="secondary"
-                disabled={loading}
-                type="button"
-                onClick={() => handleChooseFirstServer("player2")}
-              >
-                {`${currentMatch.player2_name} ${currentMatch.player2_surname || ""}`.trim()}
-              </button>
-            </div>
+            {showFirstServerOverlay && currentMatch ? (
+              <>
+                <h2>First Server</h2>
+                <p className="helper-text">
+                  Choose which player starts serving. The match begins after this selection.
+                </p>
+                <div className="first-server-options">
+                  <button
+                    disabled={loading}
+                    type="button"
+                    onClick={() => handleChooseFirstServer("player1")}
+                  >
+                    {`${currentMatch.player1_name} ${currentMatch.player1_surname || ""}`.trim()}
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={loading}
+                    type="button"
+                    onClick={() => handleChooseFirstServer("player2")}
+                  >
+                    {`${currentMatch.player2_name} ${currentMatch.player2_surname || ""}`.trim()}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>{timerPhase === "warmup_side_two" ? "Change Sides" : "Warm-Up"}</h2>
+                <p className="helper-text">
+                  {timerPhase === "warmup_ready"
+                    ? "Start 60 seconds on side 1, swap sides for another 60 seconds, then choose the first server."
+                    : timerPhase === "warmup_side_two"
+                      ? "Side 1 is complete. Players should change sides while the second warm-up runs."
+                      : "Warm-up is running. Keep this window open until the first server is selected."}
+                </p>
+                {timerPhase === "warmup_ready" ? (
+                  <div className="button-row warmup-overlay__actions">
+                    <button type="button" onClick={handleStartWarmup}>
+                      Start Warm-Up
+                    </button>
+                    <button className="secondary" type="button" onClick={handleSkipWarmup}>
+                      Skip Warm-Up
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className={`timer-chip timer-chip--button timer-chip--overlay${timerRunning ? "" : " timer-chip--paused"}`}
+                      type="button"
+                      onClick={handleToggleTimer}
+                    >
+                      {String(Math.floor(timerSeconds / 60)).padStart(2, "0")}:
+                      {String(timerSeconds % 60).padStart(2, "0")}
+                    </button>
+                    <div className="button-row warmup-overlay__actions">
+                      <button className="secondary" type="button" onClick={handleSkipTimedPhase}>
+                        Skip Warm-Up
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       ) : null}
@@ -504,7 +562,7 @@ export default function MatchScreen() {
         </div>
       ) : null}
 
-      <div className="grid two-column match-top-grid">
+      <div className="match-top-grid">
         <div className="stack match-primary-column">
           <Scoreboard
             disabled={!currentMatch || loading}
@@ -546,7 +604,7 @@ export default function MatchScreen() {
         </div>
       </div>
 
-      {currentMatch ? (
+      {currentMatch && !isPersonalAccount ? (
         <section className="panel stack match-detail-panel">
           <div className="match-meta-toggle-wrap">
             <button
@@ -586,6 +644,7 @@ export default function MatchScreen() {
         </section>
       ) : null}
 
+      {!isPersonalAccount ? (
       <div className="stack match-secondary-column">
         <section className="panel stack">
           <h2>Spectator Display</h2>
@@ -595,14 +654,15 @@ export default function MatchScreen() {
           <input className="read-only-input" readOnly value={displayUrl} />
         </section>
       </div>
+      ) : null}
 
       <div className="stack match-bottom-stack">
         <button
-          className="secondary match-bottom-back-button"
+          className="match-bottom-back-button"
           type="button"
           onClick={() => navigate("/dashboard")}
         >
-          Back to All Matches
+          Dashboard
         </button>
       </div>
       <AppFooter />

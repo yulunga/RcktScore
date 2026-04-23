@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import packageJson from "../../package.json";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -8,18 +8,28 @@ import { submitFeedback } from "../services/api";
 
 const BUILD_ID = String(import.meta.env.VITE_BUILD_ID || "local").replace(/^0+(?=\d)/, "");
 const APP_VERSION = `v${packageJson.version}`;
+const CLUB_SUBSCRIPTION_CATEGORY = "Club Subscription";
 const FEEDBACK_CATEGORIES = [
-  "Bug / Something not working",
+  "Feedback",
+  "Club Account",
   "Feature Request",
-  "General Feedback",
-  "UI / Design Suggestion",
-  "Performance Issue",
+  "UI/Design",
+  "Performance",
+  "Bug",
   "Other",
 ];
 
 export default function PingUsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session } = useAuth();
+  const subjectParam = searchParams.get("subject") || "";
+  const requestedCategory = subjectParam.toLowerCase().replace(/\s+/g, "-") === "club-subscription"
+    ? CLUB_SUBSCRIPTION_CATEGORY
+    : "";
+  const feedbackCategories = requestedCategory
+    ? [requestedCategory, ...FEEDBACK_CATEGORIES]
+    : FEEDBACK_CATEGORIES;
   const fallbackName = useMemo(() => {
     if (session?.full_name) {
       return session.full_name;
@@ -32,7 +42,7 @@ export default function PingUsPage() {
   const [form, setForm] = useState({
     name: fallbackName,
     email: session?.email || "",
-    category: FEEDBACK_CATEGORIES[0],
+    category: requestedCategory || FEEDBACK_CATEGORIES[0],
     message: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -56,7 +66,7 @@ export default function PingUsPage() {
         user_agent: window.navigator.userAgent,
       });
       setNotice("Thanks. Your message has been sent.");
-      setForm((current) => ({ ...current, message: "", category: FEEDBACK_CATEGORIES[0] }));
+      setForm((current) => ({ ...current, message: "", category: feedbackCategories[0] }));
     } catch (requestError) {
       setError(requestError.message || "Unable to send your message.");
     } finally {
@@ -121,7 +131,7 @@ export default function PingUsPage() {
               value={form.category}
               onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
             >
-              {FEEDBACK_CATEGORIES.map((category) => (
+              {feedbackCategories.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
