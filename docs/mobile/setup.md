@@ -20,14 +20,28 @@ client in the `RcktScore` repository.
 - Active API base URL:
   `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod`
 
-## Mobile App Starting Scope
+## Current Mobile Scope
 
-Recommended first mobile scope:
+Current implemented native scope:
 
 1. organisation login
-2. mobile dashboard
-3. live scoring match screen
-4. spectator display handoff/open
+2. persisted session
+3. mobile dashboard with active, scheduled, and recent matches
+4. scheduled match start
+5. live scoring match screen
+
+Current remaining v1 scope:
+
+1. native timer/warm-up parity with the web scoring screen
+2. first-server selection after warm-up
+3. 90 second between-game interval
+
+Still out of scope for the first native release:
+
+1. native new-match setup
+2. organisation settings management
+3. root admin portal
+4. spectator display configuration
 
 ## Environment Guidance
 
@@ -45,4 +59,3 @@ Recommended values:
 - `AGENTS.md`
 - `docs/backend-api.md`
 - `docs/technical-walkthrough.md`
-

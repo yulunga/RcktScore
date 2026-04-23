@@ -13,14 +13,14 @@ For the route list and backend module reference, see [backend-api.md](/Users/gle
 
 Almost every request follows the same path:
 
-1. A React page or component triggers an action.
-2. The action goes through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js).
+1. A React page/component or native SwiftUI view triggers an action.
+2. Web actions go through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js); iOS actions go through [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift).
 3. API Gateway routes the request to a Lambda from [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
 4. The Lambda handler parses and validates input using [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py).
 5. Shared logic in `backend/common/` performs the real business work.
 6. A DB connection from [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py) reads/writes Supabase Postgres.
 7. The Lambda returns the shared API envelope.
-8. Frontend context updates state and the screen rerenders.
+8. The web context or native view state updates and the screen rerenders.
 
 Shared response envelope:
 
@@ -306,17 +306,22 @@ Important:
    - `PAR-11` or `PAR-15`
    - `best_of` `1`, `3`, or `5`
    - optional handicap bands
-2. Frontend calls `POST /start_match`.
-3. API Gateway invokes [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py).
-4. Handler validates required fields and calls [create_match(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
-5. `match_logic.py`:
+2. Frontend can search existing player/referee values through `GET /match_setup_lookup/{organization_id}?q=...`.
+3. Frontend calls `POST /start_match`.
+4. API Gateway invokes [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py).
+5. Handler validates required fields and calls [create_match(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
+6. `match_logic.py`:
    - inserts a `matches` row
    - inserts a `match_started` event into `match_events`
    - initializes best-of, games-to-win, and handicap offsets
-6. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
-7. `api.js` unwraps `payload.data`, so `MatchContext` receives `response.match`.
-8. Frontend stores the match in `MatchContext`.
-9. Operator is routed to `/match/:matchId`.
+7. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
+8. `api.js` unwraps `payload.data`, so `MatchContext` receives `response.match`.
+9. Frontend stores the match in `MatchContext`.
+10. Operator is routed to `/match/:matchId`, unless the match was scheduled.
+
+Scheduled matches use the same `matches` table with `status = "scheduled"`.
+They can be started later through `POST /start_scheduled_match`, which activates
+the match and returns the updated match payload inside `data.match`.
 
 ---
 
@@ -386,6 +391,7 @@ Current scoring rules:
 
 - `let`
 - `stroke`
+- `server`
 - `serve_side`
 - `timer`
 
@@ -396,8 +402,13 @@ Current scoring rules:
 3. Handler validates action type.
 4. Shared logic:
    - `stroke` is scoring-aware and can complete a game/match
+   - `server` sets the first/current server and derives service side from the receiver handedness
+   - `serve_side` changes the left/right service marker
    - other actions append event entries without changing score summaries
 5. Updated `match` is returned inside `data.match`.
+
+Current web scoring uses `server` after the warm-up flow so the operator can
+choose the first server before the match clock starts.
 
 ---
 
@@ -446,6 +457,33 @@ Current scoring rules:
 Important:
 - the WebSocket architecture is not fully completed in AWS yet
 - treat display updates as HTTP-driven behavior unless the WebSocket infrastructure is explicitly completed
+
+---
+
+## 13A. Native iOS Scoring Flow
+
+### Native Entry
+
+- [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift)
+- [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift)
+- [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
+
+### Current Path
+
+1. Signed-in organisation user lands on the native dashboard.
+2. Dashboard calls `GET /dashboard/{organization_id}` through `APIClient`.
+3. Active, scheduled, and recent match lists are decoded from `data.dashboard`.
+4. Tapping an active/recent match opens `MatchScoringView`.
+5. Starting a scheduled match calls `POST /start_scheduled_match` and then opens `MatchScoringView`.
+6. `MatchScoringView` calls `GET /get_score/{match_id}` and mutates through the same scoring endpoints as the web app:
+   - `POST /score_point`
+   - `POST /event_action`
+   - `POST /undo_action`
+   - `POST /end_match`
+
+Current native gap:
+
+- the native screen does not yet implement the web timer/warm-up/first-server flow
 
 ---
 

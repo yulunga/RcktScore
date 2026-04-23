@@ -13,8 +13,8 @@ For end-to-end request walkthroughs, see [technical-walkthrough.md](/Users/glenn
 
 Current runtime path:
 
-1. React UI triggers a request through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-2. The browser calls `VITE_API_BASE_URL`
+1. React UI triggers a request through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js), or the native iOS app triggers a request through [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
+2. The browser calls `VITE_API_BASE_URL`, or the iOS client calls `APIBaseURL` from app configuration
 3. AWS API Gateway HTTP API receives the request
 4. API Gateway invokes a Lambda function defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml)
 5. The Lambda handler:
@@ -24,7 +24,7 @@ Current runtime path:
    - delegates business logic to shared modules in `backend/common/`
 6. Shared logic reads/writes Supabase Postgres
 7. The handler returns a JSON response
-8. Frontend context updates local UI state
+8. Web context or native view state updates local UI state
 
 ## Architecture Layers
 
@@ -46,8 +46,9 @@ Frontend state is owned in React context modules:
 HTTP access is centralized in:
 
 - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+- [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
 
-This layer is responsible for:
+These client layers are responsible for:
 
 - constructing requests
 - attaching `Content-Type`
@@ -230,11 +231,19 @@ It sends an SES email to the configured feedback inbox and returns the shared su
 ### Match / Scoring
 
 - `POST /start_match`
+- `POST /start_scheduled_match`
 - `GET /get_score/{match_id}`
 - `POST /score_point`
 - `POST /event_action`
 - `POST /undo_action`
 - `POST /end_match`
+
+### Match Setup Lookup
+
+- `GET /match_setup_lookup/{organization_id}?q=...`
+
+This endpoint supports the match setup player/referee lookup UI. It is backed by
+[match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py).
 
 ---
 
@@ -267,8 +276,10 @@ Important current `matches` fields:
 - `sport`
 - `player1_name`
 - `player1_surname`
+- `player1_handedness`
 - `player2_name`
 - `player2_surname`
+- `player2_handedness`
 - `referee_name`
 - `score_type`
 - `best_of`
@@ -297,6 +308,7 @@ Current `match_events` responsibility:
 - every operator scoring action is written as an event
 - event payloads carry enough snapshot data to reconstruct live state
 - undo works by deleting the last non-`match_started` event and rebuilding state
+- non-scoring operator actions such as `let`, `serve_side`, `server`, and `timer` are also recorded as events
 
 ---
 
@@ -391,6 +403,16 @@ Tracked live state includes:
 - service side
 - completed game history
 - winner state when the match completes
+
+Supported non-point event actions include:
+
+- `let`
+- `serve_side`
+- `server`
+- `timer`
+
+`stroke` is also sent through `POST /event_action`, but it is scoring-aware and
+can complete a game or match.
 
 ---
 

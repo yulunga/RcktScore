@@ -15,6 +15,14 @@ This document is reserved for iOS code signing and distribution setup.
 
 ## Current State
 
-No native iOS target has been committed yet, so signing is not configured in
-this repository at this time.
+The native iOS target has been committed at
+`mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj`.
 
+Observed project values:
+
+- bundle identifier: `rcktScore.RcktScoreMobile`
+- display name: `Hit n Score`
+- deployment target: iOS `17.6`
+
+Signing and distribution ownership still need to be finalised before TestFlight
+or App Store distribution.

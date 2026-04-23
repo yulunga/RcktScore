@@ -45,14 +45,17 @@ export default function AppFooter() {
                   </button>
                 </div>
                 <div className="footer-help-modal__links">
-                  <Link to="/help?section=privacy" onClick={() => setShowHelpOptions(false)}>
-                    Privacy
+                  <Link to="/ping" onClick={() => setShowHelpOptions(false)}>
+                    Ping Us
                   </Link>
                   <Link to="/help?section=terms" onClick={() => setShowHelpOptions(false)}>
                     Terms
                   </Link>
-                  <Link to="/ping" onClick={() => setShowHelpOptions(false)}>
-                    Ping Us
+                  <Link to="/help?section=privacy" onClick={() => setShowHelpOptions(false)}>
+                    Privacy
+                  </Link>
+                  <Link to="/help?section=cookies" onClick={() => setShowHelpOptions(false)}>
+                    Cookies
                   </Link>
                 </div>
               </div>

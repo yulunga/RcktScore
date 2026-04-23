@@ -10,6 +10,7 @@ import {
   createOrganizationUser,
   deleteOrganizationCourt,
   getOrganizationSettings,
+  requestPasswordReset,
   updatePersonalProfile,
   updateOrganizationCourt,
   updateOrganizationDetails,
@@ -292,6 +293,29 @@ export default function OrganisationSettingsPage() {
     );
   }
 
+  async function handlePersonalPasswordResetRequest() {
+    const resetEmail = String(personalEmail || "").trim().toLowerCase();
+
+    if (!EMAIL_PATTERN.test(resetEmail)) {
+      setMessage("");
+      setError("A valid account email is required before a password reset can be sent.");
+      return;
+    }
+
+    setSavingSection("personal-password-reset");
+    setMessage("");
+    setError("");
+
+    try {
+      await requestPasswordReset({ email: resetEmail });
+      setMessage("If that email is registered, a password reset link has been sent.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to request password reset right now.");
+    } finally {
+      setSavingSection("");
+    }
+  }
+
   return (
     <main className="page-shell stack">
       {isPersonalAccount ? (
@@ -412,6 +436,34 @@ export default function OrganisationSettingsPage() {
                 </button>
               </div>
             </form>
+          </section>
+
+          <section className="panel stack">
+            <div className="panel-heading">
+              <h2>Account Access</h2>
+              <p className="helper-text">
+                Send a secure password reset link to your account email.
+              </p>
+            </div>
+            <div className="dashboard-item">
+              <div className="dashboard-item-head">
+                <strong>Password Reset</strong>
+                <span className="status-pill">Email link</span>
+              </div>
+              <div className="dashboard-item-meta">
+                <span>{personalEmail || "No account email available"}</span>
+                <span>The link will let you choose a new password securely.</span>
+              </div>
+              <div className="button-row">
+                <button
+                  disabled={savingSection === "personal-password-reset" || !personalEmail}
+                  type="button"
+                  onClick={handlePersonalPasswordResetRequest}
+                >
+                  {savingSection === "personal-password-reset" ? "Sending..." : "Send Password Reset Email"}
+                </button>
+              </div>
+            </div>
           </section>
 
           <section className="panel stack">

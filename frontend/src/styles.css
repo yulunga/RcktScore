@@ -31,7 +31,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -372,15 +373,22 @@ select {
 }
 
 .login-help-link a,
-.help-login-link a {
+.help-login-link a,
+.help-login-link button,
+.ping-back-link button {
+  border: 0;
+  background: transparent;
   color: #ec5ea8;
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .login-help-link a:hover,
-.help-login-link a:hover {
+.help-login-link a:hover,
+.help-login-link button:hover,
+.ping-back-link button:hover {
   text-decoration: underline;
 }
 
@@ -428,6 +436,37 @@ select {
 .help-copy h2 {
   margin: 0;
   color: #102a43;
+}
+
+.policy-section,
+.ping-page-panel {
+  position: relative;
+}
+
+.policy-section {
+  padding-right: 48px;
+}
+
+.page-close-button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(18, 116, 208, 0.16);
+  border-radius: 999px;
+  background: rgba(18, 116, 208, 0.08);
+  color: #0b5fb3;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.page-close-button:hover {
+  background: rgba(18, 116, 208, 0.14);
 }
 
 .interest-copy {
@@ -2793,10 +2832,41 @@ select {
 
 .ping-page-panel {
   max-width: 760px;
+  margin: 0 auto;
 }
 
 .ping-page-header h2 {
   margin-bottom: 8px;
+}
+
+.ping-page-panel label {
+  display: grid;
+  gap: 8px;
+  color: #102a43;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.ping-page-panel input,
+.ping-page-panel select,
+.ping-page-panel textarea {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid #cbd2d9;
+  border-radius: 16px;
+  background: #fff;
+  color: #102a43;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.ping-page-panel input:focus,
+.ping-page-panel select:focus,
+.ping-page-panel textarea:focus {
+  border-color: #1274d0;
+  box-shadow: 0 0 0 3px rgba(18, 116, 208, 0.14);
 }
 
 .ping-textarea {
@@ -2807,6 +2877,29 @@ select {
 .ping-submit-row {
   display: flex;
   justify-content: flex-end;
+}
+
+.ping-submit-row button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: #1274d0;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ping-submit-row button:hover {
+  background: #0b5fb3;
+}
+
+.ping-submit-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.ping-back-link {
+  text-align: center;
 }
 
 @media (max-width: 840px) {

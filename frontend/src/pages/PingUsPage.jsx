@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import packageJson from "../../package.json";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -17,6 +18,7 @@ const FEEDBACK_CATEGORIES = [
 ];
 
 export default function PingUsPage() {
+  const navigate = useNavigate();
   const { session } = useAuth();
   const fallbackName = useMemo(() => {
     if (session?.full_name) {
@@ -62,6 +64,15 @@ export default function PingUsPage() {
     }
   }
 
+  function goBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/dashboard");
+  }
+
   return (
     <main className="page-shell stack">
       <ClubPageHeader
@@ -70,6 +81,9 @@ export default function PingUsPage() {
       />
 
       <section className="panel stack ping-page-panel">
+        <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
+          ×
+        </button>
         <div className="ping-page-header">
           <h2>Ping Us</h2>
           <p className="helper-text">
@@ -131,6 +145,12 @@ export default function PingUsPage() {
             </button>
           </div>
         </form>
+
+        <div className="ping-back-link">
+          <button type="button" onClick={goBack}>
+            &lt; Back
+          </button>
+        </div>
       </section>
 
       <AppFooter />

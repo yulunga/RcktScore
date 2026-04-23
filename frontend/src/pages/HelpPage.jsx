@@ -1,18 +1,22 @@
 import React, { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import { useAuth } from "../hooks/useAuth";
 import { confirmPasswordReset, requestPasswordReset } from "../services/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function HelpPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
   const resetToken = searchParams.get("token") || "";
   const requestedSection = searchParams.get("section");
-  const defaultMode = searchParams.get("mode") === "reset" || resetToken
+  const canShowReset = !isAuthenticated;
+  const defaultMode = canShowReset && (searchParams.get("mode") === "reset" || resetToken)
     ? "reset"
-    : ["terms", "privacy"].includes(requestedSection)
+    : ["terms", "privacy", "cookies"].includes(requestedSection)
       ? requestedSection
       : "overview";
   const policyYear = new Date().getFullYear();
@@ -23,6 +27,15 @@ export default function HelpPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function goBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(isAuthenticated ? "/dashboard" : "/login");
+  }
 
   const resetIntro = useMemo(() => {
     if (resetToken) {
@@ -111,13 +124,15 @@ export default function HelpPage() {
           </div>
 
           <div className="help-nav" aria-label="Help sections">
-            <button
-              className={activeSection === "reset" ? "active" : ""}
-              type="button"
-              onClick={() => setActiveSection("reset")}
-            >
-              Reset Password
-            </button>
+            {canShowReset ? (
+              <button
+                className={activeSection === "reset" ? "active" : ""}
+                type="button"
+                onClick={() => setActiveSection("reset")}
+              >
+                Reset Password
+              </button>
+            ) : null}
             <button
               className={activeSection === "terms" ? "active" : ""}
               type="button"
@@ -132,9 +147,16 @@ export default function HelpPage() {
             >
               Privacy
             </button>
+            <button
+              className={activeSection === "cookies" ? "active" : ""}
+              type="button"
+              onClick={() => setActiveSection("cookies")}
+            >
+              Cookies
+            </button>
           </div>
 
-          {activeSection === "reset" ? (
+          {activeSection === "reset" && canShowReset ? (
             <section className="stack compact">
               <div className="panel-heading">
                 <h2>Password Reset</h2>
@@ -196,7 +218,10 @@ export default function HelpPage() {
           ) : null}
 
           {activeSection === "terms" ? (
-            <section className="help-copy stack compact">
+            <section className="help-copy stack compact policy-section">
+              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
+                ×
+              </button>
               <h2>Terms & Conditions</h2>
               <p>
                 <strong>Last updated:</strong> {policyYear}
@@ -459,7 +484,10 @@ export default function HelpPage() {
           ) : null}
 
           {activeSection === "privacy" ? (
-            <section className="help-copy stack compact">
+            <section className="help-copy stack compact policy-section">
+              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
+                ×
+              </button>
               <h2>Privacy Policy</h2>
               <p>
                 <strong>Last updated:</strong> {policyYear}
@@ -590,8 +618,100 @@ export default function HelpPage() {
             </section>
           ) : null}
 
+          {activeSection === "cookies" ? (
+            <section className="help-copy stack compact policy-section">
+              <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
+                ×
+              </button>
+              <h2>Cookie Policy</h2>
+              <p>
+                <strong>Last updated:</strong> {policyYear}
+              </p>
+              <h3>1. Introduction</h3>
+              <p>
+                This Cookie Policy explains how <strong>HitnScore</strong>, operated by <strong>ucingo</strong>{" "}
+                ("we", "our", "us"), uses cookies and similar technologies when you visit or use our
+                application.
+              </p>
+              <h3>2. What Are Cookies?</h3>
+              <p>
+                Cookies are small text files that are stored on your device when you access a website or
+                application. They help us provide core functionality, improve performance, and enhance your user
+                experience.
+              </p>
+              <h3>3. Types of Cookies We Use</h3>
+              <h4>3.1 Strictly Necessary Cookies</h4>
+              <p>These cookies are essential for the operation of the App and cannot be switched off.</p>
+              <p>They are used for functions such as:</p>
+              <ul>
+                <li>User authentication and login sessions</li>
+                <li>Security and fraud prevention</li>
+                <li>Maintaining session state while using the App</li>
+              </ul>
+              <p>These cookies do not require your consent.</p>
+              <h4>3.2 Functional Cookies</h4>
+              <p>These cookies allow the App to remember choices you make, such as:</p>
+              <ul>
+                <li>User preferences</li>
+                <li>Display settings</li>
+              </ul>
+              <p>They help improve your experience but are not strictly essential.</p>
+              <h4>3.3 Analytics Cookies (If Enabled)</h4>
+              <p>We may use analytics tools to understand how users interact with the App, such as:</p>
+              <ul>
+                <li>Pages visited</li>
+                <li>Features used</li>
+                <li>General usage patterns</li>
+              </ul>
+              <p>These cookies are only used if you provide consent.</p>
+              <h4>3.4 Marketing Cookies (If Enabled)</h4>
+              <p>
+                We may use cookies to support marketing communications and improve relevance of content. These
+                cookies will only be used if you explicitly opt in.
+              </p>
+              <h3>4. How We Use Cookies</h3>
+              <p>We use cookies to:</p>
+              <ul>
+                <li>Enable secure login and account functionality</li>
+                <li>Maintain your session while using the App</li>
+                <li>Improve performance and usability</li>
+                <li>Understand how the App is used, where consent is provided</li>
+              </ul>
+              <h3>5. Managing Your Cookie Preferences</h3>
+              <p>You can control and manage cookies in the following ways:</p>
+              <ul>
+                <li>Through your browser settings</li>
+                <li>Through any cookie consent banner presented when you first use the App</li>
+                <li>By adjusting your preferences within the App, where available</li>
+              </ul>
+              <p>You can choose to accept or reject non-essential cookies at any time.</p>
+              <h3>6. Third-Party Cookies</h3>
+              <p>
+                We may use trusted third-party services that place cookies on your device to support functionality
+                such as analytics or infrastructure services.
+              </p>
+              <p>Where third-party cookies are used:</p>
+              <ul>
+                <li>They will be clearly identified</li>
+                <li>They will only be activated where required consent has been obtained</li>
+              </ul>
+              <h3>7. Changes to This Policy</h3>
+              <p>
+                We may update this Cookie Policy from time to time. Any changes will be posted within the App with
+                an updated "Last updated" date.
+              </p>
+              <h3>8. Contact Us</h3>
+              <p>If you have any questions about our use of cookies, please contact:</p>
+              <p>
+                <strong>Email:</strong> <a href="mailto:hello@hitnscore.com">hello@hitnscore.com</a>
+              </p>
+            </section>
+          ) : null}
+
           <div className="help-login-link">
-            <Link to="/login">Back to Sign In</Link>
+            <button type="button" onClick={goBack}>
+              &lt; Back
+            </button>
           </div>
         </section>
       </div>

@@ -33,8 +33,15 @@ Already present:
 - login screen exists
 - session persistence exists
 - API envelope handling exists
-- dashboard can load active matches
-- live match screen is still placeholder-only
+- dashboard loads active, scheduled, and recent matches
+- scheduled matches can be started from the dashboard
+- live match scoring screen exists with score taps, stroke, let, undo, early end, serve-side toggle, details, completed-game strip, and event timeline
+
+Still outstanding for the first native release:
+
+- native timer/warm-up flow is not yet at web parity
+- first-server selection after warm-up is not yet implemented in native
+- native new-match setup remains out of scope for this release
 
 ## V1 Scope
 
@@ -192,7 +199,9 @@ Definition of done:
 1. `POST /login`
 2. `GET /dashboard/{organization_id}`
 
-### Must Be Added To Native Client
+### Present In Native Client
+
+These methods are now present in `APIClient.swift`:
 
 1. `GET /get_score/{match_id}`
 2. `POST /score_point`
@@ -238,5 +247,12 @@ Definition of done:
 
 ## Immediate Next Step
 
-Build `MatchScoringView.swift` as the first real native scoring screen using the
-same layout and control priority as the current mobile web app.
+Continue Milestone 4 by adding the native timer/warm-up flow to
+`MatchScoringView.swift`, including:
+
+1. warm-up ready overlay
+2. 60 second side-one warm-up
+3. side-swap prompt
+4. 60 second side-two warm-up
+5. first-server selection before match-live timing begins
+6. 90 second game-break overlay after each completed game
