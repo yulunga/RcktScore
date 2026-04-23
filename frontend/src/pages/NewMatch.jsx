@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
+import { COUNTRIES } from "../constants/countries";
 import {
   DEFAULT_PLAYER_SHIRT_COLORS,
   PLAYER_SHIRT_COLORS,
@@ -45,12 +46,12 @@ const initialFormState = {
   court_alias: "",
   player1_name: "",
   player1_surname: "",
-  // player1_country: "",
+  player1_country: "",
   player1_handedness: "right",
   player1_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player1,
   player2_name: "",
   player2_surname: "",
-  // player2_country: "",
+  player2_country: "",
   player2_handedness: "right",
   player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
   referee_name: "",
@@ -84,6 +85,12 @@ export default function NewMatch() {
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
+  const [playerCountryQueries, setPlayerCountryQueries] = useState({
+    player1: "",
+    player2: "",
+  });
+  const [activeCountryLookupField, setActiveCountryLookupField] = useState("");
+  const [activeCountryOptionIndex, setActiveCountryOptionIndex] = useState(-1);
   const [organizationType, setOrganizationType] = useState(() => inferOrganizationType(session));
   const [organizationPlan, setOrganizationPlan] = useState(
     () => session?.plan || (inferOrganizationType(session) === "personal" ? "personal_free" : "club_essentials"),
@@ -129,6 +136,18 @@ export default function NewMatch() {
     () => activeMatches.find((match) => String(match.court_id) === formState.court_id),
     [activeMatches, formState.court_id],
   );
+  const filteredPlayerCountries = useMemo(() => {
+    if (!activeCountryLookupField) {
+      return [];
+    }
+
+    const query = playerCountryQueries[activeCountryLookupField]?.trim().toLowerCase() || "";
+    if (!query) {
+      return COUNTRIES.slice(0, 8);
+    }
+
+    return COUNTRIES.filter((country) => country.toLowerCase().includes(query)).slice(0, 8);
+  }, [activeCountryLookupField, playerCountryQueries]);
   const shouldScheduleMatch = !isPersonalAccount && Boolean(formState.schedule_match || activeCourtMatch);
   const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
 
@@ -144,6 +163,96 @@ export default function NewMatch() {
       ...current,
       [name]: checked ? "left" : "right",
     }));
+  }
+
+  function handlePlayerCountryInputChange(playerKey, value) {
+    setPlayerCountryQueries((current) => ({
+      ...current,
+      [playerKey]: value,
+    }));
+    setActiveCountryLookupField(playerKey);
+    setActiveCountryOptionIndex(0);
+    setFormState((current) => ({
+      ...current,
+      [`${playerKey}_country`]: "",
+    }));
+  }
+
+  function handlePlayerCountrySelect(playerKey, country) {
+    setPlayerCountryQueries((current) => ({
+      ...current,
+      [playerKey]: country,
+    }));
+    setActiveCountryLookupField("");
+    setActiveCountryOptionIndex(-1);
+    setFormState((current) => ({
+      ...current,
+      [`${playerKey}_country`]: country,
+    }));
+  }
+
+  function handlePlayerCountryBlur(playerKey) {
+    window.setTimeout(() => {
+      setActiveCountryLookupField((current) => (current === playerKey ? "" : current));
+      setActiveCountryOptionIndex(-1);
+      setPlayerCountryQueries((current) => {
+        if (formState[`${playerKey}_country`]) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [playerKey]: "",
+        };
+      });
+    }, 120);
+  }
+
+  function handlePlayerCountryKeyDown(playerKey, event) {
+    if (activeCountryLookupField !== playerKey && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+      if (filteredPlayerCountries.length > 0) {
+        event.preventDefault();
+        setActiveCountryLookupField(playerKey);
+        setActiveCountryOptionIndex(0);
+      }
+      return;
+    }
+
+    if (activeCountryLookupField !== playerKey || filteredPlayerCountries.length === 0) {
+      if (event.key === "Escape") {
+        setActiveCountryLookupField("");
+        setActiveCountryOptionIndex(-1);
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveCountryOptionIndex((current) => (current + 1) % filteredPlayerCountries.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveCountryOptionIndex((current) => (
+        current <= 0 ? filteredPlayerCountries.length - 1 : current - 1
+      ));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (activeCountryOptionIndex >= 0 && activeCountryOptionIndex < filteredPlayerCountries.length) {
+        event.preventDefault();
+        handlePlayerCountrySelect(playerKey, filteredPlayerCountries[activeCountryOptionIndex]);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setActiveCountryLookupField("");
+      setActiveCountryOptionIndex(-1);
+    }
   }
 
   function handleHandicapToggle(checked) {
@@ -243,6 +352,13 @@ export default function NewMatch() {
   }, [organizationId, session?.organization_type]);
 
   useEffect(() => {
+    setPlayerCountryQueries({
+      player1: formState.player1_country || "",
+      player2: formState.player2_country || "",
+    });
+  }, [formState.player1_country, formState.player2_country]);
+
+  useEffect(() => {
     async function loadActiveMatches() {
       if (!organizationId) {
         return;
@@ -319,6 +435,15 @@ export default function NewMatch() {
 
     return () => window.clearTimeout(timeoutId);
   }, [activeLookupField, organizationId, player2LookupQuery]);
+
+  useEffect(() => {
+    if (!activeCountryLookupField || filteredPlayerCountries.length === 0) {
+      setActiveCountryOptionIndex(-1);
+      return;
+    }
+
+    setActiveCountryOptionIndex(0);
+  }, [activeCountryLookupField, filteredPlayerCountries]);
 
   useEffect(() => {
     if (
@@ -434,6 +559,16 @@ export default function NewMatch() {
       return;
     }
 
+    if (playerCountryQueries.player1.trim() && !formState.player1_country) {
+      setSetupNotice("Choose Player 1's country from the search results.");
+      return;
+    }
+
+    if (playerCountryQueries.player2.trim() && !formState.player2_country) {
+      setSetupNotice("Choose Player 2's country from the search results.");
+      return;
+    }
+
     const response = await startMatch({
       ...formState,
       player1_shirt_color: canChooseShirtColors
@@ -536,6 +671,58 @@ export default function NewMatch() {
             </div>
           </div>
 
+          <div className="match-setup-row match-setup-row--country">
+            <div className="field">
+              <label htmlFor="player1_country">Country</label>
+              <input
+                aria-activedescendant={
+                  activeCountryLookupField === "player1" && activeCountryOptionIndex >= 0
+                    ? `player1-country-option-${activeCountryOptionIndex}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls="player1-country-suggestions"
+                aria-expanded={activeCountryLookupField === "player1" ? "true" : "false"}
+                autoComplete="off"
+                id="player1_country"
+                placeholder="Search country"
+                role="combobox"
+                value={playerCountryQueries.player1}
+                onBlur={() => handlePlayerCountryBlur("player1")}
+                onFocus={() => {
+                  setActiveCountryLookupField("player1");
+                  setActiveCountryOptionIndex(0);
+                }}
+                onChange={(event) => handlePlayerCountryInputChange("player1", event.target.value)}
+                onKeyDown={(event) => handlePlayerCountryKeyDown("player1", event)}
+              />
+              {activeCountryLookupField === "player1" && filteredPlayerCountries.length ? (
+                <div
+                  className="lookup-list settings-lookup-list"
+                  id="player1-country-suggestions"
+                  role="listbox"
+                  aria-label="Player 1 country suggestions"
+                >
+                  {filteredPlayerCountries.map((country, index) => (
+                    <button
+                      aria-selected={activeCountryOptionIndex === index}
+                      className={`lookup-item${activeCountryOptionIndex === index ? " lookup-item--active" : ""}`}
+                      id={`player1-country-option-${index}`}
+                      key={`player1-country-${country}`}
+                      role="option"
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => setActiveCountryOptionIndex(index)}
+                      onClick={() => handlePlayerCountrySelect("player1", country)}
+                    >
+                      {country}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           {activeLookupField === "player1" && playerSuggestions.length ? (
             <div className="match-setup-row match-setup-row--lookup">
               <div className="lookup-list" role="listbox" aria-label="Player 1 suggestions">
@@ -595,6 +782,58 @@ export default function NewMatch() {
                 />
                 Lefty
               </label>
+            </div>
+          </div>
+
+          <div className="match-setup-row match-setup-row--country">
+            <div className="field">
+              <label htmlFor="player2_country">Country</label>
+              <input
+                aria-activedescendant={
+                  activeCountryLookupField === "player2" && activeCountryOptionIndex >= 0
+                    ? `player2-country-option-${activeCountryOptionIndex}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls="player2-country-suggestions"
+                aria-expanded={activeCountryLookupField === "player2" ? "true" : "false"}
+                autoComplete="off"
+                id="player2_country"
+                placeholder="Search country"
+                role="combobox"
+                value={playerCountryQueries.player2}
+                onBlur={() => handlePlayerCountryBlur("player2")}
+                onFocus={() => {
+                  setActiveCountryLookupField("player2");
+                  setActiveCountryOptionIndex(0);
+                }}
+                onChange={(event) => handlePlayerCountryInputChange("player2", event.target.value)}
+                onKeyDown={(event) => handlePlayerCountryKeyDown("player2", event)}
+              />
+              {activeCountryLookupField === "player2" && filteredPlayerCountries.length ? (
+                <div
+                  className="lookup-list settings-lookup-list"
+                  id="player2-country-suggestions"
+                  role="listbox"
+                  aria-label="Player 2 country suggestions"
+                >
+                  {filteredPlayerCountries.map((country, index) => (
+                    <button
+                      aria-selected={activeCountryOptionIndex === index}
+                      className={`lookup-item${activeCountryOptionIndex === index ? " lookup-item--active" : ""}`}
+                      id={`player2-country-option-${index}`}
+                      key={`player2-country-${country}`}
+                      role="option"
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() => setActiveCountryOptionIndex(index)}
+                      onClick={() => handlePlayerCountrySelect("player2", country)}
+                    >
+                      {country}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 

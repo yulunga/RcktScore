@@ -570,6 +570,16 @@ textarea {
   background: #eef5fc;
 }
 
+.lookup-item--active {
+  background: #eef5fc;
+}
+
+.settings-lookup-list {
+  grid-column: auto;
+  max-width: none;
+  margin-top: 6px;
+}
+
 .match-setup-checkbox-field {
   justify-content: start;
   align-self: end;

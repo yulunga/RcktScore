@@ -11,6 +11,7 @@ export default function Timer({
   label = "Match Clock",
   seconds = 0,
   running = false,
+  disabled = false,
   onToggle,
   onSkip,
   skipLabel = "",
@@ -26,6 +27,7 @@ export default function Timer({
         </div>
         <button
           className={`timer-chip timer-chip--button${running ? "" : " timer-chip--paused"}`}
+          disabled={disabled}
           type="button"
           onClick={onToggle}
         >

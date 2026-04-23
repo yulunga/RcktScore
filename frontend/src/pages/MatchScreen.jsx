@@ -125,6 +125,12 @@ function clearStoredTimerState(matchId) {
   }
 }
 
+function formatSeconds(value) {
+  const minutes = String(Math.floor(Math.max(0, value) / 60)).padStart(2, "0");
+  const seconds = String(Math.max(0, value) % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 function advanceTimerSnapshot(snapshot) {
   if (!snapshot?.running) {
     return snapshot;
@@ -221,6 +227,8 @@ export default function MatchScreen() {
   const live = currentMatch?.state ?? {};
   const gameHistory = live.game_history || [];
   const serviceSide = live.service_side || "Right";
+  const matchComplete = currentMatch?.state?.match_complete || currentMatch?.status === "completed";
+  const recordedMatchDurationSeconds = live.match_duration_seconds ?? currentMatch?.match_duration_seconds ?? 0;
   const isPersonalAccount = inferOrganizationType(session) === "personal";
   const canChoosePlayerShirtColors = canChooseShirtColors(session);
   const displayUrl = !isPersonalAccount ? `${window.location.origin}/display?match=${matchId}` : "";
@@ -239,6 +247,7 @@ export default function MatchScreen() {
   const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(false);
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
+  const durationSyncRef = useRef({});
 
   useEffect(() => {
     loadMatch(matchId);
@@ -311,7 +320,7 @@ export default function MatchScreen() {
       return;
     }
 
-    if (currentMatch?.state?.match_complete || currentMatch?.status === "completed") {
+    if (matchComplete) {
       clearStoredTimerState(currentMatch.id);
       return;
     }
@@ -330,6 +339,7 @@ export default function MatchScreen() {
     timerPhase,
     timerRunning,
     timerSeconds,
+    matchComplete,
   ]);
 
   useEffect(() => {
@@ -376,7 +386,68 @@ export default function MatchScreen() {
     }
   }, [timerPhase, timerRunning, timerSeconds]);
 
+  function resolveMatchDurationSeconds() {
+    if (timerPhase === "match_live") {
+      return timerSeconds;
+    }
+
+    if (currentMatch?.id) {
+      const storedState = readStoredTimerState(currentMatch.id);
+      if (storedState) {
+        const advancedState = advanceTimerSnapshot(storedState);
+        if (advancedState.phase === "match_live") {
+          return advancedState.seconds;
+        }
+      }
+    }
+
+    return timerSeconds;
+  }
+
+  useEffect(() => {
+    if (!currentMatch?.id || !matchComplete) {
+      return;
+    }
+
+    setTimerRunning(false);
+
+    if (recordedMatchDurationSeconds > 0) {
+      setTimerSeconds(recordedMatchDurationSeconds);
+      clearStoredTimerState(currentMatch.id);
+      durationSyncRef.current[currentMatch.id] = true;
+      return;
+    }
+
+    if (durationSyncRef.current[currentMatch.id]) {
+      return;
+    }
+
+    const finalDuration = Math.max(0, resolveMatchDurationSeconds());
+    setTimerSeconds(finalDuration);
+    clearStoredTimerState(currentMatch.id);
+    durationSyncRef.current[currentMatch.id] = true;
+
+    if (finalDuration > 0) {
+      void sendEventAction(matchId, "timer", {
+        match_duration_seconds: finalDuration,
+        note: "Match duration recorded",
+      });
+    }
+  }, [
+    currentMatch?.id,
+    matchComplete,
+    matchId,
+    recordedMatchDurationSeconds,
+    sendEventAction,
+    timerPhase,
+    timerSeconds,
+  ]);
+
   const timerLabel = useMemo(() => {
+    if (matchComplete) {
+      return "Match Time";
+    }
+
     if (timerPhase === "warmup_ready") {
       return "Warm-Up Ready";
     }
@@ -394,9 +465,15 @@ export default function MatchScreen() {
     }
 
     return "";
-  }, [timerPhase]);
+  }, [matchComplete, timerPhase]);
 
   const timerHelperText = useMemo(() => {
+    if (matchComplete) {
+      return recordedMatchDurationSeconds > 0
+        ? `Recorded total match time: ${formatSeconds(recordedMatchDurationSeconds)}`
+        : "Recording total match time...";
+    }
+
     if (timerPhase === "warmup_ready") {
       return "Warm-up starts when both players are ready.";
     }
@@ -410,7 +487,7 @@ export default function MatchScreen() {
     }
 
     return "Tap the clock to pause or resume the match.";
-  }, [timerPhase]);
+  }, [matchComplete, recordedMatchDurationSeconds, timerPhase]);
 
   const timerSkipLabel = useMemo(() => {
     if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
@@ -768,7 +845,13 @@ export default function MatchScreen() {
               }
               onUndo={() => undoLastAction(matchId)}
               onEndMatch={async (payload) => {
-                const updatedMatch = await endMatch(matchId, payload);
+                const finalDuration = Math.max(0, resolveMatchDurationSeconds());
+                setTimerRunning(false);
+                setTimerSeconds(finalDuration);
+                const updatedMatch = await endMatch(matchId, {
+                  ...payload,
+                  match_duration_seconds: finalDuration,
+                });
                 if (updatedMatch?.status === "completed") {
                   navigate("/dashboard");
                 }
@@ -777,12 +860,13 @@ export default function MatchScreen() {
             />
           </Scoreboard>
           <Timer
+            disabled={matchComplete}
             helperText={timerHelperText}
             label={timerLabel}
             onSkip={timerSkipLabel ? handleSkipTimedPhase : undefined}
             onToggle={handleToggleTimer}
-            running={timerRunning}
-            seconds={timerSeconds}
+            running={timerRunning && !matchComplete}
+            seconds={matchComplete && recordedMatchDurationSeconds > 0 ? recordedMatchDurationSeconds : timerSeconds}
             skipLabel={timerSkipLabel}
             title="Match Timer"
           />

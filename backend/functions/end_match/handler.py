@@ -21,6 +21,7 @@ def lambda_handler(event, context):
             source=payload.get("source", "lambda"),
             reason=payload.get("reason"),
             ended_early=payload.get("ended_early"),
+            match_duration_seconds=payload.get("match_duration_seconds"),
         )
 
     if not match:

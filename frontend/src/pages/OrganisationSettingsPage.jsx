@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import SessionBar from "../components/SessionBar";
+import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
 import {
   createOrganizationCourt,
@@ -75,6 +76,9 @@ export default function OrganisationSettingsPage() {
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [countryQuery, setCountryQuery] = useState("");
+  const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
+  const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
 
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
@@ -95,6 +99,23 @@ export default function OrganisationSettingsPage() {
 
     return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
   }, [organizationForm.org_address, settings?.organization?.org_address]);
+  const filteredCountries = useMemo(() => {
+    const query = countryQuery.trim().toLowerCase();
+    if (!query) {
+      return COUNTRIES.slice(0, 8);
+    }
+
+    return COUNTRIES.filter((country) => country.toLowerCase().includes(query)).slice(0, 8);
+  }, [countryQuery]);
+
+  useEffect(() => {
+    if (!showCountrySuggestions || filteredCountries.length === 0) {
+      setActiveCountryIndex(-1);
+      return;
+    }
+
+    setActiveCountryIndex(0);
+  }, [filteredCountries, showCountrySuggestions]);
 
   if (organizationId && !isAdmin && !isPersonalSession) {
     return null;
@@ -268,6 +289,8 @@ export default function OrganisationSettingsPage() {
       country: currentPersonalUser.country || "",
       city_location: currentPersonalUser.city_location || "",
     });
+    setCountryQuery(currentPersonalUser.country || "");
+    setActiveCountryIndex(-1);
   }, [
     currentPersonalUser.city_location,
     currentPersonalUser.country,
@@ -280,6 +303,12 @@ export default function OrganisationSettingsPage() {
 
   async function handlePersonalProfileSubmit(event) {
     event.preventDefault();
+    if (countryQuery.trim() && !personalProfileForm.country) {
+      setMessage("");
+      setError("Choose a country from the search results.");
+      return;
+    }
+
     await runMutation(
       "personal-profile",
       () => updatePersonalProfile(organizationId, {
@@ -313,6 +342,70 @@ export default function OrganisationSettingsPage() {
       setError(requestError.message || "Unable to request password reset right now.");
     } finally {
       setSavingSection("");
+    }
+  }
+
+  function handleCountryInputChange(value) {
+    setCountryQuery(value);
+    setShowCountrySuggestions(true);
+    setActiveCountryIndex(0);
+    setPersonalProfileForm((current) => ({
+      ...current,
+      country: "",
+    }));
+  }
+
+  function handleCountrySelect(country) {
+    setCountryQuery(country);
+    setShowCountrySuggestions(false);
+    setActiveCountryIndex(-1);
+    setPersonalProfileForm((current) => ({
+      ...current,
+      country,
+    }));
+  }
+
+  function handleCountryKeyDown(event) {
+    if (!showCountrySuggestions && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+      if (filteredCountries.length > 0) {
+        event.preventDefault();
+        setShowCountrySuggestions(true);
+        setActiveCountryIndex(0);
+      }
+      return;
+    }
+
+    if (!showCountrySuggestions || filteredCountries.length === 0) {
+      if (event.key === "Escape") {
+        setShowCountrySuggestions(false);
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveCountryIndex((current) => (current + 1) % filteredCountries.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveCountryIndex((current) => (current <= 0 ? filteredCountries.length - 1 : current - 1));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (activeCountryIndex >= 0 && activeCountryIndex < filteredCountries.length) {
+        event.preventDefault();
+        handleCountrySelect(filteredCountries[activeCountryIndex]);
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setShowCountrySuggestions(false);
+      setActiveCountryIndex(-1);
     }
   }
 
@@ -357,10 +450,18 @@ export default function OrganisationSettingsPage() {
           <section className="panel stack settings-primary">
             <div className="panel-heading">
               <h2>Profile</h2>
-              <p className="helper-text">Basic account details used for personal scoring.</p>
+              <p className="helper-text">Basic account details.</p>
             </div>
             <form className="stack" onSubmit={handlePersonalProfileSubmit}>
               <div className="field-grid">
+                <div className="field settings-field-wide">
+                  <label htmlFor="personal_username">User</label>
+                  <input
+                    id="personal_username"
+                    readOnly
+                    value={session?.username || "Not available"}
+                  />
+                </div>
                 <div className="field">
                   <label htmlFor="personal_first_name">Name</label>
                   <input
@@ -385,32 +486,12 @@ export default function OrganisationSettingsPage() {
                     }))}
                   />
                 </div>
-                <div className="field">
+                <div className="field settings-field-wide">
                   <label htmlFor="personal_email">Email</label>
                   <input
                     id="personal_email"
                     readOnly
                     value={personalEmail || "Not available"}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="personal_username">User</label>
-                  <input
-                    id="personal_username"
-                    readOnly
-                    value={session?.username || "Not available"}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="personal_country">Country</label>
-                  <input
-                    id="personal_country"
-                    placeholder="Country"
-                    value={personalProfileForm.country}
-                    onChange={(event) => setPersonalProfileForm((current) => ({
-                      ...current,
-                      country: event.target.value,
-                    }))}
                   />
                 </div>
                 <div className="field">
@@ -424,6 +505,60 @@ export default function OrganisationSettingsPage() {
                       city_location: event.target.value,
                     }))}
                   />
+                </div>
+                <div className="field">
+                  <label htmlFor="personal_country">Country</label>
+                  <input
+                    aria-activedescendant={
+                      showCountrySuggestions && activeCountryIndex >= 0
+                        ? `personal-country-option-${activeCountryIndex}`
+                        : undefined
+                    }
+                    aria-autocomplete="list"
+                    aria-controls="personal-country-suggestions"
+                    aria-expanded={showCountrySuggestions ? "true" : "false"}
+                    autoComplete="off"
+                    id="personal_country"
+                    placeholder="Search country"
+                    role="combobox"
+                    value={countryQuery}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setShowCountrySuggestions(false);
+                        setActiveCountryIndex(-1);
+                        if (!personalProfileForm.country) {
+                          setCountryQuery("");
+                        }
+                      }, 120);
+                    }}
+                    onFocus={() => setShowCountrySuggestions(true)}
+                    onChange={(event) => handleCountryInputChange(event.target.value)}
+                    onKeyDown={handleCountryKeyDown}
+                  />
+                  {showCountrySuggestions && filteredCountries.length ? (
+                    <div
+                      className="lookup-list settings-lookup-list"
+                      id="personal-country-suggestions"
+                      role="listbox"
+                      aria-label="Country suggestions"
+                    >
+                      {filteredCountries.map((country, index) => (
+                        <button
+                          aria-selected={activeCountryIndex === index}
+                          className={`lookup-item${activeCountryIndex === index ? " lookup-item--active" : ""}`}
+                          id={`personal-country-option-${index}`}
+                          key={country}
+                          role="option"
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onMouseEnter={() => setActiveCountryIndex(index)}
+                          onClick={() => handleCountrySelect(country)}
+                        >
+                          {country}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div className="dashboard-item-meta">

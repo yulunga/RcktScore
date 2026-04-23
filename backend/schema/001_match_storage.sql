@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS matches (
     winner_name text,
     ended_early boolean NOT NULL DEFAULT false,
     end_reason text,
+    match_duration_seconds integer NOT NULL DEFAULT 0,
     status text NOT NULL DEFAULT 'active',
     created_at timestamptz NOT NULL DEFAULT now(),
     completed_at timestamptz,
@@ -67,6 +68,7 @@ ALTER TABLE matches
     ADD COLUMN IF NOT EXISTS winner_name text,
     ADD COLUMN IF NOT EXISTS ended_early boolean NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS end_reason text,
+    ADD COLUMN IF NOT EXISTS match_duration_seconds integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS completed_at timestamptz;
 
 ALTER TABLE matches

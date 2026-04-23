@@ -170,6 +170,8 @@ def _event_summary(match_row, event_type, payload):
             return f"{match_row['player2_name']} selected to serve first"
         return f"{match_row['player1_name']} selected to serve first"
     if event_type == "timer":
+        if "match_duration_seconds" in payload:
+            return f"Match duration recorded: {_coerce_int(payload.get('match_duration_seconds'))} seconds"
         return payload.get("note") or "Timer event"
     return event_type.replace("_", " ").title()
 
@@ -223,6 +225,7 @@ def _initial_state(match_row):
         "winner_name": match_row.get("winner_name"),
         "ended_early": bool(match_row.get("ended_early")),
         "match_end_reason": match_row.get("end_reason"),
+        "match_duration_seconds": _coerce_int(match_row.get("match_duration_seconds")),
         "events": [],
     }
 
@@ -340,6 +343,16 @@ def _build_state(match_row, event_rows):
             state["player1_games_won"] = _coerce_int(payload.get("player1_games_won"), state["player1_games_won"])
             state["player2_games_won"] = _coerce_int(payload.get("player2_games_won"), state["player2_games_won"])
             state["current_game_number"] = _coerce_int(payload.get("current_game_number"), state["current_game_number"])
+            state["match_duration_seconds"] = _coerce_int(
+                payload.get("match_duration_seconds"),
+                state["match_duration_seconds"],
+            )
+
+        elif event_type == "timer":
+            state["match_duration_seconds"] = _coerce_int(
+                payload.get("match_duration_seconds"),
+                state["match_duration_seconds"],
+            )
 
     return state
 
@@ -387,6 +400,7 @@ def _serialize_match(match_row, event_rows):
         "winner_name": match_row.get("winner_name"),
         "ended_early": bool(match_row.get("ended_early")),
         "end_reason": match_row.get("end_reason"),
+        "match_duration_seconds": _coerce_int(match_row.get("match_duration_seconds")),
         "status": match_row["status"],
         "created_at": match_row["created_at"].isoformat(),
         "completed_at": match_row["completed_at"].isoformat() if match_row.get("completed_at") else None,
@@ -841,6 +855,7 @@ def _update_match_summary(connection, match_id, state, completed_at=None):
                 winner_name = %(winner_name)s,
                 ended_early = %(ended_early)s,
                 end_reason = %(end_reason)s,
+                match_duration_seconds = %(match_duration_seconds)s,
                 status = %(status)s,
                 completed_at = %(completed_at)s,
                 updated_at = %(updated_at)s
@@ -856,6 +871,7 @@ def _update_match_summary(connection, match_id, state, completed_at=None):
                 "winner_name": state.get("winner_name") if state.get("match_complete") else None,
                 "ended_early": bool(state.get("ended_early")) if state.get("match_complete") else False,
                 "end_reason": state.get("match_end_reason") if state.get("match_complete") else None,
+                "match_duration_seconds": _coerce_int(state.get("match_duration_seconds")),
                 "status": status,
                 "completed_at": effective_completed_at if state.get("match_complete") else None,
                 "updated_at": now,
@@ -986,7 +1002,7 @@ def _append_event(connection, match_id, event_type, payload, source="api", state
     match_row = _fetch_match_row(connection, match_id)
     if not match_row:
         return None
-    if match_row["status"] == "completed" and event_type != "match_ended":
+    if match_row["status"] == "completed" and event_type not in {"match_ended", "timer"}:
         raise ValueError("Match is already complete")
 
     with connection.cursor() as cursor:
@@ -1140,12 +1156,42 @@ def _update_match_settings(connection, match_id, payload, source="api"):
     return get_match(connection, match_id)
 
 
+def _record_match_duration(connection, match_id, payload, source="api"):
+    match = get_match(connection, match_id)
+    if not match:
+        return None
+
+    duration_seconds = _coerce_int(
+        payload.get("match_duration_seconds"),
+        match.get("match_duration_seconds") or match["state"].get("match_duration_seconds"),
+    )
+    state_override = {
+        **match["state"],
+        "match_duration_seconds": duration_seconds,
+    }
+
+    return _append_event(
+        connection,
+        match_id,
+        "timer",
+        {
+            **payload,
+            "match_duration_seconds": duration_seconds,
+        },
+        source=source,
+        state_override=state_override,
+    )
+
+
 def event_action(connection, match_id, action_type, payload, source="api"):
     if action_type not in ALLOWED_ACTION_TYPES:
         raise ValueError(f"action_type must be one of: {', '.join(sorted(ALLOWED_ACTION_TYPES))}")
 
     if action_type == "match_settings":
         return _update_match_settings(connection, match_id, payload, source=source)
+
+    if action_type == "timer":
+        return _record_match_duration(connection, match_id, payload, source=source)
 
     if action_type == "stroke":
         scorer_side = payload.get("player_side")
@@ -1211,7 +1257,7 @@ def undo_last_action(connection, match_id):
     return get_match(connection, match_id)
 
 
-def end_match(connection, match_id, source="api", reason=None, ended_early=None):
+def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
     match = get_match(connection, match_id)
     if not match:
         return None
@@ -1229,6 +1275,10 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None)
         "winner_name": winner_name,
         "ended_early": final_ended_early,
         "match_end_reason": final_reason,
+        "match_duration_seconds": _coerce_int(
+            match_duration_seconds,
+            state.get("match_duration_seconds"),
+        ),
     }
 
     payload = {
@@ -1242,6 +1292,10 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None)
         "player1_games_won": state["player1_games_won"],
         "player2_games_won": state["player2_games_won"],
         "current_game_number": state["current_game_number"],
+        "match_duration_seconds": _coerce_int(
+            match_duration_seconds,
+            state.get("match_duration_seconds"),
+        ),
     }
 
     return _append_event(
