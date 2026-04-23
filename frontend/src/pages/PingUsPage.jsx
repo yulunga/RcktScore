@@ -182,7 +182,6 @@ export default function PingUsPage() {
                 value={form.email}
                 onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               />
-              {isLoggedIn ? <span className="helper-text">Using your account email.</span> : null}
             </label>
           </div>
 

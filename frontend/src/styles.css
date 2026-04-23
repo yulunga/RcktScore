@@ -2876,6 +2876,12 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.settings-secondary-stack {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
 .settings-header-row {
   display: flex;
   align-items: flex-start;
@@ -2886,6 +2892,10 @@ textarea {
 
 .settings-field-wide {
   grid-column: 1 / -1;
+}
+
+.settings-field-single {
+  grid-column: 1;
 }
 
 .settings-input-compact {
@@ -2914,6 +2924,18 @@ textarea {
 .settings-success {
   background: #e6f7ed;
   color: #0f6b38;
+}
+
+.panel-heading--subsection h3 {
+  margin: 0;
+  color: #102a43;
+  font-size: 1.05rem;
+}
+
+.settings-ghost-panel {
+  min-height: 140px;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .game-settings-grid {
@@ -3027,8 +3049,8 @@ textarea {
 }
 
 .ping-page-panel {
-  max-width: 680px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
 }
 
 .ping-page-panel .ping-page-header,

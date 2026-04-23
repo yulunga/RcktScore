@@ -454,7 +454,7 @@ export default function OrganisationSettingsPage() {
             </div>
             <form className="stack" onSubmit={handlePersonalProfileSubmit}>
               <div className="field-grid">
-                <div className="field settings-field-wide">
+                <div className="field settings-field-single">
                   <label htmlFor="personal_username">Username</label>
                   <input
                     className="settings-input-compact"
@@ -487,7 +487,7 @@ export default function OrganisationSettingsPage() {
                     }))}
                   />
                 </div>
-                <div className="field settings-field-wide">
+                <div className="field settings-field-single">
                   <label htmlFor="personal_email">Email</label>
                   <input
                     className="settings-input-compact"
@@ -571,39 +571,41 @@ export default function OrganisationSettingsPage() {
             </form>
           </section>
 
-          <section className="panel stack">
-            <div className="panel-heading">
-              <h2>Account Access</h2>
-              <p className="helper-text">
-                Send a secure password reset link to your account email.
-              </p>
-            </div>
-            <div className="dashboard-item">
-              <div className="dashboard-item-head">
-                <strong>Password Reset</strong>
-                <span className="status-pill">Email link</span>
+          <div className="settings-secondary-stack">
+            <section className="panel stack">
+              <div className="panel-heading">
+                <h2>Account Access</h2>
+                <p className="helper-text">
+                  Send a secure password reset link to your account email.
+                </p>
               </div>
-              <div className="dashboard-item-meta">
-                <span>{personalEmail || "No account email available"}</span>
-                <span>The link will let you choose a new password securely.</span>
+              <div className="dashboard-item">
+                <div className="dashboard-item-head">
+                  <strong>Password Reset</strong>
+                  <span className="status-pill">Email link</span>
+                </div>
+                <div className="dashboard-item-meta">
+                  <span>{personalEmail || "No account email available"}</span>
+                  <span>The link will let you choose a new password securely.</span>
+                </div>
+                <div className="button-row">
+                  <button
+                    className="personal-password-reset-button"
+                    disabled={savingSection === "personal-password-reset" || !personalEmail}
+                    type="button"
+                    onClick={handlePersonalPasswordResetRequest}
+                  >
+                    {savingSection === "personal-password-reset" ? "Sending..." : "Send Reset"}
+                  </button>
+                </div>
               </div>
-              <div className="button-row">
-                <button
-                  className="personal-password-reset-button"
-                  disabled={savingSection === "personal-password-reset" || !personalEmail}
-                  type="button"
-                  onClick={handlePersonalPasswordResetRequest}
-                >
-                  {savingSection === "personal-password-reset" ? "Sending..." : "Send Reset"}
-                </button>
-              </div>
-            </div>
-          </section>
+            </section>
+            <section aria-hidden="true" className="panel settings-ghost-panel" />
+          </div>
 
           <section className="panel stack">
             <div className="panel-heading">
               <h2>Upgrade Options</h2>
-              <p className="helper-text">Personal scoring is free. Upgrade when you need deeper history or club tools.</p>
             </div>
             <article className="dashboard-item">
               <div className="dashboard-item-head">
@@ -615,6 +617,10 @@ export default function OrganisationSettingsPage() {
                 <span>Account: Single-user personal workspace</span>
               </div>
             </article>
+            <div className="panel-heading panel-heading--subsection">
+              <h3>Upgrade Options</h3>
+              <p className="helper-text">Upgrade when you need deeper history or club tools.</p>
+            </div>
             <div className="dashboard-list">
               <article className="dashboard-item">
                 <div className="dashboard-item-head">
