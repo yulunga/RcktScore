@@ -12,6 +12,15 @@ struct DashboardView: View {
     @State private var startingScheduledMatchID: String?
     @State private var navigationTarget: MatchRoute?
 
+    private var session: UserSession? { container.sessionStore.session }
+    private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
+    private var historyTitle: String { isPersonalAccount ? "Match History" : "Recent Matches" }
+    private var historySubtitle: String {
+        isPersonalAccount
+            ? "Completed matches available on your current plan."
+            : "Completed matches and recent activity."
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -35,21 +44,25 @@ struct DashboardView: View {
 
                     dashboardSection(
                         title: "Active Matches",
-                        subtitle: "Matches currently in progress for this organisation."
+                        subtitle: isPersonalAccount
+                            ? "Your active personal matches."
+                            : "Matches currently in progress for this organisation."
                     ) {
                         activeMatchesContent
                     }
 
-                    dashboardSection(
-                        title: "Scheduled Matches",
-                        subtitle: "Matches queued and ready to start."
-                    ) {
-                        scheduledMatchesContent
+                    if !isPersonalAccount {
+                        dashboardSection(
+                            title: "Scheduled Matches",
+                            subtitle: "Matches queued and ready to start."
+                        ) {
+                            scheduledMatchesContent
+                        }
                     }
 
                     dashboardSection(
-                        title: "Recent Matches",
-                        subtitle: "Completed matches and recent activity."
+                        title: historyTitle,
+                        subtitle: historySubtitle
                     ) {
                         recentMatchesContent
                     }
@@ -94,7 +107,7 @@ struct DashboardView: View {
                                 .font(.system(size: 28, weight: .heavy, design: .rounded))
                                 .foregroundStyle(Color.dashboardBrand)
 
-                            Text("Live scoring dashboard")
+                            Text(isPersonalAccount ? "Personal scoring dashboard" : "Live scoring dashboard")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(.secondary)
                         }
@@ -116,7 +129,9 @@ struct DashboardView: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
 
-                Text(container.sessionStore.session?.organizationName ?? "Unknown organisation")
+                Text(isPersonalAccount
+                     ? (session?.planDisplayName ?? "Personal Free")
+                     : (container.sessionStore.session?.organizationName ?? "Unknown organisation"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -160,10 +175,12 @@ struct DashboardView: View {
                         dashboardMatchCard(
                             match,
                             subtitle: "Resume live scoring",
+                            detailLine: nil,
                             statusLabel: "Active",
                             statusColor: .dashboardActiveStatus,
                             actionTitle: "Open",
-                            actionTint: .dashboardBrand
+                            actionTint: .dashboardBrand,
+                            showCourtName: !isPersonalAccount
                         )
                     }
                     .buttonStyle(.plain)
@@ -187,6 +204,7 @@ struct DashboardView: View {
                     dashboardMatchCard(
                         match,
                         subtitle: match.bestOf != nil ? "Best of \(match.bestOf ?? 1)" : "Ready to start",
+                        detailLine: nil,
                         statusLabel: "Scheduled",
                         statusColor: .dashboardBrand.opacity(0.72),
                         actionTitle: startingScheduledMatchID == match.id ? "Starting..." : "Start",
@@ -217,11 +235,13 @@ struct DashboardView: View {
                     } label: {
                         dashboardMatchCard(
                             match,
-                            subtitle: match.updatedAt.map(formatDate) ?? "Completed match",
-                            statusLabel: "Recent",
-                            statusColor: .dashboardMutedStatus,
+                            subtitle: historyWinnerLine(for: match),
+                            detailLine: historyScoreLine(for: match),
+                            statusLabel: "Completed",
+                            statusColor: .dashboardCompletedStatus,
                             actionTitle: "View",
-                            actionTint: .dashboardBrand
+                            actionTint: .dashboardBrand,
+                            showCourtName: !isPersonalAccount
                         )
                     }
                     .buttonStyle(.plain)
@@ -269,11 +289,13 @@ struct DashboardView: View {
     private func dashboardMatchCard(
         _ match: MatchSummary,
         subtitle: String,
+        detailLine: String?,
         statusLabel: String,
         statusColor: Color,
         actionTitle: String,
         actionTint: Color,
         actionDisabled: Bool = false,
+        showCourtName: Bool = true,
         action: (() -> Void)? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -283,7 +305,7 @@ struct DashboardView: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    if let courtName = match.courtName, !courtName.isEmpty {
+                    if showCourtName, let courtName = match.courtName, !courtName.isEmpty {
                         Text(courtName)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.dashboardBrand)
@@ -292,6 +314,12 @@ struct DashboardView: View {
                     Text(subtitle)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    if let detailLine, !detailLine.isEmpty {
+                        Text(detailLine)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -434,6 +462,21 @@ struct DashboardView: View {
         return "\(player1) vs \(player2)"
     }
 
+    private func historyWinnerLine(for match: MatchSummary) -> String {
+        match.winnerName ?? match.state?.winnerName ?? "Completed match"
+    }
+
+    private func historyScoreLine(for match: MatchSummary) -> String {
+        let player1Games = match.state?.player1GamesWon ?? 0
+        let player2Games = match.state?.player2GamesWon ?? 0
+        let completedGameScores = (match.state?.gameHistory ?? [])
+            .map { "\($0.player1Score)-\($0.player2Score)" }
+            .joined(separator: " | ")
+        let fallbackScore = "\(match.state?.player1Score ?? 0)-\(match.state?.player2Score ?? 0)"
+        let scoreSeries = completedGameScores.isEmpty ? fallbackScore : completedGameScores
+        return "\(player1Games)-\(player2Games) [\(scoreSeries)]"
+    }
+
     private func formatDate(_ value: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: value) else {
@@ -490,6 +533,7 @@ private extension Color {
         }
     )
     static let dashboardActiveStatus = Color(red: 82 / 255, green: 205 / 255, blue: 120 / 255)
+    static let dashboardCompletedStatus = Color(red: 196 / 255, green: 68 / 255, blue: 92 / 255)
     static let dashboardBorder = Color(
         UIColor { traitCollection in
             if traitCollection.userInterfaceStyle == .dark {

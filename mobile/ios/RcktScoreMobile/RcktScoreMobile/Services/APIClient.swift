@@ -52,6 +52,10 @@ struct EventActionRequest: Encodable {
     let playerSide: String?
     let note: String?
     let side: String?
+    let currentServer: String?
+    let currentServerSide: String?
+    let serviceSide: String?
+    let matchDurationSeconds: Int?
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -59,6 +63,10 @@ struct EventActionRequest: Encodable {
         case playerSide = "player_side"
         case note
         case side
+        case currentServer = "current_server"
+        case currentServerSide = "current_server_side"
+        case serviceSide = "service_side"
+        case matchDurationSeconds = "match_duration_seconds"
     }
 }
 
@@ -74,11 +82,13 @@ struct EndMatchRequest: Encodable {
     let matchID: String
     let endedEarly: Bool
     let reason: String?
+    let matchDurationSeconds: Int?
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
         case endedEarly = "ended_early"
         case reason
+        case matchDurationSeconds = "match_duration_seconds"
     }
 }
 
@@ -138,7 +148,17 @@ final class APIClient {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
-            body: EventActionRequest(matchID: matchID, actionType: "stroke", playerSide: playerSide, note: nil, side: nil)
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "stroke",
+                playerSide: playerSide,
+                note: nil,
+                side: nil,
+                currentServer: nil,
+                currentServerSide: nil,
+                serviceSide: nil,
+                matchDurationSeconds: nil
+            )
         )
         return try await unwrapMatchResponse(request)
     }
@@ -147,7 +167,17 @@ final class APIClient {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
-            body: EventActionRequest(matchID: matchID, actionType: "let", playerSide: nil, note: "General let", side: nil)
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "let",
+                playerSide: nil,
+                note: "General let",
+                side: nil,
+                currentServer: nil,
+                currentServerSide: nil,
+                serviceSide: nil,
+                matchDurationSeconds: nil
+            )
         )
         return try await unwrapMatchResponse(request)
     }
@@ -156,7 +186,60 @@ final class APIClient {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
-            body: EventActionRequest(matchID: matchID, actionType: "serve_side", playerSide: nil, note: nil, side: side)
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "serve_side",
+                playerSide: nil,
+                note: nil,
+                side: side,
+                currentServer: nil,
+                currentServerSide: nil,
+                serviceSide: nil,
+                matchDurationSeconds: nil
+            )
+        )
+        return try await unwrapMatchResponse(request)
+    }
+
+    func selectFirstServer(
+        matchID: String,
+        currentServer: String,
+        currentServerSide: String,
+        serviceSide: String
+    ) async throws -> MatchDetail {
+        let request = try makeRequest(
+            path: "/event_action",
+            method: "POST",
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "server",
+                playerSide: nil,
+                note: nil,
+                side: nil,
+                currentServer: currentServer,
+                currentServerSide: currentServerSide,
+                serviceSide: serviceSide,
+                matchDurationSeconds: nil
+            )
+        )
+        return try await unwrapMatchResponse(request)
+    }
+
+    func recordMatchDuration(matchID: String, durationSeconds: Int) async throws -> MatchDetail {
+        let request = try makeRequest(
+            path: "/event_action",
+            method: "POST",
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "timer",
+                playerSide: nil,
+                note: "Match duration recorded",
+                side: nil,
+                currentServer: nil,
+                currentServerSide: nil,
+                serviceSide: nil,
+                matchDurationSeconds: durationSeconds
+            )
         )
         return try await unwrapMatchResponse(request)
     }
@@ -166,11 +249,20 @@ final class APIClient {
         return try await unwrapMatchResponse(request)
     }
 
-    func endMatchEarly(matchID: String, reason: String = "Ended by operator") async throws -> MatchDetail {
+    func endMatchEarly(
+        matchID: String,
+        reason: String = "Ended by operator",
+        matchDurationSeconds: Int? = nil
+    ) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/end_match",
             method: "POST",
-            body: EndMatchRequest(matchID: matchID, endedEarly: true, reason: reason)
+            body: EndMatchRequest(
+                matchID: matchID,
+                endedEarly: true,
+                reason: reason,
+                matchDurationSeconds: matchDurationSeconds
+            )
         )
         return try await unwrapMatchResponse(request)
     }

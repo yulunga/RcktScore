@@ -11,6 +11,10 @@ struct MatchSummary: Decodable, Identifiable {
     let bestOf: Int?
     let scoreType: Int?
     let updatedAt: String?
+    let completedAt: String?
+    let matchDurationSeconds: Int?
+    let winnerName: String?
+    let state: MatchState?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -24,6 +28,10 @@ struct MatchSummary: Decodable, Identifiable {
         case bestOf = "best_of"
         case scoreType = "score_type"
         case updatedAt = "updated_at"
+        case completedAt = "completed_at"
+        case matchDurationSeconds = "match_duration_seconds"
+        case winnerName = "winner_name"
+        case state
     }
 
     init(from decoder: Decoder) throws {
@@ -39,6 +47,10 @@ struct MatchSummary: Decodable, Identifiable {
         bestOf = try container.decodeIfPresent(Int.self, forKey: .bestOf)
         scoreType = try container.decodeIfPresent(Int.self, forKey: .scoreType)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+        completedAt = try container.decodeIfPresent(String.self, forKey: .completedAt)
+        matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds)
+        winnerName = try container.decodeIfPresent(String.self, forKey: .winnerName)
+        state = try container.decodeIfPresent(MatchState.self, forKey: .state)
     }
 }
 
@@ -49,14 +61,18 @@ struct MatchDetail: Decodable, Identifiable {
     let player1Name: String
     let player1Surname: String?
     let player1Handedness: String?
+    let player1ShirtColor: String?
     let player2Name: String
     let player2Surname: String?
     let player2Handedness: String?
+    let player2ShirtColor: String?
     let refereeName: String?
     let scoreType: Int
     let bestOf: Int
     let status: String
     let updatedAt: String
+    let completedAt: String?
+    let matchDurationSeconds: Int?
     let state: MatchState?
 
     enum CodingKeys: String, CodingKey {
@@ -66,14 +82,18 @@ struct MatchDetail: Decodable, Identifiable {
         case player1Name = "player1_name"
         case player1Surname = "player1_surname"
         case player1Handedness = "player1_handedness"
+        case player1ShirtColor = "player1_shirt_color"
         case player2Name = "player2_name"
         case player2Surname = "player2_surname"
         case player2Handedness = "player2_handedness"
+        case player2ShirtColor = "player2_shirt_color"
         case refereeName = "referee_name"
         case scoreType = "score_type"
         case bestOf = "best_of"
         case status
         case updatedAt = "updated_at"
+        case completedAt = "completed_at"
+        case matchDurationSeconds = "match_duration_seconds"
         case state
     }
 }
@@ -88,6 +108,9 @@ struct MatchState: Decodable {
     let currentServer: String?
     let currentServerSide: String?
     let serviceSide: String?
+    let player1ShirtColor: String?
+    let player2ShirtColor: String?
+    let matchDurationSeconds: Int
     let gameHistory: [GameHistoryEntry]
     let matchComplete: Bool
     let winnerName: String?
@@ -103,6 +126,9 @@ struct MatchState: Decodable {
         case currentServer = "current_server"
         case currentServerSide = "current_server_side"
         case serviceSide = "service_side"
+        case player1ShirtColor = "player1_shirt_color"
+        case player2ShirtColor = "player2_shirt_color"
+        case matchDurationSeconds = "match_duration_seconds"
         case gameHistory = "game_history"
         case matchComplete = "match_complete"
         case winnerName = "winner_name"
@@ -120,6 +146,9 @@ struct MatchState: Decodable {
         currentServer = try container.decodeIfPresent(String.self, forKey: .currentServer)
         currentServerSide = try container.decodeIfPresent(String.self, forKey: .currentServerSide)
         serviceSide = try container.decodeIfPresent(String.self, forKey: .serviceSide)
+        player1ShirtColor = try container.decodeIfPresent(String.self, forKey: .player1ShirtColor)
+        player2ShirtColor = try container.decodeIfPresent(String.self, forKey: .player2ShirtColor)
+        matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds) ?? 0
         gameHistory = try container.decodeIfPresent([GameHistoryEntry].self, forKey: .gameHistory) ?? []
         matchComplete = try container.decodeIfPresent(Bool.self, forKey: .matchComplete) ?? false
         winnerName = try container.decodeIfPresent(String.self, forKey: .winnerName)
@@ -164,6 +193,8 @@ struct MatchEventPayload: Decodable {
     let playerSide: String?
     let currentServerSide: String?
     let serviceSide: String?
+    let gameCompleted: Bool?
+    let matchCompleted: Bool?
     let player1Score: Int?
     let player2Score: Int?
     let player1GamesWon: Int?
@@ -179,6 +210,8 @@ struct MatchEventPayload: Decodable {
         case playerSide = "player_side"
         case currentServerSide = "current_server_side"
         case serviceSide = "service_side"
+        case gameCompleted = "game_completed"
+        case matchCompleted = "match_completed"
         case player1Score = "player1_score"
         case player2Score = "player2_score"
         case player1GamesWon = "player1_games_won"

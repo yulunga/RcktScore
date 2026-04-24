@@ -82,7 +82,7 @@ The old Flask application remains in `version1/` as reference only. It is not th
 - `ios/RcktScoreMobile/Models/` API envelope and entities
 - `ios/RcktScoreMobile/Services/` API client (HTTP only; no WebSocket yet)
 - `ios/RcktScoreMobile/State/` session store
-- `ios/RcktScoreMobile/Views/` login, dashboard, and match scoring views
+- `ios/RcktScoreMobile/Views/` login, dashboard, and match scoring views, including warm-up, first-server, match timer, and interval flow
 
 ### Backend
 

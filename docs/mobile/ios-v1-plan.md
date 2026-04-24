@@ -36,11 +36,10 @@ Already present:
 - dashboard loads active, scheduled, and recent matches
 - scheduled matches can be started from the dashboard
 - live match scoring screen exists with score taps, stroke, let, undo, early end, serve-side toggle, details, completed-game strip, and event timeline
+- native timer flow now includes warm-up, first-server selection, interval breaks, live match timing, and match-duration capture
 
 Still outstanding for the first native release:
 
-- native timer/warm-up flow is not yet at web parity
-- first-server selection after warm-up is not yet implemented in native
 - native new-match setup remains out of scope for this release
 
 ## V1 Scope
@@ -247,12 +246,9 @@ These methods are now present in `APIClient.swift`:
 
 ## Immediate Next Step
 
-Continue Milestone 4 by adding the native timer/warm-up flow to
-`MatchScoringView.swift`, including:
+Validate the native timer flow on-device and then decide whether the next iOS
+increment should focus on:
 
-1. warm-up ready overlay
-2. 60 second side-one warm-up
-3. side-swap prompt
-4. 60 second side-two warm-up
-5. first-server selection before match-live timing begins
-6. 90 second game-break overlay after each completed game
+1. WebSocket/live sync for multi-device scoring visibility
+2. Native new-match setup
+3. iPad/layout polish for larger screens
