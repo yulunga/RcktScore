@@ -163,10 +163,15 @@ struct EndMatchRequest: Encodable {
 final class APIClient {
     private let session: URLSession
     private let decoder: JSONDecoder
+    private let apiBaseURL: URL
+    private let defaultBuildID: String
 
+    @MainActor
     init(session: URLSession = .shared) {
         self.session = session
         self.decoder = JSONDecoder()
+        self.apiBaseURL = AppConfig.apiBaseURL
+        self.defaultBuildID = AppConfig.buildID
     }
 
     func login(username: String, password: String) async throws -> UserSession {
@@ -229,7 +234,7 @@ final class APIClient {
         pageURL: String = "ios-app://login",
         userAgent: String = "RcktScore iOS App"
     ) async throws {
-        let resolvedBuild = build ?? AppConfig.buildID
+        let resolvedBuild = build ?? defaultBuildID
         let request = try makeRequest(
             path: "/feedback",
             method: "POST",
@@ -445,7 +450,7 @@ final class APIClient {
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
-        let endpoint = AppConfig.apiBaseURL.appendingPathComponent(normalizedPath)
+        let endpoint = apiBaseURL.appendingPathComponent(normalizedPath)
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -454,7 +459,7 @@ final class APIClient {
 
     private func makeRequest(path: String, method: String, queryItems: [URLQueryItem]) throws -> URLRequest {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
-        let endpoint = AppConfig.apiBaseURL.appendingPathComponent(normalizedPath)
+        let endpoint = apiBaseURL.appendingPathComponent(normalizedPath)
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
             throw APIErrorResponse(code: "invalid_url", message: "Unable to build request URL.", details: nil)
         }

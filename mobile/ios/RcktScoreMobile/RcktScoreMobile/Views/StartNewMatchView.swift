@@ -227,9 +227,9 @@ struct StartNewMatchView: View {
         .onChange(of: formState.player2Name) { queueLookupIfNeeded() }
         .onChange(of: formState.player2Surname) { queueLookupIfNeeded() }
         .onChange(of: formState.refereeName) { queueLookupIfNeeded() }
-        .onChange(of: focusedField) { _ in queueLookupIfNeeded() }
-        .onChange(of: formState.courtID) { _ in updateSelectedCourt() }
-        .onChange(of: formState.scheduleMatch) { _ in refreshSetupNotice() }
+        .onChange(of: focusedField) { queueLookupIfNeeded() }
+        .onChange(of: formState.courtID) { updateSelectedCourt() }
+        .onChange(of: formState.scheduleMatch) { refreshSetupNotice() }
         .onDisappear { lookupTask?.cancel() }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -337,8 +337,8 @@ struct StartNewMatchView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .tint(Color.dashboardBrand)
-                    .onChange(of: formState.handicapEnabled) { enabled in
-                        if enabled {
+                    .onChange(of: formState.handicapEnabled) {
+                        if formState.handicapEnabled {
                             formState.scoreType = 15
                         } else {
                             formState.player1Band = ""
@@ -405,8 +405,8 @@ struct StartNewMatchView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .onChange(of: formState.player1Band) { _ in updateHandicapOffsets() }
-            .onChange(of: formState.player2Band) { _ in updateHandicapOffsets() }
+            .onChange(of: formState.player1Band) { updateHandicapOffsets() }
+            .onChange(of: formState.player2Band) { updateHandicapOffsets() }
         }
     }
 
@@ -614,7 +614,7 @@ struct StartNewMatchView: View {
     ) -> some View {
         let entries = Array(values)
 
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             ForEach(entries, id: id) { value in
                 row(value)
                     .padding(.horizontal, 12)
