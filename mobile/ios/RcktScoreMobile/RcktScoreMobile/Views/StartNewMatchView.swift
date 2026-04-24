@@ -806,7 +806,7 @@ struct StartNewMatchView: View {
             return
         }
 
-        if let activeCourtMatch, !formState.courtName.isEmpty {
+        if activeCourtMatch != nil, !formState.courtName.isEmpty {
             setupNotice = "There is an active game currently on \(formState.courtName). The new match will be created as a scheduled match ready to start later."
             return
         }

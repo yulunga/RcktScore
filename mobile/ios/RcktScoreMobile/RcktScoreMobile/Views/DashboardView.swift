@@ -13,6 +13,7 @@ struct DashboardView: View {
     @State private var navigationTarget: MatchRoute?
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
+    @State private var selectedTab: DashboardTab = .home
 
     private var session: UserSession? { container.sessionStore.session }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
@@ -27,12 +28,16 @@ struct DashboardView: View {
             ? (session?.planDisplayName ?? "Personal Free")
             : (session?.organizationName ?? "Unknown organisation")
     }
+    private var headerUserLine: String {
+        session?.email ?? session?.username ?? ""
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
-                    headerCard
+                VStack(spacing: 22) {
+                    headerSection
+                    startNewMatchHero
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -49,32 +54,11 @@ struct DashboardView: View {
                             )
                     }
 
-                    dashboardSection(
-                        title: "Active Matches",
-                        subtitle: isPersonalAccount
-                            ? "Your active personal matches."
-                            : "Matches currently in progress for this organisation."
-                    ) {
-                        activeMatchesContent
-                    }
-
-                    if !isPersonalAccount {
-                        dashboardSection(
-                            title: "Scheduled Matches",
-                            subtitle: "Matches queued and ready to start."
-                        ) {
-                            scheduledMatchesContent
-                        }
-                    }
-
-                    dashboardSection(
-                        title: historyTitle,
-                        subtitle: historySubtitle
-                    ) {
-                        recentMatchesContent
-                    }
+                    tabContent
                 }
-                .padding()
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
             }
             .background(
                 LinearGradient(
@@ -87,6 +71,9 @@ struct DashboardView: View {
                 )
                 .ignoresSafeArea()
             )
+            .safeAreaInset(edge: .bottom) {
+                bottomNavigationBar
+            }
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $navigationTarget) { route in
                 MatchScoringView(matchID: route.id)
@@ -111,15 +98,15 @@ struct DashboardView: View {
         }
     }
 
-    private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 12) {
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
                 Image("BrandLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 44, height: 44)
+                    .frame(width: 66, height: 66)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     (
                         Text("Hit")
                             .foregroundStyle(Color.dashboardBrand)
@@ -128,7 +115,7 @@ struct DashboardView: View {
                         + Text("Score")
                             .foregroundStyle(Color.dashboardBrand)
                     )
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(headerPlanLine)
@@ -136,42 +123,44 @@ struct DashboardView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Spacer(minLength: 10)
+                VStack(alignment: .trailing, spacing: 12) {
+                    HStack(spacing: 10) {
+                        betaBadge
 
-                Button("Logout") {
-                    container.sessionStore.clear()
+                        Button {
+                            dashboardNotice = "Notifications are not added yet."
+                        } label: {
+                            Image(systemName: "bell")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundStyle(Color.dashboardInk)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.dashboardBrand)
             }
 
-            HStack(spacing: 10) {
-                Button {
-                    activeSheet = .newMatch
-                } label: {
-                    Text("Start New Match")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
-                        .background(Color.dashboardBrand)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+            HStack(spacing: 12) {
+                if !headerUserLine.isEmpty {
+                    Text(headerUserLine)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Color.dashboardInk)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                if !headerUserLine.isEmpty {
+                    Rectangle()
+                        .fill(Color.dashboardBorder)
+                        .frame(width: 1, height: 22)
+                }
+
+                Button("Log Out") {
+                    container.sessionStore.clear()
                 }
                 .buttonStyle(.plain)
-
-                Button {
-                    dashboardNotice = "Native settings is not added yet."
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 42, height: 42)
-                        .background(Color.dashboardBrand.opacity(colorScheme == .dark ? 0.24 : 0.12))
-                        .foregroundStyle(Color.dashboardBrand)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
+                .font(.title3.weight(.medium))
+                .foregroundStyle(Color.dashboardBrand)
             }
 
             if let dashboardNotice {
@@ -180,19 +169,200 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dashboardHeroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.dashboardBorder, lineWidth: 1)
-        )
-        .shadow(
-            color: colorScheme == .dark ? .clear : Color.black.opacity(0.06),
-            radius: 18,
-            x: 0,
-            y: 10
+        .padding(.top, 8)
+    }
+
+    private var betaBadge: some View {
+        Text("BETA")
+            .font(.caption.weight(.black))
+            .foregroundStyle(Color.dashboardBetaText)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.dashboardBetaBackground)
+            .overlay(
+                Capsule()
+                    .stroke(Color.dashboardBetaBorder, lineWidth: 1)
+            )
+            .clipShape(Capsule())
+    }
+
+    private var startNewMatchHero: some View {
+        Button {
+            activeSheet = .newMatch
+        } label: {
+            HStack(spacing: 18) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.white)
+                    .frame(width: 94, height: 94)
+                    .overlay(
+                        Image(systemName: "plus")
+                            .font(.system(size: 42, weight: .light))
+                            .foregroundStyle(Color.dashboardBrand)
+                    )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Start New Match")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+
+                    Text("Create and start scoring\na new squash match")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.dashboardBrand,
+                        Color.dashboardBrandDeep
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .shadow(
+                color: colorScheme == .dark ? .clear : Color.black.opacity(0.12),
+                radius: 16,
+                x: 0,
+                y: 10
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .home:
+            homeContent
+        case .matches:
+            matchesContent
+        case .history:
+            historyContent
+        case .players:
+            placeholderPanel(
+                title: "Players",
+                message: "Player browsing will land here next."
+            )
+        case .more:
+            placeholderPanel(
+                title: "More",
+                message: "Settings and more tools will live here."
+            )
+        }
+    }
+
+    private var homeContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Active Matches",
+                subtitle: isPersonalAccount
+                    ? "Your active personal matches."
+                    : "Matches currently in progress for this organisation."
+            ) {
+                activeMatchesContent
+            }
+
+            if !isPersonalAccount {
+                dashboardSection(
+                    title: "Scheduled Matches",
+                    subtitle: "Matches queued and ready to start."
+                ) {
+                    scheduledMatchesContent
+                }
+            }
+
+            dashboardSection(
+                title: historyTitle,
+                subtitle: historySubtitle
+            ) {
+                recentMatchesContent
+            }
+        }
+    }
+
+    private var matchesContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Active Matches",
+                subtitle: isPersonalAccount
+                    ? "Your active personal matches."
+                    : "Matches currently in progress for this organisation."
+            ) {
+                activeMatchesContent
+            }
+
+            if !isPersonalAccount {
+                dashboardSection(
+                    title: "Scheduled Matches",
+                    subtitle: "Matches queued and ready to start."
+                ) {
+                    scheduledMatchesContent
+                }
+            }
+        }
+    }
+
+    private var historyContent: some View {
+        dashboardSection(
+            title: historyTitle,
+            subtitle: historySubtitle
+        ) {
+            recentMatchesContent
+        }
+    }
+
+    private func placeholderPanel(title: String, message: String) -> some View {
+        dashboardSection(title: title, subtitle: "Coming soon") {
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 10)
+        }
+    }
+
+    private var bottomNavigationBar: some View {
+        HStack(spacing: 0) {
+            ForEach(DashboardTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
+
+                        Text(tab.title)
+                            .font(.caption.weight(selectedTab == tab ? .semibold : .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(selectedTab == tab ? Color.dashboardBrand : Color.dashboardTabMuted)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .background(
+            ZStack(alignment: .top) {
+                Color.dashboardTabBarBackground
+                Rectangle()
+                    .fill(Color.dashboardBorder)
+                    .frame(height: 1)
+            }
+            .ignoresSafeArea()
         )
     }
 
@@ -544,6 +714,46 @@ private enum DashboardSheet: Identifiable {
     }
 }
 
+private enum DashboardTab: String, CaseIterable, Identifiable {
+    case home
+    case matches
+    case history
+    case players
+    case more
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .home:
+            return "Home"
+        case .matches:
+            return "Matches"
+        case .history:
+            return "History"
+        case .players:
+            return "Players"
+        case .more:
+            return "More"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .home:
+            return "house.fill"
+        case .matches:
+            return "calendar.badge.clock"
+        case .history:
+            return "clock"
+        case .players:
+            return "person.2"
+        case .more:
+            return "line.3.horizontal"
+        }
+    }
+}
+
 private extension DateFormatter {
     static let dashboardSummary: DateFormatter = {
         let formatter = DateFormatter()
@@ -555,7 +765,18 @@ private extension DateFormatter {
 
 private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
+    static let dashboardBetaBackground = Color(red: 1, green: 243 / 255, blue: 196 / 255)
+    static let dashboardBetaText = Color(red: 138 / 255, green: 91 / 255, blue: 0)
+    static let dashboardBetaBorder = Color(red: 153 / 255, green: 102 / 255, blue: 0).opacity(0.18)
+    static let dashboardInk = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor.white
+                : UIColor(red: 20 / 255, green: 31 / 255, blue: 45 / 255, alpha: 1)
+        }
+    )
     static let dashboardBackgroundStart = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
@@ -575,6 +796,20 @@ private extension Color {
             traitCollection.userInterfaceStyle == .dark
                 ? UIColor(red: 20 / 255, green: 31 / 255, blue: 45 / 255, alpha: 1)
                 : UIColor(red: 248 / 255, green: 251 / 255, blue: 255 / 255, alpha: 1)
+        }
+    )
+    static let dashboardTabBarBackground = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 12 / 255, green: 20 / 255, blue: 29 / 255, alpha: 0.98)
+                : UIColor.white.withAlphaComponent(0.98)
+        }
+    )
+    static let dashboardTabMuted = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor.systemGray3
+                : UIColor(red: 76 / 255, green: 92 / 255, blue: 120 / 255, alpha: 1)
         }
     )
     static let dashboardCardBackground = Color(UIColor.secondarySystemGroupedBackground)
