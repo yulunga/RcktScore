@@ -32,6 +32,18 @@ struct DashboardResponseData: Decodable {
     let dashboard: DashboardResponse
 }
 
+struct OrganizationSettingsResponseData: Decodable {
+    let organizationSettings: OrganizationSettings
+
+    enum CodingKeys: String, CodingKey {
+        case organizationSettings = "organizationSettings"
+    }
+}
+
+struct MatchSetupLookupResponseData: Decodable {
+    let lookups: MatchSetupLookups
+}
+
 struct MatchResponseData: Decodable {
     let match: MatchDetail
 }
@@ -247,6 +259,37 @@ final class APIClient {
         return dashboard
     }
 
+    func getOrganizationSettings(organizationID: Int) async throws -> OrganizationSettings {
+        let request = try makeRequest(path: "/organization_settings/\(organizationID)", method: "GET")
+        let envelope: APIEnvelope<OrganizationSettingsResponseData> = try await send(request)
+
+        guard let settings = envelope.data?.organizationSettings else {
+            throw APIErrorResponse(code: "empty_response", message: "No organisation settings returned.", details: nil)
+        }
+
+        return settings
+    }
+
+    func searchMatchSetupLookup(organizationID: Int, query: String) async throws -> MatchSetupLookups {
+        let request = try makeRequest(
+            path: "/match_setup_lookup/\(organizationID)",
+            method: "GET",
+            queryItems: [URLQueryItem(name: "q", value: query)]
+        )
+        let envelope: APIEnvelope<MatchSetupLookupResponseData> = try await send(request)
+
+        guard let lookups = envelope.data?.lookups else {
+            throw APIErrorResponse(code: "empty_response", message: "No match setup lookups returned.", details: nil)
+        }
+
+        return lookups
+    }
+
+    func createMatch(_ payload: CreateMatchRequest) async throws -> MatchDetail {
+        let request = try makeRequest(path: "/start_match", method: "POST", body: payload)
+        return try await unwrapMatchResponse(request)
+    }
+
     func getMatch(matchID: String) async throws -> MatchDetail {
         let request = try makeRequest(path: "/get_score/\(matchID)", method: "GET")
         let envelope: APIEnvelope<MatchResponseData> = try await send(request)
@@ -403,6 +446,25 @@ final class APIClient {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let endpoint = AppConfig.apiBaseURL.appendingPathComponent(normalizedPath)
         var request = URLRequest(url: endpoint)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        return request
+    }
+
+    private func makeRequest(path: String, method: String, queryItems: [URLQueryItem]) throws -> URLRequest {
+        let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let endpoint = AppConfig.apiBaseURL.appendingPathComponent(normalizedPath)
+        guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
+            throw APIErrorResponse(code: "invalid_url", message: "Unable to build request URL.", details: nil)
+        }
+
+        components.queryItems = queryItems
+
+        guard let url = components.url else {
+            throw APIErrorResponse(code: "invalid_url", message: "Unable to build request URL.", details: nil)
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         return request

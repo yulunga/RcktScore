@@ -16,6 +16,8 @@ private let feedbackCategories = [
     "Other"
 ]
 
+private let interestInactivityTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.colorScheme) private var colorScheme
@@ -31,6 +33,10 @@ struct LoginView: View {
     @State private var interestEmail = ""
     @State private var interestUseType = "personal"
     @State private var interestClubName = ""
+    @State private var interestHumanLeft = Int.random(in: 2...9)
+    @State private var interestHumanRight = Int.random(in: 2...9)
+    @State private var interestHumanAnswer = ""
+    @State private var interestLastActivityAt = Date()
     @State private var interestMessage: String?
     @State private var interestErrorMessage: String?
     @State private var isSubmittingInterest = false
@@ -130,7 +136,7 @@ struct LoginView: View {
                             HStack {
                                 Spacer()
 
-                                Button("Let me in") {
+                                Button("Want in") {
                                     openRegisterInterest()
                                 }
                                 .buttonStyle(.plain)
@@ -190,6 +196,21 @@ struct LoginView: View {
                 overlayBackdrop(for: overlayMode)
             }
         }
+        .onReceive(interestInactivityTimer) { _ in
+            guard overlayMode == .registerInterest, !isSubmittingInterest else {
+                return
+            }
+
+            if Date().timeIntervalSince(interestLastActivityAt) >= 30 {
+                closeRegisterInterestOverlay()
+            }
+        }
+        .onChange(of: interestFirstName) { trackInterestActivity() }
+        .onChange(of: interestSurname) { trackInterestActivity() }
+        .onChange(of: interestEmail) { trackInterestActivity() }
+        .onChange(of: interestUseType) { trackInterestActivity() }
+        .onChange(of: interestClubName) { trackInterestActivity() }
+        .onChange(of: interestHumanAnswer) { trackInterestActivity() }
     }
 
     @ViewBuilder
@@ -243,9 +264,9 @@ struct LoginView: View {
 
     private var registerInterestCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            overlayHeader("Let me in")
+            overlayHeader("Want in")
 
-            Text("Request early access by submitting your details. Approved users will be added to the root admin approval queue.")
+            Text("We are currently in a beta phase. Request early access by submitting your details.\n\nApproved users will be granted access to the platform.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -288,6 +309,13 @@ struct LoginView: View {
                 }
             }
 
+            styledField(title: "Human check: what is \(interestHumanLeft) + \(interestHumanRight)?") {
+                TextField("Enter answer", text: $interestHumanAnswer)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.numberPad)
+                    .autocorrectionDisabled(true)
+            }
+
             if let interestErrorMessage {
                 Text(interestErrorMessage)
                     .font(.footnote)
@@ -309,7 +337,7 @@ struct LoginView: View {
                 .disabled(isSubmittingInterest)
 
                 overlayPrimaryButton(
-                    title: isSubmittingInterest ? "Sending..." : "Send Register Interest",
+                    title: isSubmittingInterest ? "Sending..." : "Send Interest",
                     showProgress: isSubmittingInterest
                 ) {
                     submitRegisterInterest()
@@ -600,6 +628,9 @@ struct LoginView: View {
         interestEmail = username.contains("@") ? username : ""
         interestUseType = "personal"
         interestClubName = ""
+        refreshInterestHumanCheck()
+        interestHumanAnswer = ""
+        interestLastActivityAt = Date()
         interestMessage = nil
         interestErrorMessage = nil
         overlayMode = .registerInterest
@@ -640,6 +671,14 @@ struct LoginView: View {
         if interestUseType == "club" && clubName.isEmpty {
             interestErrorMessage = "Club name is required for club use."
             interestMessage = nil
+            return
+        }
+
+        guard interestHumanAnswer.trimmingCharacters(in: .whitespacesAndNewlines) == String(interestHumanLeft + interestHumanRight) else {
+            interestErrorMessage = "Human check answer is incorrect."
+            interestMessage = nil
+            refreshInterestHumanCheck()
+            interestHumanAnswer = ""
             return
         }
 
@@ -758,6 +797,25 @@ struct LoginView: View {
     private func isValidEmail(_ value: String) -> Bool {
         let emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
         return value.range(of: emailPattern, options: .regularExpression) != nil
+    }
+
+    private func trackInterestActivity() {
+        guard overlayMode == .registerInterest else {
+            return
+        }
+
+        interestLastActivityAt = Date()
+    }
+
+    private func refreshInterestHumanCheck() {
+        interestHumanLeft = Int.random(in: 2...9)
+        interestHumanRight = Int.random(in: 2...9)
+    }
+
+    private func closeRegisterInterestOverlay() {
+        interestMessage = nil
+        interestErrorMessage = nil
+        overlayMode = nil
     }
 }
 

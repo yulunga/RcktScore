@@ -51,4 +51,8 @@ extension UserSession {
             return isPersonalAccount ? "Personal Free" : "Club Essentials"
         }
     }
+
+    var canChooseShirtColors: Bool {
+        !isPersonalAccount || (plan ?? "").lowercased() == "personal_plus"
+    }
 }

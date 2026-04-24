@@ -70,6 +70,8 @@ struct MatchDetail: Decodable, Identifiable {
     let scoreType: Int
     let bestOf: Int
     let status: String
+    let autoScheduled: Bool?
+    let autoScheduleReason: String?
     let updatedAt: String
     let completedAt: String?
     let matchDurationSeconds: Int?
@@ -91,6 +93,8 @@ struct MatchDetail: Decodable, Identifiable {
         case scoreType = "score_type"
         case bestOf = "best_of"
         case status
+        case autoScheduled = "auto_scheduled"
+        case autoScheduleReason = "auto_schedule_reason"
         case updatedAt = "updated_at"
         case completedAt = "completed_at"
         case matchDurationSeconds = "match_duration_seconds"

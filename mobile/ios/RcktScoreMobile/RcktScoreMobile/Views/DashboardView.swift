@@ -11,6 +11,8 @@ struct DashboardView: View {
     @State private var errorMessage: String?
     @State private var startingScheduledMatchID: String?
     @State private var navigationTarget: MatchRoute?
+    @State private var activeSheet: DashboardSheet?
+    @State private var dashboardNotice: String?
 
     private var session: UserSession? { container.sessionStore.session }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
@@ -19,6 +21,11 @@ struct DashboardView: View {
         isPersonalAccount
             ? "Completed matches available on your current plan."
             : "Completed matches and recent activity."
+    }
+    private var headerPlanLine: String {
+        isPersonalAccount
+            ? (session?.planDisplayName ?? "Personal Free")
+            : (session?.organizationName ?? "Unknown organisation")
     }
 
     var body: some View {
@@ -84,6 +91,18 @@ struct DashboardView: View {
             .navigationDestination(item: $navigationTarget) { route in
                 MatchScoringView(matchID: route.id)
             }
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .newMatch:
+                    NavigationStack {
+                        StartNewMatchView(activeMatches: activeMatches) { result in
+                            handleStartNewMatchResult(result)
+                        }
+                        .environmentObject(container)
+                    }
+                    .presentationDetents([.large])
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) { EmptyView() }
             }
@@ -94,28 +113,30 @@ struct DashboardView: View {
 
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 12) {
-                        Image("BrandLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 44, height: 44)
+            HStack(alignment: .top, spacing: 12) {
+                Image("BrandLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Hit n Score")
-                                .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Color.dashboardBrand)
+                VStack(alignment: .leading, spacing: 6) {
+                    (
+                        Text("Hit")
+                            .foregroundStyle(Color.dashboardBrand)
+                        + Text("n")
+                            .foregroundStyle(Color.dashboardAccentPink)
+                        + Text("Score")
+                            .foregroundStyle(Color.dashboardBrand)
+                    )
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                            Text(isPersonalAccount ? "Personal scoring dashboard" : "Live scoring dashboard")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
+                    Text(headerPlanLine)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
 
-                Spacer()
+                Spacer(minLength: 10)
 
                 Button("Logout") {
                     container.sessionStore.clear()
@@ -124,21 +145,39 @@ struct DashboardView: View {
                 .foregroundStyle(Color.dashboardBrand)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(container.sessionStore.session?.username ?? "Unknown user")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+            HStack(spacing: 10) {
+                Button {
+                    activeSheet = .newMatch
+                } label: {
+                    Text("Start New Match")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                        .background(Color.dashboardBrand)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
 
-                Text(isPersonalAccount
-                     ? (session?.planDisplayName ?? "Personal Free")
-                     : (container.sessionStore.session?.organizationName ?? "Unknown organisation"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Button {
+                    dashboardNotice = "Native settings is not added yet."
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 42, height: 42)
+                        .background(Color.dashboardBrand.opacity(colorScheme == .dark ? 0.24 : 0.12))
+                        .foregroundStyle(Color.dashboardBrand)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
             }
 
-            HStack(spacing: 10) {
-                dashboardMetaPill("\(AppConfig.environmentName.capitalized)")
-                dashboardMetaPill("Build \(AppConfig.buildID)")
+            if let dashboardNotice {
+                Text(dashboardNotice)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(22)
@@ -366,17 +405,6 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private func dashboardMetaPill(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(Color.dashboardBrand)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.dashboardBrand.opacity(colorScheme == .dark ? 0.18 : 0.1))
-            .clipShape(Capsule())
-    }
-
-    @ViewBuilder
     private func emptyState(_ title: String) -> some View {
         Text(title)
             .font(.subheadline)
@@ -440,6 +468,20 @@ struct DashboardView: View {
         }
     }
 
+    private func handleStartNewMatchResult(_ result: StartNewMatchResult) {
+        Task { await loadDashboard() }
+
+        switch result {
+        case .openMatch(let matchID):
+            dashboardNotice = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                navigationTarget = MatchRoute(id: matchID)
+            }
+        case .scheduled(let notice):
+            dashboardNotice = notice ?? "Match saved as scheduled."
+        }
+    }
+
     private func matchDisplayName(for match: MatchSummary) -> String {
         let player1 = [match.player1Name, match.player1Surname]
             .compactMap { value in
@@ -491,6 +533,17 @@ private struct MatchRoute: Hashable, Identifiable {
     let id: String
 }
 
+private enum DashboardSheet: Identifiable {
+    case newMatch
+
+    var id: String {
+        switch self {
+        case .newMatch:
+            return "new-match"
+        }
+    }
+}
+
 private extension DateFormatter {
     static let dashboardSummary: DateFormatter = {
         let formatter = DateFormatter()
@@ -502,6 +555,7 @@ private extension DateFormatter {
 
 private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
     static let dashboardBackgroundStart = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
