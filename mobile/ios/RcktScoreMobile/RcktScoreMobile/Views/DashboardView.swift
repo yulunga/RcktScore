@@ -105,7 +105,7 @@ struct DashboardView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 82, height: 82)
-                    .offset(y: -5)
+                    .offset(y: -9)
 
                 VStack(alignment: .leading, spacing: 3) {
                     (
@@ -118,7 +118,6 @@ struct DashboardView: View {
                     )
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
 
                     if !headerUserLine.isEmpty {
                         Text(headerUserLine)
@@ -131,7 +130,7 @@ struct DashboardView: View {
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-                .padding(.top, 8)
+                .padding(.top, 2)
 
                 VStack(alignment: .trailing, spacing: 12) {
                     HStack(spacing: 10) {
