@@ -151,6 +151,7 @@ struct DashboardView: View {
                         .foregroundStyle(Color.dashboardBrand)
                     }
                 }
+                .padding(.top, 8)
             }
 
             if let dashboardNotice {
