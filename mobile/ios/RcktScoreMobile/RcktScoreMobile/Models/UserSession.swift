@@ -4,6 +4,7 @@ struct UserSession: Codable {
     let id: Int
     let username: String
     let role: String
+    let sessionToken: String?
     let organizationID: Int
     let organizationName: String
     let organizationType: String?
@@ -17,6 +18,7 @@ struct UserSession: Codable {
         case id
         case username
         case role
+        case sessionToken = "session_token"
         case organizationID = "organization_id"
         case organizationName = "organization_name"
         case organizationType = "organization_type"

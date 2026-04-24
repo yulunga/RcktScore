@@ -144,6 +144,12 @@ struct FeedbackRequest: Encodable {
 
 private struct AcceptedResponseData: Decodable {
     let accepted: Bool?
+    let loggedOut: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case accepted
+        case loggedOut = "logged_out"
+    }
 }
 
 struct EndMatchRequest: Encodable {
@@ -160,18 +166,26 @@ struct EndMatchRequest: Encodable {
     }
 }
 
+@MainActor
 final class APIClient {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let apiBaseURL: URL
     private let defaultBuildID: String
+    private var authToken: String?
+    var onSessionInvalidated: ((String) -> Void)?
+    private let sessionInvalidationCodes = Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED"])
 
-    @MainActor
     init(session: URLSession = .shared) {
         self.session = session
         self.decoder = JSONDecoder()
         self.apiBaseURL = AppConfig.apiBaseURL
         self.defaultBuildID = AppConfig.buildID
+    }
+
+    func setSessionToken(_ token: String?) {
+        let trimmedToken = token?.trimmingCharacters(in: .whitespacesAndNewlines)
+        authToken = (trimmedToken?.isEmpty == false) ? trimmedToken : nil
     }
 
     func login(username: String, password: String) async throws -> UserSession {
@@ -193,6 +207,15 @@ final class APIClient {
             body: PasswordResetRequest(email: email)
         )
         let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func logout() async {
+        do {
+            let request = try makeRequest(path: "/logout", method: "POST")
+            let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+        } catch {
+            // Best-effort logout; local session state is cleared by the caller.
+        }
     }
 
     func registerInterest(
@@ -454,6 +477,9 @@ final class APIClient {
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let authToken, !authToken.isEmpty {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
         return request
     }
 
@@ -473,6 +499,9 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let authToken, !authToken.isEmpty {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
         return request
     }
 
@@ -495,7 +524,22 @@ final class APIClient {
             return envelope
         }
 
-        throw envelope.error ?? APIErrorResponse(code: "request_failed", message: "Request failed.", details: "HTTP \(http.statusCode)")
+        let error = envelope.error ?? APIErrorResponse(
+            code: "request_failed",
+            message: "Request failed.",
+            details: "HTTP \(http.statusCode)"
+        )
+        handleSessionInvalidationIfNeeded(statusCode: http.statusCode, error: error)
+        throw error
+    }
+
+    private func handleSessionInvalidationIfNeeded(statusCode: Int, error: APIErrorResponse) {
+        guard statusCode == 401, sessionInvalidationCodes.contains(error.code) else {
+            return
+        }
+
+        authToken = nil
+        onSessionInvalidated?(error.code)
     }
 
     private func unwrapMatchResponse(_ request: URLRequest) async throws -> MatchDetail {

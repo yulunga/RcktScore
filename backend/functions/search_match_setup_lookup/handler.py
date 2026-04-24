@@ -1,4 +1,9 @@
 from common.match_setup_logic import search_match_setup_lookups
+from common.session_logic import (
+    SessionAuthError,
+    authorize_organization_session,
+    session_error_response,
+)
 from common.supabase_client import get_db_connection
 from common.utils import error_response, path_parameter, success_response
 
@@ -10,7 +15,11 @@ def lambda_handler(event, context):
 
     query = ((event.get("queryStringParameters") or {}).get("q") or "").strip()
 
-    with get_db_connection() as connection:
-        lookups = search_match_setup_lookups(connection, organization_id, query)
+    try:
+        with get_db_connection() as connection:
+            authorize_organization_session(connection, event, organization_id, require_admin=False)
+            lookups = search_match_setup_lookups(connection, organization_id, query)
+    except SessionAuthError as auth_error:
+        return session_error_response(auth_error)
 
     return success_response(200, {"lookups": lookups})

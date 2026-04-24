@@ -55,6 +55,7 @@ Resources:
         AllowHeaders:
           - Content-Type
           - x-api-key
+          - Authorization
         AllowMethods:
           - GET
           - POST
@@ -96,6 +97,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /login
+            Method: POST
+
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/logout/handler.lambda_handler
+      Events:
+        Logout:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /logout
             Method: POST
 
   PasswordResetRequestFunction:

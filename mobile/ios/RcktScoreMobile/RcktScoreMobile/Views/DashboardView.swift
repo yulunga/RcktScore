@@ -144,7 +144,9 @@ struct DashboardView: View {
                         .buttonStyle(.plain)
 
                         Button("Logout") {
-                            container.sessionStore.clear()
+                            Task {
+                                await container.logout()
+                            }
                         }
                         .buttonStyle(.plain)
                         .font(.subheadline.weight(.semibold))

@@ -15,6 +15,10 @@ final class SessionStore: ObservableObject {
         session != nil
     }
 
+    var sessionToken: String? {
+        session?.sessionToken
+    }
+
     func save(_ newSession: UserSession) {
         session = newSession
         if let encoded = try? JSONEncoder().encode(newSession) {

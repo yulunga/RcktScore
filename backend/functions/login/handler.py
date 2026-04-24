@@ -1,6 +1,7 @@
 from aws_lambda_powertools import Logger
 
 from common.auth_logic import authenticate_org_user_memberships
+from common.session_logic import create_org_user_session
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -20,22 +21,27 @@ def lambda_handler(event, context):
     with get_db_connection() as connection:
         auth_result = authenticate_org_user_memberships(connection, username, password)
 
-    memberships = auth_result["approved_memberships"]
-    pending_memberships = auth_result["pending_memberships"]
+        memberships = auth_result["approved_memberships"]
+        pending_memberships = auth_result["pending_memberships"]
 
-    if not memberships:
-        if pending_memberships:
-            logger.warning("Pending approval login attempt for username=%s", username)
-            return error_response(
-                403,
-                "PENDING_APPROVAL",
-                "Your organisation access is pending email approval. Please check your email and accept the invitation.",
-            )
-        logger.warning("Invalid login attempt for username=%s", username)
-        return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
+        if not memberships:
+            if pending_memberships:
+                logger.warning("Pending approval login attempt for username=%s", username)
+                return error_response(
+                    403,
+                    "PENDING_APPROVAL",
+                    "Your organisation access is pending email approval. Please check your email and accept the invitation.",
+                )
+            logger.warning("Invalid login attempt for username=%s", username)
+            return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
+
+        session_token = create_org_user_session(connection, username, login_source="login")
 
     if len(memberships) == 1:
-        user = memberships[0]
+        user = {
+            **memberships[0],
+            "session_token": session_token,
+        }
         logger.info("Authenticated org user id=%s organization_id=%s", user["id"], user["organization_id"])
         return success_response(200, {"session": user})
 
@@ -46,6 +52,7 @@ def lambda_handler(event, context):
             "organizationSelection": {
                 "username": username,
                 "memberships": memberships,
+                "session_token": session_token,
             },
         },
     )

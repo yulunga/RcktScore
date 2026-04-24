@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { login as loginRequest } from "../services/api";
+import { login as loginRequest, logout as logoutRequest } from "../services/api";
 
 const SESSION_KEY = "rcktscore.auth";
 
@@ -59,6 +59,24 @@ export function AuthProvider({ children }) {
     );
   }, [pendingSelection, session]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleSessionInvalidated = () => {
+      setAuthState({
+        session: null,
+        pendingSelection: null,
+      });
+    };
+
+    window.addEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
+    return () => {
+      window.removeEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
+    };
+  }, []);
+
   const login = useCallback(async (username, password) => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
@@ -94,6 +112,7 @@ export function AuthProvider({ children }) {
           pendingSelection: {
             username: response.organizationSelection.username || trimmedUsername,
             memberships: response.organizationSelection.memberships,
+            session_token: response.organizationSelection.session_token || null,
             loggedInAt: new Date().toISOString(),
           },
         });
@@ -119,14 +138,16 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    const sessionToken = pendingSelection?.session_token || null;
     setAuthState({
       session: {
         ...membership,
+        ...(sessionToken ? { session_token: sessionToken } : {}),
         loggedInAt: new Date().toISOString(),
       },
       pendingSelection: null,
     });
-  }, []);
+  }, [pendingSelection]);
 
   const cancelOrganizationSelection = useCallback(() => {
     setAuthState({
@@ -136,11 +157,16 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    const token = session?.session_token || pendingSelection?.session_token || null;
+    if (token) {
+      logoutRequest(token).catch(() => {});
+    }
+
     setAuthState({
       session: null,
       pendingSelection: null,
     });
-  }, []);
+  }, [pendingSelection, session]);
 
   const contextValue = useMemo(
     () => ({

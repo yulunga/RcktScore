@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.organization_logic import APP_DISPLAY_NAME, is_valid_email_address, normalize_email_address
+from common.session_logic import revoke_active_sessions_for_username
 
 
 RESET_TOKEN_TTL_HOURS = 2
@@ -155,5 +156,6 @@ def confirm_password_reset(connection, token, password):
             },
         )
 
+    revoke_active_sessions_for_username(connection, username, reason="password_reset")
     connection.commit()
     return {"reset": True}

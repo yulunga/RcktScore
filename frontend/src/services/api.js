@@ -1,17 +1,56 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_KEY = import.meta.env.VITE_API_KEY;
+const SESSION_KEY = "rcktscore.auth";
+const SESSION_INVALIDATION_CODES = new Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED"]);
+
+function readStoredSessionToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(SESSION_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue?.session?.session_token || parsedValue?.session?.sessionToken || parsedValue?.session_token || null;
+  } catch {
+    return null;
+  }
+}
+
+function notifySessionInvalidated(code) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("rcktscore:session-invalidated", {
+      detail: {
+        code,
+      },
+    }),
+  );
+}
 
 async function apiRequest(path, options = {}) {
+  const sessionToken = options.sessionToken === undefined ? readStoredSessionToken() : options.sessionToken;
   const headers = {
     "Content-Type": "application/json",
     ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+    ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
     ...(options.headers || {}),
   };
+
+  const requestOptions = { ...options };
+  delete requestOptions.sessionToken;
 
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...requestOptions,
       headers,
     });
   } catch (requestError) {
@@ -27,6 +66,9 @@ async function apiRequest(path, options = {}) {
     const error = new Error(payload?.error?.message || payload.message || "API request failed");
     error.code = payload?.error?.code;
     error.details = payload?.error?.details;
+    if (SESSION_INVALIDATION_CODES.has(error.code)) {
+      notifySessionInvalidated(error.code);
+    }
     throw error;
   }
 
@@ -55,6 +97,13 @@ export function login(payload) {
   return apiRequest("/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function logout(sessionToken) {
+  return apiRequest("/logout", {
+    method: "POST",
+    sessionToken,
   });
 }
 
