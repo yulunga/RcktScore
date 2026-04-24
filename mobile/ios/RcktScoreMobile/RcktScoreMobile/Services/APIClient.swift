@@ -225,10 +225,11 @@ final class APIClient {
         username: String = "",
         organizationName: String = "",
         version: String = "iOS App",
-        build: String = AppConfig.buildID,
+        build: String? = nil,
         pageURL: String = "ios-app://login",
         userAgent: String = "RcktScore iOS App"
     ) async throws {
+        let resolvedBuild = build ?? AppConfig.buildID
         let request = try makeRequest(
             path: "/feedback",
             method: "POST",
@@ -240,7 +241,7 @@ final class APIClient {
                 username: username,
                 organizationName: organizationName,
                 version: version,
-                build: build,
+                build: resolvedBuild,
                 pageURL: pageURL,
                 userAgent: userAgent
             )

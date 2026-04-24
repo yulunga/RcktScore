@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 private enum LoginOverlayMode {
     case registerInterest
