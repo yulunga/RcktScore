@@ -118,15 +118,20 @@ struct DashboardView: View {
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                    if !headerUserLine.isEmpty {
+                        Text(headerUserLine)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Color.dashboardInk.opacity(0.88))
+                            .lineLimit(1)
+                    }
+
                     Text(headerPlanLine)
-                        .font(.subheadline.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
 
                 VStack(alignment: .trailing, spacing: 12) {
                     HStack(spacing: 10) {
-                        betaBadge
-
                         Button {
                             dashboardNotice = "Notifications are not added yet."
                         } label: {
@@ -135,32 +140,15 @@ struct DashboardView: View {
                                 .foregroundStyle(Color.dashboardInk)
                         }
                         .buttonStyle(.plain)
+
+                        Button("Logout") {
+                            container.sessionStore.clear()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.dashboardBrand)
                     }
                 }
-            }
-
-            HStack(spacing: 12) {
-                if !headerUserLine.isEmpty {
-                    Text(headerUserLine)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color.dashboardInk)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-
-                if !headerUserLine.isEmpty {
-                    Rectangle()
-                        .fill(Color.dashboardBorder)
-                        .frame(width: 1, height: 22)
-                }
-
-                Button("Log Out") {
-                    container.sessionStore.clear()
-                }
-                .buttonStyle(.plain)
-                .font(.title3.weight(.medium))
-                .foregroundStyle(Color.dashboardBrand)
             }
 
             if let dashboardNotice {
@@ -173,52 +161,34 @@ struct DashboardView: View {
         .padding(.top, 8)
     }
 
-    private var betaBadge: some View {
-        Text("BETA")
-            .font(.caption.weight(.black))
-            .foregroundStyle(Color.dashboardBetaText)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.dashboardBetaBackground)
-            .overlay(
-                Capsule()
-                    .stroke(Color.dashboardBetaBorder, lineWidth: 1)
-            )
-            .clipShape(Capsule())
-    }
-
     private var startNewMatchHero: some View {
         Button {
             activeSheet = .newMatch
         } label: {
-            HStack(spacing: 18) {
+            HStack(spacing: 14) {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(.white)
-                    .frame(width: 94, height: 94)
+                    .frame(width: 42, height: 42)
                     .overlay(
                         Image(systemName: "plus")
-                            .font(.system(size: 42, weight: .light))
+                            .font(.system(size: 24, weight: .light))
                             .foregroundStyle(Color.dashboardBrand)
                     )
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Start New Match")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-
-                    Text("Create and start scoring\na new squash match")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.94))
-                        .multilineTextAlignment(.leading)
                 }
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 30, weight: .semibold))
+                    .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(.white)
             }
-            .padding(22)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 LinearGradient(
@@ -767,9 +737,6 @@ private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
-    static let dashboardBetaBackground = Color(red: 1, green: 243 / 255, blue: 196 / 255)
-    static let dashboardBetaText = Color(red: 138 / 255, green: 91 / 255, blue: 0)
-    static let dashboardBetaBorder = Color(red: 153 / 255, green: 102 / 255, blue: 0).opacity(0.18)
     static let dashboardInk = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
