@@ -82,6 +82,54 @@ struct PasswordResetRequest: Encodable {
     let email: String
 }
 
+struct RegisterInterestRequest: Encodable {
+    let firstName: String
+    let surname: String
+    let email: String
+    let useType: String
+    let clubName: String
+    let company: String
+    let pageURL: String
+    let userAgent: String
+
+    enum CodingKeys: String, CodingKey {
+        case firstName = "first_name"
+        case surname
+        case email
+        case useType = "use_type"
+        case clubName = "club_name"
+        case company
+        case pageURL = "page_url"
+        case userAgent = "user_agent"
+    }
+}
+
+struct FeedbackRequest: Encodable {
+    let name: String
+    let email: String
+    let category: String
+    let message: String
+    let username: String
+    let organizationName: String
+    let version: String
+    let build: String
+    let pageURL: String
+    let userAgent: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case email
+        case category
+        case message
+        case username
+        case organizationName = "organization_name"
+        case version
+        case build
+        case pageURL = "page_url"
+        case userAgent = "user_agent"
+    }
+}
+
 private struct AcceptedResponseData: Decodable {
     let accepted: Bool?
 }
@@ -126,6 +174,64 @@ final class APIClient {
             path: "/password_reset/request",
             method: "POST",
             body: PasswordResetRequest(email: email)
+        )
+        let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func registerInterest(
+        firstName: String,
+        surname: String,
+        email: String,
+        useType: String,
+        clubName: String,
+        company: String = "",
+        pageURL: String = "ios-app://login",
+        userAgent: String = "RcktScore iOS App"
+    ) async throws {
+        let request = try makeRequest(
+            path: "/register_interest",
+            method: "POST",
+            body: RegisterInterestRequest(
+                firstName: firstName,
+                surname: surname,
+                email: email,
+                useType: useType,
+                clubName: clubName,
+                company: company,
+                pageURL: pageURL,
+                userAgent: userAgent
+            )
+        )
+        let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func submitFeedback(
+        name: String,
+        email: String,
+        category: String,
+        message: String,
+        username: String = "",
+        organizationName: String = "",
+        version: String = "iOS App",
+        build: String = AppConfig.buildID,
+        pageURL: String = "ios-app://login",
+        userAgent: String = "RcktScore iOS App"
+    ) async throws {
+        let request = try makeRequest(
+            path: "/feedback",
+            method: "POST",
+            body: FeedbackRequest(
+                name: name,
+                email: email,
+                category: category,
+                message: message,
+                username: username,
+                organizationName: organizationName,
+                version: version,
+                build: build,
+                pageURL: pageURL,
+                userAgent: userAgent
+            )
         )
         let _: APIEnvelope<AcceptedResponseData> = try await send(request)
     }

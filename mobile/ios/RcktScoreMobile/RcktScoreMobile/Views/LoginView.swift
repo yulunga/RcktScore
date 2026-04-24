@@ -1,24 +1,56 @@
 import SwiftUI
 
-private enum HelpOverlayMode {
-    case options
+private enum LoginOverlayMode {
+    case registerInterest
+    case helpOptions
+    case pingUs
     case passwordReset
 }
+
+private let feedbackCategories = [
+    "General Feedback",
+    "Bug / Something not working",
+    "Feature Request",
+    "UI / Design Suggestion",
+    "Performance Issue",
+    "Other"
+]
 
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.openURL) private var openURL
 
     @State private var username = ""
     @State private var password = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var helpOverlayMode: HelpOverlayMode?
+    @State private var overlayMode: LoginOverlayMode?
+
+    @State private var interestFirstName = ""
+    @State private var interestSurname = ""
+    @State private var interestEmail = ""
+    @State private var interestUseType = "personal"
+    @State private var interestClubName = ""
+    @State private var interestMessage: String?
+    @State private var interestErrorMessage: String?
+    @State private var isSubmittingInterest = false
+
+    @State private var feedbackName = ""
+    @State private var feedbackEmail = ""
+    @State private var feedbackCategory = feedbackCategories[0]
+    @State private var feedbackMessage = ""
+    @State private var feedbackSuccessMessage: String?
+    @State private var feedbackErrorMessage: String?
+    @State private var isSubmittingFeedback = false
+
     @State private var resetEmail = ""
     @State private var resetMessage: String?
     @State private var resetErrorMessage: String?
     @State private var isRequestingPasswordReset = false
+
+    private var isOverlayBusy: Bool {
+        isSubmittingInterest || isSubmittingFeedback || isRequestingPasswordReset
+    }
 
     var body: some View {
         ZStack {
@@ -56,38 +88,14 @@ struct LoginView: View {
                         }
 
                         VStack(spacing: 14) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Username")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-
+                            styledField(title: "Username") {
                                 TextField("Enter username", text: $username)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled(true)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 14)
-                                    .background(Color(.tertiarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(Color.loginBorder, lineWidth: 1)
-                                    )
                             }
 
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Password")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-
+                            styledField(title: "Password") {
                                 SecureField("Enter password", text: $password)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 14)
-                                    .background(Color(.tertiarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(Color.loginBorder, lineWidth: 1)
-                                    )
                             }
                         }
 
@@ -178,10 +186,392 @@ struct LoginView: View {
             }
             .padding(24)
 
-            if let helpOverlayMode {
-                helpOverlayBackdrop(for: helpOverlayMode)
+            if let overlayMode {
+                overlayBackdrop(for: overlayMode)
             }
         }
+    }
+
+    @ViewBuilder
+    private func styledField<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            content()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .background(Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.loginBorder, lineWidth: 1)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func overlayBackdrop(for mode: LoginOverlayMode) -> some View {
+        ZStack {
+            Color.black.opacity(0.34)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    if !isOverlayBusy {
+                        overlayMode = nil
+                    }
+                }
+
+            ScrollView(showsIndicators: false) {
+                VStack {
+                    switch mode {
+                    case .registerInterest:
+                        registerInterestCard
+                    case .helpOptions:
+                        helpOptionsCard
+                    case .pingUs:
+                        pingUsCard
+                    case .passwordReset:
+                        passwordResetCard
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 40)
+            }
+        }
+    }
+
+    private var registerInterestCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Let me in")
+
+            Text("Request early access by submitting your details. Approved users will be added to the root admin approval queue.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            styledField(title: "Name") {
+                TextField("First name", text: $interestFirstName)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled(true)
+            }
+
+            styledField(title: "Surname") {
+                TextField("Surname", text: $interestSurname)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled(true)
+            }
+
+            styledField(title: "Email address") {
+                TextField("you@email.com", text: $interestEmail)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled(true)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("App Use")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker("App Use", selection: $interestUseType) {
+                    Text("Personal").tag("personal")
+                    Text("Club").tag("club")
+                }
+                .pickerStyle(.segmented)
+            }
+
+            if interestUseType == "club" {
+                styledField(title: "Club name") {
+                    TextField("Club name", text: $interestClubName)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled(true)
+                }
+            }
+
+            if let interestErrorMessage {
+                Text(interestErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let interestMessage {
+                Text(interestMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Color.loginAction)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 12) {
+                overlaySecondaryButton("Cancel") {
+                    overlayMode = nil
+                }
+                .disabled(isSubmittingInterest)
+
+                overlayPrimaryButton(
+                    title: isSubmittingInterest ? "Sending..." : "Send Register Interest",
+                    showProgress: isSubmittingInterest
+                ) {
+                    submitRegisterInterest()
+                }
+                .disabled(isSubmittingInterest)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 380, alignment: .leading)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
+    private var helpOptionsCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Need Help?")
+
+            Text("Choose an option below.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            overlayPrimaryButton(title: "Ping Us") {
+                feedbackName = ""
+                feedbackEmail = username.contains("@") ? username : ""
+                feedbackCategory = feedbackCategories[0]
+                feedbackMessage = ""
+                feedbackSuccessMessage = nil
+                feedbackErrorMessage = nil
+                overlayMode = .pingUs
+            }
+
+            overlaySecondaryButton("Password Reset") {
+                resetEmail = username.contains("@") ? username : ""
+                resetErrorMessage = nil
+                resetMessage = nil
+                overlayMode = .passwordReset
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 360, alignment: .leading)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
+    private var pingUsCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Ping Us")
+
+            Text("Tell us what is working, what is broken, or what you want to improve.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            styledField(title: "Your name") {
+                TextField("Your name", text: $feedbackName)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled(true)
+            }
+
+            styledField(title: "Your email") {
+                TextField("you@email.com", text: $feedbackEmail)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled(true)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Subject")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker("Subject", selection: $feedbackCategory) {
+                    ForEach(feedbackCategories, id: \.self) { category in
+                        Text(category).tag(category)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .background(Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.loginBorder, lineWidth: 1)
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Tell us more")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextEditor(text: $feedbackMessage)
+                    .frame(minHeight: 120)
+                    .padding(10)
+                    .background(Color(.tertiarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.loginBorder, lineWidth: 1)
+                    )
+            }
+
+            if let feedbackErrorMessage {
+                Text(feedbackErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let feedbackSuccessMessage {
+                Text(feedbackSuccessMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Color.loginAction)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 12) {
+                overlaySecondaryButton("Back") {
+                    overlayMode = .helpOptions
+                }
+                .disabled(isSubmittingFeedback)
+
+                overlayPrimaryButton(
+                    title: isSubmittingFeedback ? "Sending..." : "Send",
+                    showProgress: isSubmittingFeedback
+                ) {
+                    submitFeedback()
+                }
+                .disabled(isSubmittingFeedback)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 380, alignment: .leading)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
+    private var passwordResetCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Password Reset")
+
+            Text("Enter the email address used for your account. If it is registered, we will send a reset link.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            styledField(title: "Account email") {
+                TextField("you@club.com", text: $resetEmail)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled(true)
+            }
+
+            if let resetErrorMessage {
+                Text(resetErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let resetMessage {
+                Text(resetMessage)
+                    .font(.footnote)
+                    .foregroundStyle(Color.loginAction)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 12) {
+                overlaySecondaryButton("Back") {
+                    overlayMode = .helpOptions
+                }
+                .disabled(isRequestingPasswordReset)
+
+                overlayPrimaryButton(
+                    title: isRequestingPasswordReset ? "Sending..." : "Send Reset Email",
+                    showProgress: isRequestingPasswordReset
+                ) {
+                    requestPasswordReset()
+                }
+                .disabled(isRequestingPasswordReset)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 380, alignment: .leading)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
+    private func overlayHeader(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.title3.weight(.bold))
+            Spacer()
+            overlayCloseButton
+        }
+    }
+
+    private var overlayCloseButton: some View {
+        Button {
+            if !isOverlayBusy {
+                overlayMode = nil
+            }
+        } label: {
+            Text("×")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Color.loginAction)
+                .frame(width: 32, height: 32)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func overlayPrimaryButton(title: String, showProgress: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Group {
+                if showProgress {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.loginAction)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func overlaySecondaryButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.loginAction.opacity(0.12))
+                .foregroundStyle(Color.loginAction)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.loginAction.opacity(0.18), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     private func submit() {
@@ -205,208 +595,133 @@ struct LoginView: View {
     }
 
     private func openRegisterInterest() {
-        openMailLink(subject: "Register Interest")
+        interestFirstName = ""
+        interestSurname = ""
+        interestEmail = username.contains("@") ? username : ""
+        interestUseType = "personal"
+        interestClubName = ""
+        interestMessage = nil
+        interestErrorMessage = nil
+        overlayMode = .registerInterest
     }
 
     private func openNeedHelp() {
         resetErrorMessage = nil
         resetMessage = nil
-        helpOverlayMode = .options
+        feedbackSuccessMessage = nil
+        feedbackErrorMessage = nil
+        overlayMode = .helpOptions
     }
 
-    private func openMailLink(subject: String) {
-        let trimmedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
-        guard let url = URL(string: "mailto:hello@hitnscore.com?subject=\(trimmedSubject)") else {
+    private func submitRegisterInterest() {
+        let email = interestEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let firstName = interestFirstName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let surname = interestSurname.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clubName = interestClubName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !firstName.isEmpty else {
+            interestErrorMessage = "Name is required."
+            interestMessage = nil
             return
         }
 
-        openURL(url)
-    }
+        guard !surname.isEmpty else {
+            interestErrorMessage = "Surname is required."
+            interestMessage = nil
+            return
+        }
 
-    @ViewBuilder
-    private func helpOverlayBackdrop(for mode: HelpOverlayMode) -> some View {
-        ZStack {
-            Color.black.opacity(0.34)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    if !isRequestingPasswordReset {
-                        helpOverlayMode = nil
-                    }
+        guard isValidEmail(email) else {
+            interestErrorMessage = "A valid email address is required."
+            interestMessage = nil
+            return
+        }
+
+        if interestUseType == "club" && clubName.isEmpty {
+            interestErrorMessage = "Club name is required for club use."
+            interestMessage = nil
+            return
+        }
+
+        isSubmittingInterest = true
+        interestErrorMessage = nil
+        interestMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.registerInterest(
+                    firstName: firstName,
+                    surname: surname,
+                    email: email,
+                    useType: interestUseType,
+                    clubName: clubName
+                )
+                await MainActor.run {
+                    interestMessage = "Thanks. We have recorded your interest and will be in touch."
+                    interestErrorMessage = nil
+                    isSubmittingInterest = false
                 }
-
-            switch mode {
-            case .options:
-                helpOptionsCard
-            case .passwordReset:
-                passwordResetCard
-            }
-        }
-    }
-
-    private var helpOptionsCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Need Help?")
-                    .font(.title3.weight(.bold))
-                Spacer()
-                overlayCloseButton
-            }
-
-            Text("Choose an option below.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Button {
-                openMailLink(subject: "Ping Us")
-                helpOverlayMode = nil
-            } label: {
-                Text("Ping Us")
-                    .font(.headline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.loginAction)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                resetEmail = username.contains("@") ? username : ""
-                resetMessage = nil
-                resetErrorMessage = nil
-                helpOverlayMode = .passwordReset
-            } label: {
-                Text("Password Reset")
-                    .font(.headline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.loginAction.opacity(0.12))
-                    .foregroundStyle(Color.loginAction)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.loginAction.opacity(0.18), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(24)
-        .frame(maxWidth: 360, alignment: .leading)
-        .background(Color.loginCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.loginBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 24)
-    }
-
-    private var passwordResetCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Password Reset")
-                    .font(.title3.weight(.bold))
-                Spacer()
-                overlayCloseButton
-            }
-
-            Text("Enter the email address used for your account. If it is registered, we will send a reset link.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Account email")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                TextField("you@club.com", text: $resetEmail)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled(true)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 14)
-                    .background(Color(.tertiarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.loginBorder, lineWidth: 1)
-                    )
-            }
-
-            if let resetErrorMessage {
-                Text(resetErrorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let resetMessage {
-                Text(resetMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Color.loginAction)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            HStack(spacing: 12) {
-                Button("Back") {
-                    resetErrorMessage = nil
-                    resetMessage = nil
-                    helpOverlayMode = .options
+            } catch {
+                await MainActor.run {
+                    interestErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to submit your interest right now."
+                    interestMessage = nil
+                    isSubmittingInterest = false
                 }
-                .buttonStyle(.plain)
-                .font(.headline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.loginAction.opacity(0.12))
-                .foregroundStyle(Color.loginAction)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                Button {
-                    requestPasswordReset()
-                } label: {
-                    Group {
-                        if isRequestingPasswordReset {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text("Send Reset Email")
-                                .font(.headline.weight(.semibold))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.loginAction)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(isRequestingPasswordReset || resetEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .opacity(isRequestingPasswordReset || resetEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.72 : 1)
             }
         }
-        .padding(24)
-        .frame(maxWidth: 360, alignment: .leading)
-        .background(Color.loginCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.loginBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 24)
     }
 
-    private var overlayCloseButton: some View {
-        Button {
-            if !isRequestingPasswordReset {
-                helpOverlayMode = nil
-            }
-        } label: {
-            Text("×")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(Color.loginAction)
-                .frame(width: 32, height: 32)
+    private func submitFeedback() {
+        let name = feedbackName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = feedbackEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let message = feedbackMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !name.isEmpty else {
+            feedbackErrorMessage = "Your name is required."
+            feedbackSuccessMessage = nil
+            return
         }
-        .buttonStyle(.plain)
+
+        guard isValidEmail(email) else {
+            feedbackErrorMessage = "A valid email address is required."
+            feedbackSuccessMessage = nil
+            return
+        }
+
+        guard message.count >= 5 else {
+            feedbackErrorMessage = "Please provide more detail."
+            feedbackSuccessMessage = nil
+            return
+        }
+
+        isSubmittingFeedback = true
+        feedbackErrorMessage = nil
+        feedbackSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.submitFeedback(
+                    name: name,
+                    email: email,
+                    category: feedbackCategory,
+                    message: message,
+                    version: "RcktScore iOS",
+                    build: AppConfig.buildID
+                )
+                await MainActor.run {
+                    feedbackSuccessMessage = "Thanks. Your message has been sent."
+                    feedbackErrorMessage = nil
+                    feedbackMessage = ""
+                    isSubmittingFeedback = false
+                }
+            } catch {
+                await MainActor.run {
+                    feedbackErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to send your message."
+                    feedbackSuccessMessage = nil
+                    isSubmittingFeedback = false
+                }
+            }
+        }
     }
 
     private func requestPasswordReset() {
