@@ -78,6 +78,14 @@ struct MatchIDRequest: Encodable {
     }
 }
 
+struct PasswordResetRequest: Encodable {
+    let email: String
+}
+
+private struct AcceptedResponseData: Decodable {
+    let accepted: Bool?
+}
+
 struct EndMatchRequest: Encodable {
     let matchID: String
     let endedEarly: Bool
@@ -111,6 +119,15 @@ final class APIClient {
         }
 
         return user
+    }
+
+    func requestPasswordReset(email: String) async throws {
+        let request = try makeRequest(
+            path: "/password_reset/request",
+            method: "POST",
+            body: PasswordResetRequest(email: email)
+        )
+        let _: APIEnvelope<AcceptedResponseData> = try await send(request)
     }
 
     func getDashboard(organizationID: Int) async throws -> DashboardResponse {
