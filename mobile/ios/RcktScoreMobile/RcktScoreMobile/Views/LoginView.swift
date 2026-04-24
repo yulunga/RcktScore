@@ -118,22 +118,30 @@ struct LoginView: View {
                         .disabled(isLoading || username.isEmpty || password.isEmpty)
                         .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
 
-                        HStack(spacing: 18) {
-                            Button("register interest") {
-                                openRegisterInterest()
-                            }
-                            .buttonStyle(.plain)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.loginAction)
+                        VStack(spacing: 10) {
+                            HStack {
+                                Spacer()
 
-                            Button("need help ?") {
-                                openNeedHelp()
+                                Button("Let me in") {
+                                    openRegisterInterest()
+                                }
+                                .buttonStyle(.plain)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.loginAction)
                             }
-                            .buttonStyle(.plain)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.loginAction)
 
-                            Spacer(minLength: 0)
+                            HStack {
+                                Spacer()
+
+                                Button("Need help ?") {
+                                    openNeedHelp()
+                                }
+                                .buttonStyle(.plain)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.loginBrandPink)
+
+                                Spacer()
+                            }
                         }
                     }
                     .padding(24)
