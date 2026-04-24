@@ -223,15 +223,15 @@ struct DashboardView: View {
             matchesContent
         case .history:
             historyContent
-        case .players:
+        case .settings:
             placeholderPanel(
-                title: "Players",
-                message: "Player browsing will land here next."
+                title: "Settings",
+                message: "Settings will live here next."
             )
-        case .more:
+        case .help:
             placeholderPanel(
-                title: "More",
-                message: "Settings and more tools will live here."
+                title: "Need Help",
+                message: "Help and support tools will live here."
             )
         }
     }
@@ -691,8 +691,8 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
     case home
     case matches
     case history
-    case players
-    case more
+    case settings
+    case help
 
     var id: String { rawValue }
 
@@ -704,10 +704,10 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "Matches"
         case .history:
             return "History"
-        case .players:
-            return "Players"
-        case .more:
-            return "More"
+        case .settings:
+            return "Settings"
+        case .help:
+            return "Need Help"
         }
     }
 
@@ -719,10 +719,10 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "calendar.badge.clock"
         case .history:
             return "clock"
-        case .players:
-            return "person.2"
-        case .more:
-            return "line.3.horizontal"
+        case .settings:
+            return "gearshape"
+        case .help:
+            return "questionmark.circle"
         }
     }
 }
