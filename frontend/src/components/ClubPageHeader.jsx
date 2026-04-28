@@ -43,7 +43,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
             <div className="club-page-header__brand-row">
               <img
                 className="club-page-header__logo"
-                src="/branding/logo/test_logo_2.png"
+                src="/branding/logo/brand-logo.png"
                 alt="Hit n Score"
               />
               <div className="club-page-header__brand-stack">

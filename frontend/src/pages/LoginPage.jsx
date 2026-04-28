@@ -191,7 +191,7 @@ export default function LoginPage() {
               <div className="login-branding">
                 <img
                   className="login-branding__logo"
-                  src="/branding/logo/test_logo_2.png"
+                  src="/branding/logo/brand-logo.png"
                   alt="Hit n Score"
                 />
                 <h1 className="login-title login-title--wordmark" aria-label="HitnScore">
