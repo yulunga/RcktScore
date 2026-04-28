@@ -63,132 +63,14 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color.loginBackgroundStart,
-                    Color.loginBackgroundEnd
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            backgroundGradient
 
             VStack {
                 Spacer(minLength: 40)
 
                 ZStack(alignment: .topTrailing) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        VStack(alignment: .center, spacing: 12) {
-                            Image("BrandLogo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 132, height: 132)
-
-                            (
-                                Text("Hit ")
-                                    .foregroundStyle(Color.loginBrandBlue)
-                                + Text("n")
-                                    .foregroundStyle(Color.loginBrandPink)
-                                + Text(" Score")
-                                    .foregroundStyle(Color.loginBrandBlue)
-                            )
-                            .font(.system(size: 30, weight: .heavy, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                        }
-
-                        VStack(spacing: 14) {
-                            styledField(title: "Username") {
-                                TextField("Enter username", text: $username)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled(true)
-                            }
-
-                            styledField(title: "Password") {
-                                SecureField("Enter password", text: $password)
-                            }
-                        }
-
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        Button(action: submit) {
-                            Group {
-                                if isLoading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text("Sign in")
-                                        .font(.headline.weight(.semibold))
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.loginAction)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isLoading || username.isEmpty || password.isEmpty)
-                        .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
-
-                        VStack(spacing: 10) {
-                            HStack {
-                                Spacer()
-
-                                Button("Want in") {
-                                    openRegisterInterest()
-                                }
-                                .buttonStyle(.plain)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.loginAction)
-                            }
-
-                            HStack {
-                                Spacer()
-
-                                Button("Need help ?") {
-                                    openNeedHelp()
-                                }
-                                .buttonStyle(.plain)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.loginBrandPink)
-
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(24)
-                    .frame(maxWidth: 420)
-                    .background(Color.loginCardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.loginBorder, lineWidth: 1)
-                    )
-                    .shadow(
-                        color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
-                        radius: 24,
-                        x: 0,
-                        y: 14
-                    )
-
-                    Text("BETA")
-                        .font(.caption2.weight(.black))
-                        .tracking(1.2)
-                        .foregroundStyle(Color.loginBetaText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.loginBetaBackground)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.loginBetaBorder, lineWidth: 1)
-                        )
-                        .clipShape(Capsule())
-                        .offset(x: 10, y: -12)
+                    loginCard
+                    betaBadge
                 }
 
                 Spacer()
@@ -214,6 +96,149 @@ struct LoginView: View {
         .onChange(of: interestUseType) { trackInterestActivity() }
         .onChange(of: interestClubName) { trackInterestActivity() }
         .onChange(of: interestHumanAnswer) { trackInterestActivity() }
+    }
+
+    private var backgroundGradient: some View {
+        LinearGradient(
+            colors: [
+                Color.loginBackgroundStart,
+                Color.loginBackgroundEnd
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+
+    private var loginCard: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            loginBranding
+            loginFields
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            signInButton
+            loginLinks
+        }
+        .padding(24)
+        .frame(maxWidth: 420)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+        .shadow(
+            color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
+            radius: 24,
+            x: 0,
+            y: 14
+        )
+    }
+
+    private var loginBranding: some View {
+        VStack(alignment: .center, spacing: 12) {
+            Image("BrandLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 132, height: 132)
+
+            (
+                Text("Hit ")
+                    .foregroundStyle(Color.loginBrandBlue)
+                + Text("n")
+                    .foregroundStyle(Color.loginBrandPink)
+                + Text(" Score")
+                    .foregroundStyle(Color.loginBrandBlue)
+            )
+            .font(.system(size: 30, weight: .heavy, design: .rounded))
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var loginFields: some View {
+        VStack(spacing: 14) {
+            styledField(title: "Username") {
+                TextField("Enter username", text: $username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+            }
+
+            styledField(title: "Password") {
+                SecureField("Enter password", text: $password)
+            }
+        }
+    }
+
+    private var signInButton: some View {
+        Button(action: submit) {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text("Sign in")
+                        .font(.headline.weight(.semibold))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.loginAction)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading || username.isEmpty || password.isEmpty)
+        .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
+    }
+
+    private var loginLinks: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Spacer()
+
+                Button("Want in") {
+                    openRegisterInterest()
+                }
+                .buttonStyle(.plain)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.loginAction)
+            }
+
+            HStack {
+                Spacer()
+
+                Button("Need help ?") {
+                    openNeedHelp()
+                }
+                .buttonStyle(.plain)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.loginBrandPink)
+
+                Spacer()
+            }
+        }
+    }
+
+    private var betaBadge: some View {
+        Text("BETA")
+            .font(.caption2.weight(.black))
+            .tracking(1.2)
+            .foregroundStyle(Color.loginBetaText)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.loginBetaBackground)
+            .overlay(
+                Capsule()
+                    .stroke(Color.loginBetaBorder, lineWidth: 1)
+            )
+            .clipShape(Capsule())
+            .offset(x: 10, y: -12)
     }
 
     @ViewBuilder
