@@ -176,7 +176,9 @@ struct LoginView: View {
     }
 
     private var signInButton: some View {
-        Button(action: submit) {
+        Button {
+            submit()
+        } label: {
             Group {
                 if isLoading {
                     ProgressView()
