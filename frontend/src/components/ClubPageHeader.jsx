@@ -61,6 +61,13 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
           <div className="club-page-header__account">
             <div className="club-page-header__meta">
               <button
+                className="club-page-header__notification-button"
+                type="button"
+                aria-label="Notifications"
+              >
+                <span aria-hidden="true">🔔</span>
+              </button>
+              <button
                 className="session-link-button"
                 type="button"
                 onClick={() => {
@@ -68,7 +75,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   navigate("/", { replace: true });
                 }}
               >
-                Log Out
+                Logout
               </button>
               <span className="club-page-header__divider" aria-hidden="true">
                 |

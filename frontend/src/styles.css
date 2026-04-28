@@ -683,6 +683,26 @@ textarea {
   gap: 10px;
 }
 
+.club-page-header__notification-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #102a43;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.club-page-header__notification-button:hover {
+  background: rgba(18, 116, 208, 0.08);
+}
+
 .club-page-header__username {
   color: #7b8794;
   font-size: 0.9rem;
@@ -904,122 +924,148 @@ textarea {
   font-size: 0.95rem;
 }
 
-.dashboard-item--card {
-  align-content: start;
-  position: relative;
-  gap: 10px;
-  padding: 7px 14px;
-}
-
-.dashboard-card-status {
-  justify-self: end;
-  margin-bottom: -4px;
-  padding-right: 6px;
-}
-
-.dashboard-card-showcase {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: stretch;
-  gap: 6px;
-  margin-top: 0;
-}
-
 .dashboard-status-dot {
   display: inline-flex;
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 999px;
-  background: #54e27a;
+  background: #1fc16b;
+  flex: 0 0 auto;
 }
 
-.dashboard-card-player-card {
+.dashboard-active-card {
   display: grid;
-  justify-items: start;
-  gap: 0;
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  padding: 10px 12px 8px;
-  border-radius: 18px;
-  background: #1f4f82;
-  border: 1px solid #173b60;
-  color: #fff;
-  text-align: left;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid #dde7f1;
+  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.05);
 }
 
-.dashboard-card-player-card--right {
-  justify-items: start;
+.dashboard-active-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.dashboard-card-player-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px;
+.dashboard-active-card__court {
+  color: #7b8794;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.dashboard-active-card__status {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  color: #22a06b;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.dashboard-card-player-name {
+.dashboard-active-card__main {
   display: grid;
-  gap: 2px;
-  min-height: 52px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.dashboard-active-card__player {
+  display: grid;
+  gap: 6px;
   min-width: 0;
-  align-content: center;
 }
 
-.dashboard-card-player-name strong,
-.dashboard-card-player-name span {
-  display: block;
-  width: 100%;
-  overflow-wrap: break-word;
-  word-break: normal;
-}
-
-.dashboard-card-player-name strong {
-  font-size: clamp(0.9rem, 1vw, 1.18rem);
+.dashboard-active-card__player strong {
+  color: #102a43;
+  font-size: 1.25rem;
   font-weight: 800;
-  line-height: 1.02;
+  line-height: 1.05;
 }
 
-.dashboard-card-player-name span {
-  font-size: clamp(0.9rem, 1vw, 1.18rem);
-  font-weight: 700;
-  line-height: 1.02;
-}
-
-.dashboard-card-versus {
-  display: block;
+.dashboard-active-card__player span {
   color: #7b8794;
-  font-size: 0.78rem;
+  font-size: 0.92rem;
+}
+
+.dashboard-active-card__player--right {
+  text-align: right;
+}
+
+.dashboard-active-card__score {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.dashboard-active-card__score-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.dashboard-active-card__score-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 0.95;
+}
+
+.dashboard-active-card__score-value--left {
+  color: #2f80ed;
+}
+
+.dashboard-active-card__score-value--right {
+  color: #ec5ea8;
+}
+
+.dashboard-active-card__score-divider {
+  color: #7b8794;
+  font-size: 2.25rem;
   font-weight: 700;
-  text-transform: lowercase;
-  text-align: center;
-  justify-self: center;
   line-height: 1;
 }
 
-.dashboard-score-inline {
+.dashboard-active-card__best-of {
+  color: #7b8794;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.dashboard-active-card__resume {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 52px;
-  min-height: 52px;
-  padding: 2px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.28);
-  border: 2px solid rgba(255, 255, 255, 0.72);
-  color: #fff;
-  font-size: clamp(0.95rem, 1.2vw, 1.2rem);
-  font-weight: 800;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+  font-size: 2rem;
   line-height: 1;
+  padding: 0;
 }
 
-.dashboard-card-games-inline {
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 0.72rem;
-  font-weight: 600;
+.dashboard-active-card__resume:hover {
+  background: rgba(18, 116, 208, 0.08);
+  color: #1274d0;
+}
+
+.dashboard-active-card__footer {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-active-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: #486581;
+  font-size: 0.92rem;
 }
 
 .dashboard-item--history {
@@ -2587,6 +2633,7 @@ textarea {
     margin-left: auto;
     flex-shrink: 0;
     justify-content: flex-end;
+    align-items: center;
   }
 
   .club-page-header__username {
@@ -2603,6 +2650,17 @@ textarea {
 
   .club-page-header__account {
     padding-top: 8px;
+  }
+
+  .club-page-header__notification-button {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+  }
+
+  .club-page-header .session-link-button {
+    font-size: 0.82rem;
+    font-weight: 700;
   }
 
   .dashboard-menu-row {
@@ -2663,6 +2721,60 @@ textarea {
     min-height: 44px;
     padding: 10px 14px;
     font-size: 0.82rem;
+  }
+
+  .dashboard-active-card {
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 22px;
+  }
+
+  .dashboard-active-card__court {
+    font-size: 0.88rem;
+  }
+
+  .dashboard-active-card__status {
+    font-size: 0.8rem;
+    gap: 6px;
+  }
+
+  .dashboard-active-card__main {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 24px;
+    gap: 8px;
+  }
+
+  .dashboard-active-card__player strong {
+    font-size: 0.96rem;
+  }
+
+  .dashboard-active-card__player span {
+    font-size: 0.78rem;
+  }
+
+  .dashboard-active-card__score-line {
+    gap: 8px;
+  }
+
+  .dashboard-active-card__score-value {
+    font-size: 1.7rem;
+  }
+
+  .dashboard-active-card__score-divider {
+    font-size: 1.55rem;
+  }
+
+  .dashboard-active-card__best-of {
+    font-size: 0.74rem;
+  }
+
+  .dashboard-active-card__resume {
+    width: 24px;
+    height: 24px;
+    font-size: 1.75rem;
+  }
+
+  .dashboard-active-card__footer {
+    display: none;
   }
 
   .match-control-grid .match-control-grid__settings {

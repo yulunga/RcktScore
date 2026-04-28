@@ -241,52 +241,68 @@ export default function DashboardPage() {
           ) : (
             <div className="dashboard-card-grid">
               {activeMatches.map((match) => (
-                <article className="dashboard-item dashboard-item--card" key={match.id}>
-                  <div
-                    className="dashboard-card-status"
-                    aria-label={match.status || "active"}
-                    title={match.status || "active"}
-                  >
-                    <span className="dashboard-status-dot status-pill--active" aria-hidden="true" />
+                <article className="dashboard-item dashboard-active-card" key={match.id}>
+                  <div className="dashboard-active-card__top">
+                    <span className="dashboard-active-card__court">{match.court_name || "Unassigned Court"}</span>
+                    <span className="dashboard-active-card__status">
+                      <span className="dashboard-status-dot status-pill--active" aria-hidden="true" />
+                      In Progress
+                    </span>
                   </div>
-                  <div className="dashboard-card-showcase">
-                    <div className="dashboard-card-player-card">
-                      <div className="dashboard-card-player-row">
-                        <div className="dashboard-card-player-name">
-                          <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
-                          <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "\u00A0"}</span>
-                        </div>
-                        <span className="dashboard-score-inline">{formatScore(match).player1}</span>
-                      </div>
-                      <span className="dashboard-card-games-inline">Games: {formatGameScore(match).player1}</span>
+
+                  <div className="dashboard-active-card__main">
+                    <div className="dashboard-active-card__player">
+                      <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
+                      <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "Player 1"}</span>
                     </div>
-                    <span className="dashboard-card-versus">vs</span>
-                    <div className="dashboard-card-player-card dashboard-card-player-card--right">
-                      <div className="dashboard-card-player-row">
-                        <div className="dashboard-card-player-name">
-                          <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
-                          <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "\u00A0"}</span>
-                        </div>
-                        <span className="dashboard-score-inline">{formatScore(match).player2}</span>
+
+                    <div className="dashboard-active-card__score">
+                      <div className="dashboard-active-card__score-line">
+                        <span className="dashboard-active-card__score-value dashboard-active-card__score-value--left">
+                          {formatScore(match).player1}
+                        </span>
+                        <span className="dashboard-active-card__score-divider">-</span>
+                        <span className="dashboard-active-card__score-value dashboard-active-card__score-value--right">
+                          {formatScore(match).player2}
+                        </span>
                       </div>
-                      <span className="dashboard-card-games-inline">Games: {formatGameScore(match).player2}</span>
+                      <span className="dashboard-active-card__best-of">
+                        Best of {match.best_of || match?.state?.best_of || 5}
+                      </span>
                     </div>
-                  </div>
-                  <div className="dashboard-item-meta dashboard-item-meta--stacked dashboard-card-meta-box">
-                    <span>Court: {match.court_name || "Unassigned"}</span>
-                    <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
-                  </div>
-                  <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
-                    <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
-                      Resume
-                    </button>
+
+                    <div className="dashboard-active-card__player dashboard-active-card__player--right">
+                      <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
+                      <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "Player 2"}</span>
+                    </div>
+
                     <button
-                      className="danger"
+                      className="dashboard-active-card__resume"
                       type="button"
-                      onClick={() => handleEndMatch(match.id)}
+                      aria-label={`Resume match on ${match.court_name || "court"}`}
+                      onClick={() => navigate(`/match/${match.id}`)}
                     >
-                      End Match
+                      ›
                     </button>
+                  </div>
+
+                  <div className="dashboard-active-card__footer">
+                    <div className="dashboard-active-card__meta">
+                      <span>Games: {formatGameScore(match).label}</span>
+                      <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
+                    </div>
+                    <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
+                      <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
+                        Resume
+                      </button>
+                      <button
+                        className="danger"
+                        type="button"
+                        onClick={() => handleEndMatch(match.id)}
+                      >
+                        End Match
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}
