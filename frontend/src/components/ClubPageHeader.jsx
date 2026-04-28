@@ -217,17 +217,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Quick navigation">
-            <button
-              className="mobile-fab-menu-button mobile-fab-menu-button--open mobile-fab-menu-sheet__close"
-              type="button"
-              aria-label="Close navigation menu"
-              aria-expanded="true"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
             <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
             <div className="mobile-fab-menu-sheet__items">
               {mobileMenuItems.map((item) => (
