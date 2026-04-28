@@ -34,6 +34,28 @@ function readStoredAuthState() {
   }
 }
 
+function writeStoredAuthState(nextState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const session = nextState?.session || null;
+  const pendingSelection = nextState?.pendingSelection || null;
+
+  if (!session && !pendingSelection) {
+    window.sessionStorage.removeItem(SESSION_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({
+      session,
+      pendingSelection,
+    }),
+  );
+}
+
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(() => readStoredAuthState());
   const [loading, setLoading] = useState(false);
@@ -41,22 +63,10 @@ export function AuthProvider({ children }) {
   const pendingSelection = authState.pendingSelection;
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!session && !pendingSelection) {
-      window.sessionStorage.removeItem(SESSION_KEY);
-      return;
-    }
-
-    window.sessionStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        session: session || null,
-        pendingSelection: pendingSelection || null,
-      }),
-    );
+    writeStoredAuthState({
+      session,
+      pendingSelection,
+    });
   }, [pendingSelection, session]);
 
   useEffect(() => {
@@ -101,6 +111,10 @@ export function AuthProvider({ children }) {
           ...response.session,
           loggedInAt: new Date().toISOString(),
         };
+        writeStoredAuthState({
+          session: nextSession,
+          pendingSelection: null,
+        });
         setAuthState({
           session: nextSession,
           pendingSelection: null,
@@ -109,14 +123,19 @@ export function AuthProvider({ children }) {
       }
 
       if (response.organizationSelection?.memberships?.length) {
+        const nextPendingSelection = {
+          username: response.organizationSelection.username || trimmedUsername,
+          memberships: response.organizationSelection.memberships,
+          session_token: response.organizationSelection.session_token || null,
+          loggedInAt: new Date().toISOString(),
+        };
+        writeStoredAuthState({
+          session: null,
+          pendingSelection: nextPendingSelection,
+        });
         setAuthState({
           session: null,
-          pendingSelection: {
-            username: response.organizationSelection.username || trimmedUsername,
-            memberships: response.organizationSelection.memberships,
-            session_token: response.organizationSelection.session_token || null,
-            loggedInAt: new Date().toISOString(),
-          },
+          pendingSelection: nextPendingSelection,
         });
         return { ok: true, requiresOrganizationSelection: true };
       }
@@ -150,17 +169,26 @@ export function AuthProvider({ children }) {
     }
 
     const sessionToken = pendingSelection?.session_token || null;
+    const nextSession = {
+      ...membership,
+      ...(sessionToken ? { session_token: sessionToken } : {}),
+      loggedInAt: new Date().toISOString(),
+    };
+    writeStoredAuthState({
+      session: nextSession,
+      pendingSelection: null,
+    });
     setAuthState({
-      session: {
-        ...membership,
-        ...(sessionToken ? { session_token: sessionToken } : {}),
-        loggedInAt: new Date().toISOString(),
-      },
+      session: nextSession,
       pendingSelection: null,
     });
   }, [pendingSelection]);
 
   const cancelOrganizationSelection = useCallback(() => {
+    writeStoredAuthState({
+      session: null,
+      pendingSelection: null,
+    });
     setAuthState({
       session: null,
       pendingSelection: null,
@@ -173,6 +201,10 @@ export function AuthProvider({ children }) {
       logoutRequest(token).catch(() => {});
     }
 
+    writeStoredAuthState({
+      session: null,
+      pendingSelection: null,
+    });
     setAuthState({
       session: null,
       pendingSelection: null,
