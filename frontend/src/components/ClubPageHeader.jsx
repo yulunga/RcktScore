@@ -194,17 +194,19 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         </section>
       ) : null}
 
-      <button
-        className={`mobile-fab-menu-button${mobileMenuOpen ? " mobile-fab-menu-button--open" : ""}`}
-        type="button"
-        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={mobileMenuOpen ? "true" : "false"}
-        onClick={() => setMobileMenuOpen((current) => !current)}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+      {!mobileMenuOpen ? (
+        <button
+          className="mobile-fab-menu-button"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      ) : null}
 
       {mobileMenuOpen ? (
         <div className="mobile-fab-menu-overlay" role="presentation">
@@ -215,6 +217,17 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Quick navigation">
+            <button
+              className="mobile-fab-menu-button mobile-fab-menu-button--open mobile-fab-menu-sheet__close"
+              type="button"
+              aria-label="Close navigation menu"
+              aria-expanded="true"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
             <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
             <div className="mobile-fab-menu-sheet__items">
               {mobileMenuItems.map((item) => (

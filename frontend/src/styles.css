@@ -2822,6 +2822,7 @@ textarea {
     inset: 0;
     z-index: 44;
     display: block;
+    animation: mobile-fab-overlay-fade 180ms ease;
   }
 
   .mobile-fab-menu-overlay__backdrop {
@@ -2843,6 +2844,14 @@ textarea {
     border-radius: 28px 28px 0 0;
     background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 -18px 40px rgba(16, 42, 67, 0.16);
+    animation: mobile-fab-sheet-slide-up 220ms cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+
+  .mobile-fab-menu-sheet__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
   }
 
   .mobile-fab-menu-sheet__handle {
@@ -2851,6 +2860,7 @@ textarea {
     border-radius: 999px;
     background: rgba(123, 135, 148, 0.35);
     justify-self: center;
+    margin-top: 2px;
   }
 
   .mobile-fab-menu-sheet__items {
@@ -2898,6 +2908,26 @@ textarea {
     line-height: 1.1;
     text-align: center;
     letter-spacing: -0.01em;
+  }
+
+  @keyframes mobile-fab-overlay-fade {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes mobile-fab-sheet-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
   }
 
   .dashboard-active-card {
