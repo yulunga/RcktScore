@@ -699,8 +699,39 @@ textarea {
   padding: 0;
 }
 
+.club-page-header__notification-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 .club-page-header__notification-button:hover {
   background: rgba(18, 116, 208, 0.08);
+}
+
+.dashboard-active-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+}
+
+.dashboard-active-heading__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(47, 128, 237, 0.1);
+  color: #2f80ed;
+  flex: 0 0 auto;
+}
+
+.dashboard-active-heading__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .club-page-header__username {
@@ -2655,12 +2686,31 @@ textarea {
   .club-page-header__notification-button {
     width: 30px;
     height: 30px;
-    font-size: 1.1rem;
+  }
+
+  .club-page-header__notification-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .club-page-header .session-link-button {
     font-size: 0.82rem;
     font-weight: 700;
+  }
+
+  .dashboard-active-heading {
+    gap: 8px;
+    font-size: 1.08rem;
+  }
+
+  .dashboard-active-heading__icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dashboard-active-heading__icon svg {
+    width: 18px;
+    height: 18px;
   }
 
   .dashboard-menu-row {
@@ -2730,11 +2780,11 @@ textarea {
   }
 
   .dashboard-active-card__court {
-    font-size: 0.88rem;
+    font-size: 0.8rem;
   }
 
   .dashboard-active-card__status {
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     gap: 6px;
   }
 
@@ -2744,11 +2794,11 @@ textarea {
   }
 
   .dashboard-active-card__player strong {
-    font-size: 0.96rem;
+    font-size: 0.9rem;
   }
 
   .dashboard-active-card__player span {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 
   .dashboard-active-card__score-line {
@@ -2764,7 +2814,7 @@ textarea {
   }
 
   .dashboard-active-card__best-of {
-    font-size: 0.74rem;
+    font-size: 0.68rem;
   }
 
   .dashboard-active-card__resume {

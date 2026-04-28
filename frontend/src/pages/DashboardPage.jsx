@@ -232,8 +232,18 @@ export default function DashboardPage() {
       <section className="dashboard-grid">
         <section className="panel stack">
           <div className="panel-heading">
-            <h2>Active Matches</h2>
-            <p className="helper-text">Matches currently in progress for this organisation.</p>
+            <h2 className="dashboard-active-heading">
+              <span className="dashboard-active-heading__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                  <path d="M7.75 16.25C5.40279 13.9028 5.40279 10.0972 7.75 7.75" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                  <path d="M16.25 7.75C18.5972 10.0972 18.5972 13.9028 16.25 16.25" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                  <path d="M4.75 19.25C0.75 15.25 0.75 8.75 4.75 4.75" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                  <path d="M19.25 4.75C23.25 8.75 23.25 15.25 19.25 19.25" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                </svg>
+              </span>
+              Active Matches
+            </h2>
           </div>
 
           {activeMatches.length === 0 ? (

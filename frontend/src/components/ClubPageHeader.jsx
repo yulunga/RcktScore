@@ -65,7 +65,28 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                 type="button"
                 aria-label="Notifications"
               >
-                <span aria-hidden="true">🔔</span>
+                <svg
+                  aria-hidden="true"
+                  className="club-page-header__notification-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 4.75C9.79086 4.75 8 6.54086 8 8.75V10.6881C8 11.415 7.76918 12.1231 7.3406 12.7102L6.27218 14.1739C5.6203 15.0669 6.25792 16.3333 7.36346 16.3333H16.6365C17.7421 16.3333 18.3797 15.0669 17.7278 14.1739L16.6594 12.7102C16.2308 12.1231 16 11.415 16 10.6881V8.75C16 6.54086 14.2091 4.75 12 4.75Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M10.25 18.25C10.6124 18.8712 11.2522 19.25 12 19.25C12.7478 19.25 13.3876 18.8712 13.75 18.25"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
               <button
                 className="session-link-button"
