@@ -1,5 +1,5 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 
@@ -26,13 +26,26 @@ function planLabel(plan) {
 
 export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
   const accountSubline = organizationType === "personal"
     ? planLabel(session?.plan || "personal_free")
     : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
+  const mobileMenuItems = [
+    { label: "Home", onClick: () => navigate("/dashboard") },
+    { label: "Matches", onClick: () => navigate("/dashboard#active-matches-section") },
+    { label: "History", onClick: () => navigate("/dashboard#match-history-section") },
+    { label: "Settings", onClick: () => navigate("/settings") },
+    { label: "Need Help", onClick: () => navigate("/ping") },
+  ];
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.hash]);
 
   return (
     <>
@@ -127,6 +140,44 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
             </button>
           ))}
         </section>
+      ) : null}
+
+      <button
+        className="mobile-fab-menu-button"
+        type="button"
+        aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={mobileMenuOpen ? "true" : "false"}
+        onClick={() => setMobileMenuOpen((current) => !current)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      {mobileMenuOpen ? (
+        <div className="mobile-fab-menu-overlay" role="presentation">
+          <button
+            className="mobile-fab-menu-overlay__backdrop"
+            type="button"
+            aria-label="Close navigation menu"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Quick navigation">
+            <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
+            <div className="mobile-fab-menu-sheet__items">
+              {mobileMenuItems.map((item) => (
+                <button
+                  key={item.label}
+                  className="mobile-fab-menu-sheet__item"
+                  type="button"
+                  onClick={item.onClick}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

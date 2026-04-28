@@ -230,7 +230,7 @@ export default function DashboardPage() {
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
       <section className="dashboard-grid">
-        <section className="panel stack">
+        <section className="panel stack" id="active-matches-section">
           <div className="panel-heading">
             <h2 className="dashboard-active-heading">
               <span className="dashboard-active-heading__icon" aria-hidden="true">
