@@ -6,6 +6,7 @@ private enum LoginOverlayMode {
     case helpOptions
     case pingUs
     case passwordReset
+    case sessionConflict
 }
 
 private let feedbackCategories = [
@@ -28,6 +29,7 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var overlayMode: LoginOverlayMode?
+    @State private var sessionConflictMessage = ""
 
     @State private var interestFirstName = ""
     @State private var interestSurname = ""
@@ -255,6 +257,8 @@ struct LoginView: View {
                         pingUsCard
                     case .passwordReset:
                         passwordResetCard
+                    case .sessionConflict:
+                        sessionConflictCard
                     }
                 }
                 .padding(.horizontal, 24)
@@ -543,6 +547,36 @@ struct LoginView: View {
         )
     }
 
+    private var sessionConflictCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Already Signed In")
+
+            Text(sessionConflictMessage)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                overlaySecondaryButton("Cancel") {
+                    overlayMode = nil
+                }
+                .disabled(isLoading)
+
+                overlayPrimaryButton(title: isLoading ? "Signing in..." : "Log Out Other Mobile Session", showProgress: isLoading) {
+                    submit(forceLogoutOther: true)
+                }
+                .disabled(isLoading)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 380, alignment: .leading)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
     private func overlayHeader(_ title: String) -> some View {
         HStack {
             Text(title)
@@ -603,20 +637,31 @@ struct LoginView: View {
         .buttonStyle(.plain)
     }
 
-    private func submit() {
+    private func submit(forceLogoutOther: Bool = false) {
         isLoading = true
         errorMessage = nil
 
         Task {
             do {
-                let session = try await container.apiClient.login(username: username, password: password)
+                let session = try await container.apiClient.login(
+                    username: username,
+                    password: password,
+                    forceLogoutOther: forceLogoutOther
+                )
                 await MainActor.run {
                     container.sessionStore.save(session)
+                    overlayMode = nil
                     isLoading = false
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to sign in."
+                    if let apiError = error as? APIErrorResponse, apiError.code == "ACTIVE_SESSION_EXISTS" {
+                        sessionConflictMessage = apiError.message
+                        overlayMode = .sessionConflict
+                        errorMessage = nil
+                    } else {
+                        errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to sign in."
+                    }
                     isLoading = false
                 }
             }

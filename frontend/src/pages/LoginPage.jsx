@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [interestError, setInterestError] = useState("");
   const [interestMessage, setInterestMessage] = useState("");
   const [interestLoading, setInterestLoading] = useState(false);
+  const [sessionConflictPrompt, setSessionConflictPrompt] = useState(null);
   const {
     isAuthenticated,
     loading,
@@ -77,10 +78,35 @@ export default function LoginPage() {
     const result = await login(username, password);
 
     if (!result.ok) {
+      if (result.requiresSessionReplacement) {
+        setError("");
+        setSessionConflictPrompt({
+          clientLabel: result.clientLabel || "web app",
+          message: result.message,
+        });
+        return;
+      }
       setError(result.message);
       return;
     }
 
+    if (result.requiresOrganizationSelection) {
+      setError("");
+      return;
+    }
+
+    navigate(redirectTo, { replace: true });
+  }
+
+  async function handleConfirmReplaceSession() {
+    const result = await login(username, password, { forceLogoutOther: true });
+    if (!result.ok) {
+      setSessionConflictPrompt(null);
+      setError(result.message);
+      return;
+    }
+
+    setSessionConflictPrompt(null);
     if (result.requiresOrganizationSelection) {
       setError("");
       return;
@@ -221,6 +247,7 @@ export default function LoginPage() {
                     value={username}
                     onChange={(event) => {
                       setUsername(event.target.value);
+                      setSessionConflictPrompt(null);
                       if (error) {
                         setError("");
                       }
@@ -239,6 +266,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(event) => {
                       setPassword(event.target.value);
+                      setSessionConflictPrompt(null);
                       if (error) {
                         setError("");
                       }
@@ -416,6 +444,31 @@ export default function LoginPage() {
           </section>
         </div>
       </div>
+      {sessionConflictPrompt ? (
+        <div className="overlay-backdrop">
+          <div className="overlay-panel overlay-panel--match-confirm stack">
+            <div className="panel-heading">
+              <h2>Already Signed In</h2>
+              <p className="helper-text">
+                {sessionConflictPrompt.message
+                  || `This account is already signed in on the ${sessionConflictPrompt.clientLabel}.`}
+              </p>
+            </div>
+            <div className="button-row">
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => setSessionConflictPrompt(null)}
+              >
+                Cancel
+              </button>
+              <button type="button" onClick={handleConfirmReplaceSession}>
+                Log Out Other {sessionConflictPrompt.clientLabel === "mobile app" ? "Mobile" : "Web"} Session
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="login-footer-wrap">
         <AppFooter />
       </div>

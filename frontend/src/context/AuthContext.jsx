@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, options = {}) => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
 
@@ -93,6 +93,8 @@ export function AuthProvider({ children }) {
       const response = await loginRequest({
         username: trimmedUsername,
         password: trimmedPassword,
+        client_type: "web_app",
+        force_logout_other: Boolean(options.forceLogoutOther),
       });
       if (response.session) {
         const nextSession = {
@@ -124,6 +126,15 @@ export function AuthProvider({ children }) {
         message: "Login failed.",
       };
     } catch (requestError) {
+      if (requestError.code === "ACTIVE_SESSION_EXISTS") {
+        return {
+          ok: false,
+          requiresSessionReplacement: true,
+          message: requestError.message || "This account is already signed in on the web app.",
+          clientLabel: requestError.details?.client_label || "web app",
+        };
+      }
+
       return {
         ok: false,
         message: requestError.message || "Login failed.",

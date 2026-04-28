@@ -210,6 +210,22 @@ export default function DashboardPage() {
         title={isPersonalAccount ? "" : organization.name || session?.organization_name || "Club Dashboard"}
       />
 
+      <button
+        className="dashboard-start-hero"
+        type="button"
+        onClick={() => navigate("/match/new")}
+      >
+        <span className="dashboard-start-hero__tile" aria-hidden="true">
+          +
+        </span>
+        <span className="dashboard-start-hero__copy">
+          <strong>Start New Match</strong>
+        </span>
+        <span className="dashboard-start-hero__chevron" aria-hidden="true">
+          ›
+        </span>
+      </button>
+
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}
 

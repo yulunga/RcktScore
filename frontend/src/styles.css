@@ -623,6 +623,11 @@ textarea {
   gap: 6px;
 }
 
+.club-page-header__brand-stack {
+  display: grid;
+  gap: 4px;
+}
+
 .club-page-header__brand-row {
   display: flex;
   align-items: flex-end;
@@ -652,6 +657,11 @@ textarea {
 
 .club-page-header__wordmark-n {
   color: #ec5ea8;
+}
+
+.club-page-header__mobile-username,
+.club-page-header__mobile-plan {
+  display: none;
 }
 
 .club-page-header__top {
@@ -853,6 +863,10 @@ textarea {
   background: #eef5fc;
   border-color: #7aa5d8;
   color: #0b4f88;
+}
+
+.dashboard-start-hero {
+  display: none;
 }
 
 .dashboard-list {
@@ -2519,18 +2533,53 @@ textarea {
 
   .club-page-header {
     gap: 6px;
-    padding: 14px 16px;
+    padding: 4px 0 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   .club-page-header__top {
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
   }
 
+  .club-page-header__brand-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .club-page-header__brand-stack {
+    gap: 2px;
+    padding-top: 4px;
+  }
+
+  .club-page-header__logo {
+    width: 72px;
+    height: 72px;
+  }
+
   .club-page-header__top h1 {
-    font-size: clamp(1.3rem, 5.4vw, 1.65rem);
-    line-height: 1.05;
+    font-size: clamp(2.1rem, 8vw, 2.55rem);
+    line-height: 0.95;
+  }
+
+  .club-page-header__mobile-username,
+  .club-page-header__mobile-plan {
+    display: block;
+    line-height: 1.1;
+  }
+
+  .club-page-header__mobile-username {
+    color: #243b53;
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+
+  .club-page-header__mobile-plan {
+    color: #7b8794;
+    font-size: 0.78rem;
   }
 
   .club-page-header__meta {
@@ -2541,25 +2590,70 @@ textarea {
   }
 
   .club-page-header__username {
-    font-size: 0.76rem;
-  }
-
-  .club-page-header__organization-name {
-    font-size: 0.62rem;
-  }
-
-  .club-page-header__page-title {
-    font-size: 0.72rem;
-  }
-
-  .club-page-header__copy {
     display: none;
   }
 
+  .club-page-header__divider,
+  .club-page-header__organization-name,
+  .club-page-header__page-title,
+  .club-page-header__copy,
+  .page-beta-badge {
+    display: none;
+  }
+
+  .club-page-header__account {
+    padding-top: 8px;
+  }
+
   .dashboard-menu-row {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
+    display: none;
+  }
+
+  .dashboard-start-hero {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border: 0;
+    border-radius: 28px;
+    background: linear-gradient(135deg, #1274d0 0%, #0b5fb3 100%);
+    color: #fff;
+    box-shadow: 0 16px 32px rgba(11, 95, 179, 0.22);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .dashboard-start-hero__tile {
+    width: 42px;
+    height: 42px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 16px;
+    background: #fff;
+    color: #1274d0;
+    font-size: 2rem;
+    font-weight: 300;
+    line-height: 1;
+    flex: 0 0 auto;
+  }
+
+  .dashboard-start-hero__copy {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dashboard-start-hero__copy strong {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .dashboard-start-hero__chevron {
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    flex: 0 0 auto;
   }
 
   .dashboard-menu-button,

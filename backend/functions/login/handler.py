@@ -1,7 +1,12 @@
 from aws_lambda_powertools import Logger
 
 from common.auth_logic import authenticate_org_user_memberships
-from common.session_logic import create_org_user_session
+from common.session_logic import (
+    create_org_user_session,
+    get_active_session_for_username,
+    login_source_label,
+    normalize_login_source,
+)
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -17,6 +22,8 @@ def lambda_handler(event, context):
 
     username = payload["username"].strip()
     password = payload["password"]
+    client_type = normalize_login_source(payload.get("client_type"))
+    force_logout_other = bool(payload.get("force_logout_other"))
 
     with get_db_connection() as connection:
         auth_result = authenticate_org_user_memberships(connection, username, password)
@@ -35,7 +42,22 @@ def lambda_handler(event, context):
             logger.warning("Invalid login attempt for username=%s", username)
             return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
 
-        session_token = create_org_user_session(connection, username, login_source="login")
+        active_session = get_active_session_for_username(connection, username, client_type)
+        if active_session and not force_logout_other:
+            client_label = login_source_label(client_type)
+            logger.info("Blocked duplicate %s login for username=%s", client_type, username)
+            return error_response(
+                409,
+                "ACTIVE_SESSION_EXISTS",
+                f"This account is already signed in on the {client_label}. Do you want to sign out there and continue here?",
+                {
+                    "client_type": client_type,
+                    "client_label": client_label,
+                    "last_seen_at": active_session.get("last_seen_at").isoformat() if active_session.get("last_seen_at") else None,
+                },
+            )
+
+        session_token = create_org_user_session(connection, username, login_source=client_type)
 
     if len(memberships) == 1:
         user = {

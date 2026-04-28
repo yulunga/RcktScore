@@ -44,25 +44,48 @@ def session_token_from_event(event):
     return (headers.get("x-session-token") or "").strip()
 
 
-def revoke_active_sessions_for_username(connection, username, reason="replaced_by_new_login"):
+def normalize_login_source(login_source):
+    normalized = (login_source or "").strip().lower()
+    if normalized in {"web", "web_app", "browser"}:
+        return "web_app"
+    if normalized in {"mobile", "mobile_app", "ios", "ios_app"}:
+        return "mobile_app"
+    return "web_app"
+
+
+def login_source_label(login_source):
+    normalized = normalize_login_source(login_source)
+    if normalized == "mobile_app":
+        return "mobile app"
+    return "web app"
+
+
+def revoke_active_sessions_for_username(connection, username, reason="replaced_by_new_login", login_source=None):
     normalized_username = normalize_email_address(username)
     if not normalized_username:
         return
 
+    source_clause = ""
+    query_params = {
+        "username": normalized_username,
+        "revoked_at": _utcnow(),
+        "revoked_reason": reason,
+    }
+    if login_source:
+        source_clause = "AND login_source = %(login_source)s"
+        query_params["login_source"] = normalize_login_source(login_source)
+
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             UPDATE org_user_sessions
             SET revoked_at = %(revoked_at)s,
                 revoked_reason = %(revoked_reason)s
             WHERE LOWER(username) = LOWER(%(username)s)
               AND revoked_at IS NULL
+              {source_clause}
             """,
-            {
-                "username": normalized_username,
-                "revoked_at": _utcnow(),
-                "revoked_reason": reason,
-            },
+            query_params,
         )
 
 
@@ -71,9 +94,15 @@ def create_org_user_session(connection, username, login_source="login"):
     if not normalized_username:
         raise ValueError("username is required")
 
+    normalized_source = normalize_login_source(login_source)
     token = secrets.token_urlsafe(48)
     now = _utcnow()
-    revoke_active_sessions_for_username(connection, normalized_username)
+    revoke_active_sessions_for_username(
+        connection,
+        normalized_username,
+        reason="replaced_by_new_login",
+        login_source=normalized_source,
+    )
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -96,7 +125,7 @@ def create_org_user_session(connection, username, login_source="login"):
             {
                 "username": normalized_username,
                 "token_hash": _token_hash(token),
-                "login_source": login_source,
+                "login_source": normalized_source,
                 "created_at": now,
                 "last_seen_at": now,
             },
@@ -104,6 +133,36 @@ def create_org_user_session(connection, username, login_source="login"):
 
     connection.commit()
     return token
+
+
+def get_active_session_for_username(connection, username, login_source):
+    normalized_username = normalize_email_address(username)
+    normalized_source = normalize_login_source(login_source)
+    if not normalized_username:
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                username,
+                login_source,
+                created_at,
+                last_seen_at
+            FROM org_user_sessions
+            WHERE LOWER(username) = LOWER(%(username)s)
+              AND login_source = %(login_source)s
+              AND revoked_at IS NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            {
+                "username": normalized_username,
+                "login_source": normalized_source,
+            },
+        )
+        return cursor.fetchone()
 
 
 def revoke_org_user_session(connection, token, reason="logout"):

@@ -3,6 +3,15 @@ import Foundation
 struct LoginRequest: Encodable {
     let username: String
     let password: String
+    let clientType: String
+    let forceLogoutOther: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case username
+        case password
+        case clientType = "client_type"
+        case forceLogoutOther = "force_logout_other"
+    }
 }
 
 struct DashboardResponse: Decodable {
@@ -188,8 +197,13 @@ final class APIClient {
         authToken = (trimmedToken?.isEmpty == false) ? trimmedToken : nil
     }
 
-    func login(username: String, password: String) async throws -> UserSession {
-        let payload = LoginRequest(username: username, password: password)
+    func login(username: String, password: String, forceLogoutOther: Bool = false) async throws -> UserSession {
+        let payload = LoginRequest(
+            username: username,
+            password: password,
+            clientType: "mobile_app",
+            forceLogoutOther: forceLogoutOther
+        )
         let request = try makeRequest(path: "/login", method: "POST", body: payload)
         let envelope: APIEnvelope<LoginResponseData> = try await send(request)
 
