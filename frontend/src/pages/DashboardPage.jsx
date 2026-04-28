@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -96,6 +96,7 @@ function inferOrganizationType(session) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +133,20 @@ export default function DashboardPage() {
 
     return () => window.clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    const targetId = location.hash.replace("#", "");
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [location.hash]);
 
   async function handleEndMatch(matchId) {
     setActionError("");

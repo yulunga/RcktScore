@@ -24,6 +24,55 @@ function planLabel(plan) {
   return "Club Essentials";
 }
 
+function MobileMenuIcon({ name }) {
+  if (name === "home") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4.75 10.25L12 4.75L19.25 10.25V18.25H14.75V13.75H9.25V18.25H4.75V10.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "matches") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="4.75" width="14" height="14.5" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M8.25 3.75V6.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M15.75 3.75V6.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8.25 10.25H15.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8.75 13.25H12.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "history") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5.75 12C5.75 8.54822 8.54822 5.75 12 5.75C15.4518 5.75 18.25 8.54822 18.25 12C18.25 15.4518 15.4518 18.25 12 18.25C9.58996 18.25 7.49872 16.887 6.45091 14.8889" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5.75 8.25V5.75H8.25" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 8.5V12.25L14.5 13.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "settings") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9.25C10.4812 9.25 9.25 10.4812 9.25 12C9.25 13.5188 10.4812 14.75 12 14.75C13.5188 14.75 14.75 13.5188 14.75 12C14.75 10.4812 13.5188 9.25 12 9.25Z" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M18.25 12C18.25 11.4809 18.1891 10.9761 18.074 10.4926L20 9L18 5.5L15.7747 6.27133C14.9942 5.64352 14.0707 5.18715 13.0596 4.95545L12.5 2.75H11.5L10.9404 4.95545C9.92926 5.18715 9.00585 5.64352 8.2253 6.27133L6 5.5L4 9L5.92602 10.4926C5.81091 10.9761 5.75 11.4809 5.75 12C5.75 12.5191 5.81091 13.0239 5.92602 13.5074L4 15L6 18.5L8.2253 17.7287C9.00585 18.3565 9.92926 18.8128 10.9404 19.0446L11.5 21.25H12.5L13.0596 19.0446C14.0707 18.8128 14.9942 18.3565 15.7747 17.7287L18 18.5L20 15L18.074 13.5074C18.1891 13.0239 18.25 12.5191 18.25 12Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 18.25C15.4518 18.25 18.25 15.4518 18.25 12C18.25 8.54822 15.4518 5.75 12 5.75C8.54822 5.75 5.75 8.54822 5.75 12C5.75 15.4518 8.54822 18.25 12 18.25Z" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M9.75 9.75C10.25 9.25 10.9796 8.95 11.7794 8.95C13.3028 8.95 14.55 10.1418 14.55 11.65C14.55 12.6945 13.963 13.6017 13.1 14.05C12.6161 14.3013 12.25 14.7286 12.25 15.2V15.45" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="12" cy="17.35" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,12 +84,15 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
     ? planLabel(session?.plan || "personal_free")
     : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
+  const navigateToDashboardSection = (sectionId) => {
+    navigate(`/dashboard#${sectionId}`);
+  };
   const mobileMenuItems = [
-    { label: "Home", onClick: () => navigate("/dashboard") },
-    { label: "Matches", onClick: () => navigate("/dashboard#active-matches-section") },
-    { label: "History", onClick: () => navigate("/dashboard#match-history-section") },
-    { label: "Settings", onClick: () => navigate("/settings") },
-    { label: "Need Help", onClick: () => navigate("/ping") },
+    { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
+    { label: "Matches", icon: "matches", onClick: () => navigateToDashboardSection("active-matches-section"), isActive: location.pathname === "/dashboard" && location.hash === "#active-matches-section" },
+    { label: "History", icon: "history", onClick: () => navigateToDashboardSection("match-history-section"), isActive: location.pathname === "/dashboard" && location.hash === "#match-history-section" },
+    { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
+    { label: "Need Help", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping" },
   ];
 
   useEffect(() => {
@@ -143,7 +195,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       ) : null}
 
       <button
-        className="mobile-fab-menu-button"
+        className={`mobile-fab-menu-button${mobileMenuOpen ? " mobile-fab-menu-button--open" : ""}`}
         type="button"
         aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={mobileMenuOpen ? "true" : "false"}
@@ -168,11 +220,14 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               {mobileMenuItems.map((item) => (
                 <button
                   key={item.label}
-                  className="mobile-fab-menu-sheet__item"
+                  className={`mobile-fab-menu-sheet__item${item.isActive ? " mobile-fab-menu-sheet__item--active" : ""}`}
                   type="button"
                   onClick={item.onClick}
                 >
-                  {item.label}
+                  <span className="mobile-fab-menu-sheet__icon" aria-hidden="true">
+                    <MobileMenuIcon name={item.icon} />
+                  </span>
+                  <span className="mobile-fab-menu-sheet__label">{item.label}</span>
                 </button>
               ))}
             </div>

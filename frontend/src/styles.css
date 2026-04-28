@@ -2795,6 +2795,18 @@ textarea {
     background: #1274d0;
     box-shadow: 0 18px 34px rgba(11, 95, 179, 0.24);
     cursor: pointer;
+    transition:
+      transform 180ms ease,
+      width 180ms ease,
+      height 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .mobile-fab-menu-button--open {
+    width: 48px;
+    height: 48px;
+    transform: scale(0.92);
+    box-shadow: 0 12px 24px rgba(11, 95, 179, 0.18);
   }
 
   .mobile-fab-menu-button span {
@@ -2843,19 +2855,47 @@ textarea {
 
   .mobile-fab-menu-sheet__items {
     display: grid;
-    gap: 10px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .mobile-fab-menu-sheet__item {
     width: 100%;
-    min-height: 48px;
-    border: 1px solid #d9e2ec;
+    min-height: 72px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 6px;
+    border: 0;
     border-radius: 18px;
-    background: #fff;
-    color: #102a43;
-    font-size: 0.95rem;
+    background: transparent;
+    color: #486581;
+    font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
+  }
+
+  .mobile-fab-menu-sheet__item--active {
+    color: #1274d0;
+  }
+
+  .mobile-fab-menu-sheet__icon {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-fab-menu-sheet__icon svg {
+    width: 24px;
+    height: 24px;
+    display: block;
+  }
+
+  .mobile-fab-menu-sheet__label {
+    line-height: 1.1;
+    text-align: center;
   }
 
   .dashboard-active-card {
