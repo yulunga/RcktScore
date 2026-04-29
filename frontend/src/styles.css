@@ -1218,7 +1218,7 @@ textarea {
 
 .dashboard-scheduled-card__player strong {
   color: #102a43;
-  font-size: 1rem;
+  font-size: 0.96rem;
   line-height: 1.1;
 }
 
@@ -1239,13 +1239,13 @@ textarea {
 
 .dashboard-scheduled-card__format {
   color: #243b53;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
 .dashboard-scheduled-card__scheduled-at {
   color: #7b8794;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   line-height: 1.2;
 }
 
@@ -2898,6 +2898,19 @@ textarea {
   .page-shell {
     width: min(calc(100vw - 24px), 560px);
     padding: 20px 0 32px;
+  }
+
+  .dashboard-card-grid--desktop,
+  .dashboard-list--desktop {
+    display: none;
+  }
+
+  .dashboard-carousel--mobile {
+    display: grid;
+  }
+
+  .dashboard-card-grid--mobile {
+    grid-template-columns: 1fr;
   }
 
   .hero-card,

@@ -863,55 +863,39 @@ export default function NewMatch() {
           ) : null}
 
           {!isPersonalAccount ? (
-            <>
-              <div className="match-setup-row match-setup-row--labels">
-                <div className="match-setup-inline-label">
-                  Court ID
-                  <span className="required-mark"> *</span>
-                </div>
-                <div className="match-setup-inline-label">
-                  Court Alias
-                  <span className="required-mark"> *</span>
-                </div>
+            <div className="match-setup-row match-setup-row--court-controls">
+              <div className="field">
+                <label htmlFor="court_id">Court ID<span className="required-mark"> *</span></label>
+                <select
+                  disabled={courtLoading || availableCourts.length === 0}
+                  id="court_id"
+                  name="court_id"
+                  required
+                  value={formState.court_id}
+                  onChange={(event) => handleCourtChange(event.target.value)}
+                >
+                  <option value="">
+                    {courtLoading ? "Loading courts..." : "Select a court"}
+                  </option>
+                  {availableCourts.map((court) => (
+                    <option key={court.id} value={String(court.id)}>
+                      {court.court_name || `Court ${court.id}`}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="match-setup-row match-setup-row--court-controls">
-                <div className="field">
-                  <select
-                    disabled={courtLoading || availableCourts.length === 0}
-                    id="court_id"
-                    name="court_id"
-                    required
-                    value={formState.court_id}
-                    onChange={(event) => handleCourtChange(event.target.value)}
-                  >
-                    <option value="">
-                      {courtLoading ? "Loading courts..." : "Select a court"}
-                    </option>
-                    {availableCourts.map((court) => (
-                      <option key={court.id} value={String(court.id)}>
-                        {court.court_name || `Court ${court.id}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <select
-                    disabled
-                    id="court_alias"
-                    name="court_alias"
-                    required
-                    value={formState.court_alias}
-                    onChange={() => {}}
-                  >
-                    <option value="">
-                      {formState.court_alias ? formState.court_alias : "Select a court first"}
-                    </option>
-                  </select>
-                </div>
+              <div className="field">
+                <label htmlFor="court_alias">Court Alias<span className="required-mark"> *</span></label>
+                <input
+                  id="court_alias"
+                  name="court_alias"
+                  readOnly
+                  placeholder="Select a court first"
+                  value={formState.court_alias}
+                />
               </div>
-            </>
+            </div>
           ) : null}
 
           <div className="match-setup-row match-setup-row--format">
