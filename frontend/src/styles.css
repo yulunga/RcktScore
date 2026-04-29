@@ -765,6 +765,31 @@ textarea {
   display: block;
 }
 
+.dashboard-scheduled-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+}
+
+.dashboard-scheduled-heading__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(47, 128, 237, 0.1);
+  color: #2f80ed;
+  flex: 0 0 auto;
+}
+
+.dashboard-scheduled-heading__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
 .club-page-header__username {
   color: #7b8794;
   font-size: 0.9rem;
@@ -1148,6 +1173,111 @@ textarea {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
+}
+
+.dashboard-scheduled-card {
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #dde7f1;
+}
+
+.dashboard-scheduled-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-scheduled-card__court {
+  color: #7b8794;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.dashboard-scheduled-card__status {
+  color: #1274d0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-scheduled-card__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-scheduled-card__player {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dashboard-scheduled-card__player strong {
+  color: #102a43;
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.dashboard-scheduled-card__player span {
+  color: #7b8794;
+  font-size: 0.78rem;
+}
+
+.dashboard-scheduled-card__player--right {
+  text-align: right;
+}
+
+.dashboard-scheduled-card__center {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.dashboard-scheduled-card__format {
+  color: #243b53;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.dashboard-scheduled-card__scheduled-at {
+  color: #7b8794;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.dashboard-scheduled-card__start {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #fff;
+  background: #1274d0;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-scheduled-card__start:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-scheduled-card__footer {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-scheduled-card__details-toggle {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #486581;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
 }
 
 .dashboard-history-action {
@@ -3235,6 +3365,46 @@ textarea {
   .dashboard-item--history {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .dashboard-scheduled-card {
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 22px;
+  }
+
+  .dashboard-scheduled-card__court {
+    font-size: 0.8rem;
+  }
+
+  .dashboard-scheduled-card__status {
+    font-size: 0.74rem;
+  }
+
+  .dashboard-scheduled-card__main {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .dashboard-scheduled-card__player strong {
+    font-size: 0.9rem;
+  }
+
+  .dashboard-scheduled-card__player span,
+  .dashboard-scheduled-card__scheduled-at,
+  .dashboard-scheduled-card__details-toggle {
+    font-size: 0.72rem;
+  }
+
+  .dashboard-scheduled-card__format {
+    font-size: 0.72rem;
+  }
+
+  .dashboard-scheduled-card__start {
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding: 9px 14px;
+    font-size: 0.82rem;
   }
 
   .dashboard-history-action {
