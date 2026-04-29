@@ -1190,10 +1190,9 @@ textarea {
   gap: 12px;
 }
 
-.dashboard-scheduled-card__court {
-  color: #7b8794;
-  font-size: 0.9rem;
-  font-weight: 600;
+.dashboard-scheduled-card__top-spacer {
+  width: 1px;
+  min-height: 1px;
 }
 
 .dashboard-scheduled-card__status {
@@ -1237,16 +1236,10 @@ textarea {
   text-align: center;
 }
 
-.dashboard-scheduled-card__format {
+.dashboard-scheduled-card__court-detail {
   color: #243b53;
   font-size: 0.82rem;
   font-weight: 700;
-}
-
-.dashboard-scheduled-card__scheduled-at {
-  color: #7b8794;
-  font-size: 0.74rem;
-  line-height: 1.2;
 }
 
 .dashboard-scheduled-card__start {
@@ -1278,6 +1271,24 @@ textarea {
   font-weight: 700;
   padding: 0;
   cursor: pointer;
+}
+
+.dashboard-scheduled-card__detail-actions {
+  padding-top: 2px;
+}
+
+.dashboard-scheduled-card__edit {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #fff;
+  background: #486581;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.dashboard-scheduled-card__edit:hover {
+  transform: translateY(-1px);
 }
 
 .dashboard-history-action {
@@ -3386,10 +3397,6 @@ textarea {
     border-radius: 22px;
   }
 
-  .dashboard-scheduled-card__court {
-    font-size: 0.8rem;
-  }
-
   .dashboard-scheduled-card__status {
     font-size: 0.74rem;
   }
@@ -3404,12 +3411,11 @@ textarea {
   }
 
   .dashboard-scheduled-card__player span,
-  .dashboard-scheduled-card__scheduled-at,
   .dashboard-scheduled-card__details-toggle {
     font-size: 0.72rem;
   }
 
-  .dashboard-scheduled-card__format {
+  .dashboard-scheduled-card__court-detail {
     font-size: 0.72rem;
   }
 

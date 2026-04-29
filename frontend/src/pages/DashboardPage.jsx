@@ -364,7 +364,7 @@ export default function DashboardPage() {
     return (
       <article className="dashboard-item dashboard-scheduled-card" key={match.id}>
         <div className="dashboard-scheduled-card__top">
-          <span className="dashboard-scheduled-card__court">{match.court_name || "Unassigned Court"}</span>
+          <span className="dashboard-scheduled-card__top-spacer" aria-hidden="true" />
           <span className="dashboard-scheduled-card__status">Ready to start</span>
         </div>
 
@@ -375,10 +375,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="dashboard-scheduled-card__center">
-            <span className="dashboard-scheduled-card__format">
-              Best of {match.best_of || 5}
+            <span className="dashboard-scheduled-card__court-detail">
+              {match.court_alias || match.court_name || "Unassigned Court"}
             </span>
-            <span className="dashboard-scheduled-card__scheduled-at">{formatDate(match.created_at)}</span>
           </div>
 
           <div className="dashboard-scheduled-card__player dashboard-scheduled-card__player--right">
@@ -406,10 +405,21 @@ export default function DashboardPage() {
             {expandedScheduledMatches[match.id] ? "Hide details" : "More details"}
           </button>
           {expandedScheduledMatches[match.id] ? (
-            <div className="dashboard-match-details">
+            <div className="dashboard-match-details dashboard-match-details--scheduled">
+              <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
+              <span>{`Scheduled: ${formatDate(match.created_at)}`}</span>
               <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
               <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
               <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
+              <div className="dashboard-scheduled-card__detail-actions">
+                <button
+                  className="dashboard-scheduled-card__edit"
+                  type="button"
+                  onClick={() => navigate(`/match/${match.id}?settings=1`)}
+                >
+                  Edit Game
+                </button>
+              </div>
             </div>
           ) : null}
         </div>

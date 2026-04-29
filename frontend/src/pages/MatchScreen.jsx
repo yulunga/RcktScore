@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -211,6 +211,7 @@ function advanceTimerSnapshot(snapshot) {
 
 export default function MatchScreen() {
   const { matchId } = useParams();
+  const location = useLocation();
   const { session } = useAuth();
   const {
     currentMatch,
@@ -252,6 +253,7 @@ export default function MatchScreen() {
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
   const durationSyncRef = useRef({});
+  const settingsAutoloadedRef = useRef(false);
 
   useEffect(() => {
     loadMatch(matchId);
@@ -297,6 +299,20 @@ export default function MatchScreen() {
     setShowWarmupOverlay(false);
     setShowFirstServerOverlay(false);
   }, [currentMatch, gameHistory.length]);
+
+  useEffect(() => {
+    if (!currentMatch?.id || settingsAutoloadedRef.current) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("settings") !== "1") {
+      return;
+    }
+
+    settingsAutoloadedRef.current = true;
+    setShowGameSettingsOverlay(true);
+  }, [currentMatch?.id, location.search]);
 
   useEffect(() => {
     if (!currentMatch?.id) {
