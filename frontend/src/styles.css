@@ -1218,7 +1218,7 @@ textarea {
 
 .dashboard-scheduled-card__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: max-content auto max-content auto;
   align-items: center;
   gap: 8px;
 }
@@ -1241,13 +1241,14 @@ textarea {
 }
 
 .dashboard-scheduled-card__player--right {
-  text-align: right;
+  text-align: left;
 }
 
 .dashboard-scheduled-card__center {
   display: grid;
   gap: 4px;
   text-align: center;
+  padding: 0 8px;
 }
 
 .dashboard-scheduled-card__court-detail {
@@ -1260,7 +1261,7 @@ textarea {
   border: 0;
   border-radius: 999px;
   padding: 10px 16px;
-  margin-left: 12px;
+  margin-left: auto;
   color: #fff;
   background: #1274d0;
   cursor: pointer;
@@ -3426,7 +3427,7 @@ textarea {
   }
 
   .dashboard-scheduled-card__main {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    grid-template-columns: max-content auto max-content auto;
     gap: 6px;
   }
 
