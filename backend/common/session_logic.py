@@ -35,6 +35,12 @@ def _request_headers(event):
     }
 
 
+def is_root_admin_request(event):
+    headers = _request_headers(event)
+    value = (headers.get("x-root-admin-request") or "").strip().lower()
+    return value in {"1", "true", "yes"}
+
+
 def session_token_from_event(event):
     headers = _request_headers(event)
     authorization = (headers.get("authorization") or "").strip()

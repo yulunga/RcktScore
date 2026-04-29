@@ -56,6 +56,7 @@ const sportOptions = [
   { name: "Badminton", status: "planned", note: "Planned after squash launch" },
 ];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ROOT_ADMIN_REQUEST_OPTIONS = { rootAdminRequest: true };
 
 const adminTabs = [
   { id: "club-details", label: "Club Details" },
@@ -145,7 +146,7 @@ export default function RootAdminClubPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await getOrganizationSettings(organizationId);
+      const response = await getOrganizationSettings(organizationId, ROOT_ADMIN_REQUEST_OPTIONS);
       syncLocalState(response);
     } catch (requestError) {
       setError(requestError.message || "Failed to load club administration settings.");
@@ -182,7 +183,7 @@ export default function RootAdminClubPage() {
 
     await runMutation(
       "organization",
-      () => updateOrganizationDetails(organizationId, payload),
+      () => updateOrganizationDetails(organizationId, payload, ROOT_ADMIN_REQUEST_OPTIONS),
       "Organisation details updated.",
     );
   }
@@ -225,11 +226,14 @@ export default function RootAdminClubPage() {
     event.preventDefault();
     await runMutation(
       "court-create",
-      () => createOrganizationCourt({
-        organization_id: organizationId,
-        court_name: courtForm.court_name,
-        court_alias: courtForm.court_alias,
-      }),
+      () => createOrganizationCourt(
+        {
+          organization_id: organizationId,
+          court_name: courtForm.court_name,
+          court_alias: courtForm.court_alias,
+        },
+        ROOT_ADMIN_REQUEST_OPTIONS,
+      ),
       "Court created.",
     );
     setCourtForm(emptyCourtForm);
@@ -238,11 +242,15 @@ export default function RootAdminClubPage() {
   async function handleCourtSave(courtId) {
     await runMutation(
       `court-save-${courtId}`,
-      () => updateOrganizationCourt(courtId, {
-        organization_id: organizationId,
-        court_name: courtDrafts[courtId]?.court_name || "",
-        court_alias: courtDrafts[courtId]?.court_alias || "",
-      }),
+      () => updateOrganizationCourt(
+        courtId,
+        {
+          organization_id: organizationId,
+          court_name: courtDrafts[courtId]?.court_name || "",
+          court_alias: courtDrafts[courtId]?.court_alias || "",
+        },
+        ROOT_ADMIN_REQUEST_OPTIONS,
+      ),
       "Court updated.",
     );
   }
@@ -250,7 +258,7 @@ export default function RootAdminClubPage() {
   async function handleCourtDelete(courtId) {
     await runMutation(
       `court-delete-${courtId}`,
-      () => deleteOrganizationCourt(courtId, { organization_id: organizationId }),
+      () => deleteOrganizationCourt(courtId, { organization_id: organizationId }, ROOT_ADMIN_REQUEST_OPTIONS),
       "Court deleted.",
     );
   }

@@ -37,15 +37,18 @@ function notifySessionInvalidated(code) {
 
 async function apiRequest(path, options = {}) {
   const sessionToken = options.sessionToken === undefined ? readStoredSessionToken() : options.sessionToken;
+  const rootAdminRequest = Boolean(options.rootAdminRequest);
   const headers = {
     "Content-Type": "application/json",
     ...(API_KEY ? { "x-api-key": API_KEY } : {}),
     ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+    ...(rootAdminRequest ? { "x-root-admin-request": "true" } : {}),
     ...(options.headers || {}),
   };
 
   const requestOptions = { ...options };
   delete requestOptions.sessionToken;
+  delete requestOptions.rootAdminRequest;
 
   let response;
   try {
@@ -202,8 +205,8 @@ export function updateRootAdminOrganizationUserRole(userId, payload) {
   });
 }
 
-export function getOrganizationSettings(organizationId) {
-  return apiRequest(`/organization_settings/${organizationId}`);
+export function getOrganizationSettings(organizationId, options = {}) {
+  return apiRequest(`/organization_settings/${organizationId}`, options);
 }
 
 export function searchMatchSetupLookup(organizationId, query) {
@@ -211,8 +214,9 @@ export function searchMatchSetupLookup(organizationId, query) {
   return apiRequest(`/match_setup_lookup/${organizationId}?${params.toString()}`);
 }
 
-export function updateOrganizationDetails(organizationId, payload) {
+export function updateOrganizationDetails(organizationId, payload, options = {}) {
   return apiRequest(`/organization_details/${organizationId}`, {
+    ...options,
     method: "PUT",
     body: JSON.stringify(payload),
   });
@@ -239,22 +243,25 @@ export function updateOrganizationUserRole(userId, payload) {
   });
 }
 
-export function createOrganizationCourt(payload) {
+export function createOrganizationCourt(payload, options = {}) {
   return apiRequest("/organization_courts", {
+    ...options,
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function updateOrganizationCourt(courtId, payload) {
+export function updateOrganizationCourt(courtId, payload, options = {}) {
   return apiRequest(`/organization_courts/${courtId}`, {
+    ...options,
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
 
-export function deleteOrganizationCourt(courtId, payload) {
+export function deleteOrganizationCourt(courtId, payload, options = {}) {
   return apiRequest(`/organization_courts/${courtId}`, {
+    ...options,
     method: "DELETE",
     body: JSON.stringify(payload),
   });

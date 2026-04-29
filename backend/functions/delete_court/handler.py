@@ -4,6 +4,7 @@ from common.organization_logic import delete_court
 from common.session_logic import (
     SessionAuthError,
     authorize_organization_session,
+    is_root_admin_request,
     session_error_response,
 )
 from common.supabase_client import get_db_connection
@@ -25,7 +26,8 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, payload["organization_id"], require_admin=True)
+            if not is_root_admin_request(event):
+                authorize_organization_session(connection, event, payload["organization_id"], require_admin=True)
             deleted = delete_court(connection, payload["organization_id"], court_id)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

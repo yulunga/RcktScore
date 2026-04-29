@@ -4,6 +4,7 @@ from common.organization_logic import get_organization_settings
 from common.session_logic import (
     SessionAuthError,
     authorize_organization_session,
+    is_root_admin_request,
     session_error_response,
 )
 from common.supabase_client import get_db_connection
@@ -20,7 +21,8 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, organization_id, require_admin=False)
+            if not is_root_admin_request(event):
+                authorize_organization_session(connection, event, organization_id, require_admin=False)
             settings = get_organization_settings(connection, organization_id)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
