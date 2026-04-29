@@ -1179,6 +1179,7 @@ textarea {
   display: grid;
   gap: 4px;
   min-width: 0;
+  grid-column: 1;
 }
 
 .dashboard-history-card__title {
@@ -1202,6 +1203,7 @@ textarea {
 }
 
 .dashboard-history-card__view {
+  grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
   display: inline-flex;
@@ -3082,6 +3084,12 @@ textarea {
     gap: 6px 8px;
     padding: 10px 12px;
     border-radius: 18px;
+  }
+
+  .dashboard-history-card__top,
+  .dashboard-history-card__meta {
+    justify-items: start;
+    align-content: start;
   }
 
   .dashboard-history-card__title {
