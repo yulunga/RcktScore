@@ -117,12 +117,14 @@ def _send_organization_user_invitation_email(
     template_prefix = "org_user_invitation_existing" if existing_account else "org_user_invitation_new"
     subject = render_notification_template(f"{template_prefix}_subject.txt", template_context).strip()
     body_text = render_notification_template(f"{template_prefix}_body.txt", template_context).strip()
+    body_html = render_notification_template(f"{template_prefix}_body.html", template_context).strip()
 
     send_email_message(
         destination_email=username,
         source_email=source_email,
         subject=subject,
         text_body=body_text,
+        html_body=body_html,
     )
 
 

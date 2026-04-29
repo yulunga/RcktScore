@@ -1,19 +1,23 @@
 Hi,
 
-Your existing $app_name account has been invited to join another organisation.
+Your existing $app_name account has been invited to join another organisation on Hit n Score.
 
-New organisation:
+Organisation:
 $organization_name
 
-To confirm this association and approve access, open the link below:
+To confirm this association and approve access, open the approval link below:
 $approval_url
 
 Your sign-in email is:
 $username
 
-Once approved, you can choose this organisation when you sign in.
+Once approved, you will be able to choose this organisation when you sign in and move quickly between the clubs and accounts linked to you.
 
-If you were not expecting this invitation, you can ignore this email.
+If you were not expecting this invitation, you can safely ignore this email.
 
 Thanks,
-$app_name
+The Hit n Score Team
+
+Hit n Score
+Live scoring for modern racquet sports
+www.hitnscore.com

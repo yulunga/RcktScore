@@ -2,17 +2,21 @@ Hi,
 
 Welcome to $app_name.
 
-You have been invited to join $organization_name.
+You have been invited to join $organization_name on Hit n Score, the live racquet sports scoring platform built to make match management, scorekeeping, and player experiences smoother from first serve to final point.
 
-To confirm your email address and approve access to this organisation, open the link below:
+To confirm your email address and activate your organisation access, open the approval link below:
 $approval_url
 
 Your sign-in email is:
 $username
 
-Once approved, you can sign in and use the live scoring platform for this organisation.
+Once approved, you will be able to sign in and access live scoring, match history, and organisation tools available within your account.
 
-If you were not expecting this invitation, you can ignore this email.
+If you were not expecting this invitation, you can safely ignore this email.
 
 Thanks,
-$app_name
+The Hit n Score Team
+
+Hit n Score
+Live scoring for modern racquet sports
+www.hitnscore.com
