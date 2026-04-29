@@ -185,9 +185,6 @@ export default function DashboardPage() {
   const isPersonalAccount = organizationType === "personal";
   const historyLimit = organization.history_limit;
   const historyTitle = isPersonalAccount ? "Match History" : "Recent Matches";
-  const historyHelper = isPersonalAccount
-    ? `Showing the latest ${historyLimit || (organizationPlan === "personal_plus" ? 100 : 3)} completed matches for your plan.`
-    : "Completed matches for this organisation.";
   const dashboardSubtitle = isPersonalAccount
     ? "Score matches, resume active games, and review your personal match history."
     : "Manage live scoring, keep an eye on active courts, and review recent matches.";
@@ -391,8 +388,16 @@ export default function DashboardPage() {
 
         <section className="panel stack" id="match-history-section">
           <div className="panel-heading">
-            <h2>{historyTitle}</h2>
-            <p className="helper-text">{historyHelper}</p>
+            <h2 className="dashboard-history-heading">
+              <span className="dashboard-history-heading__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5.75 12C5.75 8.54822 8.54822 5.75 12 5.75C15.4518 5.75 18.25 8.54822 18.25 12C18.25 15.4518 15.4518 18.25 12 18.25C9.58996 18.25 7.49872 16.887 6.45091 14.8889" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5.75 8.25V5.75H8.25" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 8.5V12.25L14.5 13.75" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              {historyTitle}
+            </h2>
           </div>
 
           {recentMatches.length === 0 ? (
@@ -400,27 +405,26 @@ export default function DashboardPage() {
           ) : (
             <div className="dashboard-list">
               {recentMatches.map((match) => (
-                <article className="dashboard-item dashboard-item--history" key={match.id}>
+                <article className="dashboard-item dashboard-history-card" key={match.id}>
+                  <div className="dashboard-history-card__top">
+                    <strong className="dashboard-history-card__title">{formatPlayers(match)}</strong>
+                    <span className="dashboard-history-card__date">{formatDate(match.updated_at)}</span>
+                  </div>
+                  <div className="dashboard-history-card__meta">
+                    <span className="dashboard-history-card__winner">{formatMatchHistoryResult(match).winnerName}</span>
+                    <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
+                    {!isPersonalAccount ? (
+                      <span className="dashboard-history-card__court">{match.court_name || "Unassigned"}</span>
+                    ) : null}
+                  </div>
                   <button
-                    className="dashboard-history-action"
+                    className="dashboard-history-card__view"
                     type="button"
                     onClick={() => navigate(`/match/${match.id}`)}
+                    aria-label={`View completed match ${formatPlayers(match)}`}
                   >
-                    View
+                    ›
                   </button>
-                  <div className="dashboard-history-content">
-                    <div className="dashboard-item-head">
-                      <strong>{formatPlayers(match)}</strong>
-                      <span>{formatDate(match.updated_at)}</span>
-                    </div>
-                    <div className="dashboard-item-meta">
-                      <span>Winner: {formatMatchHistoryResult(match).winnerName}</span>
-                      <span>Result: {formatMatchHistoryResult(match).scoreLine}</span>
-                      {!isPersonalAccount ? (
-                        <span>Court: {match.court_name || "Unassigned"}</span>
-                      ) : null}
-                    </div>
-                  </div>
                 </article>
               ))}
             </div>

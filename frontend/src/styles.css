@@ -734,6 +734,31 @@ textarea {
   display: block;
 }
 
+.dashboard-history-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+}
+
+.dashboard-history-heading__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(47, 128, 237, 0.1);
+  color: #2f80ed;
+  flex: 0 0 auto;
+}
+
+.dashboard-history-heading__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
 .club-page-header__username {
   color: #7b8794;
   font-size: 0.9rem;
@@ -1137,6 +1162,66 @@ textarea {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.dashboard-history-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #dde7f1;
+}
+
+.dashboard-history-card__top,
+.dashboard-history-card__meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dashboard-history-card__title {
+  color: #102a43;
+  font-size: 0.98rem;
+  line-height: 1.15;
+}
+
+.dashboard-history-card__date,
+.dashboard-history-card__winner,
+.dashboard-history-card__result,
+.dashboard-history-card__court {
+  color: #7b8794;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.dashboard-history-card__winner {
+  color: #243b53;
+  font-weight: 600;
+}
+
+.dashboard-history-card__view {
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+  font-size: 1.9rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.dashboard-history-card__view:hover {
+  background: rgba(18, 116, 208, 0.08);
+  color: #1274d0;
 }
 
 .dashboard-match-menu-button {
@@ -2718,6 +2803,21 @@ textarea {
     height: 18px;
   }
 
+  .dashboard-history-heading {
+    gap: 8px;
+    font-size: 1.08rem;
+  }
+
+  .dashboard-history-heading__icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dashboard-history-heading__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .dashboard-menu-row {
     display: none;
   }
@@ -2975,6 +3075,34 @@ textarea {
 
   .dashboard-active-card__footer {
     display: none;
+  }
+
+  .dashboard-history-card {
+    grid-template-columns: minmax(0, 1fr) 24px;
+    gap: 6px 8px;
+    padding: 10px 12px;
+    border-radius: 18px;
+  }
+
+  .dashboard-history-card__title {
+    font-size: 0.84rem;
+  }
+
+  .dashboard-history-card__date,
+  .dashboard-history-card__winner,
+  .dashboard-history-card__result,
+  .dashboard-history-card__court {
+    font-size: 0.68rem;
+  }
+
+  .dashboard-history-card__meta {
+    gap: 2px;
+  }
+
+  .dashboard-history-card__view {
+    width: 24px;
+    height: 24px;
+    font-size: 1.6rem;
   }
 
   .match-control-grid .match-control-grid__settings {
