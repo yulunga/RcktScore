@@ -5,7 +5,7 @@ from common.match_logic import list_matches
 
 PERSONAL_HISTORY_LIMITS = {
     "personal_free": 3,
-    "personal_plus": 100,
+    "personal_plus": 12,
 }
 
 
@@ -28,7 +28,7 @@ def _history_limit_for_plan(org_type, plan, default_limit):
     return default_limit
 
 
-def get_dashboard_data(connection, organization_id, active_limit=10, recent_limit=10):
+def get_dashboard_data(connection, organization_id, active_limit=12, recent_limit=12):
     with connection.cursor() as cursor:
         cursor.execute(
             """

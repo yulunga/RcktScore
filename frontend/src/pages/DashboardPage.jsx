@@ -6,6 +6,8 @@ import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
+const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
+
 function formatScore(match) {
   const player1Score = match?.state?.player1_score ?? 0;
   const player2Score = match?.state?.player2_score ?? 0;
@@ -94,6 +96,22 @@ function inferOrganizationType(session) {
   return Number(session?.organization_id) >= 50000 ? "personal" : "club";
 }
 
+function chunkItems(items, pageSize = DASHBOARD_CAROUSEL_PAGE_SIZE) {
+  const pages = [];
+  for (let index = 0; index < items.length; index += pageSize) {
+    pages.push(items.slice(index, index + pageSize));
+  }
+  return pages;
+}
+
+function clampPageIndex(index, totalPages) {
+  if (totalPages <= 0) {
+    return 0;
+  }
+
+  return Math.min(index, totalPages - 1);
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,6 +121,10 @@ export default function DashboardPage() {
   const [actionError, setActionError] = useState("");
   const [minuteTick, setMinuteTick] = useState(Date.now());
   const [expandedScheduledMatches, setExpandedScheduledMatches] = useState({});
+  const [historyPage, setHistoryPage] = useState(0);
+  const [activePage, setActivePage] = useState(0);
+  const [scheduledPage, setScheduledPage] = useState(0);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -214,6 +236,197 @@ export default function DashboardPage() {
     });
   }
 
+  const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 12, 12);
+  const historyMatches = recentMatches.slice(0, historyPreviewLimit);
+  const historyPages = chunkItems(historyMatches);
+  const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
+  const hasHistoryCarousel = historyPages.length > 1;
+  const showHistoryViewAll = historyMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
+
+  const activePages = chunkItems(activeMatches);
+  const visibleActivePage = activePages[clampPageIndex(activePage, activePages.length)] || [];
+  const hasActiveCarousel = !isPersonalAccount && activePages.length > 1;
+
+  const scheduledPages = chunkItems(scheduledMatches);
+  const visibleScheduledPage = scheduledPages[clampPageIndex(scheduledPage, scheduledPages.length)] || [];
+  const hasScheduledCarousel = !isPersonalAccount && scheduledPages.length > 1;
+
+  useEffect(() => {
+    setHistoryPage((current) => clampPageIndex(current, historyPages.length));
+  }, [historyPages.length]);
+
+  useEffect(() => {
+    setActivePage((current) => clampPageIndex(current, activePages.length));
+  }, [activePages.length]);
+
+  useEffect(() => {
+    setScheduledPage((current) => clampPageIndex(current, scheduledPages.length));
+  }, [scheduledPages.length]);
+
+  useEffect(() => {
+    if (!showHistoryViewAll) {
+      setShowAllHistory(false);
+    }
+  }, [showHistoryViewAll]);
+
+  function renderPagerDots(totalPages, currentPage, onSelectPage, label) {
+    if (totalPages <= 1) {
+      return null;
+    }
+
+    return (
+      <div className="dashboard-carousel-dots" aria-label={label} role="tablist">
+        {Array.from({ length: totalPages }, (_, index) => (
+          <button
+            key={`${label}-${index}`}
+            aria-label={`Show page ${index + 1}`}
+            aria-selected={currentPage === index ? "true" : "false"}
+            className={`dashboard-carousel-dots__dot${currentPage === index ? " dashboard-carousel-dots__dot--active" : ""}`}
+            role="tab"
+            type="button"
+            onClick={() => onSelectPage(index)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  function renderActiveMatchCard(match) {
+    return (
+      <article className="dashboard-item dashboard-active-card" key={match.id}>
+        <div className="dashboard-active-card__top">
+          <span className="dashboard-active-card__court">{match.court_name || "Unassigned Court"}</span>
+          <span className="dashboard-active-card__status">
+            <span className="dashboard-status-dot status-pill--active" aria-hidden="true" />
+            In Progress
+          </span>
+        </div>
+
+        <div className="dashboard-active-card__main">
+          <div className="dashboard-active-card__player">
+            <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
+            <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "Player 1"}</span>
+          </div>
+
+          <div className="dashboard-active-card__score">
+            <div className="dashboard-active-card__score-line">
+              <span className="dashboard-active-card__score-value dashboard-active-card__score-value--left">
+                {formatScore(match).player1}
+              </span>
+              <span className="dashboard-active-card__score-divider">-</span>
+              <span className="dashboard-active-card__score-value dashboard-active-card__score-value--right">
+                {formatScore(match).player2}
+              </span>
+            </div>
+            <span className="dashboard-active-card__best-of">
+              Best of {match.best_of || match?.state?.best_of || 5}
+            </span>
+          </div>
+
+          <div className="dashboard-active-card__player dashboard-active-card__player--right">
+            <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
+            <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "Player 2"}</span>
+          </div>
+
+          <button
+            className="dashboard-active-card__resume"
+            type="button"
+            aria-label={`Resume match on ${match.court_name || "court"}`}
+            onClick={() => navigate(`/match/${match.id}`)}
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="dashboard-active-card__footer">
+          <div className="dashboard-active-card__meta">
+            <span>Games: {formatGameScore(match).label}</span>
+            <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
+          </div>
+          <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
+            <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
+              Resume
+            </button>
+            <button
+              className="danger"
+              type="button"
+              onClick={() => handleEndMatch(match.id)}
+            >
+              End Match
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  function renderScheduledMatchCard(match) {
+    return (
+      <article className="dashboard-item dashboard-item--history" key={match.id}>
+        <button
+          className="dashboard-history-action"
+          type="button"
+          onClick={() => handleStartScheduledMatch(match.id)}
+        >
+          Start
+        </button>
+        <div className="dashboard-history-content">
+          <div className="dashboard-item-head">
+            <strong>{formatPlayers(match)}</strong>
+            <button
+              aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
+              aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
+              className="dashboard-match-menu-button"
+              type="button"
+              onClick={() => toggleScheduledDetails(match.id)}
+            >
+              <span aria-hidden="true">⋮</span>
+            </button>
+          </div>
+          <div className="dashboard-item-meta">
+            <span>Court: {match.court_name || "Unassigned"}</span>
+            <span>Ready to start</span>
+          </div>
+          {expandedScheduledMatches[match.id] ? (
+            <div className="dashboard-match-details">
+              <span>Scheduled: {formatDate(match.created_at)}</span>
+              <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
+              <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
+              <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
+              <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
+            </div>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
+  function renderHistoryMatchCard(match) {
+    return (
+      <article className="dashboard-item dashboard-history-card" key={match.id}>
+        <div className="dashboard-history-card__top">
+          <strong className="dashboard-history-card__title">{formatPlayers(match)}</strong>
+          <span className="dashboard-history-card__date">{formatDate(match.updated_at)}</span>
+        </div>
+        <div className="dashboard-history-card__meta">
+          <span className="dashboard-history-card__winner">{formatMatchHistoryResult(match).winnerName}</span>
+          <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
+          {!isPersonalAccount ? (
+            <span className="dashboard-history-card__court">{match.court_name || "Unassigned"}</span>
+          ) : null}
+        </div>
+        <button
+          className="dashboard-history-card__view"
+          type="button"
+          onClick={() => navigate(`/match/${match.id}`)}
+          aria-label={`View completed match ${formatPlayers(match)}`}
+        >
+          ›
+        </button>
+      </article>
+    );
+  }
+
   return (
     <main className="page-shell stack">
       <ClubPageHeader
@@ -261,74 +474,21 @@ export default function DashboardPage() {
           {activeMatches.length === 0 ? (
             <div className="dashboard-empty">No active matches right now.</div>
           ) : (
-            <div className="dashboard-card-grid">
-              {activeMatches.map((match) => (
-                <article className="dashboard-item dashboard-active-card" key={match.id}>
-                  <div className="dashboard-active-card__top">
-                    <span className="dashboard-active-card__court">{match.court_name || "Unassigned Court"}</span>
-                    <span className="dashboard-active-card__status">
-                      <span className="dashboard-status-dot status-pill--active" aria-hidden="true" />
-                      In Progress
-                    </span>
-                  </div>
-
-                  <div className="dashboard-active-card__main">
-                    <div className="dashboard-active-card__player">
-                      <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
-                      <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "Player 1"}</span>
-                    </div>
-
-                    <div className="dashboard-active-card__score">
-                      <div className="dashboard-active-card__score-line">
-                        <span className="dashboard-active-card__score-value dashboard-active-card__score-value--left">
-                          {formatScore(match).player1}
-                        </span>
-                        <span className="dashboard-active-card__score-divider">-</span>
-                        <span className="dashboard-active-card__score-value dashboard-active-card__score-value--right">
-                          {formatScore(match).player2}
-                        </span>
-                      </div>
-                      <span className="dashboard-active-card__best-of">
-                        Best of {match.best_of || match?.state?.best_of || 5}
-                      </span>
-                    </div>
-
-                    <div className="dashboard-active-card__player dashboard-active-card__player--right">
-                      <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
-                      <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "Player 2"}</span>
-                    </div>
-
-                    <button
-                      className="dashboard-active-card__resume"
-                      type="button"
-                      aria-label={`Resume match on ${match.court_name || "court"}`}
-                      onClick={() => navigate(`/match/${match.id}`)}
-                    >
-                      ›
-                    </button>
-                  </div>
-
-                  <div className="dashboard-active-card__footer">
-                    <div className="dashboard-active-card__meta">
-                      <span>Games: {formatGameScore(match).label}</span>
-                      <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
-                    </div>
-                    <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
-                      <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
-                        Resume
-                      </button>
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={() => handleEndMatch(match.id)}
-                      >
-                        End Match
-                      </button>
+            <>
+              <div className="dashboard-card-grid dashboard-card-grid--desktop">
+                {activeMatches.map((match) => renderActiveMatchCard(match))}
+              </div>
+              {!isPersonalAccount ? (
+                <div className="dashboard-carousel dashboard-carousel--mobile">
+                  <div className="dashboard-carousel__page">
+                    <div className="dashboard-card-grid dashboard-card-grid--mobile">
+                      {visibleActivePage.map((match) => renderActiveMatchCard(match))}
                     </div>
                   </div>
-                </article>
-              ))}
-            </div>
+                  {hasActiveCarousel ? renderPagerDots(activePages.length, activePage, setActivePage, "Active match pages") : null}
+                </div>
+              ) : null}
+            </>
           )}
         </section>
 
@@ -342,52 +502,25 @@ export default function DashboardPage() {
             {scheduledMatches.length === 0 ? (
               <div className="dashboard-empty">No scheduled matches right now.</div>
             ) : (
-              <div className="dashboard-list">
-                {scheduledMatches.map((match) => (
-                  <article className="dashboard-item dashboard-item--history" key={match.id}>
-                    <button
-                      className="dashboard-history-action"
-                      type="button"
-                      onClick={() => handleStartScheduledMatch(match.id)}
-                    >
-                      Start
-                    </button>
-                    <div className="dashboard-history-content">
-                      <div className="dashboard-item-head">
-                        <strong>{formatPlayers(match)}</strong>
-                        <button
-                          aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
-                          aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
-                          className="dashboard-match-menu-button"
-                          type="button"
-                          onClick={() => toggleScheduledDetails(match.id)}
-                        >
-                          <span aria-hidden="true">⋮</span>
-                        </button>
-                      </div>
-                      <div className="dashboard-item-meta">
-                        <span>Court: {match.court_name || "Unassigned"}</span>
-                        <span>Ready to start</span>
-                      </div>
-                      {expandedScheduledMatches[match.id] ? (
-                        <div className="dashboard-match-details">
-                          <span>Scheduled: {formatDate(match.created_at)}</span>
-                          <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
-                          <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
-                          <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
-                          <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
-                        </div>
-                      ) : null}
+              <>
+                <div className="dashboard-list dashboard-list--desktop">
+                  {scheduledMatches.map((match) => renderScheduledMatchCard(match))}
+                </div>
+                <div className="dashboard-carousel dashboard-carousel--mobile">
+                  <div className="dashboard-carousel__page">
+                    <div className="dashboard-list">
+                      {visibleScheduledPage.map((match) => renderScheduledMatchCard(match))}
                     </div>
-                  </article>
-                ))}
-              </div>
+                  </div>
+                  {hasScheduledCarousel ? renderPagerDots(scheduledPages.length, scheduledPage, setScheduledPage, "Scheduled match pages") : null}
+                </div>
+              </>
             )}
           </section>
         ) : null}
 
         <section className="panel stack" id="match-history-section">
-          <div className="panel-heading">
+          <div className="panel-heading panel-heading--with-action">
             <h2 className="dashboard-history-heading">
               <span className="dashboard-history-heading__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -398,36 +531,41 @@ export default function DashboardPage() {
               </span>
               {historyTitle}
             </h2>
+            {showHistoryViewAll ? (
+              <button
+                className="dashboard-section-link"
+                type="button"
+                onClick={() => setShowAllHistory((current) => !current)}
+              >
+                {showAllHistory ? "Show less" : "View all"}
+              </button>
+            ) : null}
           </div>
 
-          {recentMatches.length === 0 ? (
+          {historyMatches.length === 0 ? (
             <div className="dashboard-empty">Completed matches will appear here once they are ended.</div>
           ) : (
-            <div className="dashboard-list">
-              {recentMatches.map((match) => (
-                <article className="dashboard-item dashboard-history-card" key={match.id}>
-                  <div className="dashboard-history-card__top">
-                    <strong className="dashboard-history-card__title">{formatPlayers(match)}</strong>
-                    <span className="dashboard-history-card__date">{formatDate(match.updated_at)}</span>
+            <>
+              <div className="dashboard-list dashboard-list--desktop">
+                {(showAllHistory ? historyMatches : historyMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE)).map((match) => renderHistoryMatchCard(match))}
+              </div>
+              <div className="dashboard-carousel dashboard-carousel--mobile">
+                {showAllHistory ? (
+                  <div className="dashboard-list">
+                    {historyMatches.map((match) => renderHistoryMatchCard(match))}
                   </div>
-                  <div className="dashboard-history-card__meta">
-                    <span className="dashboard-history-card__winner">{formatMatchHistoryResult(match).winnerName}</span>
-                    <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
-                    {!isPersonalAccount ? (
-                      <span className="dashboard-history-card__court">{match.court_name || "Unassigned"}</span>
-                    ) : null}
-                  </div>
-                  <button
-                    className="dashboard-history-card__view"
-                    type="button"
-                    onClick={() => navigate(`/match/${match.id}`)}
-                    aria-label={`View completed match ${formatPlayers(match)}`}
-                  >
-                    ›
-                  </button>
-                </article>
-              ))}
-            </div>
+                ) : (
+                  <>
+                    <div className="dashboard-carousel__page">
+                      <div className="dashboard-list">
+                        {visibleHistoryPage.map((match) => renderHistoryMatchCard(match))}
+                      </div>
+                    </div>
+                    {hasHistoryCarousel ? renderPagerDots(historyPages.length, historyPage, setHistoryPage, "History pages") : null}
+                  </>
+                )}
+              </div>
+            </>
           )}
         </section>
 

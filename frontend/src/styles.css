@@ -609,6 +609,12 @@ textarea {
   gap: 6px;
 }
 
+.panel-heading--with-action {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
 .panel-heading p {
   margin: 0;
 }
@@ -955,6 +961,15 @@ textarea {
   gap: 14px;
 }
 
+.dashboard-list--desktop,
+.dashboard-card-grid--desktop {
+  display: grid;
+}
+
+.dashboard-carousel--mobile {
+  display: none;
+}
+
 .dashboard-card-grid {
   display: grid;
   gap: 14px;
@@ -1224,6 +1239,56 @@ textarea {
 .dashboard-history-card__view:hover {
   background: rgba(18, 116, 208, 0.08);
   color: #1274d0;
+}
+
+.dashboard-section-link {
+  border: 0;
+  background: transparent;
+  color: #1274d0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dashboard-section-link:hover {
+  color: #0f5fad;
+}
+
+.dashboard-carousel {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-carousel__page {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.dashboard-carousel-dots__dot {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #d6dee8;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+
+.dashboard-carousel-dots__dot--active {
+  background: #2f80ed;
+  transform: scale(1.15);
 }
 
 .dashboard-match-menu-button {
@@ -2684,6 +2749,19 @@ textarea {
   .dashboard-card-grid {
     grid-template-columns: 1fr;
   }
+
+  .dashboard-card-grid--desktop,
+  .dashboard-list--desktop {
+    display: none;
+  }
+
+  .dashboard-carousel--mobile {
+    display: grid;
+  }
+
+  .dashboard-card-grid--mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px), (min-width: 481px) and (max-width: 1024px) and (orientation: portrait) {
@@ -3111,6 +3189,10 @@ textarea {
     width: 24px;
     height: 24px;
     font-size: 1.6rem;
+  }
+
+  .dashboard-section-link {
+    font-size: 0.82rem;
   }
 
   .match-control-grid .match-control-grid__settings {
