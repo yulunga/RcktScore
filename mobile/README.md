@@ -1,13 +1,30 @@
 # Mobile Workspace
 
-This directory is reserved for native mobile clients that live alongside the
-existing web frontend and Lambda backend.
+This directory contains the native mobile work that lives alongside the web
+frontend and Lambda backend.
 
-Current intent:
+Current structure:
 
-- `ios/` holds the iOS-native project/workspace scaffolding
-- `shared/` holds mobile-facing shared contracts, payload examples, and specs
+- `ios/` contains the active SwiftUI iOS client
+- `shared/` contains mobile-facing contracts, state notes, and documentation references
 
-The mobile app should reuse the existing backend and API contract from the main
-v2 platform rather than introduce a separate backend.
+## Current Mobile Reality
 
+The iOS app is no longer just a placeholder folder.
+
+Current implementation includes:
+
+- organisation-user login against the shared v2 backend
+- persisted session state
+- dashboard loading
+- active and scheduled match access
+- scoring against the same backend routes used by the web app
+
+Current limitations:
+
+- native timer/warm-up flow does not yet fully match the web scorer
+- no documented mobile CI/archive/release pipeline yet
+- no completed mobile realtime/WebSocket path yet
+
+Use the dedicated docs in [docs/mobile](../docs/mobile/README.md) for current
+setup, build, and release guidance.

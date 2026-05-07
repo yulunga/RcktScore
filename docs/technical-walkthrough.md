@@ -2,27 +2,31 @@
 
 ## Purpose
 
-This document walks through the current end-to-end request lifecycles in `RcktScore` v2.
-It is intended for developers working on the live app.
+This document describes the current end-to-end request lifecycles in `RcktScore` v2.
+It is written to help developers trace product behavior through the actual web app,
+Lambda handlers, and shared backend logic.
 
-For the route list and backend module reference, see [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md).
-
----
+For the route inventory and security posture, see [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md).
+For operational debugging, see [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md).
 
 ## Shared Request Pattern
 
-Almost every request follows the same path:
+Most current requests follow this path:
 
-1. A React page/component or native SwiftUI view triggers an action.
-2. Web actions go through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js); iOS actions go through [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift).
-3. API Gateway routes the request to a Lambda from [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
-4. The Lambda handler parses and validates input using [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py).
-5. Shared logic in `backend/common/` performs the real business work.
-6. A DB connection from [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py) reads/writes Supabase Postgres.
-7. The Lambda returns the shared API envelope.
-8. The web context or native view state updates and the screen rerenders.
+1. A React page or iOS view triggers an action.
+2. The client calls the HTTP API through:
+   - [frontend/src/services/api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+   - `mobile/ios/.../Services/APIClient.swift`
+3. API Gateway invokes a Lambda from [backend/template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
+4. The Lambda parses input with [backend/common/utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py).
+5. Shared business logic runs in `backend/common/`.
+6. Postgres reads/writes go through [backend/common/supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py).
+7. The Lambda returns the shared response envelope.
+8. The client updates local state and rerenders.
 
-Shared response envelope:
+## Response Envelope
+
+Success:
 
 ```json
 {
@@ -33,7 +37,7 @@ Shared response envelope:
 }
 ```
 
-or
+Error:
 
 ```json
 {
@@ -47,481 +51,342 @@ or
 }
 ```
 
-The sections below describe each major flow explicitly.
+## 1. Organisation Login Flow
 
----
+### Frontend entry
 
-## 1. Login Flow
+- [frontend/src/pages/LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
+- [frontend/src/context/AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
 
-### Frontend Entry
+### Current path
 
-- [LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
-- [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+1. The user submits `username` and `password`.
+2. `AuthContext.login(...)` calls `POST /login`.
+3. [backend/functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py) validates the body.
+4. The handler calls [authenticate_org_user_memberships(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
+5. Matching approved memberships are loaded from `SkwshOrgUsers` joined with `SkwshOrgSettings`.
+6. The handler checks for an already-active session for the same client type.
+7. The handler creates a session token in `org_user_sessions`.
+8. The API returns one of:
+   - `data.session`
+   - `data.organizationSelection`
+   - `PENDING_APPROVAL`
+   - `ACTIVE_SESSION_EXISTS`
+9. The frontend stores the result in `sessionStorage`.
 
-### Request Path
+### Troubleshooting cues
 
-1. User submits username/password on the login page.
-2. `AuthContext.login(...)` calls `api.js -> POST /login`.
-3. API Gateway invokes [login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py).
-4. Handler parses body and validates required fields.
-5. Handler opens DB connection.
-6. Handler calls [authenticate_org_user(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
-7. `auth_logic.py`:
-   - loads the user from `SkwshOrgUsers`
-   - joins `SkwshOrgSettings`
-   - verifies `password_hash`
-   - returns serialized session data
-8. Handler returns `{"success": true, "data": {"session": ...}, "error": null, "meta": {}}`.
-9. `api.js` unwraps `payload.data`, so `AuthContext` receives `response.session`.
-10. Frontend stores the session in `sessionStorage`.
-11. User is redirected to `/dashboard`.
+- `401 INVALID_CREDENTIALS` means no approved membership matched the password.
+- `403 PENDING_APPROVAL` means the email invitation exists but has not been accepted.
+- `409 ACTIVE_SESSION_EXISTS` means the same account is already signed in on the same client type.
 
----
+## 2. Root-Admin Login Flow
 
-## 1B. Root Admin Login Flow
+### Frontend entry
 
-### Frontend Entry
+- [frontend/src/pages/RootAdminLoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminLoginPage.jsx)
+- [frontend/src/context/RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
 
-- [RootAdminLoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminLoginPage.jsx)
-- [RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+### Current path
 
-### Request Path
+1. The root admin submits username and password plus the client-side human-check.
+2. The frontend calls `POST /root_admin/login`.
+3. [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py) verifies credentials against `SkRootAdmin`.
+4. The API returns `data.rootAdminSession`.
+5. The frontend stores that object in `sessionStorage`.
 
-1. Root admin opens `/rckscoreAdmin`.
-2. The login page requires username, password, and a built-in human-check answer.
-3. `RootAdminContext.login(...)` calls `api.js -> POST /root_admin/login`.
-4. API Gateway invokes [root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py).
-5. Handler validates required fields and checks credentials through [authenticate_root_admin(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
-6. `auth_logic.py` loads the user from `SkRootAdmin` and verifies `password_hash`.
-7. Handler returns `{"success": true, "data": {"rootAdminSession": ...}, "error": null, "meta": {}}`.
-8. `api.js` unwraps `payload.data`, so `RootAdminContext` receives `response.rootAdminSession`.
-9. Frontend stores the root admin session in `sessionStorage`.
-10. User is redirected to `/rckscoreAdmin/dashboard`.
+### Important current limitation
 
----
+This is not backed by a proper backend root-admin session/token model yet.
+Some root-admin routes still have no real server-side authorization layer.
 
-## 1A. Register Interest Flow
+## 3. Register-Interest Flow
 
-### Frontend Entry
+### Frontend entry
 
-- [LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+- [frontend/src/pages/LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
 
-### Request Path
+### Current path
 
-1. A user opens the register-interest form from the login page.
-2. The user enters an email address.
-3. The user completes the built-in human-check challenge.
-4. Frontend calls `POST /register_interest`.
-5. API Gateway invokes [register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py).
-6. Handler validates the email address and silently drops obvious bot submissions that trip the honeypot field.
-7. Handler sends an AWS SES email notification to the configured interest inbox and sets the submitter as the reply-to address.
-8. Handler returns `{"success": true, "data": {"accepted": true}, "error": null, "meta": {}}`.
-9. Frontend shows a confirmation message.
+1. A visitor opens the interest form on the login page.
+2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
+3. The honeypot field is `company`.
+4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
+   - validates the payload
+   - writes or updates `HitnScoreInterestRequests`
+   - sends confirmation/admin emails through SES
+5. The API returns `202` with `data.accepted = true`.
 
-Important:
+### Troubleshooting cues
 
-- this is a lightweight built-in anti-bot control, not a managed third-party captcha service
-- SES sender verification is required in AWS for delivery to succeed
+- missing interest-request table returns `INTEREST_REQUESTS_TABLE_MISSING`
+- SES issues return `INTEREST_EMAIL_FAILED`
 
----
+## 4. Password Reset Flow
 
-## 1B. Ping Us Flow
+### Frontend entry
 
-### Frontend Entry
+- [frontend/src/pages/HelpPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HelpPage.jsx)
 
-- [PingUsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/PingUsPage.jsx)
-- [AppFooter.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/AppFooter.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+### Current path
 
-### Request Path
+1. A signed-out user opens `/help`.
+2. The request form calls `POST /password_reset/request`.
+3. [backend/functions/password_reset_request/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/password_reset_request/handler.py) delegates to `password_reset_logic.py`.
+4. The reset link base URL comes from:
+   - `PASSWORD_RESET_BASE_URL`, then
+   - request `Origin`
+5. The emailed link returns to `/help?mode=reset&token=...`.
+6. The confirm form calls `POST /password_reset/confirm`.
 
-1. A signed-in user opens `/ping` from the footer.
-2. The page prefills `name` and `email` from the current session when available.
-3. The user selects a feedback category and enters message text.
-4. Frontend calls `POST /feedback`.
-5. API Gateway invokes [send_feedback/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/send_feedback/handler.py).
-6. Handler validates the payload and sends an AWS SES email to the configured feedback inbox.
-7. Handler returns `{"success": true, "data": {"accepted": true}, "error": null, "meta": {}}`.
-8. Frontend shows a confirmation message.
+### Troubleshooting cues
 
----
+- if reset emails are not arriving, check SES sender configuration and `PASSWORD_RESET_FROM_EMAIL`
+- if links point to the wrong frontend host, check `PASSWORD_RESET_BASE_URL` and request `Origin`
 
-## 2. Dashboard Load
+## 5. Dashboard Flow
 
-### Frontend Entry
+### Frontend entry
 
-- [DashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/DashboardPage.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+- [frontend/src/pages/DashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/DashboardPage.jsx)
 
-### Request Path
+### Current path
 
-1. Dashboard loads after login.
-2. Frontend calls `GET /dashboard/{organization_id}`.
-3. API Gateway invokes [get_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_dashboard/handler.py).
-4. Handler opens DB connection and calls [get_dashboard_data(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py).
-5. `dashboard_logic.py`:
-   - loads active matches from `matches`
-   - loads recent completed matches from `matches`
-   - loads organisation summary from `SkwshOrgSettings`
-   - loads user/court counts from `SkwshOrgUsers` and `SkwshCourts`
-6. Handler returns `{"success": true, "data": {"dashboard": ...}, "error": null, "meta": {}}`.
-7. `api.js` unwraps `payload.data`, so the page reads `response.dashboard`.
-8. Dashboard page renders quick actions, active matches, recent matches, and organisation summary.
+1. The signed-in user lands on:
+   - `/dashboard`
+   - `/matches`
+   - `/history`
+2. The frontend calls `GET /dashboard/{organization_id}` with optional:
+   - `active_limit`
+   - `recent_limit`
+3. [backend/functions/get_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_dashboard/handler.py) authorizes the org-user session.
+4. [backend/common/dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py):
+   - loads organisation summary
+   - loads active matches
+   - loads scheduled matches for clubs
+   - loads completed match history
+   - applies personal-plan history limits
+5. The API returns `data.dashboard`.
+6. The page renders screen-mode-specific views for dashboard, matches, or history.
 
-Important:
-- dashboard logic safely handles missing `matches` tables by returning empty match lists
+### Troubleshooting cues
 
----
+- empty match lists can be valid if the `matches` tables are missing or empty
+- personal accounts intentionally return reduced history lists
 
-## 2A. Root Admin Dashboard Load
+## 6. Organisation Settings Flow
 
-### Frontend Entry
+### Frontend entry
 
-- [RootAdminDashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminDashboardPage.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
+- [frontend/src/pages/OrganisationSettingsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/OrganisationSettingsPage.jsx)
 
-### Request Path
+### Current path
 
-1. Root admin dashboard loads after root-admin login.
-2. Frontend calls `GET /root_admin/dashboard`.
-3. API Gateway invokes [get_root_admin_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_root_admin_dashboard/handler.py).
-4. Handler opens DB connection and calls [get_root_admin_dashboard(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/root_admin_logic.py).
-5. Shared logic:
-   - loads organisation records from `SkwshOrgSettings`
-   - counts tenant users from `SkwshOrgUsers`
-   - counts tenant courts from `SkwshCourts`
-   - groups tenant users under each organisation
-6. Handler returns `{"success": true, "data": {"rootAdminDashboard": ...}, "error": null, "meta": {}}`.
-7. `api.js` unwraps `payload.data`, so the page reads `response.rootAdminDashboard`.
-8. Dashboard renders organisation counts, tenant creation forms, and grouped tenant-user management controls.
+1. The page calls `GET /organization_settings/{organization_id}`.
+2. [backend/functions/get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py) authorizes the org-user session.
+3. [backend/common/organization_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py) returns:
+   - `organization`
+   - `users`
+   - `courts`
+4. The frontend renders:
+   - organisation details
+   - personal profile
+   - user admin
+   - court admin
+   - map preview
+   - scaffold-only game settings
+   - scaffold-only social profile fields
 
----
+### Current limitation
 
-## 3. Organisation Settings Load
+The organisation-level handicap setting and social-profile fields are still UI scaffolds and are not persisted/enforced.
 
-### Frontend Entry
+## 7. Personal Profile Update Flow
 
-- [OrganisationSettingsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/OrganisationSettingsPage.jsx)
+### Frontend entry
 
-### Request Path
+- [frontend/src/pages/OrganisationSettingsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/OrganisationSettingsPage.jsx)
 
-1. Frontend calls `GET /organization_settings/{organization_id}`.
-2. API Gateway invokes [get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py).
-3. Handler opens DB connection and calls [get_organization_settings(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic loads:
-   - organisation details from `SkwshOrgSettings`
-   - users from `SkwshOrgUsers`
-   - courts from `SkwshCourts`
-5. Handler returns `{"success": true, "data": {"organizationSettings": ...}, "error": null, "meta": {}}`.
-6. `api.js` unwraps `payload.data`, so the page reads `response.organizationSettings`.
-7. Frontend renders organisation forms, users, courts, game settings scaffold, and map.
+### Current path
 
----
+1. The signed-in personal user submits their profile form.
+2. The frontend calls `PUT /personal_profile/{organization_id}` with `username`.
+3. [backend/functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py) authorizes that the signed-in user matches the payload username.
+4. Shared logic updates the corresponding `SkwshOrgUsers` row.
+5. The API returns updated `organizationSettings`.
 
-## 4. Organisation Detail Update
+## 8. Organisation User Invite / Approval Flow
 
-### Frontend Entry
+### Create user
 
-- [OrganisationSettingsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/OrganisationSettingsPage.jsx)
+1. The organisation settings page or root-admin club page submits a new email/role.
+2. The frontend calls:
+   - `POST /organization_users`, or
+   - `POST /root_admin/organization_users`
+3. Shared logic in `organization_logic.py`:
+   - validates role and email
+   - allows linking the same email to multiple organisations
+   - creates an approval token
+   - stores `approval_status = pending`
+   - sends an invitation email when email settings are configured
 
-### Request Path
+### Approve invite
 
-1. User edits organisation fields.
-2. Frontend calls `PUT /organization_details/{organization_id}`.
-3. API Gateway invokes [update_organization_details/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_organization_details/handler.py).
-4. Handler calls [update_organization_details(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-5. Shared logic updates `SkwshOrgSettings`.
-6. Updated organisation settings payload is returned inside `data.organizationSettings`.
-7. Frontend refreshes the settings screen state.
+1. The invited user opens the email link.
+2. `GET /organization_users/approve?token=...` runs.
+3. The Lambda updates the membership to approved and returns an HTML page.
 
----
+### Troubleshooting cues
 
-## 5. Organisation User Create / Update
+- a user may exist in multiple organisations with one password hash
+- login remains blocked until approval is accepted
+- the approval route returns HTML, not JSON
 
-### Create User
+## 9. Court Flow
 
-1. Frontend calls `POST /organization_users`.
-2. API Gateway invokes [create_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_org_user/handler.py).
-3. Handler calls [create_organization_user(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic:
-   - validates username, password, and role
-   - hashes the password
-   - inserts into `SkwshOrgUsers`
-5. Serialized user object is returned inside `data.user`.
+### Current path
 
-### Update User Role
+1. The frontend creates, updates, or deletes a court.
+2. The backend authorizes the user as an org admin for normal club use.
+3. Shared logic inserts, updates, or deletes rows from `SkwshCourts`.
+4. The API returns `data.court` or `data.deleted`.
 
-1. Frontend calls `PUT /organization_users/{user_id}`.
-2. API Gateway invokes [update_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_org_user/handler.py).
-3. Handler calls [update_organization_user_role(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic updates `SkwshOrgUsers.role`.
-5. Updated user object is returned inside `data.user`.
+### Root-admin note
 
----
+The root-admin club page performs some of these mutations using `rootAdminRequest: true`, which becomes `x-root-admin-request: true` in the client.
 
-## 6. Court Create / Update / Delete
+## 10. Match Setup Lookup Flow
 
-### Create Court
+### Frontend entry
 
-1. Frontend calls `POST /organization_courts`.
-2. API Gateway invokes [create_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_court/handler.py).
-3. Handler calls [create_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic inserts into `SkwshCourts`.
-5. Court object is returned inside `data.court`.
+- [frontend/src/pages/NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
 
-### Update Court
+### Current path
 
-1. Frontend calls `PUT /organization_courts/{court_id}`.
-2. API Gateway invokes [update_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_court/handler.py).
-3. Handler calls [update_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic updates `SkwshCourts`.
-5. Updated court object is returned inside `data.court`.
+1. The user types player or referee text during match setup.
+2. The frontend calls `GET /match_setup_lookup/{organization_id}?q=...`.
+3. [backend/common/match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py):
+   - searches prior match player names
+   - searches current org-user usernames for referee suggestions
+4. The API returns `data.lookups`.
 
-### Delete Court
+## 11. Match Creation Flow
 
-1. Frontend calls `DELETE /organization_courts/{court_id}`.
-2. API Gateway invokes [delete_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_court/handler.py).
-3. Handler calls [delete_court(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py).
-4. Shared logic deletes the row from `SkwshCourts`.
-5. Boolean success is returned inside `data.deleted`.
+### Frontend entry
 
----
+- [frontend/src/pages/NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
+- [frontend/src/context/MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
 
-## 7. New Match Creation
+### Current path
 
-### Frontend Entry
+1. The operator submits player, court, referee, score type, best-of, and optional handicap data.
+2. The frontend calls `POST /start_match`.
+3. [backend/functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py) authorizes the org-user session.
+4. [backend/common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py):
+   - blocks personal accounts from having more than one active match
+   - can auto-schedule a club match if the chosen court already has an active match
+   - writes a `matches` row
+   - writes a `match_started` event
+5. The API returns `data.match` and `data.broadcast`.
+6. The frontend navigates to the match screen unless the match is left as scheduled.
 
-- [NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
-- [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
+## 12. Match Load and Scoring Flow
 
-### Request Path
+### Frontend entry
 
-1. Operator chooses:
-   - court
-   - players
-   - referee
-   - `PAR-11` or `PAR-15`
-   - `best_of` `1`, `3`, or `5`
-   - optional handicap bands
-2. Frontend can search existing player/referee values through `GET /match_setup_lookup/{organization_id}?q=...`.
-3. Frontend calls `POST /start_match`.
-4. API Gateway invokes [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py).
-5. Handler validates required fields and calls [create_match(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
-6. `match_logic.py`:
-   - inserts a `matches` row
-   - inserts a `match_started` event into `match_events`
-   - initializes best-of, games-to-win, and handicap offsets
-7. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
-8. `api.js` unwraps `payload.data`, so `MatchContext` receives `response.match`.
-9. Frontend stores the match in `MatchContext`.
-10. Operator is routed to `/match/:matchId`, unless the match was scheduled.
+- [frontend/src/pages/MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
+- [frontend/src/components/MatchControls.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/MatchControls.jsx)
 
-Scheduled matches use the same `matches` table with `status = "scheduled"`.
-They can be started later through `POST /start_scheduled_match`, which activates
-the match and returns the updated match payload inside `data.match`.
+### Current path
 
----
+1. The page loads `GET /get_score/{match_id}`.
+2. The backend authorizes access to the match tenant.
+3. Shared logic loads `matches` plus `match_events`.
+4. Live state is rebuilt from the event stream.
+5. Operator actions call:
+   - `POST /score_point`
+   - `POST /event_action`
+   - `POST /undo_action`
+   - `POST /end_match`
+6. Shared logic updates event history and match summary columns.
+7. The frontend updates local match state from the returned `data.match`.
 
-## 8. Load Match / Scoreboard Screen
-
-### Frontend Entry
-
-- [MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
-- [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
-
-### Request Path
-
-1. Match screen loads with a `matchId`.
-2. `MatchContext.loadMatch(...)` calls `GET /get_score/{match_id}`.
-3. API Gateway invokes [get_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_match/handler.py).
-4. Handler calls [get_match(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
-5. Shared logic:
-   - loads the `matches` row
-   - loads `match_events`
-   - rebuilds match state from the event stream
-6. Handler returns `{"success": true, "data": {"match": ..., "broadcast": ...}, "error": null, "meta": {}}`.
-7. `api.js` unwraps `payload.data`, so `MatchContext` reads `payload.match`.
-8. Frontend renders:
-   - current game score
-   - games won
-   - serving player and side
-   - timeline
-   - spectator link
-
----
-
-## 9. Score Point
-
-### Frontend Entry
-
-- [MatchControls.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/MatchControls.jsx)
-
-### Request Path
-
-1. Operator taps `+1 Player 1` or `+1 Player 2`.
-2. Frontend calls `POST /score_point`.
-3. API Gateway invokes [score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py).
-4. Handler calls [score_point(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
-5. Shared logic:
-   - loads the current match
-   - applies squash scoring rules
-   - advances service marker
-   - detects game completion
-   - detects match completion
-   - writes a `score_point` event to `match_events`
-   - updates summary columns in `matches`
-6. Handler returns the updated `match` inside `data.match`.
-7. Frontend updates the scoreboard immediately.
-
-Current scoring rules:
-
-- `PAR-11` target = 11
-- `PAR-15` target = 15
-- both require a two-point margin after tied game ball
-- best-of logic completes the match when enough games are won
-
----
-
-## 10. Event Actions
-
-### Supported Actions
+### Supported event actions
 
 - `let`
 - `stroke`
 - `server`
 - `serve_side`
+- `match_settings`
 - `timer`
 
-### Request Path
+### Troubleshooting cues
 
-1. Frontend calls `POST /event_action`.
-2. API Gateway invokes [event_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/event_action/handler.py).
-3. Handler validates action type.
-4. Shared logic:
-   - `stroke` is scoring-aware and can complete a game/match
-   - `server` sets the first/current server and derives service side from the receiver handedness
-   - `serve_side` changes the left/right service marker
-   - other actions append event entries without changing score summaries
-5. Updated `match` is returned inside `data.match`.
+- undo removes the last non-`match_started` event
+- `stroke` is score-aware and can end a game or match
+- shirt-colour changes are plan-aware
 
-Current web scoring uses `server` after the warm-up flow so the operator can
-choose the first server before the match clock starts.
+## 13. Display Screen Flow
 
----
+### Frontend entry
 
-## 11. Undo Last Action
+- [frontend/src/pages/DisplayScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/DisplayScreen.jsx)
 
-### Request Path
+### Current path
 
-1. Frontend calls `POST /undo_action`.
-2. API Gateway invokes [undo_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/undo_action/handler.py).
-3. Shared logic deletes the last non-`match_started` event.
-4. Match state is rebuilt from the remaining event stream.
-5. `matches` summary columns are updated to the rebuilt state.
-6. Updated `match` is returned inside `data.match`.
+1. The display page opens with `?match=<id>`.
+2. It loads the same match payload as the operator screen.
+3. It attempts a WebSocket connection through [frontend/src/services/websocket.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/websocket.js).
+4. It renders a read-only scoreboard and optional event timeline.
 
----
+### Important current limitation
 
-## 12. End Match
+WebSocket client code exists, but subscriber registration/persistence infrastructure is not finished. Treat the display experience as fetch-driven with partial realtime support.
 
-### Request Path
+## 14. Root-Admin Operations Flow
 
-1. Frontend calls `POST /end_match`.
-2. API Gateway invokes [end_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/end_match/handler.py).
-3. Shared logic:
-   - determines the current match leader
-   - records `ended_early` when used by operator flow
-   - stores `end_reason`
-   - appends `match_ended` to `match_events`
-   - updates final summary fields in `matches`
-4. Updated `match` is returned.
-5. Frontend can route the operator back to the dashboard after completion.
+### Frontend entry
 
----
+- [frontend/src/pages/RootAdminDashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminDashboardPage.jsx)
+- [frontend/src/pages/RootAdminClubPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminClubPage.jsx)
+- [frontend/src/pages/RootAdminInterestRequestsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminInterestRequestsPage.jsx)
+- [frontend/src/pages/RootAdminPersonalAccountsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminPersonalAccountsPage.jsx)
 
-## 13. Display Screen
+### Current path
 
-### Frontend Entry
+1. The root-admin UI loads dashboard, club, interest, and personal-account data from root-admin routes.
+2. Some routes call backend functions with no full server-side root-admin session validation.
+3. Some club-detail routes call normal organisation endpoints with `x-root-admin-request: true`.
 
-- [DisplayScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/DisplayScreen.jsx)
+### Important current limitation
 
-### Current Path
+The root-admin frontend experience exists, but the backend trust model is not yet at launch quality.
 
-1. Display screen receives `match` as a query parameter.
-2. It loads match state using the same match fetch path as the operator interface.
-3. It renders a read-only view of score and event/timeline state.
+## 15. Native iOS Flow
 
-Important:
-- the WebSocket architecture is not fully completed in AWS yet
-- treat display updates as HTTP-driven behavior unless the WebSocket infrastructure is explicitly completed
+### Current path
 
----
+1. The iOS app logs in against the same backend.
+2. It loads dashboard data from `GET /dashboard/{organization_id}`.
+3. It opens active or scheduled matches.
+4. It uses the same match/scoring routes as the web app.
 
-## 13A. Native iOS Scoring Flow
+### Current native gap
 
-### Native Entry
+The native app does not yet fully match the web scorer flow for warm-up, first-server selection, and timer behavior.
 
-- [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift)
-- [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift)
-- [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
+## 16. Current Cross-Cutting Gaps
 
-### Current Path
-
-1. Signed-in organisation user lands on the native dashboard.
-2. Dashboard calls `GET /dashboard/{organization_id}` through `APIClient`.
-3. Active, scheduled, and recent match lists are decoded from `data.dashboard`.
-4. Tapping an active/recent match opens `MatchScoringView`.
-5. Starting a scheduled match calls `POST /start_scheduled_match` and then opens `MatchScoringView`.
-6. `MatchScoringView` calls `GET /get_score/{match_id}` and mutates through the same scoring endpoints as the web app:
-   - `POST /score_point`
-   - `POST /event_action`
-   - `POST /undo_action`
-   - `POST /end_match`
-
-Current native gap:
-
-- the native screen does not yet implement the web timer/warm-up/first-server flow
-
----
-
-## 14. Response Contract Notes
-
-The backend now uses one shared response envelope.
-
-- success responses set `success: true` and carry the resource payload in `data`
-- error responses set `success: false` and carry machine-readable error information in `error`
-- the frontend API client unwraps `payload.data` for successful responses and throws `error.message` for non-2xx responses
-
-Current resource keys inside `data` include:
-
-- `session`
-- `dashboard`
-- `organizationSettings`
-- `user`
-- `court`
-- `match`
-- `broadcast`
-- `deleted`
-
----
-
-## 15. Current Gaps Relevant To The Lifecycle
-
-- backend authorization is not yet enforced on scoring endpoints
-- WebSocket infrastructure is still incomplete at the API Gateway level
-- historical reporting pages are still lighter than the scoring data now stored in the database
-
----
+- root-admin backend authorization is incomplete
+- WebSocket infrastructure is incomplete
+- organisation game settings persistence is incomplete
+- social profile persistence is incomplete
+- no automated test suite is checked into the repo
 
 ## Maintenance Rule
 
-When any of these flows change:
+When request behavior, auth behavior, route ownership, or troubleshooting assumptions change:
 
-- update this document
+- update this file
 - update [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
-- update [AGENTS.md](/Users/glennrowe/Development/Projects/RcktScore/AGENTS.md)
-
-These three documents should stay aligned.
+- update [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)

@@ -1,7 +1,7 @@
 # Mobile Docs
 
-This folder contains mobile-platform setup and delivery guidance for developers
-working on a native app from the same repository.
+This folder contains current mobile-platform notes for the native iOS app that
+ships from the same repository as the web and backend code.
 
 Current documents:
 
@@ -13,10 +13,22 @@ Current documents:
 
 ## Current iOS State
 
-The native iOS app scaffold now exists in `mobile/ios/RcktScoreMobile/`.
-It includes organisation login, session persistence, dashboard loading, scheduled
-match start, and a live scoring screen that calls the existing v2 backend.
+The native iOS project exists in `mobile/ios/RcktScoreMobile/`.
 
-The main remaining v1 gap is native timer parity with the web scorer:
-warm-up phases, first-server selection after warm-up, and the 90 second
-between-game interval.
+What the current app does:
+
+- organisation-user login against the shared v2 backend
+- session persistence on-device
+- dashboard loading
+- active and scheduled match access
+- scoring against the shared backend routes
+
+What it does not yet match perfectly:
+
+- full parity with the web scorer warm-up flow
+- first-server selection parity
+- timer and interval behavior parity
+- documented CI/archive/release pipeline
+
+Current iOS should be treated as an active client implementation, but not yet as
+a fully packaged mobile release program.

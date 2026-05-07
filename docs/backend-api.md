@@ -2,234 +2,171 @@
 
 ## Purpose
 
-This document is the developer-facing backend and API reference for `RcktScore` v2.
-It describes the backend as it exists now.
+This document describes the `RcktScore` v2 backend as it exists in code today.
 
-For end-to-end request walkthroughs, see [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md).
+Use this file for:
 
----
+- route inventory
+- backend module ownership
+- auth/session behavior
+- data shape expectations
+- current security posture
+
+For end-to-end request paths, see [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md).
+For failure-mode guidance, see [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md).
 
 ## Runtime Architecture
 
 Current runtime path:
 
-1. React UI triggers a request through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js), or the native iOS app triggers a request through [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
-2. The browser calls `VITE_API_BASE_URL`, or the iOS client calls `APIBaseURL` from app configuration
-3. AWS API Gateway HTTP API receives the request
-4. API Gateway invokes a Lambda function defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml)
-5. The Lambda handler:
-   - parses the request body with [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-   - validates required fields
-   - opens a database connection with [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
-   - delegates business logic to shared modules in `backend/common/`
-6. Shared logic reads/writes Supabase Postgres
-7. The handler returns a JSON response
-8. Web context or native view state updates local UI state
+1. The React web app calls [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js), or the iOS app calls `APIClient.swift`.
+2. API Gateway HTTP API receives the request.
+3. API Gateway invokes a Lambda from [backend/template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
+4. The handler parses input with [common/utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py).
+5. Shared business logic runs in `backend/common/`.
+6. Database work goes through [common/supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py).
+7. The handler returns a shared response envelope.
 
-## Architecture Layers
+## Current Backend Modules
 
-### Frontend State Owner
+### Shared utilities
 
-Frontend state is owned in React context modules:
+- [common/utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
+  - JSON envelope helpers
+  - body parsing
+  - path/query validation helpers
+- [common/supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
+  - Postgres connection helper
+  - prepared statements disabled for Supabase pooler compatibility
 
-- [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
-  - login state
-  - persisted browser session
-  - logout flow
-- [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
-  - current match state
-  - match mutations
-  - load/start/score/undo/end operations
+### Auth and session
 
-### API Client Layer
+- [common/auth_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py)
+  - org-user membership lookup
+  - password verification
+  - root-admin credential verification
+- [common/session_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/session_logic.py)
+  - org-user session token creation
+  - duplicate-session blocking by client type
+  - tenant authorization helpers for org and match routes
 
-HTTP access is centralized in:
+### Organisation and root-admin
 
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-- [APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
+- [common/organization_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py)
+  - organisation settings read/update
+  - personal-profile update
+  - organisation user invite/create/approve
+  - organisation user role updates
+  - court CRUD
+- [common/root_admin_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/root_admin_logic.py)
+  - root-admin dashboard aggregation
+  - club creation and lookup
+  - root-admin user management
+  - interest request and personal-account admin flows
 
-These client layers are responsible for:
+### Match and dashboard
 
-- constructing requests
-- attaching `Content-Type`
-- attaching `x-api-key` when configured
-- parsing JSON responses
-- raising frontend-visible errors when the API returns non-2xx responses
-
-### Lambda Handler Layer
-
-API Gateway routes terminate in Lambda handlers under:
-
-- `backend/functions/*/handler.py`
-
-This layer is responsible for:
-
-- parsing the AWS event
-- validating required request fields
-- choosing the correct domain function
-- translating results into HTTP JSON responses
-
-Examples:
-
-- [login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
-- [root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py)
-- [register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py)
-- [create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py)
-- [score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py)
-- [end_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/end_match/handler.py)
-
-### Shared Domain Logic Layer
-
-Reusable backend business logic lives in:
-
-- [auth_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py)
-- [organization_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py)
-- [dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py)
-- [match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
-
-This layer owns:
-
-- authentication checks against `SkwshOrgUsers`
-- root admin authentication checks against `SkRootAdmin`
-- organisation and court CRUD logic
-- root admin tenant-management aggregation
-- dashboard aggregation
-- squash scoring rules
-- event sourcing and match reconstruction
-- undo behavior
-- match completion behavior
-
-### Persistence Layer
-
-Persistence is handled through:
-
-- [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
-- Supabase Postgres
-
-Current persistence tables include:
-
-- `SkwshOrgSettings`
-- `SkwshOrgUsers`
-- `SkRootAdmin`
-- `SkwshCourts`
-- `matches`
-- `match_events`
-
-Schema bootstrap for match persistence is in:
-
-- [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql)
-- [010_match_shirt_colors.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/010_match_shirt_colors.sql)
-
----
-
-## Deployment Context
-
-- Frontend hosting: AWS Amplify in `eu-north-1`
-- Backend stack: `rcktscore-backend`
-- Backend region: `eu-west-2`
-- Active API base URL:
-  `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod`
-
-Additional backend email parameters:
-
-- `InterestToEmail`
-  - current default: `rcktinterest@ucingo.com`
-- `InterestFromEmail`
-  - sender address used by AWS SES
-  - must be verified in SES for delivery to succeed
-
----
-
-## Backend Modules
-
-### Shared Utilities
-
-- [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-  - `success_response(status_code, data=None, meta=None)`
-  - `error_response(status_code, code, message, details=None)`
-  - `json_response(status_code, body)` compatibility wrapper for older callers
-  - `parse_body(event)`
-  - `path_parameter(event, name)`
-  - `require_fields(payload, fields)`
-
-### Database Connection
-
-- [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
-  - connects to Supabase Postgres
-  - should use the Supabase pooler connection string
-  - prepared statements are disabled for pooler compatibility
-
-### Shared Domain Logic
-
-- [auth_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py)
-  - organisation user lookup and password verification
-- [organization_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/organization_logic.py)
-  - organisation details, users, and courts CRUD
-- [dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py)
-  - dashboard aggregation for organisation summary, active matches, recent matches
-- [match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
-  - match creation
-  - live squash scoring rules
-  - event storage
+- [common/dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py)
+  - active, scheduled, and completed match aggregation
+  - plan-aware history limits
+- [common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
+  - match create/start
+  - squash scoring rules
+  - event sourcing
   - undo
   - early/manual end
   - match serialization
+- [common/match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py)
+  - player/referee lookup for match setup
 
----
+### Email-related logic
 
-## API Routes
+- [common/password_reset_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/password_reset_logic.py)
+- [common/mailer.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/mailer.py)
+- [common/notification_templates.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/notification_templates.py)
 
-Routes are defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
+## Authentication and Session Model
 
-### Authentication
+### Organisation users
+
+Organisation-user auth is real and backend-enforced.
+
+Current behavior:
+
+- `POST /login` verifies credentials against `SkwshOrgUsers`
+- users may belong to multiple organisations
+- a successful login creates a session token in `org_user_sessions`
+- session tokens are sent in `Authorization: Bearer <token>`
+- most protected organisation and match routes validate that token server-side
+- session invalidation codes currently include:
+  - `SESSION_REQUIRED`
+  - `SESSION_INVALID`
+  - `SESSION_REPLACED`
+  - `SESSION_FORBIDDEN`
+  - `SESSION_ADMIN_REQUIRED`
+
+Duplicate login behavior:
+
+- sessions are tracked per client type
+- current client types normalize to `web_app` or `mobile_app`
+- if an active session already exists for the same username and client type, `POST /login` can return `ACTIVE_SESSION_EXISTS`
+- the frontend may retry with `force_logout_other`
+
+### Root-admin users
+
+Root-admin credential checking is real, but backend session enforcement is not complete.
+
+Current behavior:
+
+- `POST /root_admin/login` verifies credentials against `SkRootAdmin`
+- the frontend stores the returned identity in `sessionStorage`
+- there is no backend-wide root-admin session token model equivalent to `org_user_sessions`
+- some root-admin routes are currently callable without server-side auth checks
+- some organisation admin routes allow a root-admin bypass by trusting `x-root-admin-request: true`
+
+Do not describe the current root-admin surface as production-grade authenticated administration.
+
+## Current Route Inventory
+
+Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml).
+
+### Public and auth-adjacent routes
 
 - `POST /login`
+- `POST /logout`
+- `POST /password_reset/request`
+- `POST /password_reset/confirm`
+- `GET /organization_users/approve`
 - `POST /root_admin/login`
 - `POST /register_interest`
 - `POST /feedback`
 
-`POST /root_admin/login` authenticates against the `SkRootAdmin` table and returns a separate root-admin session payload.
-
-`POST /register_interest` is an unauthenticated prospect-access route. It validates an email address, supports a honeypot field for basic bot filtering, and sends an AWS SES email notification to the configured interest inbox.
-
-`POST /feedback` is the in-app support route used by the protected `Ping Us` page. It validates:
-
-- `name`
-- `email`
-- `category`
-- `message`
-
-and accepts additional context such as:
-
-- `username`
-- `organization_name`
-- `version`
-- `build`
-- `page_url`
-- `user_agent`
-
-It sends an SES email to the configured feedback inbox and returns the shared success envelope.
-
-### Root Administration
+### Root-admin routes
 
 - `GET /root_admin/dashboard`
 - `POST /root_admin/organizations`
 - `GET /root_admin/organizations/search?q=...`
 - `POST /root_admin/organization_users`
 - `PUT /root_admin/organization_users/{user_id}`
+- `GET /root_admin/interest_requests`
+- `PUT /root_admin/interest_requests/{request_id}`
+- `GET /root_admin/personal_accounts`
+- `PUT /root_admin/personal_accounts/{request_id}`
 
-### Dashboard / Organisation
+### Organisation and dashboard routes
 
 - `GET /dashboard/{organization_id}`
 - `GET /organization_settings/{organization_id}`
+- `GET /match_setup_lookup/{organization_id}?q=...`
 - `PUT /organization_details/{organization_id}`
+- `PUT /personal_profile/{organization_id}`
 - `POST /organization_users`
 - `PUT /organization_users/{user_id}`
 - `POST /organization_courts`
 - `PUT /organization_courts/{court_id}`
 - `DELETE /organization_courts/{court_id}`
 
-### Match / Scoring
+### Match and scoring routes
 
 - `POST /start_match`
 - `POST /start_scheduled_match`
@@ -239,89 +176,169 @@ It sends an SES email to the configured feedback inbox and returns the shared su
 - `POST /undo_action`
 - `POST /end_match`
 
-### Match Setup Lookup
+### WebSocket helper route
 
-- `GET /match_setup_lookup/{organization_id}?q=...`
+- `backend/functions/websocket_broadcast/handler.py` exists
+- the function is part of the backend codebase
+- subscriber registration and routing are not fully deployed or persisted yet
 
-This endpoint supports the match setup player/referee lookup UI. It is backed by
-[match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py).
+## Route Behavior Notes
 
----
+### Login
 
-## Data Layer
+[functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
 
-### Existing Organisation Tables
+- returns `data.session` when there is exactly one approved membership
+- returns `data.organizationSelection` when the same email belongs to multiple approved organisations
+- returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
 
-- `SkwshOrgSettings`
-- `SkwshOrgUsers`
-- `SkwshCourts`
+### Logout
 
-These remain the source of truth for organisation metadata, users, and courts.
+[functions/logout/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/logout/handler.py)
 
-### Match Tables
+- revokes the presented org-user session token
 
-Schema bootstrap is in [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql).
+### Password reset
 
-Current match persistence uses:
+- request: [functions/password_reset_request/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/password_reset_request/handler.py)
+- confirm: [functions/password_reset_confirm/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/password_reset_confirm/handler.py)
 
-- `matches`
-- `match_events`
+Current behavior:
 
-Important current `matches` fields:
+- request path accepts `email`
+- reset link base URL comes from `PASSWORD_RESET_BASE_URL`, then falls back to the request `Origin`
+- successful request always returns `202 accepted`
 
-- `id`
-- `tenant_id`
-- `court_id`
-- `court_name`
-- `court_alias`
-- `sport`
-- `player1_name`
-- `player1_surname`
-- `player1_handedness`
-- `player1_shirt_color`
-- `player2_name`
-- `player2_surname`
-- `player2_handedness`
-- `player2_shirt_color`
-- `referee_name`
-- `score_type`
-- `best_of`
-- `games_to_win`
-- `current_game_number`
-- `player1_games_won`
-- `player2_games_won`
-- `handicap_enabled`
-- `player1_band`
-- `player2_band`
-- `player1_offset`
-- `player2_offset`
-- `player1_final_score`
-- `player2_final_score`
-- `winner_side`
-- `winner_name`
-- `ended_early`
-- `end_reason`
-- `status`
-- `created_at`
-- `updated_at`
-- `completed_at`
+### Organisation membership approval
 
-Current `match_events` responsibility:
+[functions/approve_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/approve_org_user/handler.py)
 
-- every operator scoring action is written as an event
-- event payloads carry enough snapshot data to reconstruct live state
-- undo works by deleting the last non-`match_started` event and rebuilding state
-- non-scoring operator actions such as `let`, `serve_side`, `server`, and `timer` are also recorded as events
+- email invitations create approval tokens
+- the approval route returns HTML, not JSON
+- results include:
+  - invalid token
+  - already approved
+  - approved
 
----
+### Dashboard
 
-## Current Response Contract
+[functions/get_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_dashboard/handler.py)
 
-The API now uses one shared envelope for both success and error responses.
+- requires a valid org-user session for the organisation
+- accepts optional query params:
+  - `active_limit`
+  - `recent_limit`
+- returns:
+  - `organization`
+  - `active_matches`
+  - `scheduled_matches`
+  - `recent_matches`
 
-### Success Envelope
+### Organisation settings
 
-Every successful response returns:
+[functions/get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py)
+
+- org-user sessions are authorized server-side
+- root-admin requests currently bypass org-user checks when `x-root-admin-request` is set
+- response includes:
+  - `organization`
+  - `users`
+  - `courts`
+
+### Personal profile
+
+[functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py)
+
+- only the signed-in user can update their own personal profile
+- requires `username` in the payload
+- currently updates:
+  - `first_name`
+  - `surname`
+  - `country`
+  - `city_location`
+
+### Organisation users
+
+- create: [functions/create_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_org_user/handler.py)
+- update role: [functions/update_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_org_user/handler.py)
+
+Current behavior:
+
+- roles are currently limited to `admin` and `user`
+- create path is invite-oriented
+- new or existing email addresses may be attached to multiple organisations
+- membership remains `pending` until the emailed approval link is accepted
+
+There is currently no organisation-user delete endpoint in the v2 API.
+
+### Courts
+
+- create: [functions/create_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_court/handler.py)
+- update: [functions/update_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_court/handler.py)
+- delete: [functions/delete_court/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_court/handler.py)
+
+Current behavior:
+
+- org-user admin access is enforced for normal club operations
+- root-admin club page uses the header-based bypass path
+
+### Match setup lookup
+
+[functions/search_match_setup_lookup/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/search_match_setup_lookup/handler.py)
+
+- searches prior match player names and current org-user usernames
+- returns:
+  - `lookups.players`
+  - `lookups.referees`
+- empty query returns empty lookup arrays
+
+### Match creation and scoring
+
+- create: [functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py)
+- start scheduled: [functions/start_scheduled_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/start_scheduled_match/handler.py)
+- load match: [functions/get_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_match/handler.py)
+- score point: [functions/score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py)
+- event action: [functions/event_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/event_action/handler.py)
+- undo: [functions/undo_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/undo_action/handler.py)
+- end: [functions/end_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/end_match/handler.py)
+
+Current behavior:
+
+- these routes are backend-authorized against the match tenant through `authorize_match_session(...)`
+- personal accounts can only have one active match at a time
+- clubs can auto-schedule a match if the chosen court already has an active match
+- supported score types:
+  - `11`
+  - `15`
+- supported best-of values:
+  - `1`
+  - `3`
+  - `5`
+- supported action types:
+  - `let`
+  - `match_settings`
+  - `stroke`
+  - `server`
+  - `serve_side`
+  - `timer`
+
+### Interest requests and feedback
+
+- register interest: [functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py)
+- feedback: [functions/send_feedback/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/send_feedback/handler.py)
+
+Current behavior:
+
+- register-interest writes to `HitnScoreInterestRequests`
+- honeypot field is `company`
+- SES delivery must be configured correctly
+- feedback sends email but does not persist to a database table
+
+## Response Contract
+
+The backend uses one shared JSON envelope.
+
+### Success envelope
 
 ```json
 {
@@ -332,18 +349,7 @@ Every successful response returns:
 }
 ```
 
-Current resource payloads are nested inside `data`, for example:
-
-- `{"success": true, "data": {"session": {...}}, "error": null, "meta": {}}`
-- `{"success": true, "data": {"match": {...}, "broadcast": {...}}, "error": null, "meta": {}}`
-- `{"success": true, "data": {"dashboard": {...}}, "error": null, "meta": {}}`
-- `{"success": true, "data": {"organizationSettings": {...}}, "error": null, "meta": {}}`
-- `{"success": true, "data": {"user": {...}}, "error": null, "meta": {}}`
-- `{"success": true, "data": {"court": {...}}, "error": null, "meta": {}}`
-
-### Error Envelope
-
-Every error response returns:
+### Error envelope
 
 ```json
 {
@@ -357,109 +363,78 @@ Every error response returns:
 }
 ```
 
-Validation errors may also include `error.details`, for example:
-
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Missing required fields",
-    "details": {
-      "fields": ["match_id"]
-    }
-  },
-  "meta": {}
-}
-```
-
-### Current Status Codes
+### Common status codes
 
 - `200` successful read/update
 - `201` successful create
-- `400` invalid request or missing fields
-- `401` authentication failure
+- `202` accepted async-style request such as interest registration or password reset
+- `400` validation/input error
+- `401` auth/session failure
+- `403` permission failure
 - `404` resource not found
-- `500` unhandled backend error
+- `409` duplicate active session
+- `500` backend failure
 
----
+## Current Data Model Summary
 
-## Current Squash Scoring Rules
+### Core tables
 
-Implemented in [match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py):
+- `SkwshOrgSettings`
+- `SkwshOrgUsers`
+- `SkwshCourts`
+- `SkRootAdmin`
+- `org_user_sessions`
+- `matches`
+- `match_events`
+- `HitnScoreInterestRequests`
 
-- `PAR-11` uses target score `11`
-- `PAR-15` uses target score `15`
-- both use win-by-2 after the game reaches the target score on both sides
-- matches support `best_of` `1`, `3`, and `5`
-- first player to the required number of game wins completes the match
-- manual early match end is supported
-- Personal account match creation is blocked when the tenant already has an active match.
-- Player shirt colours are stored on `matches`; choosing colours is available to Personal+ and club plans.
+### Match model notes
 
-Tracked live state includes:
+Schema bootstrap begins in [backend/schema/001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql).
 
-- current game score
-- current game number
-- games won by each player
-- current server
-- current server side
-- service side
+Important current `matches` concepts:
+
+- tenant and court identity
+- player names, surnames, countries, handedness
 - player shirt colours
-- completed game history
-- winner state when the match completes
+- handicap flags and offsets
+- active/scheduled/completed status
+- game counts and final winner summary
 
-Supported non-point event actions include:
+Important current `match_events` concepts:
 
-- `let`
-- `serve_side`
-- `server`
-- `match_settings`
-- `timer`
-
-`stroke` is also sent through `POST /event_action`, but it is scoring-aware and
-can complete a game or match.
-
----
-
-## Frontend Integration Points
-
-### HTTP Client
-
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-
-### Session State
-
-- [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
-
-### Match State
-
-- [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
-
-### Operator Screens
-
-- [LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
-- [DashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/DashboardPage.jsx)
-- [OrganisationSettingsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/OrganisationSettingsPage.jsx)
-- [NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
-- [MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
-
----
+- every scoring and operator action is event-based
+- live state is rebuilt from the event stream
+- undo removes the last non-`match_started` event and rebuilds state
 
 ## Current Security Position
 
-- login is real and backed by `SkwshOrgUsers`
-- frontend route protection exists
-- backend token/session enforcement is not yet implemented for protected scoring routes
+What is protected today:
 
-Do not describe the current backend as fully authenticated or tenant-isolated at the API layer.
+- org-user login is real
+- org-user session tokens are real
+- dashboard, settings, personal-profile, lookup, and scoring routes enforce org-user session authorization
+- match routes are tenant-aware through backend authorization
 
----
+What is not fully protected today:
 
-## Developer Notes
+- root-admin routes do not yet have a full backend session/token model
+- some root-admin flows rely on `x-root-admin-request` as a bypass header
+- WebSocket infrastructure is not complete enough to describe as production-ready live transport
 
-- rerun [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql) whenever the backend adds expected `matches` columns
-- do not use the direct Supabase IPv6 host in Lambda
-- do not commit real Supabase credentials into repo-tracked files
-- keep new backend behavior documented in this file and in [AGENTS.md](/Users/glennrowe/Development/Projects/RcktScore/AGENTS.md)
+## Current Known Gaps
+
+- no automated backend/frontend test suite is checked into the repo
+- social profile settings are UI-only scaffolds right now
+- organisation-level handicap settings are UI scaffolds and are not persisted/enforced
+- root-admin security needs a proper backend auth layer
+- WebSocket subscription persistence is not implemented
+- local frontend builds may fail if the checked-in `frontend/dist/` directory cannot be cleaned
+
+## Maintenance Rule
+
+When routes, auth behavior, security assumptions, or troubleshooting paths change:
+
+- update this file
+- update [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
+- update [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)

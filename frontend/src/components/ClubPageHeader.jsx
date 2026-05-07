@@ -84,15 +84,12 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
     ? planLabel(session?.plan || "personal_free")
     : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
-  const navigateToDashboardSection = (sectionId) => {
-    navigate(`/dashboard#${sectionId}`);
-  };
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
-    { label: "Matches", icon: "matches", onClick: () => navigateToDashboardSection("active-matches-section"), isActive: location.pathname === "/dashboard" && location.hash === "#active-matches-section" },
-    { label: "History", icon: "history", onClick: () => navigateToDashboardSection("match-history-section"), isActive: location.pathname === "/dashboard" && location.hash === "#match-history-section" },
+    { label: "Matches", icon: "matches", onClick: () => navigate("/matches"), isActive: location.pathname === "/matches" },
+    { label: "History", icon: "history", onClick: () => navigate("/history"), isActive: location.pathname === "/history" },
     { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
-    { label: "Need Help", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping" },
+    { label: "Need Help?", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping", accent: true },
   ];
 
   useEffect(() => {
@@ -222,7 +219,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               {mobileMenuItems.map((item) => (
                 <button
                   key={item.label}
-                  className={`mobile-fab-menu-sheet__item${item.isActive ? " mobile-fab-menu-sheet__item--active" : ""}`}
+                  className={`mobile-fab-menu-sheet__item${item.isActive ? " mobile-fab-menu-sheet__item--active" : ""}${item.accent ? " mobile-fab-menu-sheet__item--accent" : ""}`}
                   type="button"
                   onClick={item.onClick}
                 >

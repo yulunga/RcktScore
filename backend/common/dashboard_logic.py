@@ -45,26 +45,30 @@ def get_dashboard_data(connection, organization_id, active_limit=12, recent_limi
     plan = (organization_row or {}).get("plan") or ("personal_free" if org_type == "personal" else "club_essentials")
     history_limit = _history_limit_for_plan(org_type, plan, recent_limit)
 
-    active_matches = _safe_list_matches(
-        connection,
-        organization_id=organization_id,
-        status="active",
-        limit=active_limit,
-    )
+    active_matches = []
+    if active_limit and active_limit > 0:
+        active_matches = _safe_list_matches(
+            connection,
+            organization_id=organization_id,
+            status="active",
+            limit=active_limit,
+        )
     scheduled_matches = []
-    if org_type != "personal":
+    if org_type != "personal" and active_limit and active_limit > 0:
         scheduled_matches = _safe_list_matches(
             connection,
             organization_id=organization_id,
             status="scheduled",
             limit=active_limit,
         )
-    recent_matches = _safe_list_matches(
-        connection,
-        organization_id=organization_id,
-        status="completed",
-        limit=history_limit,
-    )
+    recent_matches = []
+    if history_limit and history_limit > 0:
+        recent_matches = _safe_list_matches(
+            connection,
+            organization_id=organization_id,
+            status="completed",
+            limit=history_limit,
+        )
 
     with connection.cursor() as cursor:
         cursor.execute(

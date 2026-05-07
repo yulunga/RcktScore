@@ -2,38 +2,49 @@
 
 ## Purpose
 
-This document tracks how the native mobile app should be built locally and in
-CI.
+This document captures the current local build and verification reality for the
+native iOS app in this repository.
 
-## Current Project
+## Current Project Location
 
-The iOS project exists at:
+- project: `mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj`
+- scheme: `RcktScoreMobile`
+- app target: `RcktScoreMobile`
 
-- `mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj`
+## Current Runtime Dependency Model
 
-Current scheme:
+The iOS app calls the same backend used by the web app.
 
-- `RcktScoreMobile`
+Runtime configuration is read through:
 
-Current app target:
+- `Config.plist`
+- `AppConfig.swift`
 
-- `RcktScoreMobile`
+The app can fall back to a configured backend URL when local configuration is
+not overridden.
 
-## Local Build Notes
+## Recommended Local Verification
 
-Open the project in Xcode and select the `RcktScoreMobile` scheme.
+1. Open the project in Xcode.
+2. Build for an iPhone simulator.
+3. Run the app and verify organisation login.
+4. Verify dashboard loading for active, scheduled, and recent matches.
+5. Open an active match and verify:
+   - score point
+   - event action
+   - undo
+   - end match
+6. Open a scheduled match and verify start-then-score flow.
 
-Recommended local checks:
+## Current Known Gaps
 
-1. build for an iPhone simulator
-2. run the app and confirm organisation login
-3. confirm dashboard lists active, scheduled, and recent matches
-4. open an active match and verify score actions call the shared v2 backend
+- there is no documented CI build pipeline yet
+- there is no documented archive/sign/distribute workflow yet
+- there is no documented release build-number policy yet
+- native timer/warm-up parity still trails the web scorer
 
-The project currently reads runtime API configuration through app configuration
-keys handled by `AppConfig.swift`, with a fallback to the deployed backend URL.
+## Current Release Readiness
 
-## Current State
-
-The native app is scaffolded and implements the main scoring workflow. There is
-not yet a documented CI build, archive workflow, or release build-number policy.
+The iOS codebase is an active client implementation and useful for development
+and validation, but the repository does not yet document a complete mobile
+release process.

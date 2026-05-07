@@ -145,8 +145,16 @@ export function confirmPasswordReset(payload) {
   });
 }
 
-export function getDashboard(organizationId) {
-  return apiRequest(`/dashboard/${organizationId}`);
+export function getDashboard(organizationId, options = {}) {
+  const params = new URLSearchParams();
+  if (options.activeLimit !== undefined) {
+    params.set("active_limit", String(options.activeLimit));
+  }
+  if (options.recentLimit !== undefined) {
+    params.set("recent_limit", String(options.recentLimit));
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest(`/dashboard/${organizationId}${suffix}`);
 }
 
 export function getRootAdminDashboard() {

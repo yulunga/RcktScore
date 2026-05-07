@@ -60,7 +60,23 @@ export default function App() {
         path="/dashboard"
         element={(
           <ProtectedRoute>
-            <DashboardPage />
+            <DashboardPage screenMode="dashboard" />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/matches"
+        element={(
+          <ProtectedRoute>
+            <DashboardPage screenMode="matches" />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/history"
+        element={(
+          <ProtectedRoute>
+            <DashboardPage screenMode="history" />
           </ProtectedRoute>
         )}
       />

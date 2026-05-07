@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
 const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
+const SCHEDULED_DETAILS_AUTO_COLLAPSE_MS = 5 * 60 * 1000;
 
 function formatScore(match) {
   const player1Score = match?.state?.player1_score ?? 0;
@@ -112,7 +113,7 @@ function clampPageIndex(index, totalPages) {
   return Math.min(index, totalPages - 1);
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ screenMode = "dashboard" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
@@ -125,6 +126,8 @@ export default function DashboardPage() {
   const [activePage, setActivePage] = useState(0);
   const [scheduledPage, setScheduledPage] = useState(0);
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
+  const scheduledDetailsTimeoutsRef = useRef({});
 
   useEffect(() => {
     async function loadDashboard() {
@@ -136,7 +139,10 @@ export default function DashboardPage() {
       setLoading(true);
       setActionError("");
       try {
-        const response = await getDashboard(session.organization_id);
+        const response = await getDashboard(session.organization_id, {
+          activeLimit: screenMode === "history" ? 0 : 200,
+          recentLimit: screenMode === "history" ? 200 : (screenMode === "matches" ? 1 : 12),
+        });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
         setActionError(requestError.message || "Failed to load dashboard.");
@@ -146,7 +152,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [session?.organization_id]);
+  }, [screenMode, session?.organization_id]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -154,6 +160,13 @@ export default function DashboardPage() {
     }, 60000);
 
     return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => () => {
+    Object.values(scheduledDetailsTimeoutsRef.current).forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    scheduledDetailsTimeoutsRef.current = {};
   }, []);
 
   useEffect(() => {
@@ -192,10 +205,29 @@ export default function DashboardPage() {
   }
 
   function toggleScheduledDetails(matchId) {
-    setExpandedScheduledMatches((current) => ({
-      ...current,
-      [matchId]: !current[matchId],
-    }));
+    setExpandedScheduledMatches((current) => {
+      const isOpening = !current[matchId];
+      const existingTimeout = scheduledDetailsTimeoutsRef.current[matchId];
+      if (existingTimeout) {
+        window.clearTimeout(existingTimeout);
+        delete scheduledDetailsTimeoutsRef.current[matchId];
+      }
+
+      if (isOpening) {
+        scheduledDetailsTimeoutsRef.current[matchId] = window.setTimeout(() => {
+          setExpandedScheduledMatches((latest) => ({
+            ...latest,
+            [matchId]: false,
+          }));
+          delete scheduledDetailsTimeoutsRef.current[matchId];
+        }, SCHEDULED_DETAILS_AUTO_COLLAPSE_MS);
+      }
+
+      return {
+        ...current,
+        [matchId]: isOpening,
+      };
+    });
   }
 
   const activeMatches = dashboard?.active_matches || [];
@@ -206,18 +238,26 @@ export default function DashboardPage() {
   const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
   const isPersonalAccount = organizationType === "personal";
   const historyLimit = organization.history_limit;
-  const historyTitle = isPersonalAccount ? "Match History" : "Recent Matches";
-  const dashboardSubtitle = isPersonalAccount
-    ? "Score matches, resume active games, and review your personal match history."
-    : "Manage live scoring, keep an eye on active courts, and review recent matches.";
-  const dashboardActions = [
-    {
-      label: "Start New Match",
-      onClick: () => navigate("/match/new"),
-    },
-  ];
+  const historyTitle = screenMode === "history"
+    ? "Recent Matches"
+    : (isPersonalAccount ? "Match History" : "Recent Matches");
+  const dashboardSubtitle = screenMode === "matches"
+    ? "View live and scheduled matches for your organisation in one scrolling list."
+    : screenMode === "history"
+      ? "Search completed matches by player name, surname, or date."
+      : isPersonalAccount
+        ? "Score matches, resume active games, and review your personal match history."
+        : "Manage live scoring, keep an eye on active courts, and review recent matches.";
+  const dashboardActions = screenMode === "dashboard"
+    ? [
+      {
+        label: "Start New Match",
+        onClick: () => navigate("/match/new"),
+      },
+    ]
+    : [];
 
-  if (!isPersonalAccount) {
+  if (screenMode === "dashboard" && !isPersonalAccount) {
     dashboardActions.push({
       label: "Match History",
       onClick: () => {
@@ -229,7 +269,7 @@ export default function DashboardPage() {
     });
   }
 
-  if (session?.role === "admin" || isPersonalAccount) {
+  if (screenMode === "dashboard" && (session?.role === "admin" || isPersonalAccount)) {
     dashboardActions.push({
       label: "Settings",
       onClick: () => navigate("/settings"),
@@ -238,18 +278,36 @@ export default function DashboardPage() {
 
   const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 12, 12);
   const historyMatches = recentMatches.slice(0, historyPreviewLimit);
-  const historyPages = chunkItems(historyMatches);
+  const normalizedHistorySearch = historySearch.trim().toLowerCase();
+  const historyCollection = screenMode === "history" ? recentMatches : historyMatches;
+  const filteredHistoryMatches = useMemo(() => {
+    if (!normalizedHistorySearch) {
+      return historyCollection;
+    }
+
+    return historyCollection.filter((match) => {
+      const player1 = `${match.player1_name || ""} ${match.player1_surname || ""}`.trim().toLowerCase();
+      const player2 = `${match.player2_name || ""} ${match.player2_surname || ""}`.trim().toLowerCase();
+      const dateText = formatDate(match.updated_at).toLowerCase();
+      const winner = (match?.winner_name || match?.state?.winner_name || "").toLowerCase();
+      return [player1, player2, dateText, winner].some((value) => value.includes(normalizedHistorySearch));
+    });
+  }, [historyCollection, normalizedHistorySearch]);
+  const historyPages = chunkItems(filteredHistoryMatches);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
   const hasHistoryCarousel = historyPages.length > 1;
-  const showHistoryViewAll = historyMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
+  const showHistoryViewAll = screenMode !== "history" && filteredHistoryMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
 
   const activePages = chunkItems(activeMatches);
   const visibleActivePage = activePages[clampPageIndex(activePage, activePages.length)] || [];
-  const hasActiveCarousel = !isPersonalAccount && activePages.length > 1;
+  const hasActiveCarousel = screenMode === "dashboard" && !isPersonalAccount && activePages.length > 1;
 
   const scheduledPages = chunkItems(scheduledMatches);
   const visibleScheduledPage = scheduledPages[clampPageIndex(scheduledPage, scheduledPages.length)] || [];
-  const hasScheduledCarousel = !isPersonalAccount && scheduledPages.length > 1;
+  const hasScheduledCarousel = screenMode === "dashboard" && !isPersonalAccount && scheduledPages.length > 1;
+
+  const showMatchesOnly = screenMode === "matches";
+  const showHistoryOnly = screenMode === "history";
 
   useEffect(() => {
     setHistoryPage((current) => clampPageIndex(current, historyPages.length));
@@ -458,29 +516,38 @@ export default function DashboardPage() {
       <ClubPageHeader
         actions={dashboardActions}
         subtitle={dashboardSubtitle}
-        title={isPersonalAccount ? "" : organization.name || session?.organization_name || "Club Dashboard"}
+        title={
+          showMatchesOnly
+            ? "Matches"
+            : showHistoryOnly
+              ? "History"
+              : (isPersonalAccount ? "" : organization.name || session?.organization_name || "Club Dashboard")
+        }
       />
 
-      <button
-        className="dashboard-start-hero"
-        type="button"
-        onClick={() => navigate("/match/new")}
-      >
-        <span className="dashboard-start-hero__tile" aria-hidden="true">
-          +
-        </span>
-        <span className="dashboard-start-hero__copy">
-          <strong>Start New Match</strong>
-        </span>
-        <span className="dashboard-start-hero__chevron" aria-hidden="true">
-          ›
-        </span>
-      </button>
+      {screenMode === "dashboard" ? (
+        <button
+          className="dashboard-start-hero"
+          type="button"
+          onClick={() => navigate("/match/new")}
+        >
+          <span className="dashboard-start-hero__tile" aria-hidden="true">
+            +
+          </span>
+          <span className="dashboard-start-hero__copy">
+            <strong>Start New Match</strong>
+          </span>
+          <span className="dashboard-start-hero__chevron" aria-hidden="true">
+            ›
+          </span>
+        </button>
+      ) : null}
 
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
       <section className="dashboard-grid">
+        {!showHistoryOnly ? (
         <section className="panel stack" id="active-matches-section">
           <div className="panel-heading">
             <h2 className="dashboard-active-heading">
@@ -504,21 +571,26 @@ export default function DashboardPage() {
               <div className="dashboard-card-grid dashboard-card-grid--desktop">
                 {activeMatches.map((match) => renderActiveMatchCard(match))}
               </div>
-              {!isPersonalAccount ? (
+              {hasActiveCarousel ? (
                 <div className="dashboard-carousel dashboard-carousel--mobile">
                   <div className="dashboard-carousel__page">
                     <div className="dashboard-card-grid dashboard-card-grid--mobile">
                       {visibleActivePage.map((match) => renderActiveMatchCard(match))}
                     </div>
                   </div>
-                  {hasActiveCarousel ? renderPagerDots(activePages.length, activePage, setActivePage, "Active match pages") : null}
+                  {renderPagerDots(activePages.length, activePage, setActivePage, "Active match pages")}
+                </div>
+              ) : showMatchesOnly ? (
+                <div className="dashboard-card-grid dashboard-carousel--mobile dashboard-card-grid--mobile">
+                  {activeMatches.map((match) => renderActiveMatchCard(match))}
                 </div>
               ) : null}
             </>
           )}
         </section>
+        ) : null}
 
-        {!isPersonalAccount ? (
+        {!isPersonalAccount && !showHistoryOnly ? (
           <section className="panel stack">
             <div className="panel-heading">
               <h2 className="dashboard-scheduled-heading">
@@ -542,19 +614,26 @@ export default function DashboardPage() {
                 <div className="dashboard-list dashboard-list--desktop">
                   {scheduledMatches.map((match) => renderScheduledMatchCard(match))}
                 </div>
+                {hasScheduledCarousel ? (
                 <div className="dashboard-carousel dashboard-carousel--mobile">
                   <div className="dashboard-carousel__page">
                     <div className="dashboard-list">
                       {visibleScheduledPage.map((match) => renderScheduledMatchCard(match))}
                     </div>
                   </div>
-                  {hasScheduledCarousel ? renderPagerDots(scheduledPages.length, scheduledPage, setScheduledPage, "Scheduled match pages") : null}
+                  {renderPagerDots(scheduledPages.length, scheduledPage, setScheduledPage, "Scheduled match pages")}
                 </div>
+                ) : (
+                  <div className="dashboard-list dashboard-carousel--mobile">
+                    {scheduledMatches.map((match) => renderScheduledMatchCard(match))}
+                  </div>
+                )}
               </>
             )}
           </section>
         ) : null}
 
+        {!showMatchesOnly ? (
         <section className="panel stack" id="match-history-section">
           <div className="panel-heading panel-heading--with-action">
             <h2 className="dashboard-history-heading">
@@ -578,17 +657,31 @@ export default function DashboardPage() {
             ) : null}
           </div>
 
-          {historyMatches.length === 0 ? (
+          {showHistoryOnly ? (
+            <div className="dashboard-history-search">
+              <input
+                type="search"
+                placeholder="Search player name, surname, or date"
+                value={historySearch}
+                onChange={(event) => setHistorySearch(event.target.value)}
+              />
+            </div>
+          ) : null}
+
+          {filteredHistoryMatches.length === 0 ? (
             <div className="dashboard-empty">Completed matches will appear here once they are ended.</div>
           ) : (
             <>
               <div className="dashboard-list dashboard-list--desktop">
-                {(showAllHistory ? historyMatches : historyMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE)).map((match) => renderHistoryMatchCard(match))}
+                {(showHistoryOnly
+                  ? filteredHistoryMatches
+                  : (showAllHistory ? filteredHistoryMatches : filteredHistoryMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE))
+                ).map((match) => renderHistoryMatchCard(match))}
               </div>
               <div className="dashboard-carousel dashboard-carousel--mobile">
-                {showAllHistory ? (
+                {showHistoryOnly || showAllHistory ? (
                   <div className="dashboard-list">
-                    {historyMatches.map((match) => renderHistoryMatchCard(match))}
+                    {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
                   </div>
                 ) : (
                   <>
@@ -604,6 +697,7 @@ export default function DashboardPage() {
             </>
           )}
         </section>
+        ) : null}
 
       </section>
 

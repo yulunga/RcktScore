@@ -1,191 +1,186 @@
-# RcktScore Feature Packaging for Pricing Tiers
+# RcktScore Feature Packaging and Current Entitlements
 
 ## Purpose
 
-This document maps current, code-backed product capabilities into commercial tiers so pricing can be modelled and discussed with stakeholders.
+This document maps the current code-backed product capabilities to pricing and packaging conversations.
 
 It is intentionally split into:
 
-1. **What exists now** (safe to price immediately)
-2. **What is proposed but not yet implemented** (requires product/engineering work)
+1. what is implemented now
+2. what is proposed but not implemented yet
 
----
+This document should not promise features that only exist as UI scaffolds or roadmap ideas.
 
-## Current Capability Snapshot (Code-Backed)
+## Current Code-Backed Product Capabilities
 
-### Individual and Club Access Foundations
+### Shared foundations
 
-- The login flow supports organisation users, including users attached to multiple organisations with an organisation-selection step. This supports both personal-like and club-like account experiences from one auth flow.
-- The app provides protected routes for dashboard, settings, match setup, and match scoring, plus a public display route.
-- Match operations include start, score point, event actions (for example let/stroke/service side), undo, and manual end of match.
-- Match history already exists in the data model (`matches`, `match_events`) and is surfaced on dashboard views (`active`, `scheduled`, `recent`).
+Current code supports:
 
-### Club Administration Foundations
+- org-user login with backend session tokens
+- multiple organisation memberships for one email address
+- protected dashboard, matches, history, settings, match setup, and match scoring routes
+- public single-match display route
+- event-sourced match history through `matches` and `match_events`
 
-- Club administration currently supports:
-  - organisation details maintenance
-  - organisation user creation and role updates (`admin`, `user`)
-  - court create/update/delete
-- Root administration supports multi-club operations:
-  - tenant club creation
-  - club search/directory
-  - cross-club user management
+### Match operations
 
-### Display / External Screen Foundation
+Current match/scoring capabilities include:
 
-- A standalone public display route (`/display?match=...`) exists with scoreboard-first rendering and optional event timeline.
-- Frontend includes WebSocket client hooks, but realtime infrastructure is explicitly incomplete in deployment. Current reliable experience should be treated as fetch + partial realtime support.
+- create active match
+- create scheduled match when a court already has an active match
+- activate scheduled match
+- score point
+- event actions:
+  - let
+  - stroke
+  - server
+  - serve_side
+  - match_settings
+  - timer
+- undo last action
+- manual match end
 
----
+### Administration
 
-## Recommended Commercial Tier Definition
+Club administration currently supports:
 
-## 1) Personal (Free)
+- organisation detail maintenance
+- organisation-user invite/create
+- organisation-user role update
+- court create/update/delete
+- player/referee lookup based on prior match data and org-user usernames
 
-### Suggested Included Features
+Root-admin functionality currently supports:
 
-- Create and score matches for personal use.
-- One active personal match at a time.
-- View current scoreboards and completed match summaries.
-- Personal historical retention: **last 3 completed matches**.
+- root-admin login
+- root-admin dashboard
+- club creation
+- club search
+- root-admin organisation-user creation/update
+- interest-request review
+- personal-account review
 
-### Implementation Notes
+Important qualification:
 
-- Retention is enforced server-side through the dashboard API.
-- Personal accounts are represented as hidden single-user organisations so they can later be upgraded or attached to a club without changing the auth model.
-- Personal organisation IDs are allocated from the 50000+ range.
-- Match creation is blocked for Personal accounts when an active match already exists.
-- Current first release keeps all data in storage, but API returns only latest 3 for Personal users.
-- Later hard-retention option: scheduled purge/archive job by account plan.
+- root-admin security is not fully production-ready yet
 
-### Positioning
+### Display and realtime
 
-- Entry point for individuals and casual players.
-- Designed to drive upgrade into Personal+.
+Current display capability:
 
----
+- public `/display?match=...` route
+- scoreboard rendering
+- optional timeline rendering
 
-## 2) Personal+
+Current limitation:
 
-### Suggested Included Features
+- WebSocket client code exists, but the infrastructure is still partial
+- do not commercially promise production-grade realtime display yet
 
-- Everything in Personal.
-- Personal historical retention: **last 100 completed matches**.
-- Player shirt colour selection during match setup and live match settings.
-- Candidate premium features (to decide in product discovery):
-  - richer match stats/history filtering
-  - export/download of match history
-  - saved player profiles / favourites
+## Current Entitlement Behavior In Code
 
-### Implementation Notes
+### Personal free
 
-- Same pattern as Personal: historical-return limits are enforced by plan at API layer.
-- Keep feature flags plan-based so additional premium features can be added without reworking core auth.
-- Match filtering, saved players, exports, and lightweight stats remain planned implementation items.
+Currently enforced in code:
 
-### Positioning
+- one active personal match at a time
+- dashboard/history returns the last `3` completed matches
+- no shirt-colour selection entitlement
 
-- Serious individual players and coaches needing deeper history.
+### Personal plus
 
----
+Currently enforced in code:
 
-## 3) Club Essentials
+- same personal-account model as personal free
+- dashboard/history returns the last `12` completed matches
+- shirt-colour selection is enabled
 
-### Suggested Included Features
+Important:
 
-- Multi-user club workspace.
-- Court management.
-- Club user and role management.
-- Player management and match operations across club courts.
-- External display capability for live scoreboards.
+- earlier drafts that described `100` retained matches do not match the current code
 
-### Implementation Notes
+### Club plans
 
-- Court/user management is already present and should be explicitly bundled here.
-- “Player management” should be defined more formally (currently player data is match-entry centric; not yet a dedicated player module).
-- External display is already present as route capability; realtime reliability/latency expectations should be documented by tier while WebSocket infra remains partial.
+Currently represented in code:
 
-### Positioning
+- club organisations default to `club_essentials`
+- clubs can create and manage courts and users
+- clubs can use shirt colours
+- clubs can use active and scheduled matches
 
-- Small-to-mid clubs that need core operational tooling.
+Currently not enforced as hard limits:
 
----
+- max courts
+- max users
+- max active matches
+- max scheduled matches
+- pro-tier concurrency or SLA behavior
 
-## 4) Club Pro
+## Current Pricing-Safe Claims
 
-### Suggested Included Features
+These are safe to describe as implemented today:
 
-- Everything in Club Essentials.
-- Designed for larger clubs with **more than 8 courts** and higher staff/operator volume.
-- Priority capabilities to attach here:
-  - higher usage and concurrency limits
-  - advanced reporting and club analytics
-  - optional priority support/SLA
-  - future realtime-first display package (when infrastructure completes)
+- Personal accounts exist as hidden single-user organisations
+- Personal free has reduced match-history access
+- Personal plus unlocks deeper history than personal free and shirt colours
+- Clubs have multi-user workspace, court management, and club match operations
+- Public display route exists
 
-### Implementation Notes
+## Not Yet Safe To Promise As Fully Implemented
 
-- Define Pro primarily with measurable entitlements:
-  - max courts
-  - max users
-  - max active/scheduled matches
-  - data retention window
-- Since dashboard and settings already expose court/user counts, usage guardrails can be added with low UX disruption.
+- enterprise-grade root-admin security
+- guaranteed realtime display
+- persisted organisation-level game settings
+- persisted social profiles
+- dedicated player registry/CRM
+- advanced analytics and reporting
+- exports/downloadable reports
+- hard plan guardrails for club scale
 
-### Positioning
+## Suggested Tier Framing Based On Current Code
 
-- Multi-court venues and tournament-heavy operations requiring scale and governance.
+### Personal free
 
----
+- one active match
+- limited match history
+- core scoring
 
-## Proposed Tier Matrix (Draft)
+### Personal plus
 
-| Capability | Personal | Personal+ | Club Essentials | Club Pro |
-|---|---:|---:|---:|---:|
-| Match scoring (core) | ✅ | ✅ | ✅ | ✅ |
-| Historic matches retained | 3 | 100 | Club policy | Extended club policy |
-| Player shirt colour selection | ❌ | ✅ | ✅ | ✅ |
-| Court management | ❌ | ❌ | ✅ | ✅ |
-| Multi-user organisation roles | ❌ | ❌ | ✅ | ✅ |
-| Public display screen | Limited | Limited | ✅ | ✅ |
-| Large club scale (>8 courts) | ❌ | ❌ | Limited | ✅ |
-| Advanced analytics/reporting | ❌ | Candidate | Candidate | ✅ (target) |
+- everything in personal free
+- more retained history than personal free
+- shirt-colour selection
 
-> Note: “Limited” means feature exists technically but should be constrained by policy/plan limits.
+### Club essentials
 
----
+- multi-user club workspace
+- court management
+- club scoring operations
+- scheduled matches
+- public display route
 
-## Gaps to Close Before Pricing Launch
+### Club pro
 
-1. **Plan/entitlement model**
-   - Source of truth now exists on organisation records via `org_type` and `plan`.
-2. **Server-side enforcement**
-   - Personal match-history limits are enforced in the dashboard query/service layer.
-   - Saved-player limits, export permissions, and advanced filtering limits still need dedicated endpoints.
-3. **Personal vs Club identity model**
-   - Personal users are modelled as hidden single-user organisations.
-4. **Player management scope**
-   - Define whether this is lightweight lookup/history reuse or a full CRUD player registry.
-5. **Realtime promise by tier**
-   - Avoid “live realtime guaranteed” language until WebSocket infra is production-complete.
+This is still mostly a commercial shell rather than a code-enforced tier.
+The repo does not yet contain strong club-pro enforcement logic.
 
----
+## Recommended Commercial Cautions
 
-## Suggested Next Steps (Commercial + Product)
+- talk about the display route, but avoid a hard realtime promise
+- talk about root-admin tooling carefully until backend auth is completed
+- do not market scaffold-only settings as launch-ready features
+- if pricing copy references personal-plus history depth, use the current code-backed limit, not older planning numbers
 
-1. Confirm entitlement boundaries for each tier:
+## Next Product and Commercial Work
+
+1. Decide the true plan limits for:
    - history retention
    - courts
    - users
    - active matches
-2. Decide one billing metric for clubs (for example by court-count band, user-count band, or blended).
-3. Lock “Personal+ premium feature set v1” (1–2 meaningful value adds beyond retention).
-4. Implement backend enforcement and plan-aware API responses.
-5. Update marketing copy and in-app upgrade prompts using this matrix as source.
-
----
-
-## Working Assumptions
-
-- Current codebase already supports the operational core needed for all four tiers.
-- Main remaining work is **commercial packaging + entitlement enforcement**, not greenfield feature construction.
+   - scheduled matches
+2. Implement those limits server-side.
+3. Decide whether player management remains lookup/history-based or becomes a real CRUD module.
+4. Complete root-admin backend auth before positioning the admin surface as production-grade.
+5. Complete WebSocket infrastructure before selling realtime display as a premium reliability feature.

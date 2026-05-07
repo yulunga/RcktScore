@@ -1307,6 +1307,20 @@ textarea {
   transform: translateY(-1px);
 }
 
+.dashboard-history-search input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #c7d4e2;
+  border-radius: 18px;
+  padding: 12px 16px;
+  background: #fff;
+  color: #102a43;
+}
+
+.dashboard-history-search input::placeholder {
+  color: #9fb3c8;
+}
+
 .dashboard-history-action {
   border: 0;
   border-radius: 999px;
@@ -2909,6 +2923,11 @@ textarea {
   .club-admin-overview-grid {
     grid-template-columns: 1fr;
   }
+
+  .app-footer__divider,
+  .app-footer__help-button {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3242,6 +3261,14 @@ textarea {
     color: #1274d0;
   }
 
+  .mobile-fab-menu-sheet__item--accent {
+    color: #ec5ea8;
+  }
+
+  .mobile-fab-menu-sheet__item--accent.mobile-fab-menu-sheet__item--active {
+    color: #ec5ea8;
+  }
+
   .mobile-fab-menu-sheet__icon {
     width: 18px;
     height: 18px;
@@ -3298,7 +3325,7 @@ textarea {
   }
 
   .dashboard-active-card__main {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 24px;
+    grid-template-columns: max-content auto max-content 30px;
     gap: 8px;
   }
 
@@ -3308,6 +3335,10 @@ textarea {
 
   .dashboard-active-card__player span {
     font-size: 0.72rem;
+  }
+
+  .dashboard-active-card__player--right {
+    text-align: left;
   }
 
   .dashboard-active-card__score-line {

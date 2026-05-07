@@ -2,744 +2,130 @@
 
 ## Purpose
 
-This file is the working operating guide for the `RcktScore` repository.
+This file is the short operating guide for the `RcktScore` repository.
 It should describe the codebase as it exists now, not as it is planned to be.
 
-When the app changes materially, this file should be updated in the same workstream.
+When the product, API surface, security posture, or troubleshooting path changes,
+update this file together with:
 
----
+- [docs/backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
+- [docs/technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
+- [docs/troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)
 
 ## Current Product State
 
-`RcktScore` v2 is a cloud-hosted squash scoring application with:
+`RcktScore` v2 is the active app in this repository.
 
-- a React frontend in `frontend/`
-- a Python AWS Lambda backend in `backend/`
+Current stack:
+
+- React + Vite frontend in `frontend/`
+- Python AWS Lambda backend in `backend/`
 - Supabase Postgres as the primary datastore
-- AWS Amplify hosting for the frontend
 - AWS SAM for backend deployment
+- native iOS client in `mobile/ios/`
 
-The old Flask application remains in `version1/` as reference only. It is not the active app.
+The old Flask code in `version1/` is reference-only and should not be treated as the active product.
 
----
+## Current Release Posture
 
-## Current Deployment State
+The repository is closest to a web beta than a full production launch.
 
-### Frontend
+What is real and implemented:
 
-- Hosted with AWS Amplify
-- Amplify build config is at [amplify.yml](/Users/glennrowe/Development/Projects/RcktScore/amplify.yml)
-- Amplify app has been deployed in `eu-north-1`
-- The frontend calls the backend through `VITE_API_BASE_URL`
-- The login page also includes a register-interest flow for prospective users
-- A separate root administration portal now exists at `/rckscoreAdmin`
+- org-user login with backend session tokens
+- multi-organisation membership selection
+- dashboard, history, and match lists
+- organisation settings, user creation, user role updates, and court CRUD
+- match create, schedule, start, score, event actions, undo, and end
+- register-interest, password reset, and feedback email flows
+- root-admin UI and supporting backend functions
 
-### Backend
+What is still partial or risky:
 
-- Deployed with AWS SAM from [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml)
-- Active stack name: `rcktscore-backend`
-- Active backend region: `eu-west-2`
-- Current deployed HTTP API base URL:
-  `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod`
-
-### Supabase
-
-- Supabase Postgres is the system of record
-- Lambda connections must use the Supabase pooler connection string, not the direct IPv6 database host
-- The backend connection helper in [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py) disables prepared statements for Supabase pooler compatibility
-
----
+- root-admin backend authorization is not fully implemented
+- some root-admin organisation actions use `x-root-admin-request` header bypass logic
+- WebSocket broadcast infrastructure is scaffolded but not fully wired
+- some settings sections are still UI scaffolds only
+- no automated test suite is checked into the repo
 
 ## Repository Layout
 
-### Root
-
-- `frontend/` React + Vite client
-- `backend/` Lambda handlers, shared backend logic, SAM config
-- `mobile/` native mobile workspace scaffold
-- `infrastructure/` reference deployment notes and older config support files
-- `version1/` legacy Flask code kept for migration/reference
-
-### Frontend
-
-- `src/App.jsx` route definitions
-- `src/context/AuthContext.jsx` frontend auth/session state
-- `src/context/RootAdminContext.jsx` root admin auth/session state
-- `src/context/MatchContext.jsx` match state and API mutations
-- `src/services/api.js` HTTP API client
-- `src/services/websocket.js` browser WebSocket client
-
-### Mobile
-
-- `mobile/ios/` native iOS workspace location
-- `mobile/shared/` mobile-facing shared contracts and state references
-- `docs/mobile/setup.md` mobile onboarding/setup guide
-- `docs/mobile/signing.md` iOS signing placeholder
-- `docs/mobile/build.md` mobile build guidance placeholder
-- `docs/mobile/release-notes.md` future mobile release notes
-- `ios/RcktScoreMobile/` SwiftUI iOS app scaffold for scoring
-- `ios/RcktScoreMobile/Config.plist` runtime configuration (API base URL, build id)
-- `ios/RcktScoreMobile/Models/` API envelope and entities
-- `ios/RcktScoreMobile/Services/` API client (HTTP only; no WebSocket yet)
-- `ios/RcktScoreMobile/State/` session store
-- `ios/RcktScoreMobile/Views/` login, dashboard, and match scoring views, including warm-up, first-server, match timer, and interval flow
-
-### Backend
-
-- `functions/create_match/handler.py`
-- `functions/login/handler.py`
-- `functions/root_admin_login/handler.py`
-- `functions/get_root_admin_dashboard/handler.py`
-- `functions/create_root_admin_organization/handler.py`
-- `functions/create_root_admin_org_user/handler.py`
-- `functions/update_root_admin_org_user/handler.py`
-- `functions/register_interest/handler.py`
-- `functions/get_match/handler.py`
-- `functions/score_point/handler.py`
-- `functions/event_action/handler.py`
-- `functions/undo_action/handler.py`
-- `functions/websocket_broadcast/handler.py`
-- `common/match_logic.py`
-- `common/auth_logic.py`
-- `common/root_admin_logic.py`
-- `common/supabase_client.py`
-- `common/utils.py`
-- `common/organization_logic.py`
-- `docs/backend-api.md` backend/API developer reference
-- `docs/technical-walkthrough.md` end-to-end lifecycle walkthroughs
-
----
-
-## Request Lifecycle
-
-The v2 request lifecycle is now documented explicitly in:
-
-- [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
-- [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
-
-Current architecture layers:
-
-- frontend state owner
-  - [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
-  - [MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
-- API client layer
-  - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-- Lambda handler layer
-  - `backend/functions/*/handler.py`
-- shared domain logic layer
-  - `backend/common/auth_logic.py`
-  - `backend/common/organization_logic.py`
-  - `backend/common/dashboard_logic.py`
-  - `backend/common/match_logic.py`
-- persistence layer
-  - [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
-  - Supabase Postgres tables:
-    - `SkwshOrgSettings`
-    - `SkwshOrgUsers`
-    - `SkRootAdmin`
-    - `SkwshCourts`
-    - `matches`
-    - `match_events`
-
-Current runtime flow is:
-
-1. React page/component triggers an action through [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-2. The request is sent to the deployed HTTP API in API Gateway
-3. API Gateway invokes the matching Lambda from [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml)
-4. The Lambda handler parses input using [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-5. Shared domain logic runs in `backend/common/*.py`
-6. Shared DB access is created through [supabase_client.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/supabase_client.py)
-7. Supabase/Postgres is read/written
-8. The handler returns JSON to the frontend
-9. Frontend context updates local state and the relevant page rerenders
-
-This flow is consistent across login, dashboard, organisation settings, match creation, scoring, undo, and match completion.
-
----
+- `frontend/`
+  - route definitions in `src/App.jsx`
+  - auth state in `src/context/AuthContext.jsx`
+  - root-admin state in `src/context/RootAdminContext.jsx`
+  - match state in `src/context/MatchContext.jsx`
+  - HTTP client in `src/services/api.js`
+  - browser WebSocket client in `src/services/websocket.js`
+- `backend/`
+  - Lambda handlers in `functions/*/handler.py`
+  - shared backend logic in `common/*.py`
+  - schema migrations in `schema/*.sql`
+  - SAM template in `template.yaml`
+- `mobile/`
+  - iOS project in `ios/RcktScoreMobile/`
+  - mobile-facing shared references in `shared/`
+- `docs/`
+  - backend/API reference
+  - lifecycle walkthrough
+  - troubleshooting
+  - mobile notes
+  - pricing and packaging notes
 
 ## Current Frontend Routes
 
-Defined in [App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/App.jsx):
-
-- `/` -> login page
-- `/login` -> login page
-- `/dashboard` -> protected organisation dashboard
-- `/settings` -> protected organisation settings page
-- `/ping` -> protected feedback/contact page
-- `/match/new` -> protected route
-- `/match/:matchId` -> protected route
-- `/display` -> public spectator display route
-- `/rckscoreAdmin` -> root admin login page
-- `/rckscoreAdmin/dashboard` -> protected root admin dashboard
-- `/rckscoreAdmin/clubs/:organizationId` -> protected root admin club administration page
-
-Auth protection is currently implemented in the frontend with `AuthContext` and `ProtectedRoute`.
-
----
-
-## Current Backend HTTP API
-
-Defined in [template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml):
-
-- `POST /login`
-- `POST /root_admin/login`
-- `POST /register_interest`
-- `POST /feedback`
-- `GET /root_admin/dashboard`
-- `POST /root_admin/organizations`
-- `GET /root_admin/organizations/search?q=...`
-- `POST /root_admin/organization_users`
-- `PUT /root_admin/organization_users/{user_id}`
-- `GET /dashboard/{organization_id}`
-- `GET /organization_settings/{organization_id}`
-- `PUT /organization_details/{organization_id}`
-- `POST /organization_users`
-- `PUT /organization_users/{user_id}`
-- `POST /organization_courts`
-- `PUT /organization_courts/{court_id}`
-- `DELETE /organization_courts/{court_id}`
-- `POST /start_match`
-- `GET /get_score/{match_id}`
-- `POST /score_point`
-- `POST /event_action`
-- `POST /undo_action`
-- `POST /end_match`
-
-Important: these are the real v2 endpoints. Do not document or build against `/matches`, `/matches/{id}/score`, or other REST shapes unless the code has actually been changed to support them.
-
-Current API contract status:
-
-- response handling is centralized through [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-- shared response helpers are:
-  - `success_response(status_code, data=None, meta=None)`
-  - `error_response(status_code, code, message, details=None)`
-- all current handlers return one shared envelope:
-  - success:
-    - `{"success": true, "data": {...}, "error": null, "meta": {}}`
-  - error:
-    - `{"success": false, "data": null, "error": {"code": "...", "message": "..."}, "meta": {}}`
-- status codes are standardized across the current API surface (`200`, `201`, `400`, `401`, `404`, `500`)
-- the frontend API client unwraps `payload.data` on success and surfaces `error.message`, `error.code`, and `error.details` on failure
-
----
-
-## Authentication
-
-### Current State
-
-Login is now backed by Supabase/Postgres via the `SkwshOrgUsers` table.
-Root admin login is separately backed by `SkRootAdmin`.
-
-The active login flow:
-
-1. Frontend posts username/password to `POST /login`
-2. Lambda queries `SkwshOrgUsers`
-3. Password is verified against the stored `password_hash`
-4. The API returns:
-   - `id`
-   - `username`
-   - `role`
-   - `organization_id`
-   - `organization_name`
-   - `first_name`
-   - `surname`
-   - `full_name`
-   - `email`
-5. Frontend stores that session in `sessionStorage`
-
-The login page also includes a register-interest flow:
-
-1. A prospective user opens the inline interest form from the login page
-2. The form captures an email address
-3. A lightweight human-check challenge must be completed before submit
-4. The backend sends an email notification to `rcktinterest@ucingo.com`
-
-The authenticated app also includes a `Ping Us` flow:
-
-1. A signed-in user opens `/ping`
-2. The form prefills user identity fields from the current session when available
-3. The user selects a category and enters message text
-4. The backend sends an SES email to the configured feedback inbox
-
-Important:
-
-- the current anti-bot control is a lightweight built-in challenge plus honeypot, not a third-party managed captcha service
-- the backend email send relies on AWS SES configuration and a verified sender address
-
-Relevant files:
-
-- [AuthContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/AuthContext.jsx)
-- [RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
-- [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-- [auth_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py)
-- [handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
-- [handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py)
-
-### Source of Truth
-
-Organisation users are stored in:
-
-- `SkwshOrgUsers`
-
-Root administrator users are stored in:
-
-- `SkRootAdmin`
-
-Current expected columns:
-
-- `id`
-- `clubusername`
-- `password_hash`
-- `organization_id`
-- `role`
-
-Organisation metadata is joined from:
-
-- `SkwshOrgSettings`
-
-### Important Constraint
-
-Backend login is real, but backend authorization for match-management routes is not yet enforced.
-
-Current status:
-
-- login is validated against the database
-- route blocking in the browser exists
-- organisation users now land on a protected dashboard after login
-- scoring/match APIs are still callable without server-side token verification
-
-Any work on auth should preserve the existing `SkwshOrgUsers` table model unless there is an explicit migration plan.
-
----
-
-## Match Creation and Organisation Association
-
-When an operator logs in, the frontend uses the authenticated user's `organization_id` as `tenant_id` when creating a match.
-
-This is implemented in [NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx).
-
-Current match setup behavior:
-
-- the operator does not manually type the tenant or organisation id
-- the court selector is populated from organisation settings
-- the selector displays `court_name` values from `SkwshCourts`
-- `court_alias` is shown as the read-only paired field once a court is selected
-- player country fields are intentionally hidden for now pending a later maturity pass
-- the setup form supports `PAR-11` and `PAR-15`
-- the setup form supports `best_of` values `1`, `3`, and `5`
-- after successful match creation the operator is routed directly to `/match/:matchId`
-- handicap matches use the predefined 2024 matrix bands (`A` through `M`) to calculate opening offsets
-- handicap mode forces PAR-15 scoring in the current implementation
-- the setup page includes an in-page handicap matrix table and summary helper for the selected player bands
-
-Do not reintroduce free-text manual entry of the tenant/organisation ID in the operator UI unless there is a clear reason.
-
-The dashboard is now the primary post-login landing page and currently includes:
-
-- quick actions
-- active matches
-- recent completed matches
-- organisation summary information
-- a direct route into organisation settings management
-
-The organisation settings page currently provides:
-
-- organisation detail editing for club name, address, contact, telephone, email, and website
-- a Google Maps embed driven from the saved address
-- organisation user creation and role updates (`admin` / `user`)
-- court create, update, and delete operations
-- a game settings section with an organisation-level handicap scoring toggle scaffold
-- a visible racket-sports launch matrix where only squash is currently active and the other sports are intentionally greyed out
-
-Important: social profile inputs and organisation-level game settings are scaffolded in the UI only right now. They are not yet persisted because the current documented organisation table does not yet include dedicated columns for them.
-
-The root administration portal currently provides:
-
-- a separate root admin login screen with a lightweight built-in human check
-- a protected root admin dashboard at `/rckscoreAdmin/dashboard`
-- platform-wide tenant organisation summary counts
-- a New Club overlay flow for tenant organisation creation
-- ajax club search with auto-complete lookup
-- an alphabetical club directory on the dashboard
-- a protected root admin club administration page for all club attributes
-- tenant user creation across organisations
-- tenant user role updates (`admin` / `user`) across organisations
-- club-level organisation detail, user, and court management from the root admin path
-
-Important: root admin route protection is currently frontend session-based, matching the current tenant-user auth posture. Backend token/session enforcement and later IP restrictions are still future work.
-
----
-
-## Match and Scoring Logic
-
-Current match and event processing lives in [match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py).
-
-Current behavior:
-
-- match records are created in `matches`
-- events are stored in `match_events`
-- schema bootstrap for these tables now lives in [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql)
-- match state is reconstructed from event history
-- squash scoring is now match-aware, not just single-score aware
-- `score_type` is the game target, so `PAR-11` wins at 11 and `PAR-15` wins at 15
-- both PAR formats use win-by-2 logic once tied at game ball
-- matches support `best_of` values `1`, `3`, and `5`
-- first player to the required number of game wins completes the match automatically
-- the backend tracks:
-  - current game number
-  - games required to win
-  - games won by each player
-  - current server
-  - current server side
-  - current service side
-  - completed game history
-- undo deletes the last non-`match_started` event and rebuilds state
-- service side and current server are derived from events
-- ending a match sets `matches.status` to `completed`, stamps `completed_at`, and stores `player1_final_score`, `player2_final_score`, `winner_side`, and `winner_name`
-- operators can also end a match early through `POST /end_match`, which records `ended_early` and `end_reason`
-- new matches should be created as `sport = "squash"` for the current launch scope unless the app has been explicitly extended for another racket sport
-
-The scoring timeline is now the persistence source for historic views:
-
-- every scoring action is written to `match_events`
-- scoring payloads carry game-aware snapshot data
-- completed matches persist enough summary data in `matches` for dashboard/history queries without replaying every event first
-
-Current summary columns expected on `matches` include:
-
-- `best_of`
-- `games_to_win`
-- `current_game_number`
-- `player1_games_won`
-- `player2_games_won`
-- `player1_final_score`
-- `player2_final_score`
-- `winner_side`
-- `winner_name`
-- `ended_early`
-- `end_reason`
-- `completed_at`
-
-Important: rerun [001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql) in Supabase whenever these match-tracking columns are added or changed. The deployed backend now expects them.
-
-Relevant operator-facing frontend files:
-
-- [MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
-- [Scoreboard.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/Scoreboard.jsx)
-- [MatchControls.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/MatchControls.jsx)
-- [EventTimeline.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/EventTimeline.jsx)
-
-Current scoring screen behavior:
-
-- the scoreboard shows games won as well as the current game score
-- the active server is shown next to the player name with the current service side
-- the event timeline is scrollable inside a fixed-height panel
-- the spectator display section appears below the event timeline
-- operators can end a match early
-- operators can navigate back to the dashboard from the scoring controls
-
----
-
-## Realtime / WebSocket Status
-
-Realtime support is only partially implemented at present.
-
-Current state:
-
-- the frontend has a WebSocket client in [websocket.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/websocket.js)
-- there is a broadcast Lambda in [handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/websocket_broadcast/handler.py)
-- the active SAM template does not currently provision a WebSocket API
-- therefore WebSocket-based live updates should be treated as incomplete infrastructure, not as fully deployed behavior
-
-Do not describe realtime as production-complete unless the WebSocket API, connection management, and broadcast flow are fully wired and deployed.
-
----
-
-## Environment Variables
-
-### Frontend
-
-Used by Vite/Amplify:
-
-- `VITE_API_BASE_URL`
-- `VITE_WEBSOCKET_URL`
-- `VITE_API_KEY`
-- `VITE_BUILD_ID`
-
-Notes:
-
-- `VITE_*` values are public build-time values
-- `VITE_BUILD_ID` is displayed in the footer and should be sourced from CI metadata when available
-- do not put database credentials or private secrets in frontend env vars
-
-### Backend
-
-Used by Lambda:
-
-- `SUPABASE_DB_URL`
-
-This should be provided as the Supabase pooler connection string during deployment, not committed into repo files.
-
----
-
-## Deployment Workflow
-
-### Frontend
-
-- Build with `npm ci` then `npm run build`
-- Deploy via Amplify using [amplify.yml](/Users/glennrowe/Development/Projects/RcktScore/amplify.yml)
-- Amplify app must expose the correct `VITE_API_BASE_URL`
-
-### Backend
-
-- Build with `sam build`
-- Deploy with `sam deploy`
-- Default SAM deploy config is in [samconfig.toml](/Users/glennrowe/Development/Projects/RcktScore/backend/samconfig.toml)
-
-Current SAM config intentionally does not store the real Supabase password in the repo.
-
----
-
-## Security Rules
-
-- Never commit live Supabase passwords or pooler URLs containing real passwords
-- Never place backend secrets in Amplify `VITE_*` variables
-- Treat `samconfig.toml` as sensitive if credentials are temporarily added locally
-- Prefer deploy-time parameter injection or AWS Secrets Manager / Parameter Store for backend secrets
-
----
-
-## Coding Rules For Agents
-
-### Do
-
-- keep documentation aligned to deployed behavior
-- reuse backend shared modules in `backend/common/`
-- preserve compatibility with existing `SkwshOrgUsers` and `SkwshOrgSettings` tables
-- keep frontend API access centralized in `frontend/src/services/api.js`
-- keep auth/session access centralized in `frontend/src/context/AuthContext.jsx`
-- update this file when routes, deployment targets, auth model, or architecture changes
-
-### Do Not
-
-- document unimplemented endpoints as if they already exist
-- describe WebSocket live updates as complete when infrastructure is still partial
-- introduce a second unrelated auth model without an explicit migration decision
-- hardcode secrets into repo-tracked files
-- move scoring logic into the frontend
-
----
-
-## Current Known Gaps
-
-- backend token-based authorization is not yet enforced on protected scoring endpoints
-- WebSocket infrastructure is incomplete in the deployed backend
-- historic match list/detail UX is still basic compared with the richer scoring data now stored
-- mobile app currently uses HTTP polling/on-demand fetch; WebSocket live updates to be designed and integrated later
-
----
-
-## Maintenance Rule
-
-When version 2 progresses, update this file for:
-
-- new deployed stacks or regions
-- route changes
-- auth/authorization changes
-- database model changes
-- environment variable changes
-- realtime infrastructure changes
-- completed features that are currently listed as gaps
-
-This file should remain the short operational truth for the repository.
-
-
-
-## 📝 TODO — Architecture & Platform Enhancements (Backlog)
-
-The following items are intentionally deferred while frontend UI structure is prioritised. These must be implemented before production maturity.
-
----
-
-### 🔄 Core Architecture Improvements
-
-* [x] Define and document full request lifecycle (frontend → API → Lambda → Supabase → response)
-  Completed in:
-  - [AGENTS.md](/Users/glennrowe/Development/Projects/RcktScore/AGENTS.md)
-  - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
-  - [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
-* [x] Standardise API response contract (success/error format)
-  Completed in:
-  - [utils.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/utils.py)
-  - [api.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/api.js)
-  - current Lambda handlers in `backend/functions/*/handler.py`
-  - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
-  - [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
-* [ ] Define and enforce match event schema in `match_events`
-  Current state:
-  - the event model is described in docs and implemented in `match_logic.py`
-  Remaining work:
-  - formally document the payload shape for each event type
-  - validate payload structure consistently before insert
-  - reject malformed event payloads at the backend boundary
-* [ ] Document and implement WebSocket target architecture
-* [ ] Introduce versioning and API change management rules
-
----
-
-### ⚡ Realtime (Option A)
-
-Goal: Enable live scoreboard updates without polling
-
-* [ ] Create API Gateway WebSocket API (SAM template)
-* [ ] Implement connection management (store connection IDs)
-* [ ] Implement match subscription model (connection → match_id)
-* [ ] Build broadcast Lambda for match updates
-* [ ] Integrate WebSocket client fully in frontend
-* [ ] Remove polling fallback once stable
-
----
-
-### 🔐 Backend Authentication Enforcement (Option B)
-
-Goal: Secure all match and scoring operations
-
-* [ ] Introduce token/session validation in Lambda
-* [ ] Ensure all scoring endpoints require authenticated user
-* [ ] Enforce organisation-level access control (tenant isolation)
-* [ ] Prevent cross-organisation match access
-* [ ] Align backend auth with existing `SkwshOrgUsers` model
-* [ ] Add middleware/shared auth validation module
-
----
-
-### 🧪 Reference Endpoint Refactor (Option C)
-
-Goal: Establish a gold-standard implementation pattern
-
-* [ ] Refactor `score_point` Lambda:
-
-  * [ ] Input validation
-  * [ ] Shared logic usage (`match_logic.py`)
-  * [ ] Supabase write consistency
-  * [ ] Structured logging
-  * [ ] WebSocket broadcast hook
-* [ ] Use this endpoint as template for all others
-* [ ] Ensure consistent error handling and response format
-
----
-
-### 📱 Responsive Dashboard Experience
-
-Goal: Shape the post-login dashboard intentionally for mobile, tablet, and desktop without splitting the app into separate codebases
-
-* [ ] Define responsive dashboard breakpoints and document them
-  Recommended baseline:
-  - mobile: `< 768px`
-  - tablet: `768px - 1023px`
-  - desktop: `>= 1024px`
-* [ ] Keep one shared dashboard route and data flow, with layout differences only where the device needs a different experience
-* [ ] Build the dashboard mobile-first, then layer tablet and desktop enhancements
-* [ ] Create a viewport/layout-mode utility only if behavior needs to change, not just CSS
-* [ ] Mobile dashboard requirements:
-  - single-column stacked cards
-  - larger tap targets
-  - shortest possible path to start or resume a match
-  - secondary information collapsed or deferred
-* [ ] Tablet dashboard requirements:
-  - two-column layout where useful
-  - operator-focused density suitable for courtside use
-  - quick access to active matches and scoring controls
-* [ ] Desktop dashboard requirements:
-  - full multi-panel grid
-  - richer organisation summary and match visibility
-  - higher information density for club/admin workflows
-* [ ] Apply progressive disclosure for smaller screens instead of shrinking everything
-  Examples:
-  - accordions
-  - expandable sections
-  - hidden secondary actions
-* [ ] Use touch-friendly spacing and control sizing where device input is touch-first
-* [ ] Review and adapt each dashboard panel by device size:
-  - Quick Actions
-  - Active Matches
-  - Recent Matches
-  - Organisation Settings summary
-* [ ] Revisit Recent Matches row actions and add a proper stats view
-  Current state:
-  - the temporary `Stats` action has been removed from the dashboard
-  Remaining work:
-  - define the stats screen
-  - decide what match metrics belong in the row vs drill-in view
-* [ ] Build an iPhone-first organisation mobile experience using the iPhone 16e as the reference device
-  Target baseline:
-  - portrait-first layout
-  - primary phone width range around `390px - 430px`
-  - no horizontal scroll for core operator actions
-* [ ] Mobile `/dashboard` implementation plan
-  Requirements:
-  - single-column action-first home screen
-  - compact top header with club name, username, and logout
-  - primary actions visible without scrolling
-  - active matches as stacked cards, one per row
-  - recent matches collapsed or visually deferred behind a toggle where needed
-  - minimal copy and reduced admin density on phone layouts
-  Card behavior:
-  - tapping an active match card should open the match
-  - `Resume` remains the primary action
-  - `End` remains visually separated as destructive
-* [ ] Mobile `/match/:id` implementation plan
-  Requirements:
-  - score-first layout in portrait orientation
-  - both player score areas visible above the fold
-  - point scoring possible with a single tap
-  - scoring controls kept within thumb reach below the score
-  - match details collapsed by default on phone layouts
-  - event timeline pushed to the bottom and collapsed/deferred where needed
-  - spectator controls and secondary metadata visually subordinate to score and controls
-* [ ] Keep one shared backend and route model while allowing mobile-specific rendering
-  Shared layers that must remain common:
-  - `AuthContext`
-  - `MatchContext`
-  - `api.js`
-  - backend scoring/auth routes
-* [ ] Implement the mobile-first build order in this sequence
-  1. `/match/:id`
-  2. `/dashboard`
-  3. `/match/new`
-  4. `/settings`
-* [ ] Define mobile acceptance criteria for organisation users
-  `/dashboard`
-  - top actions visible without scrolling
-  - no zoom required on iPhone 16e
-  - no horizontal scroll
-  `/match/:id`
-  - both scores visible above the fold
-  - one-tap point entry
-  - no dense metadata competing with score controls
-  - usable in portrait orientation throughout a live match
-
----
-
-### 📊 Observability & Logging
-
-* [ ] Add structured logging across all Lambdas
-* [ ] Include match_id, user_id, action in logs
-* [ ] Improve CloudWatch traceability
-
----
-
-### 📌 Notes
-
-These items are deferred while focusing on:
-
-* frontend UX structure
-* operator workflows
-* dashboard experience
-
-Recently completed from this backlog:
-
-* request lifecycle is now documented explicitly
-* architecture layers are now documented explicitly
-
-They must be revisited before declaring v2 production-ready.
+Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/App.jsx):
+
+- `/` and `/login`
+- `/help`
+- `/dashboard`
+- `/matches`
+- `/history`
+- `/settings`
+- `/ping`
+- `/match/new`
+- `/match/:matchId`
+- `/display`
+- `/rckscoreAdmin`
+- `/rckscoreAdmin/dashboard`
+- `/rckscoreAdmin/clubs/:organizationId`
+- `/rckscoreAdmin/interests`
+- `/rckscoreAdmin/personal-accounts`
+
+## Current Backend API Groups
+
+Defined in [backend/template.yaml](/Users/glennrowe/Development/Projects/RcktScore/backend/template.yaml):
+
+- authentication and session
+- password reset and membership approval
+- root-admin operations
+- dashboard and organisation settings
+- personal profile
+- user and court administration
+- match setup lookup
+- match lifecycle and scoring
+
+See the backend/API reference for the exact route list.
+
+## Security Notes
+
+- org-user session enforcement is real in `backend/common/session_logic.py`
+- scoring and organisation endpoints are tenant-aware through backend authorization checks
+- root-admin login is real, but root-admin session/token enforcement is not yet implemented as a backend-wide control
+- do not describe the current root-admin surface as fully secured
+- do not describe WebSocket live display as production-complete
+
+## Troubleshooting Entry Points
+
+Use these first:
+
+- [docs/troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)
+- [docs/backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
+- [docs/technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
+
+Fast local verification commands:
+
+```bash
+PYTHONPYCACHEPREFIX=/tmp/rcktscore-pyc python3 -m py_compile $(find backend/common backend/functions -name '*.py' | sort)
+cd frontend && npm run build -- --outDir /tmp/rcktscore-frontend-dist
+```
