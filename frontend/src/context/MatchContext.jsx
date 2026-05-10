@@ -20,6 +20,18 @@ import { createScoreSocket } from "../services/websocket";
 
 export const MatchContext = createContext(null);
 
+function mergeMatchPayload(previousMatch, nextMatch) {
+  if (!nextMatch) {
+    return nextMatch;
+  }
+
+  return {
+    ...previousMatch,
+    ...nextMatch,
+    court_display_code: nextMatch.court_display_code || previousMatch?.court_display_code || "",
+  };
+}
+
 export function MatchProvider({ children }) {
   const [currentMatch, setCurrentMatch] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -38,7 +50,7 @@ export function MatchProvider({ children }) {
     setError("");
     try {
       const response = await request();
-      setCurrentMatch(response.match);
+      setCurrentMatch((current) => mergeMatchPayload(current, response.match));
       return response.match;
     } catch (requestError) {
       setError(requestError.message);
@@ -57,8 +69,9 @@ export function MatchProvider({ children }) {
     setError("");
     try {
       const payload = await getScore(matchId);
-      setCurrentMatch(payload.match || payload);
-      return payload.match || payload;
+      const nextMatch = payload.match || payload;
+      setCurrentMatch((current) => mergeMatchPayload(current, nextMatch));
+      return nextMatch;
     } catch (requestError) {
       setError(requestError.message);
       return null;
@@ -72,7 +85,7 @@ export function MatchProvider({ children }) {
     setError("");
     try {
       const response = await startMatchRequest(payload);
-      setCurrentMatch(response.match);
+      setCurrentMatch((current) => mergeMatchPayload(current, response.match));
       return response;
     } catch (requestError) {
       setError(requestError.message);
@@ -116,7 +129,7 @@ export function MatchProvider({ children }) {
     setError("");
     try {
       const response = await startScheduledMatchRequest({ match_id: matchId });
-      setCurrentMatch(response.match);
+      setCurrentMatch((current) => mergeMatchPayload(current, response.match));
       return response.match;
     } catch (requestError) {
       setError(requestError.message);
@@ -134,7 +147,7 @@ export function MatchProvider({ children }) {
     socketRef.current = createScoreSocket(matchId, {
       onMessage(payload) {
         if (payload?.match) {
-          setCurrentMatch(payload.match);
+          setCurrentMatch((current) => mergeMatchPayload(current, payload.match));
         }
       },
       onError() {
