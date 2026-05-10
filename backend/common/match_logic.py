@@ -420,7 +420,7 @@ def _fetch_match_row(connection, match_id):
             FROM matches
             LEFT JOIN "SkwshCourts" AS court
                 ON court.id = matches.court_id
-            WHERE id = %(match_id)s
+            WHERE matches.id = %(match_id)s
             LIMIT 1
             """,
             {"match_id": match_id},
