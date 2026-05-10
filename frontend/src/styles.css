@@ -841,6 +841,7 @@ textarea {
 .display-header-card__branding {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .display-header-card__subheading {
@@ -852,6 +853,14 @@ textarea {
 }
 
 .display-header-card__controls {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.display-header-card__actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -863,6 +872,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .display-layout-control__label {
@@ -899,6 +909,14 @@ textarea {
 .display-shell .club-page-header__logo {
   width: 70px;
   height: 70px;
+}
+
+.display-shell .club-page-header__brand-row {
+  align-items: center;
+}
+
+.display-shell .club-page-header__brand-stack {
+  align-content: center;
 }
 
 .display-shell .app-footer {
@@ -2959,6 +2977,10 @@ textarea {
   }
 
   .display-header-card__controls {
+    justify-items: start;
+  }
+
+  .display-header-card__actions {
     justify-content: flex-start;
   }
 

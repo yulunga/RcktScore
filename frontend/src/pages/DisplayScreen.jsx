@@ -196,7 +196,7 @@ export default function DisplayScreen() {
           </div>
           <div className="display-header-card__controls">
             {displaySession?.display_session_token ? (
-              <>
+              <div className="display-header-card__actions">
                 <button
                   className="secondary"
                   disabled={refreshing || loading}
@@ -208,7 +208,7 @@ export default function DisplayScreen() {
                 <button className="secondary" type="button" onClick={clearDisplaySession}>
                   Use Different Code
                 </button>
-              </>
+              </div>
             ) : null}
             <label className="display-layout-control">
               <span className="display-layout-control__label">Layout</span>
