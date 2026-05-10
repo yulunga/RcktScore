@@ -19,11 +19,20 @@ def lambda_handler(event, context):
     if not organization_id:
         return error_response(400, "VALIDATION_ERROR", "organization_id path parameter is required")
 
+    include_display_codes = False
     try:
         with get_db_connection() as connection:
             if not is_root_admin_request(event):
-                authorize_organization_session(connection, event, organization_id, require_admin=False)
-            settings = get_organization_settings(connection, organization_id)
+                auth_context = authorize_organization_session(connection, event, organization_id, require_admin=False)
+                membership = auth_context["membership"]
+                include_display_codes = membership["role"] == "admin" or membership["organization_type"] == "personal"
+            else:
+                include_display_codes = True
+            settings = get_organization_settings(
+                connection,
+                organization_id,
+                include_display_codes=include_display_codes,
+            )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
 

@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
+from common.scoreboard_logic import generate_unique_display_code
 
 VALID_ROLES = {"admin", "user"}
 USER_STATUS_PENDING = "pending"
@@ -142,14 +143,22 @@ def get_existing_org_users_by_username(connection, username):
         return cursor.fetchall()
 
 
-def _serialize_court(row):
+def _serialize_court(row, *, include_display_code=True):
     created_at = row.get("created_at")
-    return {
+    display_code_created_at = row.get("display_code_created_at")
+    display_code_last_used_at = row.get("display_code_last_used_at")
+    payload = {
         "id": row["id"],
         "court_name": row.get("court_name") or "",
         "court_alias": row.get("court_alias") or "",
+        "display_code_enabled": bool(row.get("display_code_enabled")),
         "created_at": created_at.isoformat() if created_at else None,
+        "display_code_created_at": display_code_created_at.isoformat() if display_code_created_at else None,
+        "display_code_last_used_at": display_code_last_used_at.isoformat() if display_code_last_used_at else None,
     }
+    if include_display_code:
+        payload["display_code"] = row.get("display_code") or ""
+    return payload
 
 
 def _ensure_personal_default_court(connection, organization_id, organization_row):
@@ -193,7 +202,7 @@ def _ensure_personal_default_court(connection, organization_id, organization_row
     connection.commit()
 
 
-def get_organization_settings(connection, organization_id):
+def get_organization_settings(connection, organization_id, *, include_display_codes=True):
     org_id = int(organization_id)
 
     with connection.cursor() as cursor:
@@ -249,7 +258,15 @@ def get_organization_settings(connection, organization_id):
 
         cursor.execute(
             """
-            SELECT id, court_name, court_alias, created_at
+            SELECT
+                id,
+                court_name,
+                court_alias,
+                created_at,
+                display_code,
+                display_code_enabled,
+                display_code_created_at,
+                display_code_last_used_at
             FROM "SkwshCourts"
             WHERE organization_name = %(organization_id)s
             ORDER BY court_name ASC, id ASC
@@ -261,7 +278,7 @@ def get_organization_settings(connection, organization_id):
     return {
         "organization": _serialize_organization(organization_row),
         "users": [_serialize_user(row) for row in user_rows],
-        "courts": [_serialize_court(row) for row in court_rows],
+        "courts": [_serialize_court(row, include_display_code=include_display_codes) for row in court_rows],
     }
 
 
@@ -517,19 +534,47 @@ def create_court(connection, organization_id, court_name, court_alias=None):
     trimmed_name = court_name.strip()
     if not trimmed_name:
         raise ValueError("court_name is required")
+    created_at = _utcnow()
+    display_code = generate_unique_display_code(connection)
 
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO "SkwshCourts" (created_at, court_name, court_alias, organization_name)
-            VALUES (%(created_at)s, %(court_name)s, %(court_alias)s, %(organization_id)s)
-            RETURNING id, court_name, court_alias, created_at
+            INSERT INTO "SkwshCourts" (
+                created_at,
+                court_name,
+                court_alias,
+                organization_name,
+                display_code,
+                display_code_enabled,
+                display_code_created_at
+            )
+            VALUES (
+                %(created_at)s,
+                %(court_name)s,
+                %(court_alias)s,
+                %(organization_id)s,
+                %(display_code)s,
+                TRUE,
+                %(display_code_created_at)s
+            )
+            RETURNING
+                id,
+                court_name,
+                court_alias,
+                created_at,
+                display_code,
+                display_code_enabled,
+                display_code_created_at,
+                display_code_last_used_at
             """,
             {
-                "created_at": _utcnow(),
+                "created_at": created_at,
                 "court_name": trimmed_name,
                 "court_alias": (court_alias or "").strip() or None,
                 "organization_id": org_id,
+                "display_code": display_code,
+                "display_code_created_at": created_at,
             },
         )
         court_row = cursor.fetchone()
@@ -552,7 +597,15 @@ def update_court(connection, organization_id, court_id, court_name, court_alias=
                 court_alias = %(court_alias)s
             WHERE id = %(court_id)s
               AND organization_name = %(organization_id)s
-            RETURNING id, court_name, court_alias, created_at
+            RETURNING
+                id,
+                court_name,
+                court_alias,
+                created_at,
+                display_code,
+                display_code_enabled,
+                display_code_created_at,
+                display_code_last_used_at
             """,
             {
                 "court_id": int(court_id),

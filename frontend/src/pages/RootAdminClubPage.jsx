@@ -5,6 +5,7 @@ import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import {
   createOrganizationCourt,
+  createOrganizationCourtDisplayCode,
   createRootAdminOrganizationUser,
   deleteOrganizationCourt,
   getOrganizationSettings,
@@ -260,6 +261,18 @@ export default function RootAdminClubPage() {
       `court-delete-${courtId}`,
       () => deleteOrganizationCourt(courtId, { organization_id: organizationId }, ROOT_ADMIN_REQUEST_OPTIONS),
       "Court deleted.",
+    );
+  }
+
+  async function handleCourtDisplayCode(courtId) {
+    await runMutation(
+      `court-display-code-${courtId}`,
+      () => createOrganizationCourtDisplayCode(
+        courtId,
+        { organization_id: organizationId },
+        ROOT_ADMIN_REQUEST_OPTIONS,
+      ),
+      "Court display code updated.",
     );
   }
 
@@ -576,6 +589,16 @@ export default function RootAdminClubPage() {
                       />
                     </div>
                   </div>
+                  <div className="dashboard-item-meta">
+                    <span>
+                      Display code:{" "}
+                      {court.display_code ? (
+                        <code className="court-display-code">{court.display_code}</code>
+                      ) : (
+                        "Not generated yet"
+                      )}
+                    </span>
+                  </div>
                   <div className="button-row">
                     <button
                       disabled={savingSection === `court-save-${court.id}`}
@@ -583,6 +606,18 @@ export default function RootAdminClubPage() {
                       onClick={() => handleCourtSave(court.id)}
                     >
                       {savingSection === `court-save-${court.id}` ? "Saving..." : "Save Court"}
+                    </button>
+                    <button
+                      className="secondary"
+                      disabled={savingSection === `court-display-code-${court.id}`}
+                      type="button"
+                      onClick={() => handleCourtDisplayCode(court.id)}
+                    >
+                      {savingSection === `court-display-code-${court.id}`
+                        ? "Updating..."
+                        : court.display_code
+                          ? "Rotate Display Code"
+                          : "Generate Display Code"}
                     </button>
                     <button
                       className="danger"

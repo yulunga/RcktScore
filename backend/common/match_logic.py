@@ -444,6 +444,13 @@ def get_match(connection, match_id):
     return _serialize_match(match_row, _fetch_match_events(connection, match_id))
 
 
+def get_active_match_for_court(connection, tenant_id, court_id):
+    match_row = _find_active_match_on_court(connection, tenant_id, court_id)
+    if not match_row:
+        return None
+    return _serialize_match(match_row, _fetch_match_events(connection, match_row["id"]))
+
+
 def list_matches(connection, tenant_id, status=None, limit=10):
     query = [
         """

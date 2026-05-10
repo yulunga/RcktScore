@@ -259,6 +259,14 @@ export function createOrganizationCourt(payload, options = {}) {
   });
 }
 
+export function createOrganizationCourtDisplayCode(courtId, payload, options = {}) {
+  return apiRequest(`/organization_courts/${courtId}/display-code`, {
+    ...options,
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateOrganizationCourt(courtId, payload, options = {}) {
   return apiRequest(`/organization_courts/${courtId}`, {
     ...options,
@@ -305,4 +313,19 @@ export function endMatch(payload) {
 
 export function getScore(matchId) {
   return apiRequest(`/get_score/${matchId}`);
+}
+
+export function createScoreboardDisplaySession(payload) {
+  return apiRequest("/scoreboard_display/session", {
+    method: "POST",
+    sessionToken: null,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getScoreboardDisplayCurrent(displaySessionToken) {
+  return apiRequest("/scoreboard_display/current", {
+    method: "GET",
+    sessionToken: displaySessionToken,
+  });
 }

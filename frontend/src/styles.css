@@ -895,6 +895,38 @@ textarea {
   font-size: 0.95rem;
 }
 
+.scoreboard-entry-card,
+.scoreboard-session-card {
+  gap: 18px;
+}
+
+.scoreboard-session-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scoreboard-shell__status {
+  margin: 0;
+}
+
+.scoreboard-shell__actions {
+  align-items: center;
+}
+
+.court-display-code {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(18, 116, 208, 0.1);
+  color: #0b5fb3;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .display-mode-large-scores .scoreboard-card {
   padding: 28px 32px;
   gap: 22px;
@@ -2863,6 +2895,11 @@ textarea {
   }
 
   .display-header-card__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scoreboard-session-card__top {
     flex-direction: column;
     align-items: flex-start;
   }

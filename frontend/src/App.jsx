@@ -112,6 +112,7 @@ export default function App() {
           </ProtectedRoute>
         )}
       />
+      <Route path="/scoreboard" element={<DisplayScreen />} />
       <Route path="/display" element={<DisplayScreen />} />
     </Routes>
   );

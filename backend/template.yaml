@@ -195,6 +195,30 @@ Resources:
             Path: /root_admin/organizations
             Method: POST
 
+  CreateScoreboardDisplaySessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_scoreboard_display_session/handler.lambda_handler
+      Events:
+        CreateScoreboardDisplaySession:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /scoreboard_display/session
+            Method: POST
+
+  GetScoreboardDisplayCurrentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_scoreboard_display_current/handler.lambda_handler
+      Events:
+        GetScoreboardDisplayCurrent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /scoreboard_display/current
+            Method: GET
+
   SearchRootAdminOrganizationsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -464,6 +488,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /organization_courts
+            Method: POST
+
+  CreateCourtDisplayCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_court_display_code/handler.lambda_handler
+      Events:
+        CreateCourtDisplayCode:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_courts/{court_id}/display-code
             Method: POST
 
   UpdateCourtFunction:

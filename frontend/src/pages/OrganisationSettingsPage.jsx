@@ -8,6 +8,7 @@ import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
 import {
   createOrganizationCourt,
+  createOrganizationCourtDisplayCode,
   createOrganizationUser,
   deleteOrganizationCourt,
   getOrganizationSettings,
@@ -260,6 +261,14 @@ export default function OrganisationSettingsPage() {
       `court-delete-${courtId}`,
       () => deleteOrganizationCourt(courtId, { organization_id: organizationId }),
       "Court deleted.",
+    );
+  }
+
+  async function handleCourtDisplayCode(courtId) {
+    await runMutation(
+      `court-display-code-${courtId}`,
+      () => createOrganizationCourtDisplayCode(courtId, { organization_id: organizationId }),
+      "Court display code updated.",
     );
   }
 
@@ -957,6 +966,14 @@ export default function OrganisationSettingsPage() {
                 </div>
                 <div className="dashboard-item-meta">
                   <span>Created: {formatDate(court.created_at)}</span>
+                  <span>
+                    Display code:{" "}
+                    {court.display_code ? (
+                      <code className="court-display-code">{court.display_code}</code>
+                    ) : (
+                      "Not generated yet"
+                    )}
+                  </span>
                 </div>
                 <div className="button-row">
                   <button
@@ -965,6 +982,18 @@ export default function OrganisationSettingsPage() {
                     onClick={() => handleCourtSave(court.id)}
                   >
                     {savingSection === `court-save-${court.id}` ? "Saving..." : "Save Court"}
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={!isAdmin || savingSection === `court-display-code-${court.id}`}
+                    type="button"
+                    onClick={() => handleCourtDisplayCode(court.id)}
+                  >
+                    {savingSection === `court-display-code-${court.id}`
+                      ? "Updating..."
+                      : court.display_code
+                        ? "Rotate Display Code"
+                        : "Generate Display Code"}
                   </button>
                   <button
                     className="danger"
