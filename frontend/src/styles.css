@@ -838,14 +838,25 @@ textarea {
   gap: 24px;
 }
 
-.display-header-card__top h1 {
-  margin: 0;
+.display-header-card__branding {
+  display: grid;
+  gap: 10px;
+}
+
+.display-header-card__subheading {
+  color: #486581;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .display-header-card__controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .display-layout-control {
@@ -872,15 +883,22 @@ textarea {
 }
 
 .display-shell {
-  width: min(100vw - 32px, 1600px);
+  width: calc(100vw - 24px);
+  max-width: 1880px;
+  min-height: 100vh;
 }
 
 .display-shell .hero-card {
   padding: 18px 22px;
 }
 
-.display-shell .display-header-card__top h1 {
-  font-size: clamp(2rem, 3.5vw, 3rem);
+.display-shell .club-page-header__wordmark {
+  font-size: clamp(2.4rem, 4vw, 3.8rem);
+}
+
+.display-shell .club-page-header__logo {
+  width: 70px;
+  height: 70px;
 }
 
 .display-shell .app-footer {
@@ -925,6 +943,47 @@ textarea {
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+.display-mode-standard .scoreboard-card {
+  padding: 34px 38px;
+  gap: 24px;
+}
+
+.display-mode-standard .scoreboard-header h2 {
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
+}
+
+.display-mode-standard .scoreboard-grid {
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.display-mode-standard .player-card {
+  padding: 28px 30px;
+  border-radius: 26px;
+}
+
+.display-mode-standard .player-card h3 {
+  font-size: clamp(2rem, 3vw, 2.9rem);
+}
+
+.display-mode-standard .player-score {
+  font-size: clamp(4.5rem, 10vw, 8.4rem);
+}
+
+.display-mode-standard .player-games {
+  font-size: 1.08rem;
+}
+
+.display-mode-standard .server-badge {
+  min-width: 82px;
+  min-height: 82px;
+  font-size: 1.2rem;
+}
+
+.display-mode-standard .scoreboard-point-strip {
+  min-height: 100%;
 }
 
 .display-mode-large-scores .scoreboard-card {
@@ -2897,6 +2956,10 @@ textarea {
   .display-header-card__top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .display-header-card__controls {
+    justify-content: flex-start;
   }
 
   .scoreboard-session-card__top {

@@ -54,7 +54,7 @@ export default function DisplayScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
-  const [displayMode, setDisplayMode] = useState("large-scores");
+  const [displayMode, setDisplayMode] = useState("standard");
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
   const pollIntervalSeconds = displaySession?.poll_interval_seconds || 5;
@@ -172,8 +172,22 @@ export default function DisplayScreen() {
     <main className={`page-shell stack display-shell display-mode-${displayMode}`}>
       <section className="hero-card display-header-card">
         <div className="display-header-card__top">
-          <div className="stack compact">
-            <h1>Hit n Score Scoreboard</h1>
+          <div className="display-header-card__branding">
+            <div className="club-page-header__brand-row">
+              <img
+                className="club-page-header__logo"
+                src="/branding/logo/brand-logo.png"
+                alt="Hit n Score"
+              />
+              <div className="club-page-header__brand-stack">
+                <h1 className="club-page-header__wordmark" aria-label="HitnScore">
+                  <span className="club-page-header__wordmark-hit">Hit</span>
+                  <span className="club-page-header__wordmark-n">n</span>
+                  <span className="club-page-header__wordmark-score">Score</span>
+                </h1>
+                <span className="display-header-card__subheading">Live Scoreboard</span>
+              </div>
+            </div>
             <p className="helper-text scoreboard-shell__status">
               {displaySession?.display_session_token
                 ? statusMessage
@@ -181,7 +195,21 @@ export default function DisplayScreen() {
             </p>
           </div>
           <div className="display-header-card__controls">
-            <span className="beta-badge">Testing v1</span>
+            {displaySession?.display_session_token ? (
+              <>
+                <button
+                  className="secondary"
+                  disabled={refreshing || loading}
+                  type="button"
+                  onClick={handleManualRefresh}
+                >
+                  {refreshing ? "Refreshing..." : "Refresh"}
+                </button>
+                <button className="secondary" type="button" onClick={clearDisplaySession}>
+                  Use Different Code
+                </button>
+              </>
+            ) : null}
             <label className="display-layout-control">
               <span className="display-layout-control__label">Layout</span>
               <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
@@ -225,39 +253,13 @@ export default function DisplayScreen() {
         </section>
       ) : null}
 
-      {displaySession?.display_session_token ? (
-        <section className="panel stack scoreboard-session-card">
-          <div className="scoreboard-session-card__top">
-            <div className="stack compact">
-              <strong>{court?.court_name || "Court"}</strong>
-              <span className="helper-text">
-                {court?.court_alias ? `${court.court_alias} • ` : ""}Read-only display session
-              </span>
-            </div>
-            <div className="button-row scoreboard-shell__actions">
-              <button
-                className="secondary"
-                disabled={refreshing || loading}
-                type="button"
-                onClick={handleManualRefresh}
-              >
-                {refreshing ? "Refreshing..." : "Refresh"}
-              </button>
-              <button className="secondary" type="button" onClick={clearDisplaySession}>
-                Use Different Code
-              </button>
-            </div>
-          </div>
-          {!currentMatch ? (
-            <div className="notice">
-              No active match is currently running on this court. Leave the screen open and it will refresh automatically.
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
       {loading && displaySession?.display_session_token ? <div className="notice">Loading scoreboard...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
+      {displaySession?.display_session_token && !currentMatch ? (
+        <div className="notice">
+          No active match is currently running on {court?.court_name || "this court"}. Leave the screen open and it will refresh automatically.
+        </div>
+      ) : null}
       {currentMatch ? (
         <>
           <Scoreboard match={currentMatch} />
