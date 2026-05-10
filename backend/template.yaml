@@ -219,6 +219,18 @@ Resources:
             Path: /scoreboard_display/current
             Method: GET
 
+  GetMatchDisplayAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_match_display_access/handler.lambda_handler
+      Events:
+        GetMatchDisplayAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /match_display_access/{match_id}
+            Method: GET
+
   SearchRootAdminOrganizationsFunction:
     Type: AWS::Serverless::Function
     Properties:

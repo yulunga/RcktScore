@@ -315,6 +315,10 @@ export function getScore(matchId) {
   return apiRequest(`/get_score/${matchId}`);
 }
 
+export function getMatchDisplayAccess(matchId) {
+  return apiRequest(`/match_display_access/${matchId}`);
+}
+
 export function createScoreboardDisplaySession(payload) {
   return apiRequest("/scoreboard_display/session", {
     method: "POST",

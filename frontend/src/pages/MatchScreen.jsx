@@ -13,6 +13,7 @@ import {
 } from "../constants/playerShirtColors";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
+import { getMatchDisplayAccess } from "../services/api";
 
 function formatDate(value) {
   if (!value) {
@@ -237,7 +238,8 @@ export default function MatchScreen() {
   const isPersonalAccount = inferOrganizationType(session) === "personal";
   const canChoosePlayerShirtColors = canChooseShirtColors(session);
   const scoreboardUrl = !isPersonalAccount ? `${window.location.origin}/scoreboard` : "";
-  const displayCode = currentMatch?.court_display_code || "";
+  const [displayAccess, setDisplayAccess] = useState(null);
+  const displayCode = displayAccess?.display_code || currentMatch?.court_display_code || "";
   const [timerPhase, setTimerPhase] = useState("warmup_ready");
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -261,6 +263,34 @@ export default function MatchScreen() {
     const disconnect = connectRealtime(matchId);
     return disconnect;
   }, [connectRealtime, loadMatch, matchId]);
+
+  useEffect(() => {
+    if (!matchId || isPersonalAccount) {
+      setDisplayAccess(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadDisplayAccess() {
+      try {
+        const payload = await getMatchDisplayAccess(matchId);
+        if (!cancelled) {
+          setDisplayAccess(payload.displayAccess || null);
+        }
+      } catch {
+        if (!cancelled) {
+          setDisplayAccess(null);
+        }
+      }
+    }
+
+    loadDisplayAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPersonalAccount, matchId]);
 
   useEffect(() => {
     if (!currentMatch?.id) {
