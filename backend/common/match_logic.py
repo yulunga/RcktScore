@@ -365,6 +365,7 @@ def _serialize_match(match_row, event_rows):
         "court_id": match_row["court_id"],
         "court_name": match_row["court_name"],
         "court_alias": match_row.get("court_alias"),
+        "court_display_code": match_row.get("court_display_code") or "",
         "sport": match_row.get("sport") or "squash",
         "player1_name": match_row["player1_name"],
         "player1_surname": match_row.get("player1_surname"),
@@ -413,8 +414,12 @@ def _fetch_match_row(connection, match_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT *
+            SELECT
+                matches.*,
+                court.display_code AS court_display_code
             FROM matches
+            LEFT JOIN "SkwshCourts" AS court
+                ON court.id = matches.court_id
             WHERE id = %(match_id)s
             LIMIT 1
             """,
@@ -454,8 +459,12 @@ def get_active_match_for_court(connection, tenant_id, court_id):
 def list_matches(connection, tenant_id, status=None, limit=10):
     query = [
         """
-        SELECT *
+        SELECT
+            matches.*,
+            court.display_code AS court_display_code
         FROM matches
+        LEFT JOIN "SkwshCourts" AS court
+            ON court.id = matches.court_id
         WHERE tenant_id = %(tenant_id)s
         """
     ]
@@ -484,8 +493,12 @@ def _find_active_match_on_court(connection, tenant_id, court_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT *
+            SELECT
+                matches.*,
+                court.display_code AS court_display_code
             FROM matches
+            LEFT JOIN "SkwshCourts" AS court
+                ON court.id = matches.court_id
             WHERE tenant_id = %(tenant_id)s
               AND court_id = %(court_id)s
               AND status = 'active'
@@ -504,8 +517,12 @@ def _find_active_match_for_tenant(connection, tenant_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT *
+            SELECT
+                matches.*,
+                court.display_code AS court_display_code
             FROM matches
+            LEFT JOIN "SkwshCourts" AS court
+                ON court.id = matches.court_id
             WHERE tenant_id = %(tenant_id)s
               AND status = 'active'
             ORDER BY updated_at DESC, created_at DESC

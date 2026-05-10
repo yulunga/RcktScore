@@ -236,7 +236,8 @@ export default function MatchScreen() {
   const recordedMatchDurationSeconds = live.match_duration_seconds ?? currentMatch?.match_duration_seconds ?? 0;
   const isPersonalAccount = inferOrganizationType(session) === "personal";
   const canChoosePlayerShirtColors = canChooseShirtColors(session);
-  const displayUrl = !isPersonalAccount ? `${window.location.origin}/display?match=${matchId}` : "";
+  const scoreboardUrl = !isPersonalAccount ? `${window.location.origin}/scoreboard` : "";
+  const displayCode = currentMatch?.court_display_code || "";
   const [timerPhase, setTimerPhase] = useState("warmup_ready");
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -941,9 +942,18 @@ export default function MatchScreen() {
         <section className="panel stack">
           <h2>Spectator Display</h2>
           <p className="helper-text">
-            Open this URL on the venue display, TV browser, or secondary tablet.
+            Open this URL on the venue display, TV browser, or secondary tablet, then enter the court display code below.
           </p>
-          <input className="read-only-input" readOnly value={displayUrl} />
+          <input className="read-only-input" readOnly value={scoreboardUrl} />
+          <div className="field">
+            <label htmlFor="spectator_display_code">Court Display Code</label>
+            <input
+              className="read-only-input"
+              id="spectator_display_code"
+              readOnly
+              value={displayCode || "Generate a display code for this court in Settings."}
+            />
+          </div>
         </section>
       </div>
       ) : null}

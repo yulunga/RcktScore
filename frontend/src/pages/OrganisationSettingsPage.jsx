@@ -85,6 +85,13 @@ export default function OrganisationSettingsPage() {
   const isAdmin = session?.role === "admin";
   const isPersonalSession = session?.organization_type === "personal";
   const isPersonalAccount = isPersonalSession || settings?.organization?.org_type === "personal";
+  const scoreboardUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return "/scoreboard";
+    }
+
+    return `${window.location.origin}/scoreboard`;
+  }, []);
 
   useEffect(() => {
     if (organizationId && !isAdmin && !isPersonalSession) {
@@ -964,7 +971,7 @@ export default function OrganisationSettingsPage() {
                     />
                   </div>
                 </div>
-                <div className="dashboard-item-meta">
+                <div className="dashboard-item-meta dashboard-item-meta--stacked">
                   <span>Created: {formatDate(court.created_at)}</span>
                   <span>
                     Display code:{" "}
@@ -974,6 +981,7 @@ export default function OrganisationSettingsPage() {
                       "Not generated yet"
                     )}
                   </span>
+                  <span>Screen URL: {scoreboardUrl}</span>
                 </div>
                 <div className="button-row">
                   <button

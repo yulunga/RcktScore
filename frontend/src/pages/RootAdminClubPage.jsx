@@ -92,6 +92,13 @@ export default function RootAdminClubPage() {
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const scoreboardUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return "/scoreboard";
+    }
+
+    return `${window.location.origin}/scoreboard`;
+  }, []);
 
   const mapUrl = useMemo(() => {
     const address = organizationForm.org_address || settings?.organization?.org_address;
@@ -589,7 +596,7 @@ export default function RootAdminClubPage() {
                       />
                     </div>
                   </div>
-                  <div className="dashboard-item-meta">
+                  <div className="dashboard-item-meta dashboard-item-meta--stacked">
                     <span>
                       Display code:{" "}
                       {court.display_code ? (
@@ -598,6 +605,7 @@ export default function RootAdminClubPage() {
                         "Not generated yet"
                       )}
                     </span>
+                    <span>Screen URL: {scoreboardUrl}</span>
                   </div>
                   <div className="button-row">
                     <button
