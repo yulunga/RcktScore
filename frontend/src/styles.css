@@ -1307,7 +1307,7 @@ textarea {
 }
 
 .display-mode-all-games .scoreboard-club-card__player strong {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
 }
 
 .scoreboard-club-card__score-stack {
@@ -1322,13 +1322,13 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 34px;
+  min-height: 34px;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: 10px;
   background: rgba(236, 94, 168, 0.14);
   color: #ec5ea8;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -2678,7 +2678,7 @@ textarea {
 }
 
 .scoreboard-card--idle {
-  min-height: 240px;
+  min-height: 0;
 }
 
 .match-screen-shell {
@@ -2841,18 +2841,23 @@ textarea {
   color: #486581;
 }
 
+.scoreboard-idle-chip {
+  background: #f4f7fb;
+  color: #486581;
+}
+
 .scoreboard-idle-body {
   display: grid;
   align-items: center;
-  min-height: 120px;
-  padding: 8px 4px 0;
+  min-height: 0;
+  padding: 2px 4px 0;
 }
 
 .scoreboard-idle-body p {
   margin: 0;
   color: #486581;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 0.98rem;
+  line-height: 1.45;
 }
 
 .status-pill__dot {

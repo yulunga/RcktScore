@@ -328,6 +328,7 @@ export default function DisplayScreen() {
             </div>
             <div className="scoreboard-header-meta">
               <span className="status-pill scoreboard-idle-pill">idle</span>
+              <div className="score-series-chip scoreboard-idle-chip">Waiting for next match</div>
             </div>
           </div>
           <div className="scoreboard-idle-body">
