@@ -228,7 +228,7 @@ export default function DisplayScreen() {
   }, [allGamesPageCount, displayMode]);
 
   return (
-    <main className={`page-shell stack display-shell display-mode-${displayMode}`}>
+    <main className={`page-shell stack display-shell display-mode-${displayMode} ${displaySession?.display_session_token ? "display-session-active" : "display-session-inactive"}`}>
       <section className="hero-card display-header-card">
         <div className="display-header-card__top">
           <div className="display-header-card__branding">

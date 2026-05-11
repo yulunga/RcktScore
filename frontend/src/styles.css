@@ -956,6 +956,36 @@ textarea {
   padding-bottom: 14px;
 }
 
+.display-shell.display-session-active {
+  height: calc(100vh - 28px);
+  min-height: calc(100vh - 28px);
+  overflow: hidden;
+  align-content: stretch;
+}
+
+.display-shell.display-session-active.display-mode-standard,
+.display-shell.display-session-active.display-mode-large-scores,
+.display-shell.display-session-active.display-mode-minimal {
+  grid-template-rows: 118px minmax(0, 1fr);
+}
+
+.display-shell.display-session-active.display-mode-all-games {
+  grid-template-rows: 118px minmax(0, 1fr) minmax(188px, 27vh);
+}
+
+.display-shell.display-session-active > .display-header-card {
+  min-height: 118px;
+  max-height: 118px;
+  overflow: hidden;
+}
+
+.display-shell.display-session-active > .scoreboard-card,
+.display-shell.display-session-active > .scoreboard-club-panel {
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+}
+
 .display-shell .hero-card {
   padding: 12px 18px;
 }
@@ -1142,8 +1172,10 @@ textarea {
 }
 
 .display-mode-all-games .scoreboard-club-panel {
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   padding: 16px 18px 18px;
+  overflow: hidden;
 }
 
 .display-mode-all-games .scoreboard-club-panel .panel-heading {
@@ -1171,6 +1203,8 @@ textarea {
   gap: 10px;
   grid-template-columns: repeat(auto-fit, 248px);
   justify-content: start;
+  align-content: start;
+  overflow: hidden;
 }
 
 .scoreboard-club-card {
