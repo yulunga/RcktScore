@@ -831,10 +831,15 @@ textarea {
   margin: 0;
 }
 
+.display-header-card {
+  min-height: 118px;
+}
+
 .display-header-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 92px;
   gap: 20px;
 }
 
@@ -1098,61 +1103,6 @@ textarea {
   min-width: 0;
 }
 
-.display-mode-all-games .scoreboard-card {
-  padding: 18px 20px 20px;
-  gap: 12px;
-}
-
-.display-mode-all-games .scoreboard-header h2 {
-  font-size: clamp(1.85rem, 2.8vw, 2.65rem);
-}
-
-.display-mode-all-games .scoreboard-grid {
-  gap: 18px;
-  grid-template-columns: minmax(0, 1fr) clamp(42px, 3vw, 70px) minmax(0, 1fr);
-}
-
-.display-mode-all-games .player-card {
-  padding: 20px 22px;
-  border-radius: 22px;
-}
-
-.display-mode-all-games .player-card h3 {
-  font-size: clamp(1.65rem, 2.5vw, 2.35rem);
-}
-
-.display-mode-all-games .player-card-main {
-  gap: 14px;
-}
-
-.display-mode-all-games .player-score {
-  font-size: clamp(3.6rem, 7.2vw, 6rem);
-}
-
-.display-mode-all-games .player-score-button {
-  min-height: 148px;
-  border-radius: 18px;
-}
-
-.display-mode-all-games .player-games {
-  font-size: 0.98rem;
-}
-
-.display-mode-all-games .scoreboard-point-strip {
-  max-height: 176px;
-  gap: 4px;
-}
-
-.display-mode-all-games .scoreboard-point-row {
-  gap: 3px;
-}
-
-.display-mode-all-games .scoreboard-point-marker {
-  width: 16px;
-  height: 16px;
-  font-size: 0.58rem;
-}
-
 .display-mode-large-scores .scoreboard-grid {
   gap: 22px;
   grid-template-columns: minmax(0, 1fr) clamp(56px, 5vw, 88px) minmax(0, 1fr);
@@ -1307,7 +1257,7 @@ textarea {
 }
 
 .display-mode-all-games .scoreboard-club-card__player strong {
-  font-size: 1.8rem;
+  font-size: 2rem;
 }
 
 .scoreboard-club-card__score-stack {
