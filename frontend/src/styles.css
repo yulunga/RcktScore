@@ -951,9 +951,6 @@ textarea {
   width: calc(100vw - 24px);
   max-width: 1880px;
   min-height: 100vh;
-}
-
-.display-mode-all-games {
   gap: 12px;
   padding-top: 14px;
   padding-bottom: 14px;
