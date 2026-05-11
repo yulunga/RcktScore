@@ -8,6 +8,8 @@ import {
 } from "../services/api";
 
 const SCOREBOARD_SESSION_KEY = "rcktscore.scoreboardDisplay";
+const ALL_GAMES_ROTATION_MS = 5 * 60 * 1000;
+const ALL_GAMES_PAGE_SIZE = 8;
 
 function readStoredDisplaySession() {
   if (typeof window === "undefined") {
@@ -55,6 +57,7 @@ export default function DisplayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [displayMode, setDisplayMode] = useState("standard");
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [allGamesPage, setAllGamesPage] = useState(0);
 
   const pollIntervalSeconds = displaySession?.poll_interval_seconds || 5;
   const scoreboardUrl = useMemo(() => {
@@ -167,6 +170,29 @@ export default function DisplayScreen() {
   const statusMessage = lastUpdatedAt
     ? `Auto-refreshing every ${pollIntervalSeconds}s • Last updated ${lastUpdatedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
     : `Auto-refreshing every ${pollIntervalSeconds}s after sign-in.`;
+  const allGamesPageCount = Math.max(1, Math.ceil(clubMatches.length / ALL_GAMES_PAGE_SIZE));
+  const visibleClubMatches = displayMode === "all-games"
+    ? clubMatches.slice(
+      allGamesPage * ALL_GAMES_PAGE_SIZE,
+      (allGamesPage + 1) * ALL_GAMES_PAGE_SIZE,
+    )
+    : clubMatches;
+
+  useEffect(() => {
+    setAllGamesPage(0);
+  }, [clubMatches.length, displayMode]);
+
+  useEffect(() => {
+    if (displayMode !== "all-games" || allGamesPageCount <= 1) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setAllGamesPage((currentPage) => (currentPage + 1) % allGamesPageCount);
+    }, ALL_GAMES_ROTATION_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [allGamesPageCount, displayMode]);
 
   return (
     <main className={`page-shell stack display-shell display-mode-${displayMode}`}>
@@ -269,45 +295,52 @@ export default function DisplayScreen() {
       {currentMatch ? (
         <>
           <Scoreboard match={currentMatch} showServeDetails={false} />
-          {displayMode === "all-games" ? (
-            <section className="panel scoreboard-club-panel">
-              <div className="panel-heading">
-                <h2>All Games</h2>
-              </div>
-              {clubMatches.length === 0 ? (
-                <div className="dashboard-empty">No other active courts right now.</div>
-              ) : (
-                <div className="scoreboard-club-grid">
-                  {clubMatches.map((match) => (
-                    <article className="scoreboard-club-card" key={match.id}>
-                      <div className="scoreboard-club-card__top">
-                        <strong>{match.court_name || "Court"}</strong>
-                        <span className="status-pill status-pill--active">
-                          <span className="status-pill__dot" aria-hidden="true" />
-                          {match.status || "active"}
-                        </span>
-                      </div>
-                      <div className="scoreboard-club-card__players">
-                        <div className="scoreboard-club-card__player">
-                          <span>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</span>
-                          <strong>{match.player1_score}</strong>
-                        </div>
-                        <div className="scoreboard-club-card__player">
-                          <span>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</span>
-                          <strong>{match.player2_score}</strong>
-                        </div>
-                      </div>
-                      <div className="scoreboard-club-card__meta">
-                        <span>{`Games ${match.player1_games_won}-${match.player2_games_won}`}</span>
-                        <span>{`Game ${match.current_game_number} • Best of ${match.best_of}`}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          ) : null}
         </>
+      ) : null}
+      {displaySession?.display_session_token && displayMode === "all-games" ? (
+        <section className="panel scoreboard-club-panel">
+          <div className="panel-heading panel-heading--with-action">
+            <div>
+              <h2>All Games</h2>
+            </div>
+            {allGamesPageCount > 1 ? (
+              <span className="scoreboard-club-panel__page-indicator">
+                Page {allGamesPage + 1} of {allGamesPageCount}
+              </span>
+            ) : null}
+          </div>
+          {clubMatches.length === 0 ? (
+            <div className="dashboard-empty">No other active courts right now.</div>
+          ) : (
+            <div className="scoreboard-club-grid">
+              {visibleClubMatches.map((match) => (
+                <article className="scoreboard-club-card" key={match.id}>
+                  <div className="scoreboard-club-card__top">
+                    <strong>{match.court_name || "Court"}</strong>
+                    <span className="status-pill status-pill--active">
+                      <span className="status-pill__dot" aria-hidden="true" />
+                      {match.status || "active"}
+                    </span>
+                  </div>
+                  <div className="scoreboard-club-card__players">
+                    <div className="scoreboard-club-card__player">
+                      <span>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</span>
+                      <strong>{match.player1_score}</strong>
+                    </div>
+                    <div className="scoreboard-club-card__player">
+                      <span>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</span>
+                      <strong>{match.player2_score}</strong>
+                    </div>
+                  </div>
+                  <div className="scoreboard-club-card__meta">
+                    <span>{`Games ${match.player1_games_won}-${match.player2_games_won}`}</span>
+                    <span>{`Game ${match.current_game_number} • Best of ${match.best_of}`}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       ) : null}
       <AppFooter />
     </main>
