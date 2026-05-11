@@ -568,20 +568,20 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             <div className="dashboard-empty">No active matches right now.</div>
           ) : (
             <>
-              <div className="dashboard-card-grid dashboard-card-grid--desktop">
+              <div className="dashboard-card-grid dashboard-card-grid--desktop dashboard-card-grid--active">
                 {activeMatches.map((match) => renderActiveMatchCard(match))}
               </div>
               {hasActiveCarousel ? (
                 <div className="dashboard-carousel dashboard-carousel--mobile">
                   <div className="dashboard-carousel__page">
-                    <div className="dashboard-card-grid dashboard-card-grid--mobile">
+                    <div className="dashboard-card-grid dashboard-card-grid--mobile dashboard-card-grid--active">
                       {visibleActivePage.map((match) => renderActiveMatchCard(match))}
                     </div>
                   </div>
                   {renderPagerDots(activePages.length, activePage, setActivePage, "Active match pages")}
                 </div>
               ) : showMatchesOnly ? (
-                <div className="dashboard-card-grid dashboard-carousel--mobile dashboard-card-grid--mobile">
+                <div className="dashboard-card-grid dashboard-carousel--mobile dashboard-card-grid--mobile dashboard-card-grid--active">
                   {activeMatches.map((match) => renderActiveMatchCard(match))}
                 </div>
               ) : null}

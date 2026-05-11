@@ -45,6 +45,12 @@ const sportOptions = [
   { name: "Badminton", status: "planned", note: "Planned after squash launch" },
 ];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const adminTabs = [
+  { id: "organisation", label: "Organisation" },
+  { id: "courts", label: "Courts" },
+  { id: "users", label: "Users" },
+  { id: "game-social", label: "Game & Social" },
+];
 
 function formatDate(value) {
   if (!value) {
@@ -80,6 +86,7 @@ export default function OrganisationSettingsPage() {
   const [countryQuery, setCountryQuery] = useState("");
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
+  const [activeTab, setActiveTab] = useState("organisation");
 
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
@@ -664,384 +671,409 @@ export default function OrganisationSettingsPage() {
           </section>
         </section>
       ) : (
-      <section className="settings-grid">
-        <section className="panel stack settings-primary">
-          <div className="panel-heading">
-            <h2>Organisation Details</h2>
-            <p className="helper-text">Club details used for contact information and venue context.</p>
-          </div>
-
-          <form className="stack" onSubmit={handleOrganizationSubmit}>
-            <div className="field-grid">
-              <div className="field">
-                <label htmlFor="organization_name">Club Name</label>
-                <input
-                  disabled={!isAdmin}
-                  id="organization_name"
-                  value={organizationForm.organization_name}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, organization_name: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_contact">Primary Contact</label>
-                <input
-                  disabled={!isAdmin}
-                  id="org_contact"
-                  value={organizationForm.org_contact}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_telephone">Telephone</label>
-                <input
-                  disabled={!isAdmin}
-                  id="org_telephone"
-                  value={organizationForm.org_telephone}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="org_email">Email</label>
-                <input
-                  disabled={!isAdmin}
-                  id="org_email"
-                  type="email"
-                  value={organizationForm.org_email}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
-                />
-              </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="org_webaddress">Website</label>
-                <input
-                  disabled={!isAdmin}
-                  id="org_webaddress"
-                  type="url"
-                  value={organizationForm.org_webaddress}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
-                />
-              </div>
-              <div className="field settings-field-wide">
-                <label htmlFor="org_address">Address</label>
-                <input
-                  disabled={!isAdmin}
-                  id="org_address"
-                  value={organizationForm.org_address}
-                  onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="button-row">
-              <button disabled={!isAdmin || savingSection === "organization"} type="submit">
-                {savingSection === "organization" ? "Saving..." : "Save Organisation Details"}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Game Settings</h2>
-            <p className="helper-text">
-              Launch controls for organisation-specific scoring behaviour and future racket sports.
-            </p>
-          </div>
-
-          <div className="game-settings-grid">
-            <div className="field checkbox-field">
-              <label className="checkbox-label" htmlFor="org_handicap_scoring">
-                <input
-                  checked={handicapScoringEnabled}
-                  disabled={!isAdmin}
-                  id="org_handicap_scoring"
-                  name="org_handicap_scoring"
-                  type="checkbox"
-                  onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
-                />
-                Enable Handicap Scoring
-              </label>
-              <p className="helper-text">
-                Controls whether handicap match setup should be available for this organisation.
-              </p>
-            </div>
-
-            <div className="dashboard-empty">
-              This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
-              will be added in a later backend pass.
-            </div>
-          </div>
-
-          <div className="panel-heading">
-            <h3>Racket Sports</h3>
-            <p className="helper-text">
-              Squash is the active launch sport. The others are shown for roadmap visibility only.
-            </p>
-          </div>
-
-          <div className="sport-grid">
-            {sportOptions.map((sport) => (
-              <article
-                className={`sport-option${sport.status === "active" ? " active" : " disabled"}`}
-                key={sport.name}
+        <>
+          <section className="root-admin-tab-row" aria-label="Organisation settings sections">
+            {adminTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`root-admin-tab ${activeTab === tab.id ? "active" : ""}`}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
               >
-                <strong>{sport.name}</strong>
-                <span>{sport.status === "active" ? "Enabled" : "Coming later"}</span>
-                <p>{sport.note}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Venue Map</h2>
-            <p className="helper-text">Map preview generated from the saved address.</p>
-          </div>
-          {mapUrl ? (
-            <iframe
-              className="map-frame"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={mapUrl}
-              title="Organisation map"
-            />
-          ) : (
-            <div className="dashboard-empty">Save an address to show the venue map.</div>
-          )}
-        </section>
-
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Organisation Users</h2>
-            <p className="helper-text">Add users by email address and assign admin or user roles.</p>
-          </div>
-
-          <form className="stack" onSubmit={handleUserSubmit}>
-            <div className="field-grid">
-              <div className="field">
-                <label htmlFor="new_username">Email Address</label>
-                <input
-                  disabled={!isAdmin}
-                  id="new_username"
-                  placeholder="user@club.com"
-                  type="email"
-                  value={userForm.username}
-                  onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="new_password">Password (new users only)</label>
-                <input
-                  disabled={!isAdmin}
-                  id="new_password"
-                  placeholder="Optional when email already exists"
-                  type="password"
-                  value={userForm.password}
-                  onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="new_role">Role</label>
-                <select
-                  disabled={!isAdmin}
-                  id="new_role"
-                  value={userForm.role}
-                  onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            </div>
-            <div className="button-row">
-              <button disabled={!isAdmin || savingSection === "user-create"} type="submit">
-                {savingSection === "user-create" ? "Adding..." : "Add User"}
+                {tab.label}
               </button>
-            </div>
-          </form>
+            ))}
+          </section>
 
-          <div className="dashboard-list">
-            {users.length === 0 ? (
-              <div className="dashboard-empty">No organisation users found.</div>
-            ) : users.map((user) => (
-              <article className="dashboard-item" key={user.id}>
-                <div className="dashboard-item-head">
-                  <strong>{user.username}</strong>
-                  <div className="dashboard-status-group">
-                    <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
-                      {user.status || "approved"}
-                    </span>
-                    <span className="status-pill">{user.role}</span>
+          {activeTab === "organisation" ? (
+            <section className="club-admin-overview-grid">
+              <section className="panel stack settings-primary">
+                <div className="panel-heading">
+                  <h2>Organisation Details</h2>
+                  <p className="helper-text">Club details used for contact information and venue context.</p>
+                </div>
+
+                <form className="stack" onSubmit={handleOrganizationSubmit}>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="organization_name">Club Name</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="organization_name"
+                        value={organizationForm.organization_name}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, organization_name: event.target.value }))}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="org_contact">Primary Contact</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="org_contact"
+                        value={organizationForm.org_contact}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="org_telephone">Telephone</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="org_telephone"
+                        value={organizationForm.org_telephone}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_telephone: event.target.value }))}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="org_email">Email</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="org_email"
+                        type="email"
+                        value={organizationForm.org_email}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_email: event.target.value }))}
+                      />
+                    </div>
+                    <div className="field settings-field-wide">
+                      <label htmlFor="org_webaddress">Website</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="org_webaddress"
+                        type="url"
+                        value={organizationForm.org_webaddress}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
+                      />
+                    </div>
+                    <div className="field settings-field-wide">
+                      <label htmlFor="org_address">Address</label>
+                      <input
+                        disabled={!isAdmin}
+                        id="org_address"
+                        value={organizationForm.org_address}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-item-meta">
-                  <span>Created: {formatDate(user.created_at)}</span>
-                  {user.status === "pending" ? <span>Awaiting email approval</span> : null}
-                </div>
-                <div className="settings-inline-actions">
-                  <select
-                    disabled={!isAdmin}
-                    value={userRoleDrafts[user.id] || user.role || "user"}
-                    onChange={(event) => setUserRoleDrafts((current) => ({ ...current, [user.id]: event.target.value }))}
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <button
-                    disabled={!isAdmin || savingSection === `user-role-${user.id}`}
-                    type="button"
-                    onClick={() => handleUserRoleSave(user.id)}
-                  >
-                    {savingSection === `user-role-${user.id}` ? "Saving..." : "Save Role"}
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
 
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Courts</h2>
-            <p className="helper-text">Create, edit, and remove court records for this organisation.</p>
-          </div>
+                  <div className="button-row">
+                    <button disabled={!isAdmin || savingSection === "organization"} type="submit">
+                      {savingSection === "organization" ? "Saving..." : "Save Organisation Details"}
+                    </button>
+                  </div>
+                </form>
+              </section>
 
-          <form className="stack" onSubmit={handleCourtCreate}>
-            <div className="field-grid">
-              <div className="field">
-                <label htmlFor="court_name">Court Name</label>
-                <input
-                  disabled={!isAdmin}
-                  id="court_name"
-                  value={courtForm.court_name}
-                  onChange={(event) => setCourtForm((current) => ({ ...current, court_name: event.target.value }))}
-                />
+              <section className="panel stack">
+                <div className="panel-heading">
+                  <h2>Venue Map</h2>
+                  <p className="helper-text">Map preview generated from the saved address.</p>
+                </div>
+                {mapUrl ? (
+                  <iframe
+                    className="map-frame"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={mapUrl}
+                    title="Organisation map"
+                  />
+                ) : (
+                  <div className="dashboard-empty">Save an address to show the venue map.</div>
+                )}
+              </section>
+            </section>
+          ) : null}
+
+          {activeTab === "users" ? (
+            <section className="panel stack">
+              <div className="panel-heading">
+                <h2>Organisation Users</h2>
+                <p className="helper-text">Add users by email address and assign admin or user roles.</p>
               </div>
-              <div className="field">
-                <label htmlFor="court_alias">Court Alias</label>
-                <input
-                  disabled={!isAdmin}
-                  id="court_alias"
-                  value={courtForm.court_alias}
-                  onChange={(event) => setCourtForm((current) => ({ ...current, court_alias: event.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="button-row">
-              <button disabled={!isAdmin || savingSection === "court-create"} type="submit">
-                {savingSection === "court-create" ? "Adding..." : "Add Court"}
-              </button>
-            </div>
-          </form>
 
-          <div className="dashboard-list">
-            {courts.length === 0 ? (
-              <div className="dashboard-empty">No courts configured yet.</div>
-            ) : courts.map((court) => (
-              <article className="dashboard-item" key={court.id}>
-                <div className="field-grid settings-field-grid-tight">
+              <form className="stack" onSubmit={handleUserSubmit}>
+                <div className="field-grid">
                   <div className="field">
-                    <label htmlFor={`court-name-${court.id}`}>Court Name</label>
+                    <label htmlFor="new_username">Email Address</label>
                     <input
                       disabled={!isAdmin}
-                      id={`court-name-${court.id}`}
-                      value={courtDrafts[court.id]?.court_name || ""}
-                      onChange={(event) => setCourtDrafts((current) => ({
-                        ...current,
-                        [court.id]: {
-                          ...(current[court.id] || {}),
-                          court_name: event.target.value,
-                        },
-                      }))}
+                      id="new_username"
+                      placeholder="user@club.com"
+                      type="email"
+                      value={userForm.username}
+                      onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor={`court-alias-${court.id}`}>Court Alias</label>
+                    <label htmlFor="new_password">Password (new users only)</label>
                     <input
                       disabled={!isAdmin}
-                      id={`court-alias-${court.id}`}
-                      value={courtDrafts[court.id]?.court_alias || ""}
-                      onChange={(event) => setCourtDrafts((current) => ({
-                        ...current,
-                        [court.id]: {
-                          ...(current[court.id] || {}),
-                          court_alias: event.target.value,
-                        },
-                      }))}
+                      id="new_password"
+                      placeholder="Optional when email already exists"
+                      type="password"
+                      value={userForm.password}
+                      onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
                     />
                   </div>
-                </div>
-                <div className="dashboard-item-meta dashboard-item-meta--stacked">
-                  <span>Created: {formatDate(court.created_at)}</span>
-                  <span>
-                    Display code:{" "}
-                    {court.display_code ? (
-                      <code className="court-display-code">{court.display_code}</code>
-                    ) : (
-                      "Not generated yet"
-                    )}
-                  </span>
-                  <span>Screen URL: {scoreboardUrl}</span>
+                  <div className="field">
+                    <label htmlFor="new_role">Role</label>
+                    <select
+                      disabled={!isAdmin}
+                      id="new_role"
+                      value={userForm.role}
+                      onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="button-row">
-                  <button
-                    disabled={!isAdmin || savingSection === `court-save-${court.id}`}
-                    type="button"
-                    onClick={() => handleCourtSave(court.id)}
-                  >
-                    {savingSection === `court-save-${court.id}` ? "Saving..." : "Save Court"}
-                  </button>
-                  <button
-                    className="secondary"
-                    disabled={!isAdmin || savingSection === `court-display-code-${court.id}`}
-                    type="button"
-                    onClick={() => handleCourtDisplayCode(court.id)}
-                  >
-                    {savingSection === `court-display-code-${court.id}`
-                      ? "Updating..."
-                      : court.display_code
-                        ? "Rotate Display Code"
-                        : "Generate Display Code"}
-                  </button>
-                  <button
-                    className="danger"
-                    disabled={!isAdmin || savingSection === `court-delete-${court.id}`}
-                    type="button"
-                    onClick={() => handleCourtDelete(court.id)}
-                  >
-                    {savingSection === `court-delete-${court.id}` ? "Deleting..." : "Delete Court"}
+                  <button disabled={!isAdmin || savingSection === "user-create"} type="submit">
+                    {savingSection === "user-create" ? "Adding..." : "Add User"}
                   </button>
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
+              </form>
 
-        <section className="panel stack">
-          <div className="panel-heading">
-            <h2>Social Profiles</h2>
-            <p className="helper-text">UI placeholders are ready. Database-backed social profile storage is still pending.</p>
-          </div>
-          <div className="field-grid">
-            <div className="field">
-              <label htmlFor="facebook_profile">Facebook</label>
-              <input className="read-only-input" disabled id="facebook_profile" placeholder="Coming soon" value="" />
-            </div>
-            <div className="field">
-              <label htmlFor="instagram_profile">Instagram</label>
-              <input className="read-only-input" disabled id="instagram_profile" placeholder="Coming soon" value="" />
-            </div>
-            <div className="field">
-              <label htmlFor="x_profile">X / Twitter</label>
-              <input className="read-only-input" disabled id="x_profile" placeholder="Coming soon" value="" />
-            </div>
-            <div className="field">
-              <label htmlFor="youtube_profile">YouTube</label>
-              <input className="read-only-input" disabled id="youtube_profile" placeholder="Coming soon" value="" />
-            </div>
-          </div>
-        </section>
-      </section>
+              <div className="dashboard-list">
+                {users.length === 0 ? (
+                  <div className="dashboard-empty">No organisation users found.</div>
+                ) : users.map((user) => (
+                  <article className="dashboard-item" key={user.id}>
+                    <div className="dashboard-item-head">
+                      <strong>{user.username}</strong>
+                      <div className="dashboard-status-group">
+                        <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
+                          {user.status || "approved"}
+                        </span>
+                        <span className="status-pill">{user.role}</span>
+                      </div>
+                    </div>
+                    <div className="dashboard-item-meta">
+                      <span>Created: {formatDate(user.created_at)}</span>
+                      {user.status === "pending" ? <span>Awaiting email approval</span> : null}
+                    </div>
+                    <div className="settings-inline-actions">
+                      <select
+                        disabled={!isAdmin}
+                        value={userRoleDrafts[user.id] || user.role || "user"}
+                        onChange={(event) => setUserRoleDrafts((current) => ({ ...current, [user.id]: event.target.value }))}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <button
+                        disabled={!isAdmin || savingSection === `user-role-${user.id}`}
+                        type="button"
+                        onClick={() => handleUserRoleSave(user.id)}
+                      >
+                        {savingSection === `user-role-${user.id}` ? "Saving..." : "Save Role"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {activeTab === "courts" ? (
+            <section className="panel stack">
+              <div className="panel-heading">
+                <h2>Courts</h2>
+                <p className="helper-text">Create, edit, and remove court records for this organisation.</p>
+              </div>
+
+              <form className="stack" onSubmit={handleCourtCreate}>
+                <div className="field-grid">
+                  <div className="field">
+                    <label htmlFor="court_name">Court Name</label>
+                    <input
+                      disabled={!isAdmin}
+                      id="court_name"
+                      value={courtForm.court_name}
+                      onChange={(event) => setCourtForm((current) => ({ ...current, court_name: event.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="court_alias">Court Alias</label>
+                    <input
+                      disabled={!isAdmin}
+                      id="court_alias"
+                      value={courtForm.court_alias}
+                      onChange={(event) => setCourtForm((current) => ({ ...current, court_alias: event.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="button-row">
+                  <button disabled={!isAdmin || savingSection === "court-create"} type="submit">
+                    {savingSection === "court-create" ? "Adding..." : "Add Court"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="dashboard-list">
+                {courts.length === 0 ? (
+                  <div className="dashboard-empty">No courts configured yet.</div>
+                ) : courts.map((court) => (
+                  <article className="dashboard-item" key={court.id}>
+                    <div className="field-grid settings-field-grid-tight">
+                      <div className="field">
+                        <label htmlFor={`court-name-${court.id}`}>Court Name</label>
+                        <input
+                          disabled={!isAdmin}
+                          id={`court-name-${court.id}`}
+                          value={courtDrafts[court.id]?.court_name || ""}
+                          onChange={(event) => setCourtDrafts((current) => ({
+                            ...current,
+                            [court.id]: {
+                              ...(current[court.id] || {}),
+                              court_name: event.target.value,
+                            },
+                          }))}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor={`court-alias-${court.id}`}>Court Alias</label>
+                        <input
+                          disabled={!isAdmin}
+                          id={`court-alias-${court.id}`}
+                          value={courtDrafts[court.id]?.court_alias || ""}
+                          onChange={(event) => setCourtDrafts((current) => ({
+                            ...current,
+                            [court.id]: {
+                              ...(current[court.id] || {}),
+                              court_alias: event.target.value,
+                            },
+                          }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="dashboard-item-meta dashboard-item-meta--stacked">
+                      <span>Created: {formatDate(court.created_at)}</span>
+                      <span>
+                        Display code:{" "}
+                        {court.display_code ? (
+                          <code className="court-display-code">{court.display_code}</code>
+                        ) : (
+                          "Not generated yet"
+                        )}
+                      </span>
+                      <span>Screen URL: {scoreboardUrl}</span>
+                    </div>
+                    <div className="button-row">
+                      <button
+                        disabled={!isAdmin || savingSection === `court-save-${court.id}`}
+                        type="button"
+                        onClick={() => handleCourtSave(court.id)}
+                      >
+                        {savingSection === `court-save-${court.id}` ? "Saving..." : "Save Court"}
+                      </button>
+                      <button
+                        className="secondary"
+                        disabled={!isAdmin || savingSection === `court-display-code-${court.id}`}
+                        type="button"
+                        onClick={() => handleCourtDisplayCode(court.id)}
+                      >
+                        {savingSection === `court-display-code-${court.id}`
+                          ? "Updating..."
+                          : court.display_code
+                            ? "Rotate Display Code"
+                            : "Generate Display Code"}
+                      </button>
+                      <button
+                        className="danger"
+                        disabled={!isAdmin || savingSection === `court-delete-${court.id}`}
+                        type="button"
+                        onClick={() => handleCourtDelete(court.id)}
+                      >
+                        {savingSection === `court-delete-${court.id}` ? "Deleting..." : "Delete Court"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {activeTab === "game-social" ? (
+            <section className="settings-grid">
+              <section className="panel stack">
+                <div className="panel-heading">
+                  <h2>Game Settings</h2>
+                  <p className="helper-text">
+                    Launch controls for organisation-specific scoring behaviour and future racket sports.
+                  </p>
+                </div>
+
+                <div className="game-settings-grid">
+                  <div className="field checkbox-field">
+                    <label className="checkbox-label" htmlFor="org_handicap_scoring">
+                      <input
+                        checked={handicapScoringEnabled}
+                        disabled={!isAdmin}
+                        id="org_handicap_scoring"
+                        name="org_handicap_scoring"
+                        type="checkbox"
+                        onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
+                      />
+                      Enable Handicap Scoring
+                    </label>
+                    <p className="helper-text">
+                      Controls whether handicap match setup should be available for this organisation.
+                    </p>
+                  </div>
+
+                  <div className="dashboard-empty">
+                    This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
+                    will be added in a later backend pass.
+                  </div>
+                </div>
+
+                <div className="panel-heading">
+                  <h3>Racket Sports</h3>
+                  <p className="helper-text">
+                    Squash is the active launch sport. The others are shown for roadmap visibility only.
+                  </p>
+                </div>
+
+                <div className="sport-grid">
+                  {sportOptions.map((sport) => (
+                    <article
+                      className={`sport-option${sport.status === "active" ? " active" : " disabled"}`}
+                      key={sport.name}
+                    >
+                      <strong>{sport.name}</strong>
+                      <span>{sport.status === "active" ? "Enabled" : "Coming later"}</span>
+                      <p>{sport.note}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel stack">
+                <div className="panel-heading">
+                  <h2>Social Profiles</h2>
+                  <p className="helper-text">UI placeholders are ready. Database-backed social profile storage is still pending.</p>
+                </div>
+                <div className="field-grid">
+                  <div className="field">
+                    <label htmlFor="facebook_profile">Facebook</label>
+                    <input className="read-only-input" disabled id="facebook_profile" placeholder="Coming soon" value="" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="instagram_profile">Instagram</label>
+                    <input className="read-only-input" disabled id="instagram_profile" placeholder="Coming soon" value="" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="x_profile">X / Twitter</label>
+                    <input className="read-only-input" disabled id="x_profile" placeholder="Coming soon" value="" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="youtube_profile">YouTube</label>
+                    <input className="read-only-input" disabled id="youtube_profile" placeholder="Coming soon" value="" />
+                  </div>
+                </div>
+              </section>
+            </section>
+          ) : null}
+        </>
       )}
 
       <AppFooter />

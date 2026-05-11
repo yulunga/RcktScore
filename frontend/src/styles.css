@@ -1402,6 +1402,11 @@ textarea {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.dashboard-card-grid--active {
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  align-items: start;
+}
+
 .dashboard-item {
   display: grid;
   gap: 10px;
@@ -1470,7 +1475,7 @@ textarea {
 
 .dashboard-active-card__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(112px, 1fr) auto minmax(112px, 1fr) auto;
   align-items: center;
   gap: 14px;
 }
