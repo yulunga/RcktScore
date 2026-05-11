@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
-import SessionBar from "../components/SessionBar";
 import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -441,24 +440,10 @@ export default function OrganisationSettingsPage() {
           title=""
         />
       ) : (
-        <>
-          <SessionBar />
-
-          <section className="hero-card stack compact">
-            <span className="status-pill">Organisation Settings</span>
-            <div className="settings-header-row">
-              <div className="stack compact">
-                <h1>{organizationForm.organization_name || session?.organization_name || "Organisation"}</h1>
-                <p className="helper-text">
-                  Manage organisation details, court inventory, and user access for this club.
-                </p>
-              </div>
-              <div className="button-row">
-                <button className="secondary" type="button" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
-              </div>
-            </div>
-          </section>
-        </>
+        <ClubPageHeader
+          subtitle="Manage organisation details, court inventory, and user access for this club."
+          title={organizationForm.organization_name || session?.organization_name || ""}
+        />
       )}
 
       {!isAdmin && !isPersonalAccount ? (
@@ -673,6 +658,16 @@ export default function OrganisationSettingsPage() {
       ) : (
         <>
           <section className="root-admin-tab-row" aria-label="Organisation settings sections">
+            <button
+              className="root-admin-tab settings-home-tab"
+              type="button"
+              aria-label="Back to dashboard"
+              onClick={() => navigate("/dashboard")}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.75 10.25L12 4.75L19.25 10.25V18.25H14.75V13.75H9.25V18.25H4.75V10.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
             {adminTabs.map((tab) => (
               <button
                 key={tab.id}
