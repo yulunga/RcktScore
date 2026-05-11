@@ -82,9 +82,14 @@ def _parse_iso_datetime(value):
         normalized_value = f"{normalized_value[:-1]}+00:00"
 
     try:
-        return datetime.fromisoformat(normalized_value)
+        parsed_value = datetime.fromisoformat(normalized_value)
     except ValueError:
         return None
+
+    if parsed_value.tzinfo is None:
+        return parsed_value.replace(tzinfo=timezone.utc)
+
+    return parsed_value
 
 
 def _get_scoreboard_match_for_court(connection, tenant_id, court_id):

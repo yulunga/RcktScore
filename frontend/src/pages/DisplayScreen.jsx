@@ -273,7 +273,6 @@ export default function DisplayScreen() {
             <section className="panel scoreboard-club-panel">
               <div className="panel-heading">
                 <h2>All Games</h2>
-                <p className="helper-text">Live activity from the other courts in the club.</p>
               </div>
               {clubMatches.length === 0 ? (
                 <div className="dashboard-empty">No other active courts right now.</div>
