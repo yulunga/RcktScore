@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from common.match_logic import get_active_match_for_court
+from common.match_logic import get_active_match_for_court, list_matches
 
 
 DISPLAY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -158,9 +158,34 @@ def _build_scoreboard_payload(connection, court_row, *, display_session_token=No
     tenant_id = _court_tenant_id(court_row)
     court_id = court_row["id"]
     current_match = get_active_match_for_court(connection, tenant_id, court_id)
+    active_matches = list_matches(connection, tenant_id=tenant_id, status="active", limit=24)
+    club_matches = [
+        {
+            "id": match["id"],
+            "court_id": match["court_id"],
+            "court_name": match.get("court_name") or "Court",
+            "court_alias": match.get("court_alias") or "",
+            "status": match.get("status") or "active",
+            "score_type": match.get("score_type") or 11,
+            "best_of": match.get("best_of") or 1,
+            "current_game_number": match.get("state", {}).get("current_game_number") or match.get("current_game_number") or 1,
+            "player1_name": match.get("player1_name") or "Player 1",
+            "player1_surname": match.get("player1_surname") or "",
+            "player2_name": match.get("player2_name") or "Player 2",
+            "player2_surname": match.get("player2_surname") or "",
+            "player1_score": match.get("state", {}).get("player1_score") or 0,
+            "player2_score": match.get("state", {}).get("player2_score") or 0,
+            "player1_games_won": match.get("state", {}).get("player1_games_won") or 0,
+            "player2_games_won": match.get("state", {}).get("player2_games_won") or 0,
+            "updated_at": match.get("updated_at"),
+        }
+        for match in active_matches
+        if match.get("court_id") != court_id
+    ]
     payload = {
         "court": _serialize_court(court_row),
         "match": current_match,
+        "club_matches": club_matches,
         "poll_interval_seconds": 5,
         "realtime_mode": "polling_v1",
     }

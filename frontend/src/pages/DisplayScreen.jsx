@@ -48,6 +48,7 @@ function storeDisplaySession(session) {
 export default function DisplayScreen() {
   const [code, setCode] = useState("");
   const [currentMatch, setCurrentMatch] = useState(null);
+  const [clubMatches, setClubMatches] = useState([]);
   const [court, setCourt] = useState(null);
   const [displaySession, setDisplaySession] = useState(() => readStoredDisplaySession());
   const [error, setError] = useState("");
@@ -70,6 +71,7 @@ export default function DisplayScreen() {
     setDisplaySession(null);
     setCourt(null);
     setCurrentMatch(null);
+    setClubMatches([]);
     setShowTimeline(false);
     setLastUpdatedAt(null);
     storeDisplaySession(null);
@@ -89,6 +91,7 @@ export default function DisplayScreen() {
     storeDisplaySession(nextSession);
     setCourt(payload?.court || null);
     setCurrentMatch(payload?.match || null);
+    setClubMatches(payload?.club_matches || []);
     setLastUpdatedAt(new Date());
   }, [displaySession?.display_session_token, pollIntervalSeconds]);
 
@@ -216,6 +219,7 @@ export default function DisplayScreen() {
                 <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
                   <option value="standard">Standard</option>
                   <option value="large-scores">Large Scores</option>
+                  <option value="all-games">All Games</option>
                   <option value="minimal">Minimal</option>
                 </select>
               </label>
@@ -265,6 +269,45 @@ export default function DisplayScreen() {
       {currentMatch ? (
         <>
           <Scoreboard match={currentMatch} />
+          {displayMode === "all-games" ? (
+            <section className="panel scoreboard-club-panel">
+              <div className="panel-heading">
+                <h2>All Games</h2>
+                <p className="helper-text">Live activity from the other courts in the club.</p>
+              </div>
+              {clubMatches.length === 0 ? (
+                <div className="dashboard-empty">No other active courts right now.</div>
+              ) : (
+                <div className="scoreboard-club-grid">
+                  {clubMatches.map((match) => (
+                    <article className="scoreboard-club-card" key={match.id}>
+                      <div className="scoreboard-club-card__top">
+                        <strong>{match.court_name || "Court"}</strong>
+                        <span className="status-pill status-pill--active">
+                          <span className="status-pill__dot" aria-hidden="true" />
+                          {match.status || "active"}
+                        </span>
+                      </div>
+                      <div className="scoreboard-club-card__players">
+                        <div className="scoreboard-club-card__player">
+                          <span>{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</span>
+                          <strong>{match.player1_score}</strong>
+                        </div>
+                        <div className="scoreboard-club-card__player">
+                          <span>{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</span>
+                          <strong>{match.player2_score}</strong>
+                        </div>
+                      </div>
+                      <div className="scoreboard-club-card__meta">
+                        <span>{`Games ${match.player1_games_won}-${match.player2_games_won}`}</span>
+                        <span>{`Game ${match.current_game_number} • Best of ${match.best_of}`}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
           <div className="match-meta-toggle-wrap display-timeline-toggle-wrap">
             <button
               className="match-meta-toggle"

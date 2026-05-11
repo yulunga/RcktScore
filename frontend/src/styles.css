@@ -1001,7 +1001,7 @@ textarea {
 
 .display-mode-standard .scoreboard-grid {
   gap: 24px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) clamp(56px, 5vw, 88px) minmax(0, 1fr);
 }
 
 .display-mode-standard .player-card {
@@ -1031,6 +1031,10 @@ textarea {
   min-height: 100%;
 }
 
+.display-mode-standard .scoreboard-point-strip-wrap {
+  min-width: 0;
+}
+
 .display-mode-large-scores .scoreboard-card {
   padding: 28px 32px;
   gap: 22px;
@@ -1052,7 +1056,7 @@ textarea {
 
 .display-mode-large-scores .scoreboard-grid {
   gap: 22px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr) clamp(56px, 5vw, 88px) minmax(0, 1fr);
 }
 
 .display-mode-large-scores .player-card {
@@ -1084,6 +1088,70 @@ textarea {
 
 .display-mode-large-scores .scoreboard-controls {
   display: none;
+}
+
+.scoreboard-club-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.scoreboard-club-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.scoreboard-club-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(16, 42, 67, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: 0 12px 32px rgba(16, 42, 67, 0.08);
+}
+
+.scoreboard-club-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scoreboard-club-card__players {
+  display: grid;
+  gap: 10px;
+}
+
+.scoreboard-club-card__player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(18, 116, 208, 0.06);
+}
+
+.scoreboard-club-card__player span {
+  color: #243b53;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.scoreboard-club-card__player strong {
+  color: #0b5fb3;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.scoreboard-club-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: #486581;
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .dashboard-menu-row {
