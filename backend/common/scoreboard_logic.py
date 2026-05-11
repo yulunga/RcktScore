@@ -8,6 +8,7 @@ from common.match_logic import get_active_match_for_court, list_matches
 DISPLAY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 DISPLAY_CODE_LENGTH = 12
 DISPLAY_SESSION_TTL_HOURS = 24
+DISPLAY_POST_MATCH_HOLD_MINUTES = 30
 
 
 def _utcnow():
@@ -70,6 +71,40 @@ def _court_tenant_id(row):
     if row.get("organization_name") is not None:
         return row["organization_name"]
     return row.get("tenant_id")
+
+
+def _parse_iso_datetime(value):
+    if not value:
+        return None
+
+    normalized_value = str(value)
+    if normalized_value.endswith("Z"):
+        normalized_value = f"{normalized_value[:-1]}+00:00"
+
+    try:
+        return datetime.fromisoformat(normalized_value)
+    except ValueError:
+        return None
+
+
+def _get_scoreboard_match_for_court(connection, tenant_id, court_id):
+    active_match = get_active_match_for_court(connection, tenant_id, court_id)
+    if active_match:
+        return active_match
+
+    hold_cutoff = _utcnow() - timedelta(minutes=DISPLAY_POST_MATCH_HOLD_MINUTES)
+    completed_matches = list_matches(connection, tenant_id=tenant_id, status="completed", limit=24)
+    for match in completed_matches:
+        if match.get("court_id") != court_id:
+            continue
+
+        completed_at = _parse_iso_datetime(match.get("completed_at") or match.get("updated_at"))
+        if completed_at and completed_at >= hold_cutoff:
+            return match
+
+        return None
+
+    return None
 
 
 def generate_unique_display_code(connection):
@@ -157,7 +192,7 @@ def _get_court_by_display_code(connection, display_code):
 def _build_scoreboard_payload(connection, court_row, *, display_session_token=None):
     tenant_id = _court_tenant_id(court_row)
     court_id = court_row["id"]
-    current_match = get_active_match_for_court(connection, tenant_id, court_id)
+    current_match = _get_scoreboard_match_for_court(connection, tenant_id, court_id)
     active_matches = list_matches(connection, tenant_id=tenant_id, status="active", limit=24)
     club_matches = [
         {

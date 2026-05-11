@@ -996,26 +996,56 @@ textarea {
   letter-spacing: 0.08em;
 }
 
-.display-mode-standard .scoreboard-card {
-  padding: 34px 38px;
-  gap: 24px;
+.display-mode-standard .scoreboard-card,
+.display-mode-large-scores .scoreboard-card,
+.display-mode-all-games .scoreboard-card,
+.display-mode-minimal .scoreboard-card {
+  padding: 22px 24px 24px;
+  gap: 16px;
 }
 
 .display-mode-standard .scoreboard-header,
-.display-mode-all-games .scoreboard-header {
-  align-items: center;
-}
-
-.display-mode-standard .scoreboard-header-meta,
-.display-mode-all-games .scoreboard-header-meta {
-  display: flex;
+.display-mode-large-scores .scoreboard-header,
+.display-mode-all-games .scoreboard-header,
+.display-mode-minimal .scoreboard-header {
   align-items: center;
   gap: 10px;
 }
 
+.display-mode-standard .scoreboard-header-meta,
+.display-mode-large-scores .scoreboard-header-meta,
+.display-mode-all-games .scoreboard-header-meta,
+.display-mode-minimal .scoreboard-header-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .display-mode-standard .scoreboard-header h2,
-.display-mode-all-games .scoreboard-header h2 {
-  font-size: clamp(2.2rem, 4vw, 3.5rem);
+.display-mode-large-scores .scoreboard-header h2,
+.display-mode-all-games .scoreboard-header h2,
+.display-mode-minimal .scoreboard-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 0.96;
+}
+
+.display-mode-standard .scoreboard-header .status-pill,
+.display-mode-large-scores .scoreboard-header .status-pill,
+.display-mode-all-games .scoreboard-header .status-pill,
+.display-mode-minimal .scoreboard-header .status-pill {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+}
+
+.display-mode-standard .scoreboard-header .score-series-chip,
+.display-mode-large-scores .scoreboard-header .score-series-chip,
+.display-mode-all-games .scoreboard-header .score-series-chip,
+.display-mode-minimal .scoreboard-header .score-series-chip {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  line-height: 1.1;
 }
 
 .display-mode-standard .scoreboard-grid,
@@ -1060,25 +1090,6 @@ textarea {
 .display-mode-standard .scoreboard-point-strip-wrap,
 .display-mode-all-games .scoreboard-point-strip-wrap {
   min-width: 0;
-}
-
-.display-mode-large-scores .scoreboard-card {
-  padding: 28px 32px;
-  gap: 22px;
-}
-
-.display-mode-large-scores .scoreboard-header h2 {
-  font-size: clamp(2rem, 4vw, 3rem);
-}
-
-.display-mode-large-scores .status-pill {
-  padding: 10px 16px;
-  font-size: 1rem;
-}
-
-.display-mode-large-scores .score-series-chip {
-  padding: 10px 16px;
-  font-size: 0.98rem;
 }
 
 .display-mode-large-scores .scoreboard-grid {
