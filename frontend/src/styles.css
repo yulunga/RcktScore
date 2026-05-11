@@ -844,6 +844,48 @@ textarea {
   min-width: 0;
 }
 
+.display-header-card__brand-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.display-header-card__logo {
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.display-header-card__brand-stack {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.display-header-card__wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  margin: 0;
+  color: #0b5fb3;
+  font-size: clamp(2.5rem, 4vw, 4rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 0.94;
+}
+
+.display-header-card__wordmark-hit,
+.display-header-card__wordmark-score {
+  color: #0b5fb3;
+}
+
+.display-header-card__wordmark-n {
+  color: #ec5ea8;
+}
+
 .display-header-card__subheading {
   color: #486581;
   font-size: 0.92rem;
@@ -853,10 +895,9 @@ textarea {
 }
 
 .display-header-card__controls {
-  display: grid;
-  justify-items: end;
-  align-content: start;
-  gap: 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
   flex: 0 0 auto;
 }
 
@@ -866,6 +907,7 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+  margin: 0;
 }
 
 .display-layout-control {
@@ -873,23 +915,25 @@ textarea {
   align-items: center;
   gap: 10px;
   justify-content: flex-end;
+  margin-left: 6px;
 }
 
 .display-layout-control__label {
   color: #486581;
   font-size: 0.9rem;
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .display-layout-control select {
-  min-height: 40px;
-  padding: 8px 36px 8px 12px;
-  border: 1px solid #c7d4e2;
+  min-height: 44px;
+  padding: 10px 44px 10px 16px;
+  border: 1px solid #d9e2ec;
   border-radius: 999px;
-  background: #fff;
-  color: #486581;
-  font-size: 0.9rem;
+  background: #ffffff;
+  color: #102a43;
+  font-size: 0.95rem;
   font-weight: 600;
+  box-shadow: 0 10px 24px rgba(16, 42, 67, 0.08);
 }
 
 .display-shell {
@@ -900,23 +944,6 @@ textarea {
 
 .display-shell .hero-card {
   padding: 18px 22px;
-}
-
-.display-shell .club-page-header__wordmark {
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
-}
-
-.display-shell .club-page-header__logo {
-  width: 70px;
-  height: 70px;
-}
-
-.display-shell .club-page-header__brand-row {
-  align-items: center;
-}
-
-.display-shell .club-page-header__brand-stack {
-  align-content: center;
 }
 
 .display-shell .app-footer {
@@ -2977,11 +3004,16 @@ textarea {
   }
 
   .display-header-card__controls {
-    justify-items: start;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .display-header-card__actions {
     justify-content: flex-start;
+  }
+
+  .display-layout-control {
+    margin-left: 0;
   }
 
   .scoreboard-session-card__top {

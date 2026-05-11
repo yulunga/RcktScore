@@ -357,6 +357,17 @@ def _build_state(match_row, event_rows):
     return state
 
 
+def _match_order_clause_for_status(status):
+    if status == "completed":
+        return (
+            "ORDER BY "
+            "COALESCE(matches.completed_at, matches.updated_at) DESC, "
+            "matches.updated_at DESC "
+            "LIMIT %(limit)s"
+        )
+    return "ORDER BY matches.updated_at DESC, matches.created_at DESC LIMIT %(limit)s"
+
+
 def _serialize_match(match_row, event_rows):
     best_of = _best_of_value(match_row.get("best_of", 1))
     return {
@@ -474,10 +485,7 @@ def list_matches(connection, tenant_id, status=None, limit=10):
         query.append("AND status = %(status)s")
         params["status"] = status
 
-    if status == "completed":
-        query.append("ORDER BY COALESCE(completed_at, updated_at) DESC, updated_at DESC LIMIT %(limit)s")
-    else:
-        query.append("ORDER BY updated_at DESC, created_at DESC LIMIT %(limit)s")
+    query.append(_match_order_clause_for_status(status))
 
     with connection.cursor() as cursor:
         cursor.execute("\n".join(query), params)
@@ -502,7 +510,7 @@ def _find_active_match_on_court(connection, tenant_id, court_id):
             WHERE tenant_id = %(tenant_id)s
               AND court_id = %(court_id)s
               AND status = 'active'
-            ORDER BY updated_at DESC, created_at DESC
+            ORDER BY matches.updated_at DESC, matches.created_at DESC
             LIMIT 1
             """,
             {
@@ -525,7 +533,7 @@ def _find_active_match_for_tenant(connection, tenant_id):
                 ON court.id = matches.court_id
             WHERE tenant_id = %(tenant_id)s
               AND status = 'active'
-            ORDER BY updated_at DESC, created_at DESC
+            ORDER BY matches.updated_at DESC, matches.created_at DESC
             LIMIT 1
             """,
             {"tenant_id": tenant_id},

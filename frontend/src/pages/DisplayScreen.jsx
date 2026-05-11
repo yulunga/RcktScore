@@ -173,17 +173,17 @@ export default function DisplayScreen() {
       <section className="hero-card display-header-card">
         <div className="display-header-card__top">
           <div className="display-header-card__branding">
-            <div className="club-page-header__brand-row">
+            <div className="display-header-card__brand-row">
               <img
-                className="club-page-header__logo"
+                className="display-header-card__logo"
                 src="/branding/logo/brand-logo.png"
                 alt="Hit n Score"
               />
-              <div className="club-page-header__brand-stack">
-                <h1 className="club-page-header__wordmark" aria-label="HitnScore">
-                  <span className="club-page-header__wordmark-hit">Hit</span>
-                  <span className="club-page-header__wordmark-n">n</span>
-                  <span className="club-page-header__wordmark-score">Score</span>
+              <div className="display-header-card__brand-stack">
+                <h1 className="display-header-card__wordmark" aria-label="HitnScore">
+                  <span className="display-header-card__wordmark-hit">Hit</span>
+                  <span className="display-header-card__wordmark-n">n</span>
+                  <span className="display-header-card__wordmark-score">Score</span>
                 </h1>
                 <span className="display-header-card__subheading">Live Scoreboard</span>
               </div>
@@ -195,29 +195,31 @@ export default function DisplayScreen() {
             </p>
           </div>
           <div className="display-header-card__controls">
-            {displaySession?.display_session_token ? (
-              <div className="display-header-card__actions">
-                <button
-                  className="secondary"
-                  disabled={refreshing || loading}
-                  type="button"
-                  onClick={handleManualRefresh}
-                >
-                  {refreshing ? "Refreshing..." : "Refresh"}
-                </button>
-                <button className="secondary" type="button" onClick={clearDisplaySession}>
-                  Use Different Code
-                </button>
-              </div>
-            ) : null}
-            <label className="display-layout-control">
-              <span className="display-layout-control__label">Layout</span>
-              <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
-                <option value="standard">Standard</option>
-                <option value="large-scores">Large Scores</option>
-                <option value="minimal">Minimal</option>
-              </select>
-            </label>
+            <div className="button-row display-header-card__actions">
+              {displaySession?.display_session_token ? (
+                <>
+                  <button
+                    className="secondary"
+                    disabled={refreshing || loading}
+                    type="button"
+                    onClick={handleManualRefresh}
+                  >
+                    {refreshing ? "Refreshing..." : "Refresh"}
+                  </button>
+                  <button className="secondary" type="button" onClick={clearDisplaySession}>
+                    Use Different Code
+                  </button>
+                </>
+              ) : null}
+              <label className="display-layout-control">
+                <span className="display-layout-control__label">Layout</span>
+                <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
+                  <option value="standard">Standard</option>
+                  <option value="large-scores">Large Scores</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+            </div>
           </div>
         </div>
       </section>

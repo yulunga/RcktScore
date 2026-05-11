@@ -66,6 +66,12 @@ def _serialize_court(row, *, include_display_code=False):
     return payload
 
 
+def _court_tenant_id(row):
+    if row.get("organization_name") is not None:
+        return row["organization_name"]
+    return row.get("tenant_id")
+
+
 def generate_unique_display_code(connection):
     for _ in range(20):
         code = "".join(secrets.choice(DISPLAY_CODE_ALPHABET) for _ in range(DISPLAY_CODE_LENGTH))
@@ -149,7 +155,7 @@ def _get_court_by_display_code(connection, display_code):
 
 
 def _build_scoreboard_payload(connection, court_row, *, display_session_token=None):
-    tenant_id = court_row["organization_name"]
+    tenant_id = _court_tenant_id(court_row)
     court_id = court_row["id"]
     current_match = get_active_match_for_court(connection, tenant_id, court_id)
     payload = {
