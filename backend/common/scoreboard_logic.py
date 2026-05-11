@@ -217,6 +217,7 @@ def _build_scoreboard_payload(connection, court_row, *, display_session_token=No
             "player2_score": match.get("state", {}).get("player2_score") or 0,
             "player1_games_won": match.get("state", {}).get("player1_games_won") or 0,
             "player2_games_won": match.get("state", {}).get("player2_games_won") or 0,
+            "game_history": match.get("state", {}).get("game_history") or [],
             "updated_at": match.get("updated_at"),
         }
         for match in active_matches

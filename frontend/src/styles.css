@@ -1222,7 +1222,7 @@ textarea {
 
 .display-mode-all-games .scoreboard-club-grid {
   gap: 10px;
-  grid-template-columns: repeat(auto-fit, 220px);
+  grid-template-columns: repeat(auto-fit, 248px);
   justify-content: start;
 }
 
@@ -1244,13 +1244,23 @@ textarea {
 
 .scoreboard-club-card__top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
 .display-mode-all-games .scoreboard-club-card__top strong {
   font-size: 0.92rem;
+}
+
+.scoreboard-club-card__status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #1fc16b;
+  box-shadow: 0 0 0 rgba(31, 193, 107, 0.34);
+  animation: scoreboard-live-pulse 1.8s ease-in-out infinite;
+  flex: 0 0 auto;
 }
 
 .scoreboard-club-card__players {
@@ -1276,7 +1286,7 @@ textarea {
   gap: 6px;
   padding: 7px 8px;
   border-radius: 12px;
-  align-items: start;
+  align-items: center;
 }
 
 .scoreboard-club-card__player span {
@@ -1286,7 +1296,7 @@ textarea {
 }
 
 .display-mode-all-games .scoreboard-club-card__player-name {
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   line-height: 1.15;
 }
 
@@ -1297,19 +1307,28 @@ textarea {
 }
 
 .display-mode-all-games .scoreboard-club-card__player strong {
-  font-size: 1rem;
+  font-size: 1.5rem;
 }
 
 .scoreboard-club-card__score-stack {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 88px;
 }
 
 .scoreboard-club-card__score-stack small {
-  color: #486581;
-  font-size: 0.66rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(236, 94, 168, 0.14);
+  color: #ec5ea8;
+  font-size: 0.78rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -1325,12 +1344,29 @@ textarea {
 
 .display-mode-all-games .scoreboard-club-card__meta {
   gap: 6px 10px;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
 }
 
 @media (max-width: 740px) {
   .display-mode-all-games .scoreboard-club-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@keyframes scoreboard-live-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(31, 193, 107, 0.34);
+  }
+
+  70% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 10px rgba(31, 193, 107, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(31, 193, 107, 0);
   }
 }
 
@@ -2641,6 +2677,10 @@ textarea {
   gap: 14px;
 }
 
+.scoreboard-card--idle {
+  min-height: 240px;
+}
+
 .match-screen-shell {
   gap: 18px;
   min-height: 100vh;
@@ -2794,6 +2834,25 @@ textarea {
   background: #e6f0fb;
   color: #0b4f88;
   justify-self: end;
+}
+
+.scoreboard-idle-pill {
+  background: #eef2f6;
+  color: #486581;
+}
+
+.scoreboard-idle-body {
+  display: grid;
+  align-items: center;
+  min-height: 120px;
+  padding: 8px 4px 0;
+}
+
+.scoreboard-idle-body p {
+  margin: 0;
+  color: #486581;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .status-pill__dot {

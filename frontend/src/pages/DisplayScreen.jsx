@@ -64,6 +64,17 @@ function storeDisplayMode(mode) {
   window.localStorage.setItem(SCOREBOARD_LAYOUT_KEY, mode || "standard");
 }
 
+function formatGameHistory(gameHistory) {
+  const history = Array.isArray(gameHistory) ? gameHistory : [];
+  if (!history.length) {
+    return "No completed games yet";
+  }
+
+  return history
+    .map((game) => `${game?.player1_score ?? 0}-${game?.player2_score ?? 0}`)
+    .join(" / ");
+}
+
 export default function DisplayScreen() {
   const [code, setCode] = useState("");
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -310,9 +321,21 @@ export default function DisplayScreen() {
       {loading && displaySession?.display_session_token ? <div className="notice">Loading scoreboard...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
       {displaySession?.display_session_token && !currentMatch ? (
-        <div className="notice">
-          No active match is currently running on {court?.court_name || "this court"}. Leave the screen open and it will refresh automatically.
-        </div>
+        <section className="scoreboard-card scoreboard-card--idle">
+          <div className="scoreboard-header">
+            <div>
+              <h2 style={{ marginBottom: 0 }}>{court?.court_name || "Court"}</h2>
+            </div>
+            <div className="scoreboard-header-meta">
+              <span className="status-pill scoreboard-idle-pill">idle</span>
+            </div>
+          </div>
+          <div className="scoreboard-idle-body">
+            <p>
+              No active match is currently running on {court?.court_name || "this court"}. Leave the screen open and it will refresh automatically.
+            </p>
+          </div>
+        </section>
       ) : null}
       {currentMatch ? (
         <>
@@ -336,35 +359,32 @@ export default function DisplayScreen() {
           ) : (
                 <div className="scoreboard-club-grid">
                   {visibleClubMatches.map((match) => (
-                    <article className="scoreboard-club-card" key={match.id}>
+                <article className="scoreboard-club-card" key={match.id}>
                   <div className="scoreboard-club-card__top">
                     <strong>{match.court_name || "Court"}</strong>
-                    <span className="status-pill status-pill--active">
-                      <span className="status-pill__dot" aria-hidden="true" />
-                      {match.status || "active"}
-                    </span>
+                    <span className="scoreboard-club-card__status-dot" aria-label={match.status || "active"} title={match.status || "active"} />
+                  </div>
+                  <div className="scoreboard-club-card__players">
+                    <div className="scoreboard-club-card__player">
+                      <span className="scoreboard-club-card__player-name">{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</span>
+                      <div className="scoreboard-club-card__score-stack">
+                        <strong>{match.player1_score}</strong>
+                        <small>{match.player1_games_won}</small>
                       </div>
-                      <div className="scoreboard-club-card__players">
-                        <div className="scoreboard-club-card__player">
-                          <span className="scoreboard-club-card__player-name">{`${match.player1_name} ${match.player1_surname || ""}`.trim()}</span>
-                          <div className="scoreboard-club-card__score-stack">
-                            <strong>{match.player1_score}</strong>
-                            <small>{`G ${match.player1_games_won}`}</small>
-                          </div>
-                        </div>
-                        <div className="scoreboard-club-card__player">
-                          <span className="scoreboard-club-card__player-name">{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</span>
-                          <div className="scoreboard-club-card__score-stack">
-                            <strong>{match.player2_score}</strong>
-                            <small>{`G ${match.player2_games_won}`}</small>
-                          </div>
-                        </div>
+                    </div>
+                    <div className="scoreboard-club-card__player">
+                      <span className="scoreboard-club-card__player-name">{`${match.player2_name} ${match.player2_surname || ""}`.trim()}</span>
+                      <div className="scoreboard-club-card__score-stack">
+                        <strong>{match.player2_score}</strong>
+                        <small>{match.player2_games_won}</small>
                       </div>
-                      <div className="scoreboard-club-card__meta">
-                        <span>{`Game ${match.current_game_number} • Best of ${match.best_of}`}</span>
-                      </div>
-                    </article>
-                  ))}
+                    </div>
+                  </div>
+                  <div className="scoreboard-club-card__meta">
+                    <span>{formatGameHistory(match.game_history)}</span>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </section>
