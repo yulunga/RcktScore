@@ -10,6 +10,7 @@ export default function Scoreboard({
   disabled = false,
   onScorePoint,
   onToggleServeSide,
+  showServeDetails = true,
   children,
 }) {
   const pointStripRef = useRef(null);
@@ -153,12 +154,14 @@ export default function Scoreboard({
       runningServiceSide = payload.service_side || runningServiceSide;
     });
 
-    entries.push({
-      id: "current-serve",
-      event_type: "current_serve",
-      current_server_side: currentServerSide,
-      service_side: serviceSide,
-    });
+    if (showServeDetails) {
+      entries.push({
+        id: "current-serve",
+        event_type: "current_serve",
+        current_server_side: currentServerSide,
+        service_side: serviceSide,
+      });
+    }
 
     return entries;
   }
@@ -187,21 +190,23 @@ export default function Scoreboard({
             </div>
           </div>
         </button>
-        <div className="server-badge-slot">
-          {isServing ? (
-            <button
-              className={`server-badge server-badge--${serviceSide.toLowerCase()}`}
-              disabled={disabled || !canToggleServiceSide}
-              type="button"
-              onClick={onToggleServeSide}
-              title={canToggleServiceSide ? "Choose service side" : "Service side is set by the previous rally"}
-            >
-              {serviceSide}
-            </button>
-          ) : (
-            <span className="server-badge server-badge--placeholder" aria-hidden="true" />
-          )}
-        </div>
+        {showServeDetails ? (
+          <div className="server-badge-slot">
+            {isServing ? (
+              <button
+                className={`server-badge server-badge--${serviceSide.toLowerCase()}`}
+                disabled={disabled || !canToggleServiceSide}
+                type="button"
+                onClick={onToggleServeSide}
+                title={canToggleServiceSide ? "Choose service side" : "Service side is set by the previous rally"}
+              >
+                {serviceSide}
+              </button>
+            ) : (
+              <span className="server-badge server-badge--placeholder" aria-hidden="true" />
+            )}
+          </div>
+        ) : null}
       </>
     );
   }
@@ -283,6 +288,9 @@ export default function Scoreboard({
           <div ref={pointStripRef} className="scoreboard-point-strip" aria-label="Point order">
             {pointStripEntries.map((event, index) => {
               if (event.event_type === "current_serve") {
+                if (!showServeDetails) {
+                  return null;
+                }
                 const serverSide = event.current_server_side || "player1";
                 const currentServiceSideLabel = serviceSideInitial(event.service_side);
 
@@ -311,10 +319,12 @@ export default function Scoreboard({
                   key={event.id || `${event.created_at}-${index}`}
                   title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
                 >
-                  <div className="scoreboard-point-row">
-                    {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
-                    {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
-                  </div>
+                  {showServeDetails ? (
+                    <div className="scoreboard-point-row">
+                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
+                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
+                    </div>
+                  ) : null}
                   <div className="scoreboard-point-row">
                     {renderPointMarker("player1", "winner", winnerSide === "player1", winnerSide === "player1" ? String(winnerScore) : "")}
                     {renderPointMarker("player2", "winner", winnerSide === "player2", winnerSide === "player2" ? String(winnerScore) : "")}

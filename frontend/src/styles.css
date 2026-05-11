@@ -833,14 +833,14 @@ textarea {
 
 .display-header-card__top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 20px;
 }
 
 .display-header-card__branding {
   display: grid;
-  gap: 10px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -851,18 +851,17 @@ textarea {
 }
 
 .display-header-card__logo {
-  width: 82px;
-  height: 82px;
+  width: 68px;
+  height: 68px;
   object-fit: contain;
   flex: 0 0 auto;
 }
 
 .display-header-card__brand-stack {
   display: grid;
-  gap: 8px;
-  align-content: start;
+  gap: 4px;
+  align-content: center;
   min-width: 0;
-  padding-top: 2px;
 }
 
 .display-header-card__wordmark {
@@ -871,7 +870,7 @@ textarea {
   gap: 0;
   margin: 0;
   color: #0b5fb3;
-  font-size: clamp(2.5rem, 4vw, 4rem);
+  font-size: clamp(2.25rem, 3.6vw, 3.4rem);
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 0.94;
@@ -888,16 +887,17 @@ textarea {
 
 .display-header-card__subheading {
   color: #486581;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .display-header-card__controls {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  gap: 6px;
   flex: 0 0 auto;
 }
 
@@ -936,6 +936,12 @@ textarea {
   box-shadow: 0 10px 24px rgba(16, 42, 67, 0.08);
 }
 
+.display-header-card__status-note {
+  margin: 0;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
 .display-shell {
   width: calc(100vw - 24px);
   max-width: 1880px;
@@ -943,7 +949,7 @@ textarea {
 }
 
 .display-shell .hero-card {
-  padding: 18px 22px;
+  padding: 12px 18px;
 }
 
 .display-shell .app-footer {
@@ -995,43 +1001,64 @@ textarea {
   gap: 24px;
 }
 
-.display-mode-standard .scoreboard-header h2 {
+.display-mode-standard .scoreboard-header,
+.display-mode-all-games .scoreboard-header {
+  align-items: center;
+}
+
+.display-mode-standard .scoreboard-header-meta,
+.display-mode-all-games .scoreboard-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.display-mode-standard .scoreboard-header h2,
+.display-mode-all-games .scoreboard-header h2 {
   font-size: clamp(2.2rem, 4vw, 3.5rem);
 }
 
-.display-mode-standard .scoreboard-grid {
+.display-mode-standard .scoreboard-grid,
+.display-mode-all-games .scoreboard-grid {
   gap: 24px;
   grid-template-columns: minmax(0, 1fr) clamp(56px, 5vw, 88px) minmax(0, 1fr);
 }
 
-.display-mode-standard .player-card {
+.display-mode-standard .player-card,
+.display-mode-all-games .player-card {
   padding: 28px 30px;
   border-radius: 26px;
 }
 
-.display-mode-standard .player-card h3 {
+.display-mode-standard .player-card h3,
+.display-mode-all-games .player-card h3 {
   font-size: clamp(2rem, 3vw, 2.9rem);
 }
 
-.display-mode-standard .player-score {
+.display-mode-standard .player-score,
+.display-mode-all-games .player-score {
   font-size: clamp(4.5rem, 10vw, 8.4rem);
 }
 
-.display-mode-standard .player-games {
+.display-mode-standard .player-games,
+.display-mode-all-games .player-games {
   font-size: 1.08rem;
 }
 
-.display-mode-standard .server-badge {
+.display-mode-standard .server-badge,
+.display-mode-all-games .server-badge {
   min-width: 82px;
   min-height: 82px;
   font-size: 1.2rem;
 }
 
-.display-mode-standard .scoreboard-point-strip {
+.display-mode-standard .scoreboard-point-strip,
+.display-mode-all-games .scoreboard-point-strip {
   min-height: 100%;
 }
 
-.display-mode-standard .scoreboard-point-strip-wrap {
+.display-mode-standard .scoreboard-point-strip-wrap,
+.display-mode-all-games .scoreboard-point-strip-wrap {
   min-width: 0;
 }
 
@@ -3074,6 +3101,7 @@ textarea {
   .display-header-card__controls {
     width: 100%;
     justify-content: flex-start;
+    justify-items: start;
   }
 
   .display-header-card__actions {
@@ -3082,6 +3110,10 @@ textarea {
 
   .display-layout-control {
     margin-left: 0;
+  }
+
+  .display-header-card__status-note {
+    text-align: left;
   }
 
   .scoreboard-session-card__top {

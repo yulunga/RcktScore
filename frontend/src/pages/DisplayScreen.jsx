@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import AppFooter from "../components/AppFooter";
-import EventTimeline from "../components/EventTimeline";
 import Scoreboard from "../components/Scoreboard";
 import {
   createScoreboardDisplaySession,
@@ -54,7 +53,6 @@ export default function DisplayScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(false);
   const [displayMode, setDisplayMode] = useState("standard");
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
@@ -72,7 +70,6 @@ export default function DisplayScreen() {
     setCourt(null);
     setCurrentMatch(null);
     setClubMatches([]);
-    setShowTimeline(false);
     setLastUpdatedAt(null);
     storeDisplaySession(null);
   }, []);
@@ -191,11 +188,11 @@ export default function DisplayScreen() {
                 <span className="display-header-card__subheading">Live Scoreboard</span>
               </div>
             </div>
-            <p className="helper-text scoreboard-shell__status">
-              {displaySession?.display_session_token
-                ? statusMessage
-                : "Enter a court display code to open the live scoreboard."}
-            </p>
+            {!displaySession?.display_session_token ? (
+              <p className="helper-text scoreboard-shell__status">
+                Enter a court display code to open the live scoreboard.
+              </p>
+            ) : null}
           </div>
           <div className="display-header-card__controls">
             <div className="button-row display-header-card__actions">
@@ -224,6 +221,9 @@ export default function DisplayScreen() {
                 </select>
               </label>
             </div>
+            {displaySession?.display_session_token ? (
+              <p className="helper-text display-header-card__status-note">{statusMessage}</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -268,7 +268,7 @@ export default function DisplayScreen() {
       ) : null}
       {currentMatch ? (
         <>
-          <Scoreboard match={currentMatch} />
+          <Scoreboard match={currentMatch} showServeDetails={false} />
           {displayMode === "all-games" ? (
             <section className="panel scoreboard-club-panel">
               <div className="panel-heading">
@@ -308,19 +308,6 @@ export default function DisplayScreen() {
               )}
             </section>
           ) : null}
-          <div className="match-meta-toggle-wrap display-timeline-toggle-wrap">
-            <button
-              className="match-meta-toggle"
-              type="button"
-              onClick={() => setShowTimeline((value) => !value)}
-            >
-              {showTimeline ? "Hide Event Timeline" : "Show Event Timeline"}
-              <span className="match-meta-toggle__arrow" aria-hidden="true">
-                {showTimeline ? "^" : "v"}
-              </span>
-            </button>
-          </div>
-          {showTimeline ? <EventTimeline events={currentMatch?.state?.events || []} /> : null}
         </>
       ) : null}
       <AppFooter />
