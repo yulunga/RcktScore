@@ -15,11 +15,13 @@ struct LoginRequest: Encodable {
 }
 
 struct DashboardResponse: Decodable {
+    let organization: DashboardOrganizationSummary?
     let activeMatches: [MatchSummary]
     let scheduledMatches: [MatchSummary]
     let recentMatches: [MatchSummary]
 
     enum CodingKeys: String, CodingKey {
+        case organization
         case activeMatches = "active_matches"
         case scheduledMatches = "scheduled_matches"
         case recentMatches = "recent_matches"
@@ -27,9 +29,44 @@ struct DashboardResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        organization = try container.decodeIfPresent(DashboardOrganizationSummary.self, forKey: .organization)
         activeMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .activeMatches) ?? []
         scheduledMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .scheduledMatches) ?? []
         recentMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .recentMatches) ?? []
+    }
+}
+
+struct DashboardOrganizationSummary: Decodable {
+    let id: Int
+    let name: String?
+    let type: String?
+    let plan: String?
+    let historyLimit: Int?
+    let courtCount: Int?
+    let userCount: Int?
+    let roles: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+        case plan
+        case historyLimit = "history_limit"
+        case courtCount = "court_count"
+        case userCount = "user_count"
+        case roles
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+        plan = try container.decodeIfPresent(String.self, forKey: .plan)
+        historyLimit = try container.decodeIfPresent(Int.self, forKey: .historyLimit)
+        courtCount = try container.decodeIfPresent(Int.self, forKey: .courtCount)
+        userCount = try container.decodeIfPresent(Int.self, forKey: .userCount)
+        roles = try container.decodeIfPresent([String].self, forKey: .roles) ?? []
     }
 }
 
@@ -291,8 +328,29 @@ final class APIClient {
         let _: APIEnvelope<AcceptedResponseData> = try await send(request)
     }
 
-    func getDashboard(organizationID: Int) async throws -> DashboardResponse {
-        let request = try makeRequest(path: "/dashboard/\(organizationID)", method: "GET")
+    func getDashboard(
+        organizationID: Int,
+        activeLimit: Int? = nil,
+        recentLimit: Int? = nil
+    ) async throws -> DashboardResponse {
+        var queryItems: [URLQueryItem] = []
+        if let activeLimit {
+            queryItems.append(URLQueryItem(name: "active_limit", value: String(activeLimit)))
+        }
+        if let recentLimit {
+            queryItems.append(URLQueryItem(name: "recent_limit", value: String(recentLimit)))
+        }
+
+        let request: URLRequest
+        if queryItems.isEmpty {
+            request = try makeRequest(path: "/dashboard/\(organizationID)", method: "GET")
+        } else {
+            request = try makeRequest(
+                path: "/dashboard/\(organizationID)",
+                method: "GET",
+                queryItems: queryItems
+            )
+        }
         let envelope: APIEnvelope<DashboardResponseData> = try await send(request)
 
         guard let dashboard = envelope.data?.dashboard else {

@@ -7,29 +7,75 @@ struct DashboardView: View {
     @State private var activeMatches: [MatchSummary] = []
     @State private var scheduledMatches: [MatchSummary] = []
     @State private var recentMatches: [MatchSummary] = []
+    @State private var organizationSummary: DashboardOrganizationSummary?
+    @State private var organizationSettings: OrganizationSettings?
     @State private var isLoading = false
+    @State private var isLoadingSettings = false
     @State private var errorMessage: String?
+    @State private var settingsErrorMessage: String?
     @State private var startingScheduledMatchID: String?
     @State private var navigationTarget: MatchRoute?
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
     @State private var selectedTab: DashboardTab = .home
+    @State private var historySearch = ""
+    @State private var feedbackName = ""
+    @State private var feedbackEmail = ""
+    @State private var feedbackCategory = "feedback"
+    @State private var feedbackMessage = ""
+    @State private var isSubmittingFeedback = false
+    @State private var feedbackErrorMessage: String?
+    @State private var feedbackSuccessMessage: String?
+    @State private var resetEmail = ""
+    @State private var isRequestingPasswordReset = false
+    @State private var resetErrorMessage: String?
+    @State private var resetMessage: String?
 
     private var session: UserSession? { container.sessionStore.session }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
-    private var historyTitle: String { isPersonalAccount ? "Match History" : "Recent Matches" }
-    private var historySubtitle: String {
-        isPersonalAccount
-            ? "Completed matches available on your current plan."
-            : "Completed matches and recent activity."
-    }
     private var headerPlanLine: String {
-        isPersonalAccount
-            ? (session?.planDisplayName ?? "Personal Free")
-            : (session?.organizationName ?? "Unknown organisation")
+        session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
     }
     private var headerUserLine: String {
         session?.email ?? session?.username ?? ""
+    }
+    private var homeActiveMatches: [MatchSummary] { Array(activeMatches.prefix(3)) }
+    private var homeScheduledMatches: [MatchSummary] { Array(scheduledMatches.prefix(3)) }
+    private var homeRecentMatches: [MatchSummary] { Array(recentMatches.prefix(3)) }
+    private var filteredRecentMatches: [MatchSummary] {
+        let query = historySearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else {
+            return recentMatches
+        }
+
+        return recentMatches.filter { match in
+            let fields = [
+                match.player1Name,
+                match.player1Surname ?? "",
+                match.player2Name,
+                match.player2Surname ?? "",
+                historyWinnerLine(for: match),
+                historyScoreLine(for: match),
+                formattedMatchDate(for: match)
+            ]
+            .joined(separator: " ")
+            .lowercased()
+
+            return fields.contains(query)
+        }
+    }
+    private var settingsPlanLine: String {
+        organizationSummary?.plan.flatMap { planDisplayName(for: $0) } ?? headerPlanLine
+    }
+    private var settingsOrganizationName: String {
+        organizationSummary?.name
+            ?? session?.organizationName
+            ?? "Organisation"
+    }
+    private var helpFooterText: String {
+        isPersonalAccount
+            ? "We will send your message to the Hit n Score support inbox."
+            : "Your message will include your club context so support can help faster."
     }
 
     var body: some View {
@@ -37,7 +83,10 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     headerSection
-                    startNewMatchHero
+
+                    if selectedTab == .home {
+                        startNewMatchHero
+                    }
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -93,7 +142,16 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) { EmptyView() }
             }
-            .task { await loadDashboard() }
+            .task {
+                seedHelpDefaults()
+                await loadDashboard()
+            }
+            .task(id: selectedTab) {
+                seedHelpDefaults()
+                if selectedTab == .settings {
+                    await loadOrganizationSettingsIfNeeded()
+                }
+            }
             .refreshable { await loadDashboard() }
         }
     }
@@ -226,15 +284,9 @@ struct DashboardView: View {
         case .history:
             historyContent
         case .settings:
-            placeholderPanel(
-                title: "Settings",
-                message: "Settings will live here next."
-            )
+            settingsContent
         case .help:
-            placeholderPanel(
-                title: "Need Help",
-                message: "Help and support tools will live here."
-            )
+            helpContent
         }
     }
 
@@ -242,27 +294,32 @@ struct DashboardView: View {
         VStack(spacing: 18) {
             dashboardSection(
                 title: "Active Matches",
-                subtitle: isPersonalAccount
-                    ? "Your active personal matches."
-                    : "Matches currently in progress for this organisation."
+                subtitle: isPersonalAccount ? "Your current live matches." : "Live matches for your club."
             ) {
-                activeMatchesContent
+                activeMatchesContent(matches: homeActiveMatches)
             }
+
+            quickSwitchRow(
+                primaryTitle: "Matches",
+                primaryTab: .matches,
+                secondaryTitle: "History",
+                secondaryTab: .history
+            )
 
             if !isPersonalAccount {
                 dashboardSection(
                     title: "Scheduled Matches",
-                    subtitle: "Matches queued and ready to start."
+                    subtitle: "Upcoming matches ready to start."
                 ) {
-                    scheduledMatchesContent
+                    scheduledMatchesContent(matches: homeScheduledMatches)
                 }
             }
 
             dashboardSection(
-                title: historyTitle,
-                subtitle: historySubtitle
+                title: "Recent Matches",
+                subtitle: recentMatchesSubtitle
             ) {
-                recentMatchesContent
+                recentMatchesContent(matches: homeRecentMatches)
             }
         }
     }
@@ -270,41 +327,91 @@ struct DashboardView: View {
     private var matchesContent: some View {
         VStack(spacing: 18) {
             dashboardSection(
-                title: "Active Matches",
+                title: "Matches",
                 subtitle: isPersonalAccount
-                    ? "Your active personal matches."
-                    : "Matches currently in progress for this organisation."
+                    ? "Your live and upcoming matches in one place."
+                    : "All active courts first, then scheduled matches below."
             ) {
-                activeMatchesContent
-            }
+                VStack(spacing: 18) {
+                    matchesSubsection(title: "Active Matches", icon: "dot.radiowaves.left.and.right") {
+                        activeMatchesContent(matches: activeMatches)
+                    }
 
-            if !isPersonalAccount {
-                dashboardSection(
-                    title: "Scheduled Matches",
-                    subtitle: "Matches queued and ready to start."
-                ) {
-                    scheduledMatchesContent
+                    if !isPersonalAccount {
+                        matchesSubsection(title: "Scheduled Matches", icon: "calendar.badge.clock") {
+                            scheduledMatchesContent(matches: scheduledMatches)
+                        }
+                    }
                 }
             }
         }
     }
 
     private var historyContent: some View {
-        dashboardSection(
-            title: historyTitle,
-            subtitle: historySubtitle
-        ) {
-            recentMatchesContent
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Recent Matches",
+                subtitle: "Search completed matches by player name, surname, or date."
+            ) {
+                VStack(spacing: 14) {
+                    dashboardTextField(
+                        title: "Search history",
+                        placeholder: "Search player or date",
+                        text: $historySearch
+                    )
+
+                    recentMatchesContent(
+                        matches: filteredRecentMatches,
+                        emptyMessage: historySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "No recent matches"
+                            : "No completed matches match that search."
+                    )
+                }
+            }
         }
     }
 
-    private func placeholderPanel(title: String, message: String) -> some View {
-        dashboardSection(title: title, subtitle: "Coming soon") {
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
+    private var settingsContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Settings",
+                subtitle: "Club and plan details for this signed-in account."
+            ) {
+                if isLoadingSettings && organizationSettings == nil {
+                    HStack {
+                        ProgressView()
+                        Spacer()
+                    }
+                } else {
+                    VStack(spacing: 14) {
+                        if let settingsErrorMessage {
+                            dashboardInlineError(settingsErrorMessage)
+                        }
+
+                        settingsSummaryCard
+
+                        if let courts = organizationSettings?.courts, !courts.isEmpty {
+                            settingsCourtsCard(courts)
+                        } else {
+                            emptyState("No courts available yet.")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var helpContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Need Help?",
+                subtitle: "Send feedback or request a password reset without leaving the app."
+            ) {
+                VStack(spacing: 14) {
+                    feedbackForm
+                    resetForm
+                }
+            }
         }
     }
 
@@ -342,30 +449,21 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var activeMatchesContent: some View {
-        if isLoading && activeMatches.isEmpty {
+    private func activeMatchesContent(matches: [MatchSummary]) -> some View {
+        if isLoading && matches.isEmpty {
             HStack {
                 ProgressView()
                 Spacer()
             }
-        } else if activeMatches.isEmpty {
+        } else if matches.isEmpty {
             emptyState("No active matches")
         } else {
             VStack(spacing: 12) {
-                ForEach(activeMatches) { match in
+                ForEach(matches) { match in
                     Button {
                         navigationTarget = MatchRoute(id: match.id)
                     } label: {
-                        dashboardMatchCard(
-                            match,
-                            subtitle: "Resume live scoring",
-                            detailLine: nil,
-                            statusLabel: "Active",
-                            statusColor: .dashboardActiveStatus,
-                            actionTitle: "Open",
-                            actionTint: .dashboardBrand,
-                            showCourtName: !isPersonalAccount
-                        )
+                        activeMatchCard(match)
                     }
                     .buttonStyle(.plain)
                 }
@@ -374,27 +472,18 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var scheduledMatchesContent: some View {
-        if isLoading && scheduledMatches.isEmpty {
+    private func scheduledMatchesContent(matches: [MatchSummary]) -> some View {
+        if isLoading && matches.isEmpty {
             HStack {
                 ProgressView()
                 Spacer()
             }
-        } else if scheduledMatches.isEmpty {
+        } else if matches.isEmpty {
             emptyState("No scheduled matches")
         } else {
             VStack(spacing: 12) {
-                ForEach(scheduledMatches) { match in
-                    dashboardMatchCard(
-                        match,
-                        subtitle: match.bestOf != nil ? "Best of \(match.bestOf ?? 1)" : "Ready to start",
-                        detailLine: nil,
-                        statusLabel: "Scheduled",
-                        statusColor: .dashboardBrand.opacity(0.72),
-                        actionTitle: startingScheduledMatchID == match.id ? "Starting..." : "Start",
-                        actionTint: .dashboardBrand,
-                        actionDisabled: startingScheduledMatchID != nil
-                    ) {
+                ForEach(matches) { match in
+                    scheduledMatchCard(match) {
                         Task { await startScheduledMatch(match.id) }
                     }
                 }
@@ -403,30 +492,21 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var recentMatchesContent: some View {
-        if isLoading && recentMatches.isEmpty {
+    private func recentMatchesContent(matches: [MatchSummary], emptyMessage: String = "No recent matches") -> some View {
+        if isLoading && matches.isEmpty {
             HStack {
                 ProgressView()
                 Spacer()
             }
-        } else if recentMatches.isEmpty {
-            emptyState("No recent matches")
+        } else if matches.isEmpty {
+            emptyState(emptyMessage)
         } else {
             VStack(spacing: 12) {
-                ForEach(recentMatches) { match in
+                ForEach(matches) { match in
                     Button {
                         navigationTarget = MatchRoute(id: match.id)
                     } label: {
-                        dashboardMatchCard(
-                            match,
-                            subtitle: historyWinnerLine(for: match),
-                            detailLine: historyScoreLine(for: match),
-                            statusLabel: "Completed",
-                            statusColor: .dashboardCompletedStatus,
-                            actionTitle: "View",
-                            actionTint: .dashboardBrand,
-                            showCourtName: !isPersonalAccount
-                        )
+                        recentMatchCard(match)
                     }
                     .buttonStyle(.plain)
                 }
@@ -437,7 +517,7 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardSection<Content: View>(
         title: String,
-        subtitle: String,
+        subtitle: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -446,9 +526,11 @@ struct DashboardView: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.primary)
 
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             content()
@@ -469,84 +551,59 @@ struct DashboardView: View {
         )
     }
 
-    @ViewBuilder
-    private func dashboardMatchCard(
-        _ match: MatchSummary,
-        subtitle: String,
-        detailLine: String?,
-        statusLabel: String,
-        statusColor: Color,
-        actionTitle: String,
-        actionTint: Color,
-        actionDisabled: Bool = false,
-        showCourtName: Bool = true,
-        action: (() -> Void)? = nil
+    private func quickSwitchRow(
+        primaryTitle: String,
+        primaryTab: DashboardTab,
+        secondaryTitle: String,
+        secondaryTab: DashboardTab
     ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(matchDisplayName(for: match))
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    if showCourtName, let courtName = match.courtName, !courtName.isEmpty {
-                        Text(courtName)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Color.dashboardBrand)
-                    }
-
-                    Text(subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                    if let detailLine, !detailLine.isEmpty {
-                        Text(detailLine)
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer(minLength: 8)
-
-                VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(statusColor)
-                            .frame(width: 8, height: 8)
-                        Text(statusLabel)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if let action {
-                        Button(actionTitle) {
-                            action()
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(actionTint)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
-                        .buttonStyle(.plain)
-                        .disabled(actionDisabled)
-                        .opacity(actionDisabled ? 0.7 : 1)
-                    } else {
-                        Text(actionTitle)
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(actionTint)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                }
+        HStack(spacing: 12) {
+            dashboardMiniAction(title: primaryTitle, systemImage: primaryTab.icon) {
+                selectedTab = primaryTab
+            }
+            dashboardMiniAction(title: secondaryTitle, systemImage: secondaryTab.icon) {
+                selectedTab = secondaryTab
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dashboardInnerCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func dashboardMiniAction(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.footnote.weight(.semibold))
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.dashboardCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.dashboardBrand)
+    }
+
+    private func matchesSubsection<Content: View>(
+        title: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            content()
+        }
     }
 
     @ViewBuilder
@@ -556,6 +613,403 @@ struct DashboardView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 12)
+    }
+
+    private func activeMatchCard(_ match: MatchSummary) -> some View {
+        let player1 = splitPlayerName(match.player1Name, surname: match.player1Surname)
+        let player2 = splitPlayerName(match.player2Name, surname: match.player2Surname)
+        let liveScore = currentScoreLine(for: match)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                if let courtName = match.courtName, !courtName.isEmpty {
+                    Text(courtName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.dashboardActiveStatus)
+                        .frame(width: 9, height: 9)
+                    Text("In Progress")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.dashboardActiveStatus)
+                }
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                playerColumn(firstName: player1.firstName, surname: player1.surname, alignment: .leading)
+
+                Spacer(minLength: 6)
+
+                VStack(spacing: 4) {
+                    Text(liveScore)
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dashboardBrand)
+
+                    Text("Best of \(match.bestOf ?? match.state?.bestOf ?? 3)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 6)
+
+                playerColumn(firstName: player2.firstName, surname: player2.surname, alignment: .trailing)
+
+                Button {
+                    navigationTarget = MatchRoute(id: match.id)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                        .frame(width: 38, height: 38)
+                        .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func scheduledMatchCard(_ match: MatchSummary, action: @escaping () -> Void) -> some View {
+        let player1 = splitPlayerName(match.player1Name, surname: match.player1Surname)
+        let player2 = splitPlayerName(match.player2Name, surname: match.player2Surname)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                if let courtName = match.courtName, !courtName.isEmpty {
+                    Text(courtName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text("Ready to start")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                playerColumn(firstName: player1.firstName, surname: player1.surname, alignment: .leading)
+
+                Spacer(minLength: 4)
+
+                VStack(spacing: 4) {
+                    Text(match.courtName ?? "Court")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.dashboardInk.opacity(0.64))
+                    Text("Best of \(match.bestOf ?? 3)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 4)
+
+                playerColumn(firstName: player2.firstName, surname: player2.surname, alignment: .trailing)
+
+                Button(startingScheduledMatchID == match.id ? "Starting..." : "Start") {
+                    action()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(startingScheduledMatchID != nil)
+                .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
+            }
+
+            if let updatedAt = match.updatedAt {
+                Text("Scheduled \(formatDate(updatedAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func recentMatchCard(_ match: MatchSummary) -> some View {
+        let winner = historyWinnerLine(for: match)
+        let players = matchDisplayName(for: match)
+
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(players)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(formattedMatchDate(for: match))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(winner)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.dashboardInk)
+
+                Text(historyScoreLine(for: match))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.dashboardBrand)
+                .frame(width: 36, height: 36)
+                .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func playerColumn(firstName: String, surname: String, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 4) {
+            Text(firstName)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.primary)
+
+            if !surname.isEmpty {
+                Text(surname)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+    }
+
+    private var settingsSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(settingsOrganizationName)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.primary)
+
+            HStack(spacing: 12) {
+                settingsBadge(title: settingsPlanLine)
+                if let organizationType = organizationSummary?.type ?? session?.organizationType {
+                    settingsBadge(title: organizationType.capitalized)
+                }
+            }
+
+            HStack(spacing: 12) {
+                settingsMetric(title: "Courts", value: String(organizationSummary?.courtCount ?? organizationSettings?.courts.count ?? 0))
+                settingsMetric(title: "Users", value: String(organizationSummary?.userCount ?? 0))
+                settingsMetric(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func settingsCourtsCard(_ courts: [CourtSummary]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Courts")
+                .font(.headline.weight(.semibold))
+
+            ForEach(courts) { court in
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(court.courtName)
+                            .font(.subheadline.weight(.semibold))
+                        Text(court.courtAlias)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("#\(court.id)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var feedbackForm: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Ping Us")
+                .font(.headline.weight(.semibold))
+
+            dashboardTextField(title: "Name", placeholder: "Your name", text: $feedbackName)
+            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $feedbackEmail, keyboardType: .emailAddress)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Category")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker("Category", selection: $feedbackCategory) {
+                    Text("Feedback").tag("feedback")
+                    Text("Issue").tag("issue")
+                    Text("Idea").tag("idea")
+                }
+                .pickerStyle(.segmented)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Message")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextEditor(text: $feedbackMessage)
+                    .frame(minHeight: 120)
+                    .padding(10)
+                    .background(Color.dashboardInputBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.dashboardBorder, lineWidth: 1)
+                    )
+            }
+
+            if let feedbackErrorMessage {
+                dashboardInlineError(feedbackErrorMessage)
+            }
+
+            if let feedbackSuccessMessage {
+                dashboardInlineSuccess(feedbackSuccessMessage)
+            }
+
+            Button(isSubmittingFeedback ? "Sending..." : "Send Feedback") {
+                submitFeedback()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(isSubmittingFeedback)
+            .opacity(isSubmittingFeedback ? 0.75 : 1)
+
+            Text(helpFooterText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var resetForm: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Password Reset")
+                .font(.headline.weight(.semibold))
+
+            dashboardTextField(title: "Account email", placeholder: "you@example.com", text: $resetEmail, keyboardType: .emailAddress)
+
+            if let resetErrorMessage {
+                dashboardInlineError(resetErrorMessage)
+            }
+
+            if let resetMessage {
+                dashboardInlineSuccess(resetMessage)
+            }
+
+            Button(isRequestingPasswordReset ? "Sending..." : "Send Reset Link") {
+                requestPasswordReset()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand.opacity(0.9))
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(isRequestingPasswordReset)
+            .opacity(isRequestingPasswordReset ? 0.75 : 1)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func dashboardTextField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: text)
+                .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
+                .autocorrectionDisabled(keyboardType == .emailAddress)
+                .keyboardType(keyboardType)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.dashboardInputBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
+        }
+    }
+
+    private func dashboardInlineError(_ message: String) -> some View {
+        Text(message)
+            .font(.footnote)
+            .foregroundStyle(.red)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func dashboardInlineSuccess(_ message: String) -> some View {
+        Text(message)
+            .font(.footnote)
+            .foregroundStyle(Color.green)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func settingsBadge(title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.dashboardInputBackground)
+            .clipShape(Capsule())
+    }
+
+    private func settingsMetric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func loadDashboard() async {
@@ -571,8 +1025,13 @@ struct DashboardView: View {
 
         do {
             print("DASHBOARD LOAD: requesting organization ID \(organizationID)")
-            let dashboard = try await container.apiClient.getDashboard(organizationID: organizationID)
+            let dashboard = try await container.apiClient.getDashboard(
+                organizationID: organizationID,
+                activeLimit: 200,
+                recentLimit: 200
+            )
             await MainActor.run {
+                organizationSummary = dashboard.organization
                 activeMatches = dashboard.activeMatches
                 scheduledMatches = dashboard.scheduledMatches
                 recentMatches = dashboard.recentMatches
@@ -588,6 +1047,34 @@ struct DashboardView: View {
                 print("DASHBOARD LOAD ERROR:", error)
                 errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to fetch dashboard data."
                 isLoading = false
+            }
+        }
+    }
+
+    private func loadOrganizationSettingsIfNeeded(force: Bool = false) async {
+        guard let organizationID = container.sessionStore.session?.organizationID else {
+            return
+        }
+
+        if organizationSettings != nil && !force {
+            return
+        }
+
+        await MainActor.run {
+            isLoadingSettings = true
+            settingsErrorMessage = nil
+        }
+
+        do {
+            let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
+            await MainActor.run {
+                organizationSettings = settings
+                isLoadingSettings = false
+            }
+        } catch {
+            await MainActor.run {
+                settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load organisation settings."
+                isLoadingSettings = false
             }
         }
     }
@@ -624,6 +1111,104 @@ struct DashboardView: View {
             }
         case .scheduled(let notice):
             dashboardNotice = notice ?? "Match saved as scheduled."
+        }
+    }
+
+    private func submitFeedback() {
+        let name = feedbackName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = feedbackEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let message = feedbackMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !name.isEmpty else {
+            feedbackErrorMessage = "Your name is required."
+            feedbackSuccessMessage = nil
+            return
+        }
+
+        guard isValidEmail(email) else {
+            feedbackErrorMessage = "A valid email address is required."
+            feedbackSuccessMessage = nil
+            return
+        }
+
+        guard message.count >= 5 else {
+            feedbackErrorMessage = "Please provide more detail."
+            feedbackSuccessMessage = nil
+            return
+        }
+
+        isSubmittingFeedback = true
+        feedbackErrorMessage = nil
+        feedbackSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.submitFeedback(
+                    name: name,
+                    email: email,
+                    category: feedbackCategory,
+                    message: message,
+                    username: session?.username ?? "",
+                    organizationName: session?.organizationName ?? "",
+                    version: "RcktScore iOS",
+                    build: AppConfig.buildID,
+                    pageURL: "ios-app://dashboard/help"
+                )
+                await MainActor.run {
+                    feedbackSuccessMessage = "Thanks. Your message has been sent."
+                    feedbackErrorMessage = nil
+                    feedbackMessage = ""
+                    isSubmittingFeedback = false
+                }
+            } catch {
+                await MainActor.run {
+                    feedbackErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to send your message."
+                    feedbackSuccessMessage = nil
+                    isSubmittingFeedback = false
+                }
+            }
+        }
+    }
+
+    private func requestPasswordReset() {
+        let email = resetEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard isValidEmail(email) else {
+            resetErrorMessage = "Enter a valid email address."
+            resetMessage = nil
+            return
+        }
+
+        isRequestingPasswordReset = true
+        resetErrorMessage = nil
+        resetMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.requestPasswordReset(email: email)
+                await MainActor.run {
+                    resetMessage = "If that email is registered, a password reset link has been sent."
+                    resetErrorMessage = nil
+                    isRequestingPasswordReset = false
+                }
+            } catch {
+                await MainActor.run {
+                    resetErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to request password reset right now."
+                    resetMessage = nil
+                    isRequestingPasswordReset = false
+                }
+            }
+        }
+    }
+
+    private func seedHelpDefaults() {
+        if feedbackName.isEmpty {
+            feedbackName = session?.fullName ?? session?.username ?? ""
+        }
+        if feedbackEmail.isEmpty {
+            feedbackEmail = session?.email ?? ""
+        }
+        if resetEmail.isEmpty {
+            resetEmail = session?.email ?? ""
         }
     }
 
@@ -664,6 +1249,35 @@ struct DashboardView: View {
         return "\(player1Games)-\(player2Games) [\(scoreSeries)]"
     }
 
+    private var recentMatchesSubtitle: String {
+        if isPersonalAccount {
+            return "Completed matches available on your current plan."
+        }
+
+        let count = organizationSummary?.historyLimit ?? recentMatches.count
+        return "Showing the latest \(count) completed matches for your club plan."
+    }
+
+    private func currentScoreLine(for match: MatchSummary) -> String {
+        let player1Score = match.state?.player1Score ?? 0
+        let player2Score = match.state?.player2Score ?? 0
+        return "\(player1Score) - \(player2Score)"
+    }
+
+    private func splitPlayerName(_ firstName: String, surname: String?) -> (firstName: String, surname: String) {
+        ((firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Player" : firstName), surname ?? "")
+    }
+
+    private func formattedMatchDate(for match: MatchSummary) -> String {
+        if let completedAt = match.completedAt, !completedAt.isEmpty {
+            return formatDate(completedAt)
+        }
+        if let updatedAt = match.updatedAt, !updatedAt.isEmpty {
+            return formatDate(updatedAt)
+        }
+        return "Unknown date"
+    }
+
     private func formatDate(_ value: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: value) else {
@@ -671,6 +1285,26 @@ struct DashboardView: View {
         }
 
         return DateFormatter.dashboardSummary.string(from: date)
+    }
+
+    private func isValidEmail(_ value: String) -> Bool {
+        let emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+        return value.range(of: emailPattern, options: .regularExpression) != nil
+    }
+
+    private func planDisplayName(for plan: String) -> String {
+        switch plan.lowercased() {
+        case "personal_plus":
+            return "Personal+"
+        case "personal_free":
+            return "Personal Free"
+        case "club_pro":
+            return "Club Pro"
+        case "club_essentials":
+            return "Club Essentials"
+        default:
+            return plan.replacingOccurrences(of: "_", with: " ").capitalized
+        }
     }
 }
 
@@ -786,6 +1420,7 @@ private extension Color {
     )
     static let dashboardCardBackground = Color(UIColor.secondarySystemGroupedBackground)
     static let dashboardInnerCardBackground = Color(UIColor.tertiarySystemGroupedBackground)
+    static let dashboardInputBackground = Color(UIColor.systemBackground)
     static let dashboardMutedStatus = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

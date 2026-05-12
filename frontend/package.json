@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test -c ../testing/automated/web/playwright.config.js",
+    "test:e2e:smoke": "playwright test -c ../testing/automated/web/playwright.config.js --grep @smoke",
+    "test:e2e:headed": "playwright test -c ../testing/automated/web/playwright.config.js --headed"
   },
   "dependencies": {
     "react": "^18.3.1",
