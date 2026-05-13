@@ -177,11 +177,17 @@ img {
 }
 
 .hero .lead,
+.hero__subcopy,
 .section-heading p,
 .help-card p,
 .hero__highlight li {
   color: var(--muted);
   line-height: 1.6;
+}
+
+.hero__subcopy {
+  margin: 0;
+  max-width: 58ch;
 }
 
 .hero__actions {
@@ -214,6 +220,41 @@ img {
   gap: 18px;
 }
 
+.sports-strip {
+  display: grid;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.sports-strip__label {
+  margin: 0;
+  color: var(--muted-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sports-strip__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sports-strip__list span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(18, 116, 208, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--brand-blue-text);
+  font-weight: 700;
+  box-shadow: 0 10px 22px rgba(16, 42, 67, 0.05);
+}
+
 .section-heading {
   max-width: 760px;
 }
@@ -230,6 +271,10 @@ img {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.help-grid--support {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .help-card {
@@ -250,6 +295,82 @@ img {
   margin: 0;
 }
 
+.guide-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.guide-list details {
+  border: 1px solid rgba(18, 116, 208, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 14px 16px;
+}
+
+.guide-list summary {
+  cursor: pointer;
+  color: var(--brand-blue-deep);
+  font-weight: 700;
+  list-style: none;
+}
+
+.guide-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.guide-list details p {
+  margin: 12px 0 0;
+}
+
+.guide-list a {
+  color: var(--brand-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.guide-list a:hover {
+  text-decoration: underline;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.feedback-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--brand-blue-text);
+  font-weight: 700;
+}
+
+.feedback-form input,
+.feedback-form textarea {
+  width: 100%;
+  border: 1px solid rgba(18, 116, 208, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.9rem 1rem;
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.feedback-form input::placeholder,
+.feedback-form textarea::placeholder {
+  color: var(--muted-soft);
+}
+
+.secondary-btn--disabled,
+.secondary-btn--disabled:hover {
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.8;
+}
+
 .help-card--accent {
   border-color: rgba(236, 94, 168, 0.22);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(252, 244, 249, 0.96) 100%);
@@ -265,6 +386,7 @@ img {
     flex-direction: column;
   }
 
+  .help-grid--support,
   .help-grid {
     grid-template-columns: 1fr;
   }
