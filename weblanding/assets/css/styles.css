@@ -135,9 +135,9 @@ img {
 }
 
 .login-btn {
-  background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-deep) 100%);
+  background: linear-gradient(135deg, #f06bb2 0%, var(--brand-pink) 100%);
   color: #fff;
-  box-shadow: 0 14px 28px rgba(18, 116, 208, 0.22);
+  box-shadow: 0 14px 28px rgba(236, 94, 168, 0.24);
 }
 
 .secondary-btn {
@@ -468,6 +468,34 @@ img {
 
 .help-card p {
   margin: 0;
+}
+
+.beta-copy-block {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.beta-copy-block h3 {
+  margin: 0;
+  color: var(--brand-blue-text);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.beta-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.beta-list li + li {
+  margin-top: 6px;
+}
+
+.beta-access-cta {
+  margin-top: 22px;
 }
 
 .landing-help-link {
