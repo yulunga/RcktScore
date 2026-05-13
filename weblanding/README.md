@@ -14,6 +14,10 @@ This folder is intentionally separate from the React app in `frontend/`.
 
 This split means changes in `frontend/` do not alter the landing page unless you explicitly redeploy `weblanding/`.
 
+## Deployment runbook
+
+- AWS + GoDaddy implementation: [docs/weblanding-aws-godaddy-deployment.md](/Users/glennrowe/Development/Projects/RcktScore/docs/weblanding-aws-godaddy-deployment.md)
+
 ## Current landing content
 
 - Hero section

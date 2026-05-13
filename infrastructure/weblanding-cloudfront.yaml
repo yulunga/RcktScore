@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Static marketing site for weblanding served from S3 behind CloudFront.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: hitnscore-weblanding
+    Description: Prefix used for naming AWS resources.
+  SiteDomainName:
+    Type: String
+    Default: www.hitnscore.com
+    Description: Custom domain served by CloudFront.
+  AcmCertificateArn:
+    Type: String
+    Description: ACM certificate ARN in us-east-1 for the site domain.
+  PriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Description: CloudFront price class for the distribution.
+
+Resources:
+  LandingSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  LandingSiteCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${ProjectName}-cache-policy'
+        Comment: Cache policy for the Hit N Score marketing site.
+        DefaultTTL: 300
+        MaxTTL: 86400
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  LandingSiteResponseHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${ProjectName}-security-headers'
+        Comment: Security headers for the Hit N Score marketing site.
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Protection: true
+            Override: true
+
+  LandingSiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${ProjectName}-oac'
+        Description: Origin access control for the Hit N Score marketing site bucket.
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  LandingSiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref SiteDomainName
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachePolicyId: !Ref LandingSiteCachePolicy
+          Compress: true
+          ResponseHeadersPolicyId: !Ref LandingSiteResponseHeadersPolicy
+          TargetOriginId: s3-origin
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        Origins:
+          - DomainName: !GetAtt LandingSiteBucket.RegionalDomainName
+            Id: s3-origin
+            OriginAccessControlId: !Ref LandingSiteOriginAccessControl
+            S3OriginConfig: {}
+        PriceClass: !Ref PriceClass
+        ViewerCertificate:
+          AcmCertificateArn: !Ref AcmCertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+
+  LandingSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LandingSiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadOnlyAccess
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${LandingSiteBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${LandingSiteDistribution}'
+
+Outputs:
+  BucketName:
+    Description: S3 bucket that stores the landing site files.
+    Value: !Ref LandingSiteBucket
+  BucketRegionalDomainName:
+    Description: Regional S3 domain name used as the CloudFront origin.
+    Value: !GetAtt LandingSiteBucket.RegionalDomainName
+  CloudFrontDistributionId:
+    Description: CloudFront distribution id for cache invalidations.
+    Value: !Ref LandingSiteDistribution
+  CloudFrontDomainName:
+    Description: CloudFront hostname to use as the GoDaddy CNAME target for www.
+    Value: !GetAtt LandingSiteDistribution.DomainName
+  SiteUrl:
+    Description: Custom domain URL for the landing site.
+    Value: !Sub 'https://${SiteDomainName}'
