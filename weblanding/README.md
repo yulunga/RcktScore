@@ -9,10 +9,10 @@ This folder is intentionally separate from the React app in `frontend/`.
 
 ## Suggested hosting split
 
-- `hitnscore.com` and `www.hitnscore.com` -> deploy `marketing-site/` as static files.
+- `hitnscore.com` and `www.hitnscore.com` -> deploy `weblanding/` as static files.
 - `app.hitnscore.com` -> deploy the existing `frontend/` application.
 
-This split means changes in `frontend/` do not alter the landing page unless you explicitly redeploy `marketing-site/`.
+This split means changes in `frontend/` do not alter the landing page unless you explicitly redeploy `weblanding/`.
 
 ## Current landing content
 
