@@ -4397,8 +4397,8 @@ textarea {
 }
 
 .match-sport-overlay__option {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: center;
   padding: 18px;
   border: 1px solid #d9e2ec;
   border-radius: 20px;
@@ -4416,20 +4416,6 @@ textarea {
 
 .match-sport-overlay__option strong {
   font-size: 1rem;
-}
-
-.match-sport-overlay__option span {
-  color: #1274d0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.match-sport-overlay__option p {
-  margin: 0;
-  color: #486581;
-  font-size: 0.92rem;
 }
 
 .match-sport-overlay__option--selected {

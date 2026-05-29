@@ -754,8 +754,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   onClick={() => handleSelectSport(sport.value)}
                 >
                   <strong>{sport.label}</strong>
-                  <span>Available now</span>
-                  <p>{sport.note}</p>
                 </button>
               ))}
             </div>

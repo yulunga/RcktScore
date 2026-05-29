@@ -40,8 +40,6 @@ export default function MatchSportSelectionPage() {
               onClick={() => handleSelectSport(sport.value)}
             >
               <strong>{sport.label}</strong>
-              <span>Available now</span>
-              <p>{sport.note}</p>
             </button>
           ))}
         </div>
