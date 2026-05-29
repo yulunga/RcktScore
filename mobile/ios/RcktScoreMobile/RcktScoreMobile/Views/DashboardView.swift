@@ -131,7 +131,7 @@ struct DashboardView: View {
                 switch sheet {
                 case .newMatch:
                     NavigationStack {
-                        StartNewMatchView(activeMatches: activeMatches) { result in
+                        StartNewMatchFlowView(activeMatches: activeMatches) { result in
                             handleStartNewMatchResult(result)
                         }
                         .environmentObject(container)

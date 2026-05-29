@@ -7,6 +7,7 @@ import DisplayScreen from "./pages/DisplayScreen";
 import DashboardPage from "./pages/DashboardPage";
 import HelpPage from "./pages/HelpPage";
 import LoginPage from "./pages/LoginPage";
+import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
@@ -98,6 +99,14 @@ export default function App() {
       />
       <Route
         path="/match/new"
+        element={(
+          <ProtectedRoute>
+            <MatchSportSelectionPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/match/new/setup"
         element={(
           <ProtectedRoute>
             <NewMatch />

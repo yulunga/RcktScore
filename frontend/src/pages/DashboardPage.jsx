@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
+import { MATCH_SPORT_OPTIONS } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
@@ -127,6 +128,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [scheduledPage, setScheduledPage] = useState(0);
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [showSportOverlay, setShowSportOverlay] = useState(false);
   const scheduledDetailsTimeoutsRef = useRef({});
 
   useEffect(() => {
@@ -183,6 +185,21 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     });
   }, [location.hash]);
 
+  useEffect(() => {
+    if (!showSportOverlay) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setShowSportOverlay(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showSportOverlay]);
+
   async function handleEndMatch(matchId) {
     setActionError("");
     try {
@@ -202,6 +219,19 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     } catch (requestError) {
       setActionError(requestError.message || "Failed to start scheduled match.");
     }
+  }
+
+  function handleOpenSportOverlay() {
+    setShowSportOverlay(true);
+  }
+
+  function handleCloseSportOverlay() {
+    setShowSportOverlay(false);
+  }
+
+  function handleSelectSport(sport) {
+    setShowSportOverlay(false);
+    navigate(`/match/new/setup?sport=${encodeURIComponent(sport)}`);
   }
 
   function toggleScheduledDetails(matchId) {
@@ -252,7 +282,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     ? [
       {
         label: "Start New Match",
-        onClick: () => navigate("/match/new"),
+        onClick: handleOpenSportOverlay,
       },
     ]
     : [];
@@ -529,7 +559,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         <button
           className="dashboard-start-hero"
           type="button"
-          onClick={() => navigate("/match/new")}
+          onClick={handleOpenSportOverlay}
         >
           <span className="dashboard-start-hero__tile" aria-hidden="true">
             +
@@ -700,6 +730,44 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         ) : null}
 
       </section>
+
+      {showSportOverlay ? (
+        <div className="overlay-backdrop" role="presentation" onClick={handleCloseSportOverlay}>
+          <section
+            className="overlay-panel match-sport-overlay stack"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="match-sport-overlay-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-heading">
+              <h2 id="match-sport-overlay-title">Choose Racket Sport</h2>
+              <p>Pick the sport first, then continue into the shared match setup flow.</p>
+            </div>
+
+            <div className="match-sport-overlay__grid">
+              {MATCH_SPORT_OPTIONS.map((sport) => (
+                <button
+                  key={sport.value}
+                  className="match-sport-overlay__option"
+                  type="button"
+                  onClick={() => handleSelectSport(sport.value)}
+                >
+                  <strong>{sport.label}</strong>
+                  <span>Available now</span>
+                  <p>{sport.note}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="button-row">
+              <button type="button" onClick={handleCloseSportOverlay}>
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <AppFooter />
     </main>

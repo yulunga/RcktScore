@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { COUNTRIES } from "../constants/countries";
+import { getMatchSportOption, normalizeMatchSport } from "../constants/matchSports";
 import {
   DEFAULT_PLAYER_SHIRT_COLORS,
   PLAYER_SHIRT_COLORS,
@@ -96,8 +97,11 @@ export default function NewMatch() {
     () => session?.plan || (inferOrganizationType(session) === "personal" ? "personal_free" : "club_essentials"),
   );
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { startMatch, loading, error } = useMatch();
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
+  const selectedSport = normalizeMatchSport(searchParams.get("sport"));
+  const selectedSportOption = getMatchSportOption(selectedSport);
   const isPersonalAccount = organizationType === "personal";
   const canChooseShirtColors = !isPersonalAccount || organizationPlan === "personal_plus";
   const personalActiveMatch = isPersonalAccount ? activeMatches[0] : null;
@@ -115,6 +119,10 @@ export default function NewMatch() {
     {
       label: "Back to Dashboard",
       onClick: () => navigate("/dashboard"),
+    },
+    {
+      label: selectedSportOption ? `Sport: ${selectedSportOption.label}` : "Choose Sport",
+      onClick: () => navigate("/match/new"),
     },
   ];
 
@@ -298,6 +306,12 @@ export default function NewMatch() {
     setOrganizationType(nextOrganizationType);
     setOrganizationPlan(session?.plan || (nextOrganizationType === "personal" ? "personal_free" : "club_essentials"));
   }, [session]);
+
+  useEffect(() => {
+    if (!selectedSport) {
+      navigate("/match/new", { replace: true });
+    }
+  }, [navigate, selectedSport]);
 
   useEffect(() => {
     async function loadCourts() {
@@ -554,6 +568,11 @@ export default function NewMatch() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!selectedSport) {
+      navigate("/match/new", { replace: true });
+      return;
+    }
+
     if (personalActiveMatch) {
       setSetupNotice("You already have an active match running. End it before starting a new personal match.");
       return;
@@ -583,7 +602,7 @@ export default function NewMatch() {
       player2_band: isPersonalAccount ? "" : formState.player2_band,
       player1_offset: isPersonalAccount ? 0 : formState.player1_offset,
       player2_offset: isPersonalAccount ? 0 : formState.player2_offset,
-      sport: "squash",
+      sport: selectedSport,
       status: shouldScheduleMatch ? "scheduled" : "active",
       tenant_id: organizationId,
     });
@@ -610,11 +629,12 @@ export default function NewMatch() {
             ? "Create a personal match and open the live scoring screen."
             : "Start the next court session and publish it to the scoring console, spectator display, and device clients from one shared match record."
         }
-        title="Create a New Match"
+        title={selectedSportOption ? `Create a New ${selectedSportOption.label} Match` : "Create a New Match"}
       />
 
       <form className="panel stack" onSubmit={handleSubmit}>
         <div className="section-heading stack compact">
+          {selectedSportOption ? <span className="match-sport-badge">{selectedSportOption.label}</span> : null}
           <h2>Match Setup</h2>
           <p>
             {isPersonalAccount

@@ -1,5 +1,34 @@
 import SwiftUI
 
+enum MatchSport: String, CaseIterable, Hashable, Identifiable {
+    case squash
+    case racketball
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .squash:
+            return "Squash"
+        case .racketball:
+            return "Racketball"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .squash:
+            return "Use the standard squash match setup flow."
+        case .racketball:
+            return "Use the shared squash and racketball setup flow."
+        }
+    }
+
+    var navigationTitle: String {
+        "Start \(displayName) Match"
+    }
+}
+
 private enum MatchSetupFocusField: Hashable {
     case player1Name
     case player1Surname
@@ -69,11 +98,114 @@ private struct MatchSetupFormState {
     }
 }
 
+struct StartNewMatchFlowView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let activeMatches: [MatchSummary]
+    let onComplete: (StartNewMatchResult) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Choose Racket Sport")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+
+                    Text("Pick the sport first, then continue into the right match setup flow.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(Color.dashboardHeroBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
+
+                VStack(spacing: 14) {
+                    ForEach(MatchSport.allCases) { sport in
+                        NavigationLink(value: sport) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color.dashboardBrand.opacity(0.1))
+                                        .frame(width: 52, height: 52)
+
+                                    Text(String(sport.displayName.prefix(1)))
+                                        .font(.title3.weight(.bold))
+                                        .foregroundStyle(Color.dashboardBrand)
+                                }
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(sport.displayName)
+                                        .font(.headline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text(sport.summary)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer(minLength: 0)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(Color.dashboardBrand)
+                            }
+                            .padding(18)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.dashboardCardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.dashboardBorder, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.dashboardBackgroundStart,
+                    Color.dashboardBackgroundEnd
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Choose Sport")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(for: MatchSport.self) { sport in
+            StartNewMatchView(
+                selectedSport: sport,
+                activeMatches: activeMatches,
+                onComplete: onComplete
+            )
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
+        }
+    }
+}
+
 struct StartNewMatchView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: MatchSetupFocusField?
 
+    let selectedSport: MatchSport
     let activeMatches: [MatchSummary]
     let onComplete: (StartNewMatchResult) -> Void
 
@@ -219,7 +351,7 @@ struct StartNewMatchView: View {
             )
             .ignoresSafeArea()
         )
-        .navigationTitle("Start New Match")
+        .navigationTitle(selectedSport.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadSetup() }
         .onChange(of: formState.player1Name) { queueLookupIfNeeded() }
@@ -232,7 +364,7 @@ struct StartNewMatchView: View {
         .onChange(of: formState.scheduleMatch) { refreshSetupNotice() }
         .onDisappear { lookupTask?.cancel() }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Close") {
                     dismiss()
                 }
@@ -242,6 +374,10 @@ struct StartNewMatchView: View {
 
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Text(selectedSport.displayName)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.dashboardBrand)
+
             Text("Match Setup")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.primary)
@@ -953,7 +1089,7 @@ struct StartNewMatchView: View {
             player2Band: isPersonalAccount ? "" : formState.player2Band,
             player1Offset: isPersonalAccount ? 0 : formState.player1Offset,
             player2Offset: isPersonalAccount ? 0 : formState.player2Offset,
-            sport: "squash",
+            sport: selectedSport.rawValue,
             status: shouldScheduleMatch ? "scheduled" : "active"
         )
 
