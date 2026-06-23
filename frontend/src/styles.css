@@ -1796,11 +1796,11 @@ textarea {
 }
 
 .dashboard-history-card__player-name--winner {
-  color: #1f9d55;
+  color: #ec5ea8;
 }
 
 .dashboard-history-card__player-name--loser {
-  color: #c23030;
+  color: #102a43;
 }
 
 .dashboard-history-card__versus {
