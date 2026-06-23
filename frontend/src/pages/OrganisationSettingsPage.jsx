@@ -863,9 +863,6 @@ export default function OrganisationSettingsPage() {
                     <div className="dashboard-item-head">
                       <strong>{formatUserDisplayName(user) || user.username}</strong>
                       <div className="dashboard-status-group">
-                        <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
-                          {user.status || "approved"}
-                        </span>
                         <button
                           className="status-pill status-pill-button status-pill-button--accent"
                           disabled={!isAdmin}
@@ -875,10 +872,13 @@ export default function OrganisationSettingsPage() {
                           Manage User
                         </button>
                         <span className="status-pill">{user.role}</span>
+                        <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
+                          {user.status || "approved"}
+                        </span>
                       </div>
                     </div>
                     <div className="dashboard-item-meta">
-                      {formatUserDisplayName(user) ? <span>{user.username}</span> : null}
+                      <span>{user.username}</span>
                       {user.status === "pending" ? <span>Awaiting email approval</span> : null}
                     </div>
                   </article>
