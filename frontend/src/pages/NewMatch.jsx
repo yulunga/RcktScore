@@ -23,8 +23,8 @@ const bestOfOptions = [
   { value: 5, label: "Best of 5" },
 ];
 const handicapModeOptions = [
-  { value: "matrix", label: "Matrix Band" },
   { value: "custom", label: "Custom Scoring" },
+  { value: "matrix", label: "Matrix Band" },
 ];
 const handicapBands = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"];
 const handicapMatrix = {
@@ -64,7 +64,7 @@ const initialFormState = {
   best_of: 5,
   schedule_match: false,
   handicap_enabled: false,
-  handicap_mode: "matrix",
+  handicap_mode: "custom",
   player1_band: "",
   player2_band: "",
   player1_offset: 0,
@@ -285,7 +285,7 @@ export default function NewMatch() {
       ...current,
       handicap_enabled: checked,
       score_type: checked ? 15 : current.score_type,
-      handicap_mode: checked ? current.handicap_mode : "matrix",
+      handicap_mode: checked ? current.handicap_mode : "custom",
       player1_band: checked ? current.player1_band : "",
       player2_band: checked ? current.player2_band : "",
       player1_offset: checked ? current.player1_offset : 0,
@@ -311,7 +311,7 @@ export default function NewMatch() {
         ...current,
         schedule_match: false,
         handicap_enabled: false,
-        handicap_mode: "matrix",
+        handicap_mode: "custom",
         player1_band: "",
         player2_band: "",
         player1_offset: 0,
@@ -1031,41 +1031,6 @@ export default function NewMatch() {
             ) : null}
           </div>
 
-          {!isPersonalAccount ? (
-            <>
-              <div className="match-setup-row match-setup-row--referee">
-                <div className="field">
-                  <label htmlFor="referee_name">Referee</label>
-                  <input
-                    id="referee_name"
-                    name="referee_name"
-                    placeholder="Match official"
-                    value={formState.referee_name}
-                    onFocus={() => setActiveLookupField("referee")}
-                    onChange={(event) => handleChange("referee_name", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              {activeLookupField === "referee" && refereeSuggestions.length ? (
-                <div className="match-setup-row match-setup-row--lookup">
-                  <div className="lookup-list" role="listbox" aria-label="Referee suggestions">
-                    {refereeSuggestions.map((suggestion) => (
-                      <button
-                        key={`referee-${suggestion}`}
-                        className="lookup-item"
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => applyRefereeSuggestion(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : null}
         </div>
 
         {!isPersonalAccount && formState.handicap_enabled ? (
@@ -1199,6 +1164,42 @@ export default function NewMatch() {
         ) : null}
 
         {error ? <div className="notice error">{error}</div> : null}
+
+        {!isPersonalAccount ? (
+          <>
+            <div className="match-setup-row match-setup-row--referee">
+              <div className="field">
+                <label htmlFor="referee_name">Referee</label>
+                <input
+                  id="referee_name"
+                  name="referee_name"
+                  placeholder="Match official"
+                  value={formState.referee_name}
+                  onFocus={() => setActiveLookupField("referee")}
+                  onChange={(event) => handleChange("referee_name", event.target.value)}
+                />
+              </div>
+            </div>
+
+            {activeLookupField === "referee" && refereeSuggestions.length ? (
+              <div className="match-setup-row match-setup-row--lookup">
+                <div className="lookup-list" role="listbox" aria-label="Referee suggestions">
+                  {refereeSuggestions.map((suggestion) => (
+                    <button
+                      key={`referee-${suggestion}`}
+                      className="lookup-item"
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => applyRefereeSuggestion(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         {!isPersonalAccount ? (
           <div className="field checkbox-field">
