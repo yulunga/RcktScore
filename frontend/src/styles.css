@@ -509,6 +509,14 @@ textarea {
   align-items: end;
 }
 
+.match-setup-row--player-accessory {
+  grid-template-columns: 220px 220px auto;
+}
+
+.match-setup-row--player-accessory .field:first-child {
+  grid-column: 1 / 3;
+}
+
 .match-setup-row--labels {
   grid-template-columns: 220px 220px auto;
   align-items: end;

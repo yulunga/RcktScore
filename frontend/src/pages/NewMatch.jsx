@@ -22,6 +22,10 @@ const bestOfOptions = [
   { value: 3, label: "Best of 3" },
   { value: 5, label: "Best of 5" },
 ];
+const handicapModeOptions = [
+  { value: "matrix", label: "Matrix Band" },
+  { value: "custom", label: "Custom Scoring" },
+];
 const handicapBands = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"];
 const handicapMatrix = {
   A: { A: 0, B: -1, C: -2, D: -3, E: -4, F: -5, G: -6, H: -6, I: -7, J: -8, K: -8, L: -9, M: -10 },
@@ -60,6 +64,7 @@ const initialFormState = {
   best_of: 5,
   schedule_match: false,
   handicap_enabled: false,
+  handicap_mode: "matrix",
   player1_band: "",
   player2_band: "",
   player1_offset: 0,
@@ -105,16 +110,24 @@ export default function NewMatch() {
   const isPersonalAccount = organizationType === "personal";
   const canChooseShirtColors = !isPersonalAccount || organizationPlan === "personal_plus";
   const personalActiveMatch = isPersonalAccount ? activeMatches[0] : null;
+  const usesMatrixHandicap = formState.handicap_enabled && formState.handicap_mode === "matrix";
+  const usesCustomHandicap = formState.handicap_enabled && formState.handicap_mode === "custom";
+  const hasValidHandicapSetup = !formState.handicap_enabled
+    || (usesMatrixHandicap
+      ? Boolean(formState.player1_band && formState.player2_band)
+      : formState.player1_offset !== "" && formState.player2_offset !== "");
   const requiredFieldsComplete =
     organizationId &&
     (isPersonalAccount || (formState.court_id.trim() && formState.court_name.trim())) &&
     formState.player1_name.trim() &&
     formState.player2_name.trim() &&
-    (!formState.handicap_enabled || (formState.player1_band && formState.player2_band));
+    hasValidHandicapSetup;
   const handicapSummary =
-    formState.player1_band && formState.player2_band
+    usesMatrixHandicap && formState.player1_band && formState.player2_band
       ? `${formState.player1_band} vs ${formState.player2_band}: Player 1 starts ${formState.player1_offset}, Player 2 starts ${formState.player2_offset}.`
-      : "Select both bands to see the starting offset for each player.";
+      : usesCustomHandicap
+        ? `Custom start: Player 1 starts ${formState.player1_offset || 0}, Player 2 starts ${formState.player2_offset || 0}.`
+        : "Select both bands to see the starting offset for each player.";
   const headerActions = [
     {
       label: "Back to Dashboard",
@@ -272,11 +285,16 @@ export default function NewMatch() {
       ...current,
       handicap_enabled: checked,
       score_type: checked ? 15 : current.score_type,
+      handicap_mode: checked ? current.handicap_mode : "matrix",
       player1_band: checked ? current.player1_band : "",
       player2_band: checked ? current.player2_band : "",
       player1_offset: checked ? current.player1_offset : 0,
       player2_offset: checked ? current.player2_offset : 0,
     }));
+
+    if (!checked) {
+      setShowHandicapMatrix(false);
+    }
   }
 
   useEffect(() => {
@@ -293,6 +311,7 @@ export default function NewMatch() {
         ...current,
         schedule_match: false,
         handicap_enabled: false,
+        handicap_mode: "matrix",
         player1_band: "",
         player2_band: "",
         player1_offset: 0,
@@ -532,6 +551,45 @@ export default function NewMatch() {
     });
   }
 
+  function handleHandicapModeChange(value) {
+    setFormState((current) => {
+      if (value === "custom") {
+        return {
+          ...current,
+          handicap_mode: value,
+          player1_band: "",
+          player2_band: "",
+        };
+      }
+
+      const nextState = {
+        ...current,
+        handicap_mode: value,
+      };
+
+      if (nextState.player1_band && nextState.player2_band) {
+        nextState.player1_offset = handicapMatrix[nextState.player1_band][nextState.player2_band];
+        nextState.player2_offset = handicapMatrix[nextState.player2_band][nextState.player1_band];
+      } else {
+        nextState.player1_offset = 0;
+        nextState.player2_offset = 0;
+      }
+
+      return nextState;
+    });
+
+    if (value !== "matrix") {
+      setShowHandicapMatrix(false);
+    }
+  }
+
+  function handleHandicapOffsetChange(name, value) {
+    setFormState((current) => ({
+      ...current,
+      [name]: value === "" ? "" : Number(value),
+    }));
+  }
+
   function renderShirtColorField(playerKey, label) {
     const fieldName = `${playerKey}_shirt_color`;
     return (
@@ -657,7 +715,7 @@ export default function NewMatch() {
               <input
                 id="player1_name"
                 name="player1_name"
-                placeholder="Nour"
+                placeholder="P1_Name"
                 required
                 value={formState.player1_name}
                 onFocus={() => setActiveLookupField("player1")}
@@ -670,7 +728,7 @@ export default function NewMatch() {
               <input
                 id="player1_surname"
                 name="player1_surname"
-                placeholder="El Sherbini"
+                placeholder="P1_Surname"
                 value={formState.player1_surname}
                 onFocus={() => setActiveLookupField("player1")}
                 onChange={(event) => handleChange("player1_surname", event.target.value)}
@@ -690,6 +748,12 @@ export default function NewMatch() {
               </label>
             </div>
           </div>
+
+          {canChooseShirtColors ? (
+            <div className="match-setup-row match-setup-row--player-accessory">
+              {renderShirtColorField("player1", "Player 1 Shirt")}
+            </div>
+          ) : null}
 
           <div className="match-setup-row match-setup-row--country">
             <div className="field">
@@ -771,7 +835,7 @@ export default function NewMatch() {
               <input
                 id="player2_name"
                 name="player2_name"
-                placeholder="Ali"
+                placeholder="P2_Name"
                 required
                 value={formState.player2_name}
                 onFocus={() => setActiveLookupField("player2")}
@@ -784,7 +848,7 @@ export default function NewMatch() {
               <input
                 id="player2_surname"
                 name="player2_surname"
-                placeholder="Farag"
+                placeholder="P2_Surname"
                 value={formState.player2_surname}
                 onFocus={() => setActiveLookupField("player2")}
                 onChange={(event) => handleChange("player2_surname", event.target.value)}
@@ -804,6 +868,12 @@ export default function NewMatch() {
               </label>
             </div>
           </div>
+
+          {canChooseShirtColors ? (
+            <div className="match-setup-row match-setup-row--player-accessory">
+              {renderShirtColorField("player2", "Player 2 Shirt")}
+            </div>
+          ) : null}
 
           <div className="match-setup-row match-setup-row--country">
             <div className="field">
@@ -872,13 +942,6 @@ export default function NewMatch() {
                   </button>
                 ))}
               </div>
-            </div>
-          ) : null}
-
-          {canChooseShirtColors ? (
-            <div className="match-setup-row match-setup-row--shirt-colors">
-              {renderShirtColorField("player1", "Player 1 Shirt")}
-              {renderShirtColorField("player2", "Player 2 Shirt")}
             </div>
           ) : null}
 
@@ -1010,63 +1073,128 @@ export default function NewMatch() {
             <div className="panel-heading">
               <h2>Handicap Setup</h2>
               <p className="helper-text">
-                Select each player&apos;s band to calculate the starting offsets from the predefined matrix.
+                Choose whether to use the standard matrix bands or set custom starting scores manually.
               </p>
             </div>
 
             <div className="field-grid">
               <div className="field">
-                <label htmlFor="player1_band">
-                  Player 1 Band
+                <label htmlFor="handicap_mode">
+                  Handicap Option
                   <span className="required-mark"> *</span>
                 </label>
                 <select
-                  id="player1_band"
-                  name="player1_band"
-                  required
-                  value={formState.player1_band}
-                  onChange={(event) => handleHandicapBandChange("player1_band", event.target.value)}
+                  id="handicap_mode"
+                  name="handicap_mode"
+                  value={formState.handicap_mode}
+                  onChange={(event) => handleHandicapModeChange(event.target.value)}
                 >
-                  <option value="">Select band</option>
-                  {handicapBands.map((band) => (
-                    <option key={band} value={band}>
-                      {band}
+                  {handicapModeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="field">
-                <label htmlFor="player2_band">
-                  Player 2 Band
-                  <span className="required-mark"> *</span>
-                </label>
-                <select
-                  id="player2_band"
-                  name="player2_band"
-                  required
-                  value={formState.player2_band}
-                  onChange={(event) => handleHandicapBandChange("player2_band", event.target.value)}
-                >
-                  <option value="">Select band</option>
-                  {handicapBands.map((band) => (
-                    <option key={band} value={band}>
-                      {band}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {usesMatrixHandicap ? (
+                <>
+                  <div className="field">
+                    <label htmlFor="player1_band">
+                      Player 1 Band
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <select
+                      id="player1_band"
+                      name="player1_band"
+                      required
+                      value={formState.player1_band}
+                      onChange={(event) => handleHandicapBandChange("player1_band", event.target.value)}
+                    >
+                      <option value="">Select band</option>
+                      {handicapBands.map((band) => (
+                        <option key={band} value={band}>
+                          {band}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="field">
-                <label htmlFor="player1_offset">Player 1 Starting Offset</label>
-                <input id="player1_offset" name="player1_offset" readOnly value={formState.player1_offset} />
-              </div>
+                  <div className="field">
+                    <label htmlFor="player2_band">
+                      Player 2 Band
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <select
+                      id="player2_band"
+                      name="player2_band"
+                      required
+                      value={formState.player2_band}
+                      onChange={(event) => handleHandicapBandChange("player2_band", event.target.value)}
+                    >
+                      <option value="">Select band</option>
+                      {handicapBands.map((band) => (
+                        <option key={band} value={band}>
+                          {band}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="field">
-                <label htmlFor="player2_offset">Player 2 Starting Offset</label>
-                <input id="player2_offset" name="player2_offset" readOnly value={formState.player2_offset} />
-              </div>
+                  <div className="field">
+                    <label htmlFor="player1_offset">Player 1 Starting Offset</label>
+                    <input id="player1_offset" name="player1_offset" readOnly value={formState.player1_offset} />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="player2_offset">Player 2 Starting Offset</label>
+                    <input id="player2_offset" name="player2_offset" readOnly value={formState.player2_offset} />
+                  </div>
+                </>
+              ) : null}
+
+              {usesCustomHandicap ? (
+                <>
+                  <div className="field">
+                    <label htmlFor="player1_offset">
+                      Player 1 Starting Score
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <input
+                      id="player1_offset"
+                      inputMode="numeric"
+                      name="player1_offset"
+                      required
+                      step="1"
+                      type="number"
+                      value={formState.player1_offset}
+                      onChange={(event) => handleHandicapOffsetChange("player1_offset", event.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="player2_offset">
+                      Player 2 Starting Score
+                      <span className="required-mark"> *</span>
+                    </label>
+                    <input
+                      id="player2_offset"
+                      inputMode="numeric"
+                      name="player2_offset"
+                      required
+                      step="1"
+                      type="number"
+                      value={formState.player2_offset}
+                      onChange={(event) => handleHandicapOffsetChange("player2_offset", event.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
             </div>
+
+            {formState.handicap_enabled ? (
+              <p className="helper-text">{handicapSummary}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -1100,7 +1228,7 @@ export default function NewMatch() {
               Resume Active Match
             </button>
           ) : null}
-          {!isPersonalAccount ? (
+          {!isPersonalAccount && usesMatrixHandicap ? (
             <button
               className="secondary"
               type="button"
@@ -1124,7 +1252,7 @@ export default function NewMatch() {
           ) : null}
         </div>
 
-        {!isPersonalAccount && showHandicapMatrix ? (
+        {!isPersonalAccount && usesMatrixHandicap && showHandicapMatrix ? (
           <section className="panel stack compact matrix-panel" id="handicap-matrix">
             <div className="panel-heading">
               <h2>2024 Handicap Matrix</h2>
