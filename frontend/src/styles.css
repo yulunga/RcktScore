@@ -1782,24 +1782,39 @@ textarea {
   grid-column: 1;
 }
 
-.dashboard-history-card__title {
+.dashboard-history-card__players {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-history-card__player-name {
   color: #102a43;
   font-size: 0.98rem;
   line-height: 1.15;
 }
 
+.dashboard-history-card__player-name--winner {
+  color: #1f9d55;
+}
+
+.dashboard-history-card__player-name--loser {
+  color: #c23030;
+}
+
+.dashboard-history-card__versus {
+  color: #7b8794;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .dashboard-history-card__date,
-.dashboard-history-card__winner,
-.dashboard-history-card__result,
-.dashboard-history-card__court {
+.dashboard-history-card__result {
   color: #7b8794;
   font-size: 0.82rem;
   line-height: 1.2;
-}
-
-.dashboard-history-card__winner {
-  color: #243b53;
-  font-weight: 600;
 }
 
 .dashboard-history-card__view {

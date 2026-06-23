@@ -51,6 +51,27 @@ function splitPlayerName(firstName, surname) {
   };
 }
 
+function resolveWinnerSide(match) {
+  const explicitWinnerSide = match?.winner_side || match?.state?.winner_side;
+  if (explicitWinnerSide === "player1" || explicitWinnerSide === "player2") {
+    return explicitWinnerSide;
+  }
+
+  const winnerName = (match?.winner_name || match?.state?.winner_name || "").trim().toLowerCase();
+  const player1Name = `${match?.player1_name || ""} ${match?.player1_surname || ""}`.trim().toLowerCase();
+  const player2Name = `${match?.player2_name || ""} ${match?.player2_surname || ""}`.trim().toLowerCase();
+
+  if (winnerName && winnerName === player1Name) {
+    return "player1";
+  }
+
+  if (winnerName && winnerName === player2Name) {
+    return "player2";
+  }
+
+  return "";
+}
+
 function formatPlayers(match) {
   return `${match.player1_name} ${match.player1_surname || ""}`.trim()
     + " vs "
@@ -269,8 +290,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const isPersonalAccount = organizationType === "personal";
   const historyLimit = organization.history_limit;
   const historyTitle = screenMode === "history"
-    ? "Recent Matches"
-    : (isPersonalAccount ? "Match History" : "Recent Matches");
+    ? "Played Matches"
+    : (isPersonalAccount ? "Match History" : "Played Matches");
   const dashboardSubtitle = screenMode === "matches"
     ? "View live and scheduled matches for your organisation in one scrolling list."
     : screenMode === "history"
@@ -516,18 +537,36 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }
 
   function renderHistoryMatchCard(match) {
+    const player1 = splitPlayerName(match.player1_name, match.player1_surname);
+    const player2 = splitPlayerName(match.player2_name, match.player2_surname);
+    const winnerSide = resolveWinnerSide(match);
+    const player1ResultClass = winnerSide === "player1"
+      ? " dashboard-history-card__player-name--winner"
+      : winnerSide === "player2"
+        ? " dashboard-history-card__player-name--loser"
+        : "";
+    const player2ResultClass = winnerSide === "player2"
+      ? " dashboard-history-card__player-name--winner"
+      : winnerSide === "player1"
+        ? " dashboard-history-card__player-name--loser"
+        : "";
+
     return (
       <article className="dashboard-item dashboard-history-card" key={match.id}>
         <div className="dashboard-history-card__top">
-          <strong className="dashboard-history-card__title">{formatPlayers(match)}</strong>
+          <div className="dashboard-history-card__players">
+            <strong className={`dashboard-history-card__player-name${player1ResultClass}`}>
+              {player1.firstName} {player1.surname || "Player 1"}
+            </strong>
+            <span className="dashboard-history-card__versus">vs</span>
+            <strong className={`dashboard-history-card__player-name${player2ResultClass}`}>
+              {player2.firstName} {player2.surname || "Player 2"}
+            </strong>
+          </div>
           <span className="dashboard-history-card__date">{formatDate(match.updated_at)}</span>
         </div>
         <div className="dashboard-history-card__meta">
-          <span className="dashboard-history-card__winner">{formatMatchHistoryResult(match).winnerName}</span>
           <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
-          {!isPersonalAccount ? (
-            <span className="dashboard-history-card__court">{match.court_name || "Unassigned"}</span>
-          ) : null}
         </div>
         <button
           className="dashboard-history-card__view"
