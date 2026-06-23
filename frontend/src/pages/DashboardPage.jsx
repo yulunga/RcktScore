@@ -610,18 +610,18 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   </div>
                   {renderPagerDots(activePages.length, activePage, setActivePage, "Active match pages")}
                 </div>
-              ) : showMatchesOnly ? (
+              ) : (
                 <div className="dashboard-card-grid dashboard-carousel--mobile dashboard-card-grid--mobile dashboard-card-grid--active">
                   {activeMatches.map((match) => renderActiveMatchCard(match))}
                 </div>
-              ) : null}
+              )}
             </>
           )}
         </section>
         ) : null}
 
         {!isPersonalAccount && !showHistoryOnly ? (
-          <section className="panel stack">
+          <section className="panel stack" id="scheduled-matches-section">
             <div className="panel-heading">
               <h2 className="dashboard-scheduled-heading">
                 <span className="dashboard-scheduled-heading__icon" aria-hidden="true">

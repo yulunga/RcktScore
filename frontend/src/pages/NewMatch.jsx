@@ -670,7 +670,7 @@ export default function NewMatch() {
 
     if (response?.match?.id) {
       if (response.match.status === "scheduled" || response.match.auto_scheduled) {
-        navigate("/dashboard");
+        navigate("/matches#scheduled-matches-section");
         return;
       }
 
