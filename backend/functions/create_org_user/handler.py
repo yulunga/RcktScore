@@ -30,6 +30,8 @@ def lambda_handler(event, context):
                 payload["username"],
                 payload.get("password"),
                 payload["role"],
+                payload.get("first_name"),
+                payload.get("surname"),
                 allow_existing_password_reuse=True,
                 invitation_source_email=(os.getenv("USER_INVITATION_FROM_EMAIL") or "").strip() or None,
                 approval_base_url=request_base_url(event),

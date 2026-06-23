@@ -219,12 +219,13 @@ The organisation-level handicap setting and social-profile fields are still UI s
 
 ### Create user
 
-1. The organisation settings page or root-admin club page submits a new email/role.
+1. The organisation settings page or root-admin club page submits a new email/role and may include first-name/surname values.
 2. The frontend calls:
    - `POST /organization_users`, or
    - `POST /root_admin/organization_users`
 3. Shared logic in `organization_logic.py`:
    - validates role and email
+   - trims and stores optional first-name/surname values for the membership row
    - allows linking the same email to multiple organisations
    - creates an approval token
    - stores `approval_status = pending`

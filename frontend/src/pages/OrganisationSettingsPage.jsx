@@ -28,6 +28,8 @@ const emptyOrganizationForm = {
 };
 
 const emptyUserForm = {
+  first_name: "",
+  surname: "",
   username: "",
   password: "",
   role: "user",
@@ -60,6 +62,10 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatUserDisplayName(user) {
+  return [user?.first_name, user?.surname].filter(Boolean).join(" ").trim() || "";
 }
 
 export default function OrganisationSettingsPage() {
@@ -223,6 +229,8 @@ export default function OrganisationSettingsPage() {
       "user-create",
       () => createOrganizationUser({
         organization_id: organizationId,
+        first_name: userForm.first_name,
+        surname: userForm.surname,
         username: normalizedUsername,
         password: userForm.password,
         role: userForm.role,
@@ -780,11 +788,31 @@ export default function OrganisationSettingsPage() {
             <section className="panel stack">
               <div className="panel-heading">
                 <h2>Organisation Users</h2>
-                <p className="helper-text">Add users by email address and assign admin or user roles.</p>
+                <p className="helper-text">Add users with name, email address, and an admin or user role.</p>
               </div>
 
               <form className="stack" onSubmit={handleUserSubmit}>
                 <div className="field-grid">
+                  <div className="field">
+                    <label htmlFor="new_first_name">First Name</label>
+                    <input
+                      disabled={!isAdmin}
+                      id="new_first_name"
+                      placeholder="First name"
+                      value={userForm.first_name}
+                      onChange={(event) => setUserForm((current) => ({ ...current, first_name: event.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="new_surname">Surname</label>
+                    <input
+                      disabled={!isAdmin}
+                      id="new_surname"
+                      placeholder="Surname"
+                      value={userForm.surname}
+                      onChange={(event) => setUserForm((current) => ({ ...current, surname: event.target.value }))}
+                    />
+                  </div>
                   <div className="field">
                     <label htmlFor="new_username">Email Address</label>
                     <input
@@ -833,7 +861,7 @@ export default function OrganisationSettingsPage() {
                 ) : users.map((user) => (
                   <article className="dashboard-item" key={user.id}>
                     <div className="dashboard-item-head">
-                      <strong>{user.username}</strong>
+                      <strong>{formatUserDisplayName(user) || user.username}</strong>
                       <div className="dashboard-status-group">
                         <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
                           {user.status || "approved"}
@@ -842,6 +870,7 @@ export default function OrganisationSettingsPage() {
                       </div>
                     </div>
                     <div className="dashboard-item-meta">
+                      {formatUserDisplayName(user) ? <span>{user.username}</span> : null}
                       <span>Created: {formatDate(user.created_at)}</span>
                       {user.status === "pending" ? <span>Awaiting email approval</span> : null}
                     </div>

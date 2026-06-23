@@ -87,6 +87,7 @@ What to check:
 - the `matches` and `match_events` tables exist
 - the organisation exists in `SkwshOrgSettings`
 - the signed-in user belongs to that organisation
+- `SkwshOrgUsers.first_name` and `SkwshOrgUsers.surname` contain the expected values when user names look blank in settings or lookup flows
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
 - whether the UI control is real or scaffold-only
 

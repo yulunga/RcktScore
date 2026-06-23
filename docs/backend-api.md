@@ -266,8 +266,10 @@ Current behavior:
 
 - roles are currently limited to `admin` and `user`
 - create path is invite-oriented
+- create path accepts optional `first_name` and `surname`
 - new or existing email addresses may be attached to multiple organisations
 - membership remains `pending` until the emailed approval link is accepted
+- organisation settings responses include org-user `first_name` and `surname` values when present
 
 There is currently no organisation-user delete endpoint in the v2 API.
 

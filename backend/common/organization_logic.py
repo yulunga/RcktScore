@@ -349,6 +349,8 @@ def create_organization_user(
     username,
     password,
     role,
+    first_name="",
+    surname="",
     *,
     allow_existing_password_reuse=False,
     invitation_source_email=None,
@@ -383,6 +385,8 @@ def create_organization_user(
     elif not password:
         raise ValueError("Password is required for a new user")
 
+    trimmed_first_name = (first_name or "").strip()
+    trimmed_surname = (surname or "").strip()
     approval_token = secrets.token_urlsafe(32)
     approval_status = USER_STATUS_PENDING
     created_at = _utcnow()
@@ -399,6 +403,8 @@ def create_organization_user(
                 password_hash,
                 organization_id,
                 role,
+                first_name,
+                surname,
                 approval_status,
                 approval_token,
                 invitation_sent_at
@@ -409,11 +415,13 @@ def create_organization_user(
                 %(password_hash)s,
                 %(organization_id)s,
                 %(role)s,
+                %(first_name)s,
+                %(surname)s,
                 %(approval_status)s,
                 %(approval_token)s,
                 %(invitation_sent_at)s
             )
-            RETURNING id, clubusername, role, approval_status, created_at, invitation_sent_at, approved_at
+            RETURNING id, clubusername, role, approval_status, first_name, surname, created_at, invitation_sent_at, approved_at
             """,
             {
                 "created_at": created_at,
@@ -421,6 +429,8 @@ def create_organization_user(
                 "password_hash": existing_hash or generate_password_hash(password),
                 "organization_id": org_id,
                 "role": normalized_role,
+                "first_name": trimmed_first_name,
+                "surname": trimmed_surname,
                 "approval_status": approval_status,
                 "approval_token": approval_token,
                 "invitation_sent_at": created_at,
@@ -454,7 +464,7 @@ def update_organization_user_role(connection, organization_id, user_id, role):
             SET role = %(role)s
             WHERE id = %(user_id)s
               AND organization_id = %(organization_id)s
-            RETURNING id, clubusername, role, approval_status, created_at, invitation_sent_at, approved_at
+            RETURNING id, clubusername, role, approval_status, first_name, surname, created_at, invitation_sent_at, approved_at
             """,
             {
                 "role": normalized_role,
