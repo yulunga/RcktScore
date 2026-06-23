@@ -878,6 +878,8 @@ export default function OrganisationSettingsPage() {
                       </div>
                     </div>
                     <div className="dashboard-item-meta">
+                      <span>First Name: {user.first_name || "Not set"}</span>
+                      <span>Surname: {user.surname || "Not set"}</span>
                       <span>{user.username}</span>
                       {user.status === "pending" ? <span>Awaiting email approval</span> : null}
                     </div>
