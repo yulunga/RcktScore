@@ -866,21 +866,20 @@ export default function OrganisationSettingsPage() {
                         <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
                           {user.status || "approved"}
                         </span>
+                        <button
+                          className="status-pill status-pill-button status-pill-button--accent"
+                          disabled={!isAdmin}
+                          type="button"
+                          onClick={() => navigate(`/settings/users/${user.id}`)}
+                        >
+                          Manage User
+                        </button>
                         <span className="status-pill">{user.role}</span>
                       </div>
                     </div>
                     <div className="dashboard-item-meta">
                       {formatUserDisplayName(user) ? <span>{user.username}</span> : null}
                       {user.status === "pending" ? <span>Awaiting email approval</span> : null}
-                    </div>
-                    <div className="settings-inline-actions">
-                      <button
-                        disabled={!isAdmin}
-                        type="button"
-                        onClick={() => navigate(`/settings/users/${user.id}`)}
-                      >
-                        Manage User
-                      </button>
                     </div>
                   </article>
                 ))}
