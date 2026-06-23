@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -32,6 +32,7 @@ export default function LoginPage() {
   const [interestMessage, setInterestMessage] = useState("");
   const [interestLoading, setInterestLoading] = useState(false);
   const [sessionConflictPrompt, setSessionConflictPrompt] = useState(null);
+  const interestPanelRef = useRef(null);
   const {
     isAuthenticated,
     loading,
@@ -44,6 +45,8 @@ export default function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/dashboard";
+  const shouldOpenInterestFormFromUrl = new URLSearchParams(location.search).get("interest") === "1"
+    || location.hash === "#want-in";
   const hasInterestDraft = Boolean(
     interestFirstName.trim()
     || interestSurname.trim()
@@ -54,7 +57,36 @@ export default function LoginPage() {
   );
 
   useEffect(() => {
+    if (!shouldOpenInterestFormFromUrl) {
+      return;
+    }
+
+    setShowInterestForm(true);
+    setInterestError("");
+    setInterestMessage("");
+    setInterestCaptcha(createCaptchaChallenge());
+    setInterestAnswer("");
+  }, [shouldOpenInterestFormFromUrl]);
+
+  useEffect(() => {
+    if (!showInterestForm || !shouldOpenInterestFormFromUrl) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      interestPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  }, [showInterestForm, shouldOpenInterestFormFromUrl]);
+
+  useEffect(() => {
     if (!showInterestForm || hasInterestDraft) {
+      return undefined;
+    }
+
+    if (shouldOpenInterestFormFromUrl) {
       return undefined;
     }
 
@@ -67,7 +99,7 @@ export default function LoginPage() {
     }, 15000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [hasInterestDraft, showInterestForm]);
+  }, [hasInterestDraft, showInterestForm, shouldOpenInterestFormFromUrl]);
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />;
@@ -299,7 +331,7 @@ export default function LoginPage() {
 
             <div className="stack compact">
               {showInterestForm ? (
-                <form className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
+                <form ref={interestPanelRef} className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
                   <h2 className="interest-panel__heading">Let me in</h2>
                   <p className="helper-text interest-copy">
                     We are currently in a beta phase. Request early access by submitting your details.
