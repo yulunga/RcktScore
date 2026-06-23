@@ -58,14 +58,25 @@
               Share early feedback on the product, onboarding, or anything that
               would make HitNScore clearer and easier to use.
             </p>
-            <form class="feedback-form">
+            <form class="feedback-form" id="feedback-form">
               <label>
                 Name
-                <input type="text" name="name" placeholder="Your name" />
+                <input type="text" name="name" placeholder="Your name" required />
               </label>
               <label>
                 Email
-                <input type="email" name="email" placeholder="you@example.com" />
+                <input type="email" name="email" placeholder="you@example.com" required />
+              </label>
+              <label>
+                Category
+                <select name="category" required>
+                  <option value="General Feedback">General Feedback</option>
+                  <option value="Feature Request">Feature Request</option>
+                  <option value="UI / Design Suggestion">UI / Design Suggestion</option>
+                  <option value="Performance Issue">Performance Issue</option>
+                  <option value="Bug / Something not working">Bug / Something not working</option>
+                  <option value="Other">Other</option>
+                </select>
               </label>
               <label>
                 Feedback
@@ -73,10 +84,12 @@
                   name="feedback"
                   rows="5"
                   placeholder="What should we know?"
+                  required
                 ></textarea>
               </label>
-              <button class="secondary-btn secondary-btn--disabled" type="button" disabled>
-                Feedback collection opening soon
+              <div class="feedback-form__status" id="feedback-status" aria-live="polite"></div>
+              <button class="secondary-btn" type="submit" id="feedback-submit">
+                Send Feedback
               </button>
             </form>
           </article>
@@ -171,5 +184,75 @@
         </div>
       </main>
     </div>
+    <script>
+      (function () {
+        const API_BASE_URL = "https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod";
+        const form = document.getElementById("feedback-form");
+        const status = document.getElementById("feedback-status");
+        const submitButton = document.getElementById("feedback-submit");
+
+        if (!form || !status || !submitButton) {
+          return;
+        }
+
+        function setStatus(message, tone) {
+          status.textContent = message;
+          status.className = "feedback-form__status";
+          if (tone) {
+            status.classList.add(`feedback-form__status--${tone}`);
+          }
+        }
+
+        form.addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const formData = new FormData(form);
+          const payload = {
+            name: String(formData.get("name") || "").trim(),
+            email: String(formData.get("email") || "").trim(),
+            category: String(formData.get("category") || "").trim(),
+            message: String(formData.get("feedback") || "").trim(),
+            username: "landing-site",
+            organization_name: "Public Landing Page",
+            version: "weblanding",
+            build: "static-help",
+            page_url: window.location.href,
+            user_agent: window.navigator.userAgent,
+          };
+
+          if (!payload.name || !payload.email || !payload.category || payload.message.length < 5) {
+            setStatus("Please complete all fields and add a bit more detail.", "error");
+            return;
+          }
+
+          submitButton.disabled = true;
+          submitButton.textContent = "Sending...";
+          setStatus("", "");
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/feedback`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+
+            const responseBody = await response.json().catch(() => ({}));
+            if (!response.ok || responseBody.success === false) {
+              throw new Error(responseBody?.error?.message || "Unable to send feedback right now.");
+            }
+
+            form.reset();
+            setStatus("Thanks. Your feedback has been sent.", "success");
+          } catch (error) {
+            setStatus(error.message || "Unable to send feedback right now.", "error");
+          } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Send Feedback";
+          }
+        });
+      }());
+    </script>
   </body>
 </html>
