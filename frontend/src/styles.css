@@ -1793,10 +1793,14 @@ textarea {
   color: #102a43;
   font-size: 0.98rem;
   line-height: 1.15;
+  font-weight: 400;
 }
 
 .dashboard-history-card__player-name--winner {
   color: #ec5ea8;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.14em;
 }
 
 .dashboard-history-card__player-name--loser {
