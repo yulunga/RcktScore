@@ -35,7 +35,7 @@ What is real and implemented:
 - org-user login with backend session tokens
 - multi-organisation membership selection
 - dashboard, history, and match lists
-- organisation settings, user creation with first-name/surname fields, user role updates, and court CRUD
+- organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - match create, schedule, start, score, event actions, undo, and end
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions

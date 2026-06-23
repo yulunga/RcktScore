@@ -88,6 +88,8 @@ What to check:
 - the organisation exists in `SkwshOrgSettings`
 - the signed-in user belongs to that organisation
 - `SkwshOrgUsers.first_name` and `SkwshOrgUsers.surname` contain the expected values when user names look blank in settings or lookup flows
+- whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
+- whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
 - whether the UI control is real or scaffold-only
 

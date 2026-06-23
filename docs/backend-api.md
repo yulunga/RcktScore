@@ -162,6 +162,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `PUT /personal_profile/{organization_id}`
 - `POST /organization_users`
 - `PUT /organization_users/{user_id}`
+- `DELETE /organization_users/{user_id}`
 - `POST /organization_courts`
 - `PUT /organization_courts/{court_id}`
 - `DELETE /organization_courts/{court_id}`
@@ -260,18 +261,21 @@ Current behavior:
 ### Organisation users
 
 - create: [functions/create_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_org_user/handler.py)
-- update role: [functions/update_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_org_user/handler.py)
+- update user: [functions/update_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_org_user/handler.py)
+- delete: [functions/delete_org_user/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_org_user/handler.py)
 
 Current behavior:
 
 - roles are currently limited to `admin` and `user`
 - create path is invite-oriented
 - create path accepts optional `first_name` and `surname`
+- update path can change `username`, `first_name`, `surname`, and `role`
+- update path can change `password` only when the user email is not shared with another organisation membership
 - new or existing email addresses may be attached to multiple organisations
 - membership remains `pending` until the emailed approval link is accepted
 - organisation settings responses include org-user `first_name` and `surname` values when present
-
-There is currently no organisation-user delete endpoint in the v2 API.
+- delete path removes the user from the current organisation only
+- the backend prevents deleting or demoting the last remaining admin in an organisation
 
 ### Courts
 

@@ -490,6 +490,18 @@ Resources:
             Path: /organization_users/{user_id}
             Method: PUT
 
+  DeleteOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_org_user/handler.lambda_handler
+      Events:
+        DeleteOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organization_users/{user_id}
+            Method: DELETE
+
   CreateCourtFunction:
     Type: AWS::Serverless::Function
     Properties:

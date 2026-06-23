@@ -1,6 +1,6 @@
 from aws_lambda_powertools import Logger
 
-from common.organization_logic import update_organization_user
+from common.organization_logic import delete_organization_user
 from common.session_logic import (
     SessionAuthError,
     authorize_organization_session,
@@ -10,7 +10,7 @@ from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, path_parameter, require_fields, success_response
 
 
-logger = Logger(service="update_org_user")
+logger = Logger(service="delete_org_user")
 
 
 def lambda_handler(event, context):
@@ -22,20 +22,18 @@ def lambda_handler(event, context):
     missing_fields = require_fields(payload, ["organization_id"])
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
-    if not any(field in payload for field in ["role", "username", "first_name", "surname", "password"]):
-        return error_response(400, "VALIDATION_ERROR", "At least one user field must be provided")
 
     try:
         with get_db_connection() as connection:
             authorize_organization_session(connection, event, payload["organization_id"], require_admin=True)
-            user = update_organization_user(connection, payload["organization_id"], user_id, payload)
+            deleted = delete_organization_user(connection, payload["organization_id"], user_id)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
     except ValueError as request_error:
         return error_response(400, "INVALID_INPUT", str(request_error))
 
-    if not user:
+    if not deleted:
         return error_response(404, "USER_NOT_FOUND", "User not found")
 
-    logger.info("Updated organisation user %s", user_id)
-    return success_response(200, {"user": user})
+    logger.info("Deleted organisation user %s", user_id)
+    return success_response(200, {"deleted": True})

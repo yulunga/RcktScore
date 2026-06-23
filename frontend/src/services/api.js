@@ -244,9 +244,20 @@ export function createOrganizationUser(payload) {
   });
 }
 
-export function updateOrganizationUserRole(userId, payload) {
+export function updateOrganizationUser(userId, payload) {
   return apiRequest(`/organization_users/${userId}`, {
     method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateOrganizationUserRole(userId, payload) {
+  return updateOrganizationUser(userId, payload);
+}
+
+export function deleteOrganizationUser(userId, payload) {
+  return apiRequest(`/organization_users/${userId}`, {
+    method: "DELETE",
     body: JSON.stringify(payload),
   });
 }

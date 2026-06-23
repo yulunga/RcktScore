@@ -11,6 +11,7 @@ import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
+import OrganisationUserPage from "./pages/OrganisationUserPage";
 import PingUsPage from "./pages/PingUsPage";
 import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
@@ -86,6 +87,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <OrganisationSettingsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/settings/users/:userId"
+        element={(
+          <ProtectedRoute>
+            <OrganisationUserPage />
           </ProtectedRoute>
         )}
       />

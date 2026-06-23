@@ -55,6 +55,7 @@ def _serialize_user(row):
     created_at = row.get("created_at")
     approved_at = row.get("approved_at")
     invitation_sent_at = row.get("invitation_sent_at")
+    membership_count = row.get("membership_count")
     return {
         "id": row["id"],
         "username": row["clubusername"],
@@ -67,6 +68,7 @@ def _serialize_user(row):
         "created_at": created_at.isoformat() if created_at else None,
         "approved_at": approved_at.isoformat() if approved_at else None,
         "invitation_sent_at": invitation_sent_at.isoformat() if invitation_sent_at else None,
+        "can_edit_password": int(membership_count or 1) <= 1,
     }
 
 
@@ -141,6 +143,60 @@ def get_existing_org_users_by_username(connection, username):
             {"username": normalize_email_address(username)},
         )
         return cursor.fetchall()
+
+
+def _get_organization_user_row(connection, organization_id, user_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                u.id,
+                u.clubusername,
+                u.role,
+                u.approval_status,
+                u.first_name,
+                u.surname,
+                u.country,
+                u.city_location,
+                u.created_at,
+                u.invitation_sent_at,
+                u.approved_at,
+                (
+                    SELECT COUNT(*)
+                    FROM "SkwshOrgUsers" AS all_u
+                    WHERE LOWER(all_u.clubusername) = LOWER(u.clubusername)
+                ) AS membership_count
+            FROM "SkwshOrgUsers" AS u
+            WHERE u.organization_id = %(organization_id)s
+              AND u.id = %(user_id)s
+            LIMIT 1
+            """,
+            {
+                "organization_id": int(organization_id),
+                "user_id": int(user_id),
+            },
+        )
+        return cursor.fetchone()
+
+
+def _organization_admin_count(connection, organization_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS admin_count
+            FROM "SkwshOrgUsers"
+            WHERE organization_id = %(organization_id)s
+              AND role = 'admin'
+            """,
+            {"organization_id": int(organization_id)},
+        )
+        row = cursor.fetchone()
+    return int((row or {}).get("admin_count") or 0)
+
+
+def get_organization_user(connection, organization_id, user_id):
+    row = _get_organization_user_row(connection, organization_id, user_id)
+    return _serialize_user(row) if row else None
 
 
 def _serialize_court(row, *, include_display_code=True):
@@ -247,7 +303,12 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 city_location,
                 created_at,
                 invitation_sent_at,
-                approved_at
+                approved_at,
+                (
+                    SELECT COUNT(*)
+                    FROM "SkwshOrgUsers" AS all_u
+                    WHERE LOWER(all_u.clubusername) = LOWER("SkwshOrgUsers".clubusername)
+                ) AS membership_count
             FROM "SkwshOrgUsers"
             WHERE organization_id = %(organization_id)s
             ORDER BY clubusername ASC
@@ -448,34 +509,129 @@ def create_organization_user(
         )
 
     connection.commit()
-    return _serialize_user(user_row)
+    return get_organization_user(connection, org_id, user_row["id"])
 
 
-def update_organization_user_role(connection, organization_id, user_id, role):
+def update_organization_user(connection, organization_id, user_id, payload):
     org_id = int(organization_id)
-    normalized_role = (role or "user").strip().lower()
+    existing_row = _get_organization_user_row(connection, org_id, user_id)
+    if not existing_row:
+        return None
+
+    current_username = normalize_email_address(existing_row["clubusername"])
+    target_username = normalize_email_address(payload.get("username") or current_username)
+    if not target_username:
+        raise ValueError("username is required")
+    if not is_valid_email_address(target_username):
+        raise ValueError("Username must be a valid email address")
+
+    normalized_role = (payload.get("role") or existing_row.get("role") or "user").strip().lower()
     if normalized_role not in VALID_ROLES:
         raise ValueError("role must be admin or user")
+
+    conflicting_users = get_existing_org_users_by_username(connection, target_username)
+    other_memberships = [
+        row for row in conflicting_users
+        if int(row["id"]) != int(user_id)
+    ]
+    if any(int(row["organization_id"]) == org_id for row in other_memberships):
+        raise ValueError("Username already exists in this organisation")
+    if target_username != current_username and other_memberships:
+        raise ValueError("Email address is already used elsewhere and cannot be reassigned here")
+
+    trimmed_first_name = (payload.get("first_name") if "first_name" in payload else existing_row.get("first_name") or "").strip()
+    trimmed_surname = (payload.get("surname") if "surname" in payload else existing_row.get("surname") or "").strip()
+    next_password = payload.get("password")
+    if next_password is not None:
+        next_password = str(next_password)
+        if next_password and len(next_password) < 8:
+            raise ValueError("Password must be at least 8 characters")
+
+    can_edit_password = len(other_memberships) == 0
+    if next_password and not can_edit_password:
+        raise ValueError("Password can only be changed when this email is not used in another organisation")
+
+    if existing_row.get("role") == "admin" and normalized_role != "admin" and _organization_admin_count(connection, org_id) <= 1:
+        raise ValueError("Organisation must keep at least one admin user")
+
+    password_hash = None
+    if next_password:
+        password_hash = generate_password_hash(next_password)
 
     with connection.cursor() as cursor:
         cursor.execute(
             """
             UPDATE "SkwshOrgUsers"
-            SET role = %(role)s
+            SET clubusername = %(username)s,
+                role = %(role)s,
+                first_name = %(first_name)s,
+                surname = %(surname)s,
+                password_hash = COALESCE(%(password_hash)s, password_hash)
             WHERE id = %(user_id)s
               AND organization_id = %(organization_id)s
-            RETURNING id, clubusername, role, approval_status, first_name, surname, created_at, invitation_sent_at, approved_at
             """,
             {
+                "username": target_username,
                 "role": normalized_role,
+                "first_name": trimmed_first_name,
+                "surname": trimmed_surname,
+                "password_hash": password_hash,
                 "user_id": int(user_id),
                 "organization_id": org_id,
             },
         )
-        user_row = cursor.fetchone()
+
+    if current_username != target_username:
+        from common.session_logic import revoke_active_sessions_for_username
+        revoke_active_sessions_for_username(connection, current_username, reason="profile_updated")
+    elif next_password:
+        from common.session_logic import revoke_active_sessions_for_username
+        revoke_active_sessions_for_username(connection, target_username, reason="password_reset")
 
     connection.commit()
-    return _serialize_user(user_row) if user_row else None
+    return get_organization_user(connection, org_id, user_id)
+
+
+def delete_organization_user(connection, organization_id, user_id):
+    org_id = int(organization_id)
+    existing_row = _get_organization_user_row(connection, org_id, user_id)
+    if not existing_row:
+        return False
+
+    if existing_row.get("role") == "admin" and _organization_admin_count(connection, org_id) <= 1:
+        raise ValueError("Organisation must keep at least one admin user")
+
+    username = normalize_email_address(existing_row["clubusername"])
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            DELETE FROM "SkwshOrgUsers"
+            WHERE id = %(user_id)s
+              AND organization_id = %(organization_id)s
+            RETURNING id
+            """,
+            {
+                "user_id": int(user_id),
+                "organization_id": org_id,
+            },
+        )
+        deleted_row = cursor.fetchone()
+
+    if deleted_row:
+        from common.session_logic import revoke_active_sessions_for_username
+        revoke_active_sessions_for_username(connection, username, reason="profile_updated")
+
+    connection.commit()
+    return bool(deleted_row)
+
+
+def update_organization_user_role(connection, organization_id, user_id, role):
+    return update_organization_user(
+        connection,
+        organization_id,
+        user_id,
+        {"role": role},
+    )
 
 
 def approve_organization_user_membership(connection, token):

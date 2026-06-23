@@ -231,6 +231,18 @@ The organisation-level handicap setting and social-profile fields are still UI s
    - stores `approval_status = pending`
    - sends an invitation email when email settings are configured
 
+### Edit or remove user
+
+1. The organisation user details page submits an update or delete action.
+2. The frontend calls:
+   - `PUT /organization_users/{user_id}`, or
+   - `DELETE /organization_users/{user_id}`
+3. Shared logic in `organization_logic.py`:
+   - validates updated email, role, and optional password
+   - only allows password edits when the email is not shared across other organisation memberships
+   - revokes active sessions when a user email or password changes, or when the membership is deleted
+   - blocks demoting or deleting the last remaining admin in the organisation
+
 ### Approve invite
 
 1. The invited user opens the email link.

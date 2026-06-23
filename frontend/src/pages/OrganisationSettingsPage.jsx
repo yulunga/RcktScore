@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -15,7 +15,6 @@ import {
   updatePersonalProfile,
   updateOrganizationCourt,
   updateOrganizationDetails,
-  updateOrganizationUserRole,
 } from "../services/api";
 
 const emptyOrganizationForm = {
@@ -70,6 +69,7 @@ function formatUserDisplayName(user) {
 
 export default function OrganisationSettingsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useAuth();
   const [settings, setSettings] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
@@ -82,7 +82,6 @@ export default function OrganisationSettingsPage() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [courtForm, setCourtForm] = useState(emptyCourtForm);
   const [courtDrafts, setCourtDrafts] = useState({});
-  const [userRoleDrafts, setUserRoleDrafts] = useState({});
   const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
@@ -91,7 +90,10 @@ export default function OrganisationSettingsPage() {
   const [countryQuery, setCountryQuery] = useState("");
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
-  const [activeTab, setActiveTab] = useState("organisation");
+  const initialTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(
+    adminTabs.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
+  );
 
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
@@ -141,6 +143,11 @@ export default function OrganisationSettingsPage() {
     return null;
   }
 
+  function handleTabChange(nextTab) {
+    setActiveTab(nextTab);
+    setSearchParams({ tab: nextTab }, { replace: true });
+  }
+
   const syncLocalState = useCallback((response) => {
     const nextSettings = response?.organizationSettings || response || null;
 
@@ -163,9 +170,6 @@ export default function OrganisationSettingsPage() {
           },
         ]),
       ),
-    );
-    setUserRoleDrafts(
-      Object.fromEntries((nextSettings?.users || []).map((user) => [user.id, user.role || "user"])),
     );
   }, []);
 
@@ -190,6 +194,13 @@ export default function OrganisationSettingsPage() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab && adminTabs.some((tab) => tab.id === requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    }
+  }, [activeTab, searchParams]);
 
   async function runMutation(section, task, successMessage) {
     setSavingSection(section);
@@ -238,17 +249,6 @@ export default function OrganisationSettingsPage() {
       "User added to organisation. Invitation email sent and access is pending approval.",
     );
     setUserForm(emptyUserForm);
-  }
-
-  async function handleUserRoleSave(userId) {
-    await runMutation(
-      `user-role-${userId}`,
-      () => updateOrganizationUserRole(userId, {
-        organization_id: organizationId,
-        role: userRoleDrafts[userId],
-      }),
-      "User role updated.",
-    );
   }
 
   async function handleCourtCreate(event) {
@@ -681,7 +681,7 @@ export default function OrganisationSettingsPage() {
                 key={tab.id}
                 className={`root-admin-tab ${activeTab === tab.id ? "active" : ""}`}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 {tab.label}
               </button>
@@ -871,24 +871,15 @@ export default function OrganisationSettingsPage() {
                     </div>
                     <div className="dashboard-item-meta">
                       {formatUserDisplayName(user) ? <span>{user.username}</span> : null}
-                      <span>Created: {formatDate(user.created_at)}</span>
                       {user.status === "pending" ? <span>Awaiting email approval</span> : null}
                     </div>
                     <div className="settings-inline-actions">
-                      <select
-                        disabled={!isAdmin}
-                        value={userRoleDrafts[user.id] || user.role || "user"}
-                        onChange={(event) => setUserRoleDrafts((current) => ({ ...current, [user.id]: event.target.value }))}
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                      </select>
                       <button
-                        disabled={!isAdmin || savingSection === `user-role-${user.id}`}
+                        disabled={!isAdmin}
                         type="button"
-                        onClick={() => handleUserRoleSave(user.id)}
+                        onClick={() => navigate(`/settings/users/${user.id}`)}
                       >
-                        {savingSection === `user-role-${user.id}` ? "Saving..." : "Save Role"}
+                        Manage User
                       </button>
                     </div>
                   </article>
