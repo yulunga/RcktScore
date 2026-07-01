@@ -24,6 +24,15 @@ DEFAULT_PLAYER_SHIRT_COLORS = {
     "player1": "navy",
     "player2": "white",
 }
+STALE_ACTIVE_MATCH_HOURS = 12
+STALE_ACTIVITY_EVENT_TYPES = (
+    "match_started",
+    "score_point",
+    "stroke",
+    "let",
+    "server",
+    "serve_side",
+)
 
 
 def _utcnow():
@@ -453,7 +462,56 @@ def _fetch_match_events(connection, match_id):
         return cursor.fetchall()
 
 
-def get_match(connection, match_id):
+def _auto_end_stale_active_matches(connection, tenant_id=None, match_id=None):
+    where_clauses = ["matches.status = 'active'"]
+    params = {"cutoff": _utcnow()}
+
+    if tenant_id is not None:
+        where_clauses.append("matches.tenant_id = %(tenant_id)s")
+        params["tenant_id"] = tenant_id
+    if match_id is not None:
+        where_clauses.append("matches.id = %(match_id)s")
+        params["match_id"] = match_id
+
+    params["cutoff"] = _utcnow()
+    inactivity_expression = f"INTERVAL '{STALE_ACTIVE_MATCH_HOURS} hours'"
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT
+                matches.id
+            FROM matches
+            LEFT JOIN LATERAL (
+                SELECT MAX(created_at) AS latest_activity_at
+                FROM match_events
+                WHERE match_id = matches.id
+                  AND event_type = ANY(%(activity_event_types)s)
+            ) activity ON TRUE
+            WHERE {' AND '.join(where_clauses)}
+              AND COALESCE(activity.latest_activity_at, matches.updated_at, matches.created_at)
+                    <= (%(cutoff)s - {inactivity_expression})
+            """,
+            {
+                **params,
+                "activity_event_types": list(STALE_ACTIVITY_EVENT_TYPES),
+            },
+        )
+        stale_match_ids = [row["id"] for row in cursor.fetchall()]
+
+    for stale_match_id in stale_match_ids:
+        end_match(
+            connection,
+            stale_match_id,
+            source="system",
+            reason=f"Automatically ended after {STALE_ACTIVE_MATCH_HOURS} hours without match activity",
+            ended_early=True,
+        )
+
+
+def get_match(connection, match_id, close_stale=True):
+    if close_stale:
+        _auto_end_stale_active_matches(connection, match_id=match_id)
     match_row = _fetch_match_row(connection, match_id)
     if not match_row:
         return None
@@ -461,6 +519,7 @@ def get_match(connection, match_id):
 
 
 def get_active_match_for_court(connection, tenant_id, court_id):
+    _auto_end_stale_active_matches(connection, tenant_id=tenant_id)
     match_row = _find_active_match_on_court(connection, tenant_id, court_id)
     if not match_row:
         return None
@@ -468,6 +527,9 @@ def get_active_match_for_court(connection, tenant_id, court_id):
 
 
 def list_matches(connection, tenant_id, status=None, limit=10):
+    if status == "active":
+        _auto_end_stale_active_matches(connection, tenant_id=tenant_id)
+
     query = [
         """
         SELECT
@@ -1290,7 +1352,7 @@ def undo_last_action(connection, match_id):
 
 
 def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
-    match = get_match(connection, match_id)
+    match = get_match(connection, match_id, close_stale=False)
     if not match:
         return None
 

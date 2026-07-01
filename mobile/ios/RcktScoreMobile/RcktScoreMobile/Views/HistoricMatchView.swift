@@ -66,6 +66,14 @@ struct HistoricMatchView: View {
             )
         }
     }
+    private var historicMatchDurationSeconds: Int {
+        let recordedDuration = match?.matchDurationSeconds ?? live?.matchDurationSeconds ?? 0
+        if recordedDuration > 0 {
+            return recordedDuration
+        }
+
+        return gameDurations.reduce(0) { $0 + $1.seconds }
+    }
 
     var body: some View {
         ScrollView {
@@ -177,6 +185,10 @@ struct HistoricMatchView: View {
                 .font(.headline)
 
             historicInfoRow(
+                title: "Sport",
+                value: sportDisplayName(match.sport)
+            )
+            historicInfoRow(
                 title: "Game Details",
                 value: gameDetailsLine(for: match)
             )
@@ -209,7 +221,7 @@ struct HistoricMatchView: View {
                         Text("Match Time")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        Text(formatSeconds(match.matchDurationSeconds ?? live?.matchDurationSeconds ?? 0))
+                        Text(formatSeconds(historicMatchDurationSeconds))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(Color.rcktBlue)
                     }
@@ -489,6 +501,25 @@ struct HistoricMatchView: View {
         }
 
         return "\(firstName) \(surname)"
+    }
+
+    private func sportDisplayName(_ value: String?) -> String {
+        switch (value ?? "squash").lowercased() {
+        case "table_tennis":
+            return "Table Tennis"
+        case "pickleball":
+            return "Pickleball"
+        case "racketball":
+            return "Racketball"
+        case "badminton":
+            return "Badminton"
+        case "padel":
+            return "Padel"
+        case "tennis":
+            return "Tennis"
+        default:
+            return "Squash"
+        }
     }
 
     private func formatDateOnly(_ value: String) -> String {

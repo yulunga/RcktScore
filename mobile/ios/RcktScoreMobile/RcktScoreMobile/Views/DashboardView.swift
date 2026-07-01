@@ -365,6 +365,7 @@ struct DashboardView: View {
         VStack(spacing: 18) {
             dashboardSection(
                 title: "Recent Matches",
+                systemImage: "clock",
                 subtitle: "Search completed matches by player name, surname, or date."
             ) {
                 if isOnline {

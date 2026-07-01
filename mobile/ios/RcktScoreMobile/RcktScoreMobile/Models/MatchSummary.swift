@@ -59,6 +59,7 @@ struct MatchDetail: Decodable, Identifiable {
     let courtName: String?
     let courtAlias: String?
     let courtDisplayCode: String?
+    let sport: String?
     let player1Name: String
     let player1Surname: String?
     let player1Handedness: String?
@@ -89,6 +90,7 @@ struct MatchDetail: Decodable, Identifiable {
         case courtName = "court_name"
         case courtAlias = "court_alias"
         case courtDisplayCode = "court_display_code"
+        case sport
         case player1Name = "player1_name"
         case player1Surname = "player1_surname"
         case player1Handedness = "player1_handedness"
