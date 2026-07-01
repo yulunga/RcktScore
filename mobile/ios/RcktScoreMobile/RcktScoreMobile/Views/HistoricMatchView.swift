@@ -118,26 +118,15 @@ struct HistoricMatchView: View {
 
     private func summaryCard(_ match: MatchDetail) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(fullName(firstName: match.player1Name, surname: match.player1Surname))
-                        .font(.title3.weight(.bold))
-                    Text(fullName(firstName: match.player2Name, surname: match.player2Surname))
-                        .font(.title3.weight(.bold))
-                }
+            historicPlayerScoreRow(
+                playerName: fullName(firstName: match.player1Name, surname: match.player1Surname),
+                gamesWon: player1GamesWon
+            )
 
-                Spacer()
-
-                Text("\(player1GamesWon)-\(player2GamesWon)")
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.rcktBlue)
-            }
-
-            HStack(spacing: 10) {
-                historicMetaBadge(match.status.capitalized, tint: Color.rcktCompleted)
-                historicMetaBadge("PAR-\(live?.scoreType ?? match.scoreType)", tint: Color.rcktBlue)
-                historicMetaBadge("Best of \(live?.bestOf ?? match.bestOf)", tint: Color.rcktSlate)
-            }
+            historicPlayerScoreRow(
+                playerName: fullName(firstName: match.player2Name, surname: match.player2Surname),
+                gamesWon: player2GamesWon
+            )
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,16 +144,16 @@ struct HistoricMatchView: View {
             Text("Match Information")
                 .font(.headline)
 
+            historicInfoRow(
+                title: "Game Details",
+                value: gameDetailsLine(for: match)
+            )
             historicInfoRow(title: "Date", value: formatDateOnly(match.completedAt ?? match.updatedAt))
             historicInfoRow(title: "Court", value: [match.courtName, match.courtAlias].compactMap { value in
                 guard let value, !value.isEmpty else { return nil }
                 return value
             }.joined(separator: " • "))
             historicInfoRow(title: "Referee", value: match.refereeName ?? "Not added")
-            historicInfoRow(
-                title: "Game Details",
-                value: gameDetailsLine(for: match)
-            )
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -206,22 +195,24 @@ struct HistoricMatchView: View {
             .buttonStyle(.plain)
 
             if showGameTimes {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
+                    spacing: 8
+                ) {
                         ForEach(gameDurations) { game in
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(spacing: 3) {
                                 Text("Game \(game.gameNumber)")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                 Text(formatSeconds(game.seconds))
-                                    .font(.subheadline.weight(.bold))
+                                    .font(.caption.weight(.bold))
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 10)
                             .background(Color(.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
-                    }
                 }
             }
         }
@@ -259,32 +250,45 @@ struct HistoricMatchView: View {
                                 }
                             }
 
+                            HStack {
+                                Text(match.player1Name)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(match.player2Name)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                            }
+                            .padding(.horizontal, 6)
+
                             ForEach(game.entries) { entry in
-                                HStack(alignment: .top, spacing: 10) {
-                                    Circle()
-                                        .fill(entry.winnerSide == "player2" ? Color.rcktSlate : Color.rcktBlue)
-                                        .frame(width: 8, height: 8)
-                                        .padding(.top, 6)
+                                HStack(alignment: .center, spacing: 12) {
+                                    historicTimelineMarker(
+                                        isActive: entry.winnerSide == "player1",
+                                        score: entry.winnerSide == "player1" ? entry.score : nil,
+                                        tint: Color.rcktBlue
+                                    )
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(spacing: 2) {
                                         Text(entry.title)
-                                            .font(.subheadline.weight(.semibold))
-
-                                        HStack(spacing: 8) {
-                                            if let score = entry.score, !score.isEmpty {
-                                                Text(score)
-                                                    .font(.caption.weight(.semibold))
-                                                    .foregroundStyle(Color.rcktBlue)
-                                            }
-                                            if let timestamp = entry.timestamp {
-                                                Text(formatTimeOnly(timestamp))
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        if let timestamp = entry.timestamp {
+                                            Text(formatTimeOnly(timestamp))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
                                         }
                                     }
+                                    .frame(minWidth: 80)
 
-                                    Spacer()
+                                    historicTimelineMarker(
+                                        isActive: entry.winnerSide == "player2",
+                                        score: entry.winnerSide == "player2" ? entry.score : nil,
+                                        tint: Color.rcktSlate
+                                    )
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
                                 }
                                 .padding(12)
                                 .background(Color(.secondarySystemBackground))
@@ -325,14 +329,41 @@ struct HistoricMatchView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func historicMetaBadge(_ title: String, tint: Color) -> some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(tint.opacity(0.12))
-            .clipShape(Capsule())
+    private func historicPlayerScoreRow(playerName: String, gamesWon: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(playerName)
+                .font(.title3.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("\(gamesWon)")
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.rcktBlue)
+        }
+    }
+
+    private func historicTimelineMarker(isActive: Bool, score: String?, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(isActive ? tint : Color.clear)
+                .frame(width: 22, height: 22)
+                .overlay(
+                    Circle()
+                        .stroke(tint.opacity(isActive ? 0.0 : 0.24), lineWidth: 2)
+                )
+                .overlay(
+                    Group {
+                        if let score, isActive {
+                            Text(score)
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                )
+
+            if !isActive {
+                Spacer(minLength: 0)
+            }
+        }
     }
 
     private func gameDetailsLine(for match: MatchDetail) -> String {
