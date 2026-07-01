@@ -40,6 +40,7 @@ struct DashboardView: View {
     @State private var resetMessage: String?
 
     private var session: UserSession? { container.sessionStore.session }
+    private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var headerPlanLine: String {
@@ -363,19 +364,23 @@ struct DashboardView: View {
                 title: "Recent Matches",
                 subtitle: "Search completed matches by player name, surname, or date."
             ) {
-                VStack(spacing: 14) {
-                    dashboardTextField(
-                        title: "Search history",
-                        placeholder: "Search player or date",
-                        text: $historySearch
-                    )
+                if isOnline {
+                    VStack(spacing: 14) {
+                        dashboardTextField(
+                            title: "Search history",
+                            placeholder: "Search player or date",
+                            text: $historySearch
+                        )
 
-                    recentMatchesContent(
-                        matches: filteredRecentMatches,
-                        emptyMessage: historySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? "No recent matches"
-                            : "No completed matches match that search."
-                    )
+                        recentMatchesContent(
+                            matches: filteredRecentMatches,
+                            emptyMessage: historySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? "No recent matches"
+                                : "No completed matches match that search."
+                        )
+                    }
+                } else {
+                    offlineHistoricMatchesState
                 }
             }
         }
@@ -1001,7 +1006,9 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func recentMatchesContent(matches: [MatchSummary], emptyMessage: String = "No recent matches") -> some View {
-        if isLoading && matches.isEmpty {
+        if !isOnline {
+            offlineHistoricMatchesState
+        } else if isLoading && matches.isEmpty {
             HStack {
                 ProgressView()
                 Spacer()
@@ -1084,6 +1091,25 @@ struct DashboardView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 12)
+    }
+
+    private var offlineHistoricMatchesState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(Color.dashboardBrand)
+
+            Text("Offline")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text("Historic matches are only available when the app is online.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
     }
 
     private func activeMatchCard(_ match: MatchSummary) -> some View {

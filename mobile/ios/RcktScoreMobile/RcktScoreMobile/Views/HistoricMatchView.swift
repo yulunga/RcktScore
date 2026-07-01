@@ -12,6 +12,7 @@ struct HistoricMatchView: View {
     @State private var errorMessage: String?
     @State private var showGameTimes = false
 
+    private var isOnline: Bool { container.networkMonitor.isOnline }
     private var live: MatchState? { match?.state }
     private var player1GamesWon: Int { live?.player1GamesWon ?? 0 }
     private var player2GamesWon: Int { live?.player2GamesWon ?? 0 }
@@ -42,7 +43,9 @@ struct HistoricMatchView: View {
                             title: event.summary ?? readableEventTitle(event.eventType),
                             score: eventScoreLine(event),
                             timestamp: event.createdAt,
-                            winnerSide: event.payload?.scorer ?? event.payload?.playerSide
+                            winnerSide: event.payload?.scorer ?? event.payload?.playerSide,
+                            serverSide: event.payload?.currentServerSide,
+                            serviceSideLabel: String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased()
                         )
                     }
             )
@@ -67,12 +70,14 @@ struct HistoricMatchView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                if isLoading && match == nil {
+                if !isOnline {
+                    offlineStateCard
+                } else if isLoading && match == nil {
                     ProgressView("Loading match…")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                if let match {
+                if isOnline, let match {
                     summaryCard(match)
                     metadataCard(match)
                     timeCard(match)
@@ -112,8 +117,35 @@ struct HistoricMatchView: View {
             }
         }
         .task {
+            guard isOnline else {
+                return
+            }
             await loadMatch()
         }
+    }
+
+    private var offlineStateCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Color.rcktBlue)
+
+            Text("Offline")
+                .font(.headline.weight(.semibold))
+
+            Text("Historic matches can only be viewed while the app is online.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background(Color.rcktCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.rcktBorder, lineWidth: 1)
+        )
     }
 
     private func summaryCard(_ match: MatchDetail) -> some View {
@@ -264,10 +296,11 @@ struct HistoricMatchView: View {
 
                             ForEach(game.entries) { entry in
                                 HStack(alignment: .center, spacing: 12) {
-                                    historicTimelineMarker(
-                                        isActive: entry.winnerSide == "player1",
-                                        score: entry.winnerSide == "player1" ? entry.score : nil,
-                                        tint: Color.rcktBlue
+                                    historicTimelineSide(
+                                        playerSide: "player1",
+                                        entry: entry,
+                                        tint: Color.rcktBlue,
+                                        serveFirst: true
                                     )
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -283,10 +316,11 @@ struct HistoricMatchView: View {
                                     }
                                     .frame(minWidth: 80)
 
-                                    historicTimelineMarker(
-                                        isActive: entry.winnerSide == "player2",
-                                        score: entry.winnerSide == "player2" ? entry.score : nil,
-                                        tint: Color.rcktSlate
+                                    historicTimelineSide(
+                                        playerSide: "player2",
+                                        entry: entry,
+                                        tint: Color.rcktSlate,
+                                        serveFirst: false
                                     )
                                     .frame(maxWidth: .infinity, alignment: .trailing)
                                 }
@@ -341,11 +375,61 @@ struct HistoricMatchView: View {
         }
     }
 
-    private func historicTimelineMarker(isActive: Bool, score: String?, tint: Color) -> some View {
+    private func historicTimelineSide(
+        playerSide: String,
+        entry: HistoricTimelineEntry,
+        tint: Color,
+        serveFirst: Bool
+    ) -> some View {
+        let serveMarker = historicServeMarker(
+            isActive: entry.serverSide == playerSide,
+            label: entry.serverSide == playerSide ? entry.serviceSideLabel : nil
+        )
+        let scoreMarker = historicScoreMarker(
+            isActive: entry.winnerSide == playerSide,
+            score: entry.winnerSide == playerSide ? entry.score : nil,
+            tint: tint
+        )
+
+        return HStack(spacing: 8) {
+            if serveFirst {
+                serveMarker
+                scoreMarker
+            } else {
+                scoreMarker
+                serveMarker
+            }
+
+            if !serveFirst {
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private func historicServeMarker(isActive: Bool, label: String?) -> some View {
+        Circle()
+            .fill(isActive ? Color.rcktServe : Color.clear)
+            .frame(width: 24, height: 24)
+            .overlay(
+                Circle()
+                    .stroke(isActive ? Color.rcktServe : Color.rcktBorder.opacity(0.9), lineWidth: 2)
+            )
+            .overlay(
+                Group {
+                    if let label, isActive, !label.isEmpty {
+                        Text(label)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                }
+            )
+    }
+
+    private func historicScoreMarker(isActive: Bool, score: String?, tint: Color) -> some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(isActive ? tint : Color.clear)
-                .frame(width: 22, height: 22)
+                .frame(width: 24, height: 24)
                 .overlay(
                     Circle()
                         .stroke(tint.opacity(isActive ? 0.0 : 0.24), lineWidth: 2)
@@ -359,10 +443,6 @@ struct HistoricMatchView: View {
                         }
                     }
                 )
-
-            if !isActive {
-                Spacer(minLength: 0)
-            }
         }
     }
 
@@ -470,6 +550,8 @@ private struct HistoricTimelineEntry: Identifiable {
     let score: String?
     let timestamp: String?
     let winnerSide: String?
+    let serverSide: String?
+    let serviceSideLabel: String?
 }
 
 private struct HistoricGameTimeline: Identifiable {
