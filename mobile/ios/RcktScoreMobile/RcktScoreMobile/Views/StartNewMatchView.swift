@@ -1224,7 +1224,6 @@ struct StartNewMatchView: View {
                 isSubmitting = false
             }
 
-            dismiss()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 if match.status == "scheduled" || match.autoScheduled == true {
                     onComplete(.scheduled(match.autoScheduleReason))

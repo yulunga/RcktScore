@@ -30,6 +30,15 @@ npm run build -- --outDir /tmp/rcktscore-frontend-dist
 Use the scratch `outDir` because local builds may fail if Vite tries to clean
 the checked-in `frontend/dist/` directory.
 
+### iOS project inventory
+
+```bash
+xcodebuild -list -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj
+```
+
+This is a quick way to confirm the native target and scheme are still present
+before debugging app-specific issues.
+
 ## Current Debugging Mindset
 
 Start by deciding which of these layers is failing:
@@ -238,7 +247,42 @@ cd frontend
 npm run build -- --outDir /tmp/rcktscore-frontend-dist
 ```
 
-## 9. Things That Are Not Bugs Right Now
+## 9. Native iOS Issues
+
+Relevant files:
+
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/APIClient.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/State/SessionStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/SessionStore.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift)
+
+Common symptoms:
+
+- login works on web but fails on iOS for a user with multiple memberships
+- iOS scorer loads, but court display code is missing
+- completed matches do not appear while offline
+- iPhone scorer feels visually crowded even when the backend state is correct
+
+What to check:
+
+- whether `POST /login` returned `data.session` or `data.organizationSelection`
+- whether the account hit `ACTIVE_SESSION_EXISTS` for `client_type = mobile_app`
+- whether the match has a court display code and `GET /match_display_access/{match_id}` is succeeding
+- whether the issue is a backend scoring-state problem or only a scorer-layout problem
+- whether `NetworkMonitor.swift` has marked the device offline
+
+Important current truths:
+
+- the iOS app currently expects `data.session` on login and does not yet present
+  native organisation-selection UI
+- historic matches are online-only in the native app
+- the current scorer is functionally ahead of the docs that used to describe it,
+  but its iPhone layout still needs redesign
+
+## 10. Things That Are Not Bugs Right Now
 
 These are current product limitations, not accidental breakage:
 
@@ -246,7 +290,7 @@ These are current product limitations, not accidental breakage:
 - organisation handicap toggle in settings is scaffold-only
 - social-profile fields are scaffold-only
 - WebSocket infrastructure is partial
-- there is no organisation-user delete route
+- there is no native iOS organisation-selection UI for multi-membership login yet
 - there is no automated test suite in the repo yet
 
 ## Maintenance Rule

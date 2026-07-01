@@ -37,6 +37,7 @@ What is real and implemented:
 - dashboard, history, and match lists
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - match create, schedule, start, score, event actions, undo, and end
+- native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -45,6 +46,8 @@ What is still partial or risky:
 - root-admin backend authorization is not fully implemented
 - some root-admin organisation actions use `x-root-admin-request` header bypass logic
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
+- iOS login does not yet expose multi-organisation membership selection when the backend returns `organizationSelection`
+- the current iPhone scoring layout is functional but still needs redesign before release
 - some settings sections are still UI scaffolds only
 - no automated test suite is checked into the repo
 

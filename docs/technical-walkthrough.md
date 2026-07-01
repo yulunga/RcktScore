@@ -273,6 +273,7 @@ The root-admin club page performs some of these mutations using `rootAdminReques
 ### Frontend entry
 
 - [frontend/src/pages/NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift)
 
 ### Current path
 
@@ -289,6 +290,7 @@ The root-admin club page performs some of these mutations using `rootAdminReques
 
 - [frontend/src/pages/NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
 - [frontend/src/context/MatchContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/MatchContext.jsx)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift)
 
 ### Current path
 
@@ -309,6 +311,7 @@ The root-admin club page performs some of these mutations using `rootAdminReques
 
 - [frontend/src/pages/MatchScreen.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/MatchScreen.jsx)
 - [frontend/src/components/MatchControls.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/components/MatchControls.jsx)
+- [mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift)
 
 ### Current path
 
@@ -379,14 +382,19 @@ The root-admin frontend experience exists, but the backend trust model is not ye
 
 ### Current path
 
-1. The iOS app logs in against the same backend.
-2. It loads dashboard data from `GET /dashboard/{organization_id}`.
-3. It opens active or scheduled matches.
-4. It uses the same match/scoring routes as the web app.
+1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`.
+2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, and persists `data.session` in `UserDefaults`.
+3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`.
+4. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow.
+5. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end.
+6. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
 
 ### Current native gap
 
-The native app does not yet fully match the web scorer flow for warm-up, first-server selection, and timer behavior.
+- the iOS login flow does not yet handle `data.organizationSelection` for
+  multi-membership users
+- the current iPhone scoring layout is functional but still needs redesign
+- release pipeline, realtime sync, and final signoff coverage are still partial
 
 ## 16. Current Cross-Cutting Gaps
 

@@ -1,252 +1,56 @@
-# iOS Launch Plan
+# iOS V1 Plan
 
 ## Purpose
 
-This document turns the current native iOS build into a concrete launch plan for
-an initial public release that is operationally aligned with the current mobile
-web experience.
+This document tracks the current native iOS baseline and the remaining work to
+turn it into a confident first release.
 
-The release priority is:
+The immediate product priority is now the iPhone scoring experience.
+Foundation, dashboard, match setup, settings, and history are already in place.
+The next phase should redesign the live scorer so it feels intentional and safe
+for real event-day use on iPhone before broader launch hardening resumes.
 
-1. club and club elite scoring flows
-2. iPhone usability
-3. iPad usability
-4. personal-tier consistency where it overlaps with the same scorer journey
+## Current Baseline
 
-The goal is not 100% web parity across every screen. The goal is a release that
-lets real scorers run matches confidently on iPhone and iPad without needing to
-drop back to the web app for core club workflows.
-
-## Current Position
-
-The native app is now beyond a basic scorer prototype.
+The native app is well beyond a prototype.
 
 Already in place:
 
-- organisation login
+- organisation login for `mobile_app` sessions
 - persisted session
-- register interest and help flows on login
+- active-session conflict handling with force-logout retry
+- register-interest and help flows on login
 - dashboard shell with `Home`, `Matches`, `History`, `Settings`, and `Need Help`
 - active, scheduled, and recent match loading
-- native start-new-match flow
+- native start-new-match flow with sport picker
+- player and referee lookup suggestions
+- court selection plus automatic scheduled fallback when a court is busy
+- handicap setup and tier-aware shirt-colour handling
 - scheduled match start
-- live scoring with stroke, let, undo, early end, serve-side changes
+- live scoring with warm-up, first-server selection, score taps, stroke, let,
+  undo, early end, serve-side changes, in-match game settings, completed-game
+  strip, and event timeline
 - warm-up, interval, and match timer flow
-- basic history search
+- historic-match timeline with grouped point history and game-duration summary
+- history search and separate matches/history views
 - native club settings sections for organisation details, users, and courts
-- native organisation and court administration mutations through the existing backend
-
-This means the release is now primarily a parity and hardening exercise rather
-than a greenfield build.
-
-### Completed Launch Phases
-
-The following launch phases are now complete:
-
-1. Phase 1: Data And API Parity
-2. Phase 2: Club Settings
-3. Phase 3: Scorer Parity
-
-## Launch Decision
-
-### Release When
-
-Release once all `Must Have Before Launch` items are complete, manual testing is
-green on iPhone and iPad, and the critical regression set is documented and
-repeatable.
-
-### Do Not Release If
-
-- scorers still need the web app for critical club match administration
-- in-match settings are only available on the web app
-- settings/courts/users are incomplete for the intended club release audience
-- session, scoring, or scheduled-match flows are not stable under repeat testing
-
-## Parity Snapshot
-
-### Strong
-
-- login and session flow
-- dashboard shell and small-screen styling direction
-- new match creation flow
-- live match scoring
-- timer behavior
-- native organisation details, users, and courts management
-
-### Partial
-
-- matches/history polish
-- deeper club settings breadth
-- help and support flows
-
-### Missing Or Not Release-Ready
-
-- release-grade automated and manual signoff coverage
-- final release hardening and regression signoff
-
-## Must Have Before Launch
-
-### 1. Club Settings Parity
-
-The iOS app must support the club workflows that are most likely to block match
-operations on event day.
-
-Required:
-
-1. organisation details view/edit
-2. court list view
-3. create/edit court
-4. organisation users list view
-5. add/edit user role where supported by backend permissions
-6. game settings view/edit if those settings affect match setup or scoring
-
-Definition of done:
-
-- a club admin can perform the common day-to-day settings tasks from iPhone and
-  iPad without switching to the web app
-
-### 2. In-Match Settings Parity
-
-The scorer must be able to manage the same key in-match controls as the web app.
-
-Required:
-
-1. native game settings overlay
-2. match settings save/update flow
-3. shirt colour editing where tier allows it
-4. clear scheduled-match edit path from the iOS app
-
-Definition of done:
-
-- a scorer can change the important match configuration from within the app
-
-### 3. Matches And History Parity
-
-The post-login experience must match the current mobile-web information flow.
-
-Required:
-
-1. `Matches` screen shows all active first, then scheduled, in a clean vertical
-   list
-2. `History` screen shows completed matches only
-3. history search supports player names and date text
-4. scheduled match cards surface edit/start actions clearly
-
-Definition of done:
-
-- the iOS navigation model no longer feels materially behind mobile web
-
-### 4. Release Hardening
-
-Required:
-
-1. graceful handling for session replacement and expired sessions
-2. stable empty states and error states
-3. loading-state polish on slower networks
-4. no obviously broken iPad layouts in portrait or landscape
-5. current mobile docs updated to match shipped scope
-
-Definition of done:
-
-- the app feels intentional and stable, not like a partial internal build
-
-## Safe To Defer
-
-These items should not block the first release unless the rollout audience says
-they are mandatory.
-
-1. root admin tools
-2. full spectator-display configuration
-3. WebSocket/live sync parity beyond the current refresh model
-4. full offline scoring sync
-5. deep notification center flows behind the dashboard bell
-6. Android/native cross-platform work
-
-## Recommended Delivery Order
-
-### Phase 1: Data And API Parity
-
-Goal:
-
-- expand the iOS data layer so settings and in-match administration are
-  possible
-
-Required work:
-
-1. extend `APIClient.swift` with organisation details, user, court, and match
-   settings endpoints
-2. expand iOS settings models beyond organisation summary plus courts
-3. confirm tier gating remains aligned with web
-
-Exit criteria:
-
-- all required backend calls for launch-critical parity exist in the native
-  client
-
-Status:
-
-- completed
-
-### Phase 2: Club Settings
-
-Goal:
-
-- make the `Settings` tab useful for club admins
-
-Required work:
-
-1. organisation details UI
-2. court management UI
-3. users/roles UI
-4. game settings UI if used operationally
-
-Exit criteria:
-
-- club admin can complete common settings tasks entirely from iOS
-
-Status:
-
-- completed for organisation details, user management, and court management
-- deeper match-side configuration remains part of Phase 3 scorer parity work
-
-### Phase 3: Scorer Parity
-
-Goal:
-
-- remove the remaining scorer-side reasons to switch back to web
-
-Required work:
-
-1. native in-match settings overlay
-2. scheduled match edit flow
-3. history and matches screen polish
-4. any must-have spectator/display visibility if required for launch
-
-Exit criteria:
-
-- a scorer can create, edit, run, and complete a club match from iOS
-
-Status:
-
-- completed for native in-match game settings, scheduled-match edit entry, and scorer-side display visibility
-- remaining work now shifts to release hardening and final regression coverage
-
-### Phase 4: Release Hardening
-
-Goal:
-
-- turn a working app into a shippable app
-
-Required work:
-
-1. cleanup of edge-case UI states
-2. regression pass on iPhone and iPad
-3. release notes and docs refresh
-4. final signoff checklist
-
-Exit criteria:
-
-- manual launch checklist passes cleanly
+- native organisation, user, court, and court display-code mutations through the
+  existing backend
+- in-app feedback and password-reset request flow
+
+## Current Gaps
+
+These are the main gaps still visible in the current iOS build:
+
+- iOS login does not yet expose the backend `organizationSelection` branch for
+  multi-membership users
+- the live scoring screen is functionally rich but visually crowded on iPhone
+- the timer, match details, secondary controls, and destructive actions compete
+  too strongly in the current scoring layout
+- there is no documented mobile CI/archive/release pipeline yet
+- there is no completed realtime/WebSocket sync path yet
+- release-grade automated and manual signoff coverage is still missing
+- iPad polish still needs a final hardening pass after scoring redesign
 
 ## Device Targets
 
@@ -263,57 +67,75 @@ The design should continue to feel mobile-first. iPad should be polished enough
 for live operational use, but not at the expense of slowing down the iPhone
 release.
 
-## Launch Testing Gate
+## Next Active Workstream
 
-### Functional Must-Pass
+### Phase 4: iPhone Scoring Redesign
 
-1. login
-2. logout
-3. session replacement handling
-4. dashboard load
-5. create immediate match
-6. create scheduled match
-7. start scheduled match
-8. score live match
-9. undo action
-10. end match
-11. history entry appears correctly
-12. settings changes persist correctly
+Goal:
 
-### UX Must-Pass
+- keep the current scorer feature set, but redesign the screen around iPhone
+  usability, visual hierarchy, and safer match control
 
-1. score tap targets are comfortable one-handed
-2. scheduled and active lists are readable on iPhone and iPad
-3. long names do not break key layouts
-4. overlays can be dismissed cleanly
-5. support/help flow is reachable when a user gets stuck
+Required work:
 
-### Failure Conditions
+1. make the live score the dominant visual focus
+2. separate primary scoring actions from secondary match-management actions
+3. clarify warm-up, first-server, and timer phases so the scorer always knows
+   the current match state
+4. reduce below-the-fold dependence for common scoring actions
+5. move destructive actions into a safer visual and interaction pattern
+6. decide whether completed-game history and detailed timeline belong inline,
+   collapsed, or in a secondary surface
+7. preserve existing backend contracts and event behavior while changing the UI
+
+Definition of done:
+
+- common scoring actions feel fast and comfortable one-handed on a typical
+  iPhone
+- the scorer can always see match state, current score, and next likely action
+- secondary controls no longer compete with the main scoring task
+- the layout is cleaner without dropping warm-up, timer, undo, or settings
+  capability
+
+### Phase 5: Launch Hardening
+
+Goal:
+
+- validate the redesigned scorer and turn the current app into a shippable v1
+
+Required work:
+
+1. manual iPhone regression across login, dashboard, setup, scoring, history,
+   settings, and help
+2. iPad portrait and landscape pass
+3. session-expiry and session-replacement handling verification
+4. docs, release notes, and signoff checklist refresh
+5. decision on how multi-organisation membership selection should work in iOS
+
+Definition of done:
+
+- manual launch checklist passes cleanly
+- there is no known blocker that sends scorers back to the web app for normal
+  club event-day use
+
+## Release Gate
 
 Do not proceed to release if:
 
 1. scoring can get stuck mid-match
-2. scheduled matches cannot be edited or started reliably
-3. settings screens are incomplete for the intended launch tier
-4. there are session bugs that sign users out unexpectedly
+2. the redesigned scorer hides or slows common operator actions
+3. scheduled matches cannot be started reliably from iPhone
+4. session bugs sign users out unexpectedly
+5. the app still lacks a clear decision for multi-membership login behavior
 
-## Final Release Recommendation
+## Deferred For Later
 
-Ship the first native release as a **club-first scorer app** rather than as a
-claim of total web parity.
+These items should stay out of the immediate scoring redesign unless they become
+blocking:
 
-Recommended positioning:
-
-- strong native scorer workflow
-- strong small-screen club dashboard
-- enough settings/control for real club use
-- clear list of intentionally deferred secondary features
-
-## Immediate Next Step
-
-Implement the launch-critical parity work in this order:
-
-1. native in-match game settings and scheduled-match edit flow
-2. manual iPhone/iPad launch regression pass
-3. release notes and final launch checklist review
-4. release hardening fixes from testing feedback
+1. root admin tools
+2. full spectator-display configuration
+3. WebSocket/live sync parity beyond the current refresh model
+4. full offline scoring sync
+5. deep notification center flows behind the dashboard bell
+6. Android/native cross-platform work

@@ -1896,6 +1896,7 @@ struct DashboardView: View {
     }
 
     private func handleStartNewMatchResult(_ result: StartNewMatchResult) {
+        activeSheet = nil
         Task { await loadDashboard() }
 
         switch result {

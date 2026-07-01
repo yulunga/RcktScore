@@ -1,25 +1,41 @@
 # iOS Workspace
 
-This directory is the home for the native iOS app.
+This directory is the home for the active native iOS app.
 
-Recommended next build steps for the iOS developer:
+Current workspace:
 
-1. Create the Xcode app target and workspace in this directory
-2. Point the app at the existing deployed API base URL per environment
-3. Use the API and match lifecycle documentation from:
-   - `docs/backend-api.md`
-   - `docs/technical-walkthrough.md`
-4. Build the first mobile flow around organisation user login, dashboard, and
-   live match scoring
-
-Suggested native structure:
-
-- `RcktScoreMobile.xcworkspace/`
-- `RcktScoreMobile.xcodeproj/`
+- `RcktScoreMobile.xcodeproj`
 - `RcktScoreMobile/`
-- `RcktScoreMobileTests/`
-- `RcktScoreMobileUITests/`
+- scheme: `RcktScoreMobile`
 
-This repo currently provides the folder scaffold and mobile documentation so a
-native developer can start cleanly in the same repository.
+Current app coverage:
 
+- organisation-user login and persisted session
+- dashboard, matches, history, settings, and help tabs
+- native match setup and scheduled-match start
+- live scoring and historic-match views
+- club organisation/user/court management
+
+Useful app entry points:
+
+- `RcktScoreMobile/ContentView.swift`
+- `RcktScoreMobile/State/AppContainer.swift`
+- `RcktScoreMobile/Services/APIClient.swift`
+- `RcktScoreMobile/Views/LoginView.swift`
+- `RcktScoreMobile/Views/DashboardView.swift`
+- `RcktScoreMobile/Views/StartNewMatchView.swift`
+- `RcktScoreMobile/Views/MatchScoringView.swift`
+- `RcktScoreMobile/Views/HistoricMatchView.swift`
+
+Supporting repo docs:
+
+- `docs/mobile/README.md`
+- `docs/mobile/ios-v1-plan.md`
+- `docs/backend-api.md`
+- `docs/technical-walkthrough.md`
+- `docs/troubleshooting.md`
+
+Current priority:
+
+- redesign the iPhone scoring experience without changing the shared backend
+  scoring contracts

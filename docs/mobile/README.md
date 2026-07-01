@@ -13,22 +13,34 @@ Current documents:
 
 ## Current iOS State
 
-The native iOS project exists in `mobile/ios/RcktScoreMobile/`.
+The native iOS project exists in `mobile/ios/RcktScoreMobile/` and includes a
+real app target and scheme.
 
 What the current app does:
 
 - organisation-user login against the shared v2 backend
-- session persistence on-device
-- dashboard loading
-- active and scheduled match access
-- scoring against the shared backend routes
+- persisted session state with `mobile_app` client-type sessions
+- active-session conflict handling with force-logout retry
+- dashboard tabs for `Home`, `Matches`, `History`, `Settings`, and `Need Help`
+- dashboard loading for active, scheduled, and recent matches
+- native start-new-match flow with sport picker, player/referee lookups, court
+  selection, handicap setup, and scheduled-match fallback when a court is busy
+- native live scoring with warm-up, first-server selection, match timer,
+  score/stroke/let actions, undo, early end, serve-side changes, in-match game
+  settings, and court display-code visibility
+- native historic-match view with grouped point timeline and match/game timing
+- native club settings for organisation details, users, courts, and court
+  display-code regeneration
+- native help flows for feedback and password reset
 
 What it does not yet match perfectly:
 
-- full parity with the web scorer warm-up flow
-- first-server selection parity
-- timer and interval behavior parity
+- multi-organisation membership selection when `/login` returns
+  `organizationSelection`
+- final iPhone-first redesign of the scoring screen and control hierarchy
 - documented CI/archive/release pipeline
+- completed realtime/WebSocket sync
+- release-grade automated or manual signoff coverage
 
 Current iOS should be treated as an active client implementation, but not yet as
 a fully packaged mobile release program.

@@ -111,6 +111,9 @@ Duplicate login behavior:
 - current client types normalize to `web_app` or `mobile_app`
 - if an active session already exists for the same username and client type, `POST /login` can return `ACTIVE_SESSION_EXISTS`
 - the frontend may retry with `force_logout_other`
+- `POST /login` can also return `data.organizationSelection` for users with
+  multiple approved memberships, so clients must handle both `session` and
+  selection payloads
 
 ### Root-admin users
 
@@ -166,19 +169,23 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /organization_courts`
 - `PUT /organization_courts/{court_id}`
 - `DELETE /organization_courts/{court_id}`
+- `POST /organization_courts/{court_id}/display-code`
 
 ### Match and scoring routes
 
 - `POST /start_match`
 - `POST /start_scheduled_match`
 - `GET /get_score/{match_id}`
+- `GET /match_display_access/{match_id}`
 - `POST /score_point`
 - `POST /event_action`
 - `POST /undo_action`
 - `POST /end_match`
 
-### WebSocket helper route
+### Display and WebSocket helper routes
 
+- `POST /scoreboard_display/session`
+- `GET /scoreboard_display/current`
 - `backend/functions/websocket_broadcast/handler.py` exists
 - the function is part of the backend codebase
 - subscriber registration and routing are not fully deployed or persisted yet
