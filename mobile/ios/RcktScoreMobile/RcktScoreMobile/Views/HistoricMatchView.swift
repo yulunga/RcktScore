@@ -601,6 +601,7 @@ private extension ISO8601DateFormatter {
 private extension Color {
     static let rcktBlue = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let rcktSlate = Color(red: 77 / 255, green: 107 / 255, blue: 139 / 255)
+    static let rcktServe = Color(red: 217 / 255, green: 130 / 255, blue: 43 / 255)
     static let rcktCompleted = Color(red: 196 / 255, green: 68 / 255, blue: 92 / 255)
     static let rcktCardBackground = Color(UIColor.secondarySystemGroupedBackground)
     static let rcktBorder = Color(
