@@ -139,79 +139,66 @@ struct StartNewMatchFlowView: View {
     let onComplete: (StartNewMatchResult) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Choose Racket Sport")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.primary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(Color.dashboardHeroBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.dashboardBorder, lineWidth: 1)
-                )
-
-                VStack(spacing: 14) {
-                    ForEach(MatchSport.allCases) { sport in
-                        NavigationLink(value: sport) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill((sport.isAvailableToday ? Color.dashboardBrand : Color.secondary).opacity(0.1))
-                                        .frame(width: 52, height: 52)
-
-                                    Text(String(sport.displayName.prefix(1)))
-                                        .font(.title3.weight(.bold))
-                                        .foregroundStyle(sport.isAvailableToday ? Color.dashboardBrand : Color.secondary)
-                                }
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(sport.displayName)
-                                        .font(.headline.weight(.semibold))
-                                        .foregroundStyle(sport.isAvailableToday ? .primary : .secondary)
-
-                                    Text(sport.summary)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer(minLength: 0)
-
-                                if sport.isAvailableToday {
-                                    Image(systemName: "chevron.right")
-                                        .font(.headline.weight(.semibold))
-                                        .foregroundStyle(Color.dashboardBrand)
-                                } else {
-                                    Text("Soon")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(Color.secondary.opacity(0.12))
-                                        .clipShape(Capsule())
-                                }
-                            }
-                            .padding(18)
+        VStack(spacing: 14) {
+            ForEach(MatchSport.allCases) { sport in
+                NavigationLink(value: sport) {
+                    HStack(spacing: 14) {
+                        Text(sport.displayName)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.dashboardCardBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.dashboardBorder, lineWidth: 1)
-                            )
+
+                        if sport.isAvailableToday {
+                            Image(systemName: "chevron.right")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.white)
+                        } else {
+                            Text("Soon")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.7))
+                                .clipShape(Capsule())
                         }
-                        .buttonStyle(.plain)
-                        .disabled(!sport.isAvailableToday)
-                        .opacity(sport.isAvailableToday ? 1 : 0.6)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        sport.isAvailableToday
+                            ? AnyView(
+                                LinearGradient(
+                                    colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            : AnyView(Color.dashboardCardBackground.opacity(0.72))
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(
+                                sport.isAvailableToday ? Color.clear : Color.dashboardBorder,
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(
+                        color: sport.isAvailableToday ? Color.black.opacity(0.08) : .clear,
+                        radius: 10,
+                        x: 0,
+                        y: 6
+                    )
                 }
+                .buttonStyle(.plain)
+                .disabled(!sport.isAvailableToday)
+                .opacity(sport.isAvailableToday ? 1 : 0.62)
             }
-            .padding()
+            Spacer(minLength: 0)
         }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
             LinearGradient(
                 colors: [
@@ -223,7 +210,7 @@ struct StartNewMatchFlowView: View {
             )
             .ignoresSafeArea()
         )
-        .navigationTitle("Choose Sport")
+        .navigationTitle("Choose Racket Sport")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: MatchSport.self) { sport in
             StartNewMatchView(
