@@ -314,21 +314,24 @@ struct DashboardView: View {
     private var homeContent: some View {
         VStack(spacing: 18) {
             dashboardSection(
-                title: "Active Matches"
+                title: "Active Matches",
+                systemImage: "dot.radiowaves.left.and.right"
             ) {
                 activeMatchesContent(matches: homeActiveMatches)
             }
 
             if !isPersonalAccount {
                 dashboardSection(
-                    title: "Scheduled Matches"
+                    title: "Scheduled Matches",
+                    systemImage: "calendar.badge.clock"
                 ) {
                     scheduledMatchesContent(matches: homeScheduledMatches)
                 }
             }
 
             dashboardSection(
-                title: "Recent Matches"
+                title: "Recent Matches",
+                systemImage: "clock"
             ) {
                 recentMatchesContent(matches: homeRecentMatches)
             }
@@ -1032,14 +1035,23 @@ struct DashboardView: View {
     @ViewBuilder
     private func dashboardSection<Content: View>(
         title: String,
+        systemImage: String? = nil,
         subtitle: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.primary)
+                HStack(spacing: 10) {
+                    if let systemImage {
+                        Image(systemName: systemImage)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(Color.dashboardAccentPink)
+                    }
+
+                    Text(title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                }
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
