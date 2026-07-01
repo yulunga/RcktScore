@@ -138,66 +138,80 @@ struct StartNewMatchFlowView: View {
     let activeMatches: [MatchSummary]
     let onComplete: (StartNewMatchResult) -> Void
 
-    var body: some View {
-        VStack(spacing: 14) {
-            ForEach(MatchSport.allCases) { sport in
-                NavigationLink(value: sport) {
-                    HStack(spacing: 14) {
-                        Text(sport.displayName)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+    private let sportGridColumns = [
+        GridItem(.flexible(), spacing: 14),
+        GridItem(.flexible(), spacing: 14)
+    ]
 
-                        if sport.isAvailableToday {
-                            Image(systemName: "chevron.right")
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: sportGridColumns, spacing: 14) {
+                ForEach(MatchSport.allCases) { sport in
+                    NavigationLink(value: sport) {
+                        VStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(Color.white.opacity(sport.isAvailableToday ? 0.2 : 0.45))
+                                    .frame(width: 62, height: 62)
+
+                                Text(String(sport.displayName.prefix(1)))
+                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
+                            }
+
+                            Text(sport.displayName)
                                 .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                        } else {
-                            Text("Soon")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.white.opacity(0.7))
-                                .clipShape(Capsule())
+                                .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+
+                            if !sport.isAvailableToday {
+                                Text("Soon")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.white.opacity(0.7))
+                                    .clipShape(Capsule())
+                            }
                         }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 22)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        sport.isAvailableToday
-                            ? AnyView(
-                                LinearGradient(
-                                    colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 168)
+                        .padding(.horizontal, 14)
+                        .background(
+                            sport.isAvailableToday
+                                ? AnyView(
+                                    LinearGradient(
+                                        colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                            : AnyView(Color.dashboardCardBackground.opacity(0.72))
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(
-                                sport.isAvailableToday ? Color.clear : Color.dashboardBorder,
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: sport.isAvailableToday ? Color.black.opacity(0.08) : .clear,
-                        radius: 10,
-                        x: 0,
-                        y: 6
-                    )
+                                : AnyView(Color.dashboardCardBackground.opacity(0.72))
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .stroke(
+                                    sport.isAvailableToday ? Color.clear : Color.dashboardBorder,
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(
+                            color: sport.isAvailableToday ? Color.black.opacity(0.08) : .clear,
+                            radius: 10,
+                            x: 0,
+                            y: 6
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!sport.isAvailableToday)
+                    .opacity(sport.isAvailableToday ? 1 : 0.62)
                 }
-                .buttonStyle(.plain)
-                .disabled(!sport.isAvailableToday)
-                .opacity(sport.isAvailableToday ? 1 : 0.62)
             }
-            Spacer(minLength: 0)
+            .padding()
         }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
             LinearGradient(
