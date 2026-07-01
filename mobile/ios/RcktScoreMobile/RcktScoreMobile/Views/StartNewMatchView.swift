@@ -3,6 +3,11 @@ import SwiftUI
 enum MatchSport: String, CaseIterable, Hashable, Identifiable {
     case squash
     case racketball
+    case tennis
+    case padel
+    case tableTennis = "table_tennis"
+    case pickleball
+    case badminton
 
     var id: String { rawValue }
 
@@ -12,6 +17,16 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
             return "Squash"
         case .racketball:
             return "Racketball"
+        case .tennis:
+            return "Tennis"
+        case .padel:
+            return "Padel"
+        case .tableTennis:
+            return "Table Tennis"
+        case .pickleball:
+            return "Pickleball"
+        case .badminton:
+            return "Badminton"
         }
     }
 
@@ -21,11 +36,30 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
             return "Use the standard squash match setup flow."
         case .racketball:
             return "Use the shared squash and racketball setup flow."
+        case .tennis:
+            return "Use the shared racket-sport setup flow for tennis."
+        case .padel:
+            return "Use the shared racket-sport setup flow for padel."
+        case .tableTennis:
+            return "Use the shared racket-sport setup flow for table tennis."
+        case .pickleball:
+            return "Use the shared racket-sport setup flow for pickleball."
+        case .badminton:
+            return "Use the shared racket-sport setup flow for badminton."
         }
     }
 
     var navigationTitle: String {
         "Start \(displayName) Match"
+    }
+
+    var isAvailableToday: Bool {
+        switch self {
+        case .squash, .racketball:
+            return true
+        case .tennis, .padel, .tableTennis, .pickleball, .badminton:
+            return false
+        }
     }
 }
 
@@ -111,10 +145,6 @@ struct StartNewMatchFlowView: View {
                     Text("Choose Racket Sport")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.primary)
-
-                    Text("Pick the sport first, then continue into the right match setup flow.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
@@ -131,18 +161,18 @@ struct StartNewMatchFlowView: View {
                             HStack(spacing: 14) {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.dashboardBrand.opacity(0.1))
+                                        .fill((sport.isAvailableToday ? Color.dashboardBrand : Color.secondary).opacity(0.1))
                                         .frame(width: 52, height: 52)
 
                                     Text(String(sport.displayName.prefix(1)))
                                         .font(.title3.weight(.bold))
-                                        .foregroundStyle(Color.dashboardBrand)
+                                        .foregroundStyle(sport.isAvailableToday ? Color.dashboardBrand : Color.secondary)
                                 }
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(sport.displayName)
                                         .font(.headline.weight(.semibold))
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(sport.isAvailableToday ? .primary : .secondary)
 
                                     Text(sport.summary)
                                         .font(.subheadline)
@@ -151,9 +181,19 @@ struct StartNewMatchFlowView: View {
 
                                 Spacer(minLength: 0)
 
-                                Image(systemName: "chevron.right")
-                                    .font(.headline.weight(.semibold))
-                                    .foregroundStyle(Color.dashboardBrand)
+                                if sport.isAvailableToday {
+                                    Image(systemName: "chevron.right")
+                                        .font(.headline.weight(.semibold))
+                                        .foregroundStyle(Color.dashboardBrand)
+                                } else {
+                                    Text("Soon")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.secondary.opacity(0.12))
+                                        .clipShape(Capsule())
+                                }
                             }
                             .padding(18)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -165,6 +205,8 @@ struct StartNewMatchFlowView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .disabled(!sport.isAvailableToday)
+                        .opacity(sport.isAvailableToday ? 1 : 0.6)
                     }
                 }
             }
