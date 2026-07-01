@@ -429,7 +429,7 @@ struct HistoricMatchView: View {
         HStack(spacing: 8) {
             Circle()
                 .fill(isActive ? tint : Color.clear)
-                .frame(width: 24, height: 24)
+                .frame(width: 38, height: 38)
                 .overlay(
                     Circle()
                         .stroke(tint.opacity(isActive ? 0.0 : 0.24), lineWidth: 2)
@@ -438,7 +438,9 @@ struct HistoricMatchView: View {
                     Group {
                         if let score, isActive {
                             Text(score)
-                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.55)
                                 .foregroundStyle(.white)
                         }
                     }
