@@ -151,12 +151,10 @@ struct StartNewMatchFlowView: View {
                         VStack(spacing: 14) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Color.white.opacity(sport.isAvailableToday ? 0.2 : 0.45))
+                                    .fill((sport.isAvailableToday ? Color.dashboardAccentPink : Color.secondary).opacity(sport.isAvailableToday ? 0.95 : 0.18))
                                     .frame(width: 62, height: 62)
 
-                                Text(String(sport.displayName.prefix(1)))
-                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
+                                sportGlyph(for: sport, isAvailable: sport.isAvailableToday)
                             }
 
                             Text(sport.displayName)
@@ -238,6 +236,90 @@ struct StartNewMatchFlowView: View {
                 Button("Close") {
                     dismiss()
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sportGlyph(for sport: MatchSport, isAvailable: Bool) -> some View {
+        let foreground = isAvailable ? Color.white : Color.secondary.opacity(0.72)
+
+        switch sport {
+        case .squash:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.5)
+                    .frame(width: 20, height: 20)
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 5, height: 5)
+                    .offset(x: 4, y: -4)
+            }
+        case .racketball:
+            ZStack {
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 20, height: 20)
+                Circle()
+                    .fill((isAvailable ? Color.dashboardAccentPink : Color.secondary.opacity(0.18)))
+                    .frame(width: 4, height: 4)
+                    .offset(x: -4, y: -4)
+                Circle()
+                    .fill((isAvailable ? Color.dashboardAccentPink : Color.secondary.opacity(0.18)))
+                    .frame(width: 4, height: 4)
+                    .offset(x: 4, y: 4)
+            }
+        case .tennis, .padel:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.5)
+                    .frame(width: 22, height: 22)
+                Path { path in
+                    path.move(to: CGPoint(x: 18, y: 10))
+                    path.addQuadCurve(to: CGPoint(x: 18, y: 30), control: CGPoint(x: 10, y: 20))
+                    path.move(to: CGPoint(x: 30, y: 10))
+                    path.addQuadCurve(to: CGPoint(x: 30, y: 30), control: CGPoint(x: 22, y: 20))
+                }
+                .stroke(foreground, lineWidth: 2)
+                .frame(width: 40, height: 40)
+            }
+        case .tableTennis:
+            ZStack {
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 16, height: 16)
+                    .offset(x: -2, y: -6)
+                Capsule()
+                    .fill(foreground)
+                    .frame(width: 8, height: 20)
+                    .offset(x: 6, y: 8)
+            }
+        case .pickleball:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.2)
+                    .frame(width: 20, height: 20)
+                ForEach([(-4.0), 0.0, 4.0], id: \.self) { y in
+                    Circle()
+                        .fill(foreground)
+                        .frame(width: 3.5, height: 3.5)
+                        .offset(x: -3, y: y)
+                    Circle()
+                        .fill(foreground)
+                        .frame(width: 3.5, height: 3.5)
+                        .offset(x: 3, y: y)
+                }
+            }
+        case .badminton:
+            VStack(spacing: 2) {
+                HStack(spacing: 2) {
+                    Capsule().fill(foreground).frame(width: 4, height: 12).rotationEffect(.degrees(-20))
+                    Capsule().fill(foreground).frame(width: 4, height: 12)
+                    Capsule().fill(foreground).frame(width: 4, height: 12).rotationEffect(.degrees(20))
+                }
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 9, height: 9)
             }
         }
     }
