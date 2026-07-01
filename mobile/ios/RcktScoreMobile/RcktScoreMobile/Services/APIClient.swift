@@ -86,6 +86,20 @@ struct OrganizationSettingsResponseData: Decodable {
     }
 }
 
+struct OrganizationUserResponseData: Decodable {
+    let user: OrganizationUser
+}
+
+struct CourtResponseData: Decodable {
+    let court: CourtSummary
+    let organizationSettings: OrganizationSettings?
+
+    enum CodingKeys: String, CodingKey {
+        case court
+        case organizationSettings
+    }
+}
+
 struct MatchSetupLookupResponseData: Decodable {
     let lookups: MatchSetupLookups
 }
@@ -371,6 +385,159 @@ final class APIClient {
         return settings
     }
 
+    func updateOrganizationDetails(
+        organizationID: Int,
+        draft: OrganizationDetailsDraft
+    ) async throws -> OrganizationSettings {
+        let request = try makeRequest(
+            path: "/organization_details/\(organizationID)",
+            method: "PUT",
+            body: UpdateOrganizationDetailsRequest(
+                organizationName: draft.organizationName,
+                organizationAddress: draft.organizationAddress,
+                organizationPostcode: draft.organizationPostcode,
+                organizationContact: draft.organizationContact,
+                organizationTelephone: draft.organizationTelephone,
+                organizationEmail: draft.organizationEmail,
+                organizationWebAddress: draft.organizationWebAddress
+            )
+        )
+        return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func updatePersonalProfile(
+        organizationID: Int,
+        username: String,
+        firstName: String,
+        surname: String,
+        country: String,
+        cityLocation: String
+    ) async throws -> OrganizationSettings {
+        let request = try makeRequest(
+            path: "/personal_profile/\(organizationID)",
+            method: "PUT",
+            body: UpdatePersonalProfileRequest(
+                username: username,
+                firstName: firstName,
+                surname: surname,
+                country: country,
+                cityLocation: cityLocation
+            )
+        )
+        return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func createOrganizationUser(
+        organizationID: Int,
+        draft: OrganizationUserDraft
+    ) async throws {
+        let password = draft.password.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = try makeRequest(
+            path: "/organization_users",
+            method: "POST",
+            body: OrganizationUserRequest(
+                organizationID: organizationID,
+                firstName: draft.firstName,
+                surname: draft.surname,
+                username: draft.username,
+                password: password.isEmpty ? nil : password,
+                role: draft.role
+            )
+        )
+        let _: APIEnvelope<OrganizationUserResponseData> = try await send(request)
+    }
+
+    func updateOrganizationUser(
+        organizationID: Int,
+        userID: Int,
+        draft: OrganizationUserDraft,
+        allowPasswordChange: Bool
+    ) async throws {
+        let password = draft.password.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = try makeRequest(
+            path: "/organization_users/\(userID)",
+            method: "PUT",
+            body: OrganizationUserUpdateRequest(
+                organizationID: organizationID,
+                firstName: draft.firstName,
+                surname: draft.surname,
+                username: draft.username,
+                password: allowPasswordChange && !password.isEmpty ? password : nil,
+                role: draft.role
+            )
+        )
+        let _: APIEnvelope<OrganizationUserResponseData> = try await send(request)
+    }
+
+    func deleteOrganizationUser(
+        organizationID: Int,
+        userID: Int
+    ) async throws {
+        let request = try makeRequest(
+            path: "/organization_users/\(userID)",
+            method: "DELETE",
+            body: OrganizationEntityRequest(organizationID: organizationID)
+        )
+        let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func createCourt(
+        organizationID: Int,
+        draft: CourtDraft
+    ) async throws {
+        let request = try makeRequest(
+            path: "/organization_courts",
+            method: "POST",
+            body: CourtRequest(
+                organizationID: organizationID,
+                courtName: draft.courtName,
+                courtAlias: draft.courtAlias
+            )
+        )
+        let _: APIEnvelope<CourtResponseData> = try await send(request)
+    }
+
+    func updateCourt(
+        organizationID: Int,
+        courtID: Int,
+        draft: CourtDraft
+    ) async throws {
+        let request = try makeRequest(
+            path: "/organization_courts/\(courtID)",
+            method: "PUT",
+            body: CourtRequest(
+                organizationID: organizationID,
+                courtName: draft.courtName,
+                courtAlias: draft.courtAlias
+            )
+        )
+        let _: APIEnvelope<CourtResponseData> = try await send(request)
+    }
+
+    func deleteCourt(
+        organizationID: Int,
+        courtID: Int
+    ) async throws {
+        let request = try makeRequest(
+            path: "/organization_courts/\(courtID)",
+            method: "DELETE",
+            body: OrganizationEntityRequest(organizationID: organizationID)
+        )
+        let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func createCourtDisplayCode(
+        organizationID: Int,
+        courtID: Int
+    ) async throws -> OrganizationSettings {
+        let request = try makeRequest(
+            path: "/organization_courts/\(courtID)/display-code",
+            method: "POST",
+            body: OrganizationEntityRequest(organizationID: organizationID)
+        )
+        return try await unwrapOrganizationSettingsResponse(request)
+    }
+
     func searchMatchSetupLookup(organizationID: Int, query: String) async throws -> MatchSetupLookups {
         let request = try makeRequest(
             path: "/match_setup_lookup/\(organizationID)",
@@ -622,5 +789,15 @@ final class APIClient {
         }
 
         return match
+    }
+
+    private func unwrapOrganizationSettingsResponse(_ request: URLRequest) async throws -> OrganizationSettings {
+        let envelope: APIEnvelope<OrganizationSettingsResponseData> = try await send(request)
+
+        guard let settings = envelope.data?.organizationSettings else {
+            throw APIErrorResponse(code: "empty_response", message: "No organisation settings returned.", details: nil)
+        }
+
+        return settings
     }
 }

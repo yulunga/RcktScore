@@ -13,11 +13,19 @@ struct DashboardView: View {
     @State private var isLoadingSettings = false
     @State private var errorMessage: String?
     @State private var settingsErrorMessage: String?
+    @State private var settingsSuccessMessage: String?
     @State private var startingScheduledMatchID: String?
     @State private var navigationTarget: MatchRoute?
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
     @State private var selectedTab: DashboardTab = .home
+    @State private var selectedSettingsSection: SettingsSection = .organization
+    @State private var organizationDetailsDraft = OrganizationDetailsDraft()
+    @State private var newOrganizationUserDraft = OrganizationUserDraft()
+    @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
+    @State private var newCourtDraft = CourtDraft()
+    @State private var courtDrafts: [Int: CourtDraft] = [:]
+    @State private var savingSettingsKey: String?
     @State private var historySearch = ""
     @State private var feedbackName = ""
     @State private var feedbackEmail = ""
@@ -33,6 +41,7 @@ struct DashboardView: View {
 
     private var session: UserSession? { container.sessionStore.session }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
+    private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var headerPlanLine: String {
         session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
     }
@@ -76,6 +85,12 @@ struct DashboardView: View {
         isPersonalAccount
             ? "We will send your message to the Hit n Score support inbox."
             : "Your message will include your club context so support can help faster."
+    }
+    private var organizationSettingsUsers: [OrganizationUser] {
+        organizationSettings?.users ?? []
+    }
+    private var organizationSettingsCourts: [CourtSummary] {
+        organizationSettings?.courts ?? []
     }
 
     var body: some View {
@@ -375,7 +390,9 @@ struct DashboardView: View {
         VStack(spacing: 18) {
             dashboardSection(
                 title: "Settings",
-                subtitle: "Club and plan details for this signed-in account."
+                subtitle: isPersonalAccount
+                    ? "Profile and plan details for this account."
+                    : "Organisation, users, and courts for this club account."
             ) {
                 if isLoadingSettings && organizationSettings == nil {
                     HStack {
@@ -388,16 +405,512 @@ struct DashboardView: View {
                             dashboardInlineError(settingsErrorMessage)
                         }
 
-                        settingsSummaryCard
+                        if let settingsSuccessMessage {
+                            dashboardInlineSuccess(settingsSuccessMessage)
+                        }
 
-                        if let courts = organizationSettings?.courts, !courts.isEmpty {
-                            settingsCourtsCard(courts)
+                        if isPersonalAccount {
+                            personalSettingsContent
                         } else {
-                            emptyState("No courts available yet.")
+                            clubSettingsContent
                         }
                     }
                 }
             }
+        }
+    }
+
+    private var personalSettingsContent: some View {
+        VStack(spacing: 14) {
+            settingsSummaryCard
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Account")
+                    .font(.headline.weight(.semibold))
+
+                settingsValueRow(title: "Username", value: session?.username ?? "Not available")
+                settingsValueRow(title: "Email", value: session?.email ?? "Not available")
+                settingsValueRow(title: "Plan", value: headerPlanLine)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+
+    private var clubSettingsContent: some View {
+        VStack(spacing: 14) {
+            settingsSummaryCard
+            settingsSectionPicker
+
+            if !isAdmin {
+                Text("You are in view-only mode. Only organisation admins can save changes.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            switch selectedSettingsSection {
+            case .organization:
+                organizationDetailsCard
+            case .users:
+                organizationUsersCard
+            case .courts:
+                organizationCourtsCard
+            case .gameSettings:
+                gameSettingsPlaceholderCard
+            }
+        }
+    }
+
+    private var settingsSectionPicker: some View {
+        HStack(spacing: 10) {
+            ForEach(SettingsSection.allCases) { section in
+                Button {
+                    selectedSettingsSection = section
+                } label: {
+                    Text(section.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(selectedSettingsSection == section ? .white : Color.dashboardBrand)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            selectedSettingsSection == section
+                                ? Color.dashboardBrand
+                                : Color.dashboardInputBackground
+                        )
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    selectedSettingsSection == section ? Color.dashboardBrand : Color.dashboardBorder,
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var organizationDetailsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Organisation Details")
+                .font(.headline.weight(.semibold))
+
+            dashboardTextField(
+                title: "Club Name",
+                placeholder: "Club name",
+                text: $organizationDetailsDraft.organizationName
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Primary Contact",
+                placeholder: "Primary contact",
+                text: $organizationDetailsDraft.organizationContact
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Telephone",
+                placeholder: "Telephone",
+                text: $organizationDetailsDraft.organizationTelephone,
+                keyboardType: .phonePad
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Email",
+                placeholder: "club@example.com",
+                text: $organizationDetailsDraft.organizationEmail,
+                keyboardType: .emailAddress
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Website",
+                placeholder: "https://example.com",
+                text: $organizationDetailsDraft.organizationWebAddress,
+                keyboardType: .URL
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Address",
+                placeholder: "Address",
+                text: $organizationDetailsDraft.organizationAddress
+            )
+            .disabled(!isAdmin)
+
+            dashboardTextField(
+                title: "Postcode",
+                placeholder: "Postcode",
+                text: $organizationDetailsDraft.organizationPostcode
+            )
+            .disabled(!isAdmin)
+
+            Button(currentSettingsButtonTitle(for: "organization-save", defaultTitle: "Save Organisation Details")) {
+                saveOrganizationDetails()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(!isAdmin || savingSettingsKey != nil)
+            .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var organizationUsersCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Organisation Users")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 12) {
+                dashboardTextField(
+                    title: "First Name",
+                    placeholder: "First name",
+                    text: $newOrganizationUserDraft.firstName
+                )
+                .disabled(!isAdmin)
+
+                dashboardTextField(
+                    title: "Surname",
+                    placeholder: "Surname",
+                    text: $newOrganizationUserDraft.surname
+                )
+                .disabled(!isAdmin)
+
+                dashboardTextField(
+                    title: "Email Address",
+                    placeholder: "user@club.com",
+                    text: $newOrganizationUserDraft.username,
+                    keyboardType: .emailAddress
+                )
+                .disabled(!isAdmin)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Password")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    SecureField("Required for new users", text: $newOrganizationUserDraft.password)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.dashboardInputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.dashboardBorder, lineWidth: 1)
+                        )
+                }
+                .disabled(!isAdmin)
+
+                settingsRolePicker(selection: $newOrganizationUserDraft.role)
+                    .disabled(!isAdmin)
+
+                Button(currentSettingsButtonTitle(for: "user-create", defaultTitle: "Add User")) {
+                    createOrganizationUser()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            }
+
+            if organizationSettingsUsers.isEmpty {
+                emptyState("No organisation users yet.")
+            } else {
+                ForEach(organizationSettingsUsers) { user in
+                    organizationUserRow(user)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var organizationCourtsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Courts")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 12) {
+                dashboardTextField(
+                    title: "Court Name",
+                    placeholder: "Court 1",
+                    text: $newCourtDraft.courtName
+                )
+                .disabled(!isAdmin)
+
+                dashboardTextField(
+                    title: "Court Alias",
+                    placeholder: "Show court name",
+                    text: $newCourtDraft.courtAlias
+                )
+                .disabled(!isAdmin)
+
+                Button(currentSettingsButtonTitle(for: "court-create", defaultTitle: "Add Court")) {
+                    createCourt()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            }
+
+            if organizationSettingsCourts.isEmpty {
+                emptyState("No courts available yet.")
+            } else {
+                ForEach(organizationSettingsCourts) { court in
+                    organizationCourtRow(court)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var gameSettingsPlaceholderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Game Setup")
+                .font(.headline.weight(.semibold))
+
+            Text("Operational club settings are now available in native settings. Match-side game controls and edit-in-match configuration remain part of the next scorer parity phase.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            settingsValueRow(title: "Plan", value: settingsPlanLine)
+            settingsValueRow(title: "Organisation Type", value: (organizationSummary?.type ?? session?.organizationType ?? "club").capitalized)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func organizationUserRow(_ user: OrganizationUser) -> some View {
+        let binding = Binding<OrganizationUserDraft>(
+            get: { organizationUserDrafts[user.id] ?? OrganizationUserDraft(user: user) },
+            set: { organizationUserDrafts[user.id] = $0 }
+        )
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(userDisplayName(user))
+                        .font(.subheadline.weight(.semibold))
+                    Text(user.username)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    settingsBadge(title: user.role.capitalized)
+                    Text(user.status.capitalized)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            dashboardTextField(title: "First Name", placeholder: "First name", text: binding.firstName)
+                .disabled(!isAdmin)
+            dashboardTextField(title: "Surname", placeholder: "Surname", text: binding.surname)
+                .disabled(!isAdmin)
+            dashboardTextField(title: "Email", placeholder: "Email", text: binding.username, keyboardType: .emailAddress)
+                .disabled(!isAdmin)
+
+            if user.canEditPassword {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Password")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    SecureField("Optional password change", text: binding.password)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.dashboardInputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.dashboardBorder, lineWidth: 1)
+                        )
+                }
+                .disabled(!isAdmin)
+            }
+
+            settingsRolePicker(selection: binding.role)
+                .disabled(!isAdmin)
+
+            HStack(spacing: 10) {
+                Button(currentSettingsButtonTitle(for: "user-save-\(user.id)", defaultTitle: "Save")) {
+                    updateOrganizationUser(user)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+
+                Button(currentSettingsButtonTitle(for: "user-delete-\(user.id)", defaultTitle: "Delete")) {
+                    deleteOrganizationUser(user)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.red.opacity(0.12))
+                .foregroundStyle(.red)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
+    }
+
+    private func organizationCourtRow(_ court: CourtSummary) -> some View {
+        let binding = Binding<CourtDraft>(
+            get: { courtDrafts[court.id] ?? CourtDraft(court: court) },
+            set: { courtDrafts[court.id] = $0 }
+        )
+
+        return VStack(alignment: .leading, spacing: 12) {
+            if let displayCode = court.displayCode, !displayCode.isEmpty {
+                HStack {
+                    Text("Display Code")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(displayCode)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+            }
+
+            dashboardTextField(title: "Court Name", placeholder: "Court", text: binding.courtName)
+                .disabled(!isAdmin)
+            dashboardTextField(title: "Court Alias", placeholder: "Alias", text: binding.courtAlias)
+                .disabled(!isAdmin)
+
+            HStack(spacing: 10) {
+                Button(currentSettingsButtonTitle(for: "court-save-\(court.id)", defaultTitle: "Save")) {
+                    updateCourt(court)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+
+                Button(currentSettingsButtonTitle(for: "court-code-\(court.id)", defaultTitle: "New Display Code")) {
+                    regenerateCourtDisplayCode(court)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.dashboardInputBackground)
+                .foregroundStyle(Color.dashboardBrand)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.dashboardBorder, lineWidth: 1))
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+
+                Button(currentSettingsButtonTitle(for: "court-delete-\(court.id)", defaultTitle: "Delete")) {
+                    deleteCourt(court)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.red.opacity(0.12))
+                .foregroundStyle(.red)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
+    }
+
+    private func settingsRolePicker(selection: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Role")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Picker("Role", selection: selection) {
+                Text("User").tag("user")
+                Text("Admin").tag("admin")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private func settingsValueRow(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 92, alignment: .leading)
+
+            Text(value.isEmpty ? "Not set" : value)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -811,7 +1324,7 @@ struct DashboardView: View {
 
             HStack(spacing: 12) {
                 settingsMetric(title: "Courts", value: String(organizationSummary?.courtCount ?? organizationSettings?.courts.count ?? 0))
-                settingsMetric(title: "Users", value: String(organizationSummary?.userCount ?? 0))
+                settingsMetric(title: "Users", value: String(organizationSummary?.userCount ?? organizationSettings?.users.count ?? 0))
                 settingsMetric(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
             }
         }
@@ -1012,6 +1525,16 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private func syncSettingsDrafts(from settings: OrganizationSettings) {
+        organizationDetailsDraft = OrganizationDetailsDraft(profile: settings.organization)
+        organizationUserDrafts = Dictionary(
+            uniqueKeysWithValues: settings.users.map { ($0.id, OrganizationUserDraft(user: $0)) }
+        )
+        courtDrafts = Dictionary(
+            uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
+        )
+    }
+
     private func loadDashboard() async {
         guard let organizationID = container.sessionStore.session?.organizationID else {
             print("DASHBOARD LOAD: missing organization ID in session")
@@ -1069,12 +1592,276 @@ struct DashboardView: View {
             let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
             await MainActor.run {
                 organizationSettings = settings
+                syncSettingsDrafts(from: settings)
                 isLoadingSettings = false
             }
         } catch {
             await MainActor.run {
                 settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load organisation settings."
                 isLoadingSettings = false
+            }
+        }
+    }
+
+    private func currentSettingsButtonTitle(for key: String, defaultTitle: String) -> String {
+        savingSettingsKey == key ? "Working..." : defaultTitle
+    }
+
+    private func saveOrganizationDetails() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "organization-save"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                let settings = try await container.apiClient.updateOrganizationDetails(
+                    organizationID: organizationID,
+                    draft: organizationDetailsDraft
+                )
+                await MainActor.run {
+                    organizationSettings = settings
+                    syncSettingsDrafts(from: settings)
+                    settingsSuccessMessage = "Organisation details updated."
+                    savingSettingsKey = nil
+                }
+                await loadDashboard()
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to save organisation details."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func createOrganizationUser() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        let email = newOrganizationUserDraft.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard isValidEmail(email) else {
+            settingsErrorMessage = "Enter a valid email address for the user."
+            settingsSuccessMessage = nil
+            return
+        }
+
+        var draft = newOrganizationUserDraft
+        draft.username = email
+
+        savingSettingsKey = "user-create"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.createOrganizationUser(
+                    organizationID: organizationID,
+                    draft: draft
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    newOrganizationUserDraft = OrganizationUserDraft()
+                    settingsSuccessMessage = "User added to organisation. Invitation email sent and access is pending approval."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to create organisation user."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func updateOrganizationUser(_ user: OrganizationUser) {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+        guard let draft = organizationUserDrafts[user.id] else {
+            return
+        }
+
+        savingSettingsKey = "user-save-\(user.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.updateOrganizationUser(
+                    organizationID: organizationID,
+                    userID: user.id,
+                    draft: draft,
+                    allowPasswordChange: user.canEditPassword
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    settingsSuccessMessage = "User updated."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update the user."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func deleteOrganizationUser(_ user: OrganizationUser) {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "user-delete-\(user.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.deleteOrganizationUser(
+                    organizationID: organizationID,
+                    userID: user.id
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    settingsSuccessMessage = "User deleted."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to delete the user."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func createCourt() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "court-create"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.createCourt(
+                    organizationID: organizationID,
+                    draft: newCourtDraft
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    newCourtDraft = CourtDraft()
+                    settingsSuccessMessage = "Court created."
+                    savingSettingsKey = nil
+                }
+                await loadDashboard()
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to create the court."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func updateCourt(_ court: CourtSummary) {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+        guard let draft = courtDrafts[court.id] else {
+            return
+        }
+
+        savingSettingsKey = "court-save-\(court.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.updateCourt(
+                    organizationID: organizationID,
+                    courtID: court.id,
+                    draft: draft
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    settingsSuccessMessage = "Court updated."
+                    savingSettingsKey = nil
+                }
+                await loadDashboard()
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update the court."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func deleteCourt(_ court: CourtSummary) {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "court-delete-\(court.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.deleteCourt(
+                    organizationID: organizationID,
+                    courtID: court.id
+                )
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await MainActor.run {
+                    settingsSuccessMessage = "Court deleted."
+                    savingSettingsKey = nil
+                }
+                await loadDashboard()
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to delete the court."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func regenerateCourtDisplayCode(_ court: CourtSummary) {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "court-code-\(court.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                let settings = try await container.apiClient.createCourtDisplayCode(
+                    organizationID: organizationID,
+                    courtID: court.id
+                )
+                await MainActor.run {
+                    organizationSettings = settings
+                    syncSettingsDrafts(from: settings)
+                    settingsSuccessMessage = "Display code updated."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update the display code."
+                    savingSettingsKey = nil
+                }
             }
         }
     }
@@ -1234,6 +2021,15 @@ struct DashboardView: View {
         return "\(player1) vs \(player2)"
     }
 
+    private func userDisplayName(_ user: OrganizationUser) -> String {
+        let name = [user.firstName, user.surname]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        return name.isEmpty ? user.username : name
+    }
+
     private func historyWinnerLine(for match: MatchSummary) -> String {
         match.winnerName ?? match.state?.winnerName ?? "Completed match"
     }
@@ -1359,6 +2155,28 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "gearshape"
         case .help:
             return "questionmark.circle"
+        }
+    }
+}
+
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case organization
+    case users
+    case courts
+    case gameSettings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .organization:
+            return "Organisation"
+        case .users:
+            return "Users"
+        case .courts:
+            return "Courts"
+        case .gameSettings:
+            return "Game Setup"
         }
     }
 }

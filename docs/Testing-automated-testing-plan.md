@@ -6,6 +6,22 @@ Build a practical automated test stack for the **web app first** (mobile web, iP
 
 This plan is incremental so you can start getting value within days, not months.
 
+## Launch Context
+
+The next release priority is the native iOS app, but that app still depends on
+the same backend contracts and the same operational match flows as mobile web.
+
+That means the practical testing strategy is:
+
+1. keep web/mobile-web automation as the fastest regression net
+2. increase backend/API coverage around sessions and match lifecycle
+3. run a documented manual signoff pass on iPhone and iPad before release
+
+This document therefore covers both:
+
+- the automated testing roadmap
+- the release-gate checks needed to ship the iOS app safely
+
 ---
 
 ## 1) Recommended Testing Stack
@@ -38,6 +54,12 @@ Automate the highest-risk paths first:
 3. Club admin critical CRUD (users, courts)
 4. Permissions boundaries (user cannot perform admin actions)
 5. Responsive smoke checks on key routes (`/dashboard`, `/matches`, `/match/:id`, `/settings`, `/display`)
+
+For the upcoming iOS launch, add these to the same high-priority set:
+
+6. single-session replacement behavior across web and iOS
+7. scheduled-match lifecycle (`create scheduled` → `start` → `edit` → `score`)
+8. dashboard parity checks for small screens (`/dashboard`, `/matches`, `/history`)
 
 ---
 
@@ -206,6 +228,9 @@ Add tests for:
 - Tenant authorization checks
 - Match scoring endpoint validation
 - Role-based access checks (club user vs admin vs root admin)
+- Session replacement rules (`web app` and `mobile app` coexistence rules)
+- Scheduled match start/edit paths
+- Match settings update behavior if enabled for launch
 
 Run:
 
@@ -276,7 +301,92 @@ In `frontend/package.json`:
 
 ---
 
-## 11) Flakiness Prevention Checklist
+## 11) iOS Launch Signoff Plan
+
+Automation will not be enough on its own for the first native release. Use this
+manual signoff gate on top of the automated coverage.
+
+### Device Matrix
+
+Minimum manual coverage:
+
+1. iPhone portrait
+2. iPad portrait
+
+Recommended additional pass:
+
+1. iPad landscape
+
+### Accounts To Test
+
+1. club admin
+2. club user
+3. personal
+4. personal plus
+
+### Functional Signoff
+
+Each of these should be explicitly checked on-device:
+
+1. login and logout
+2. session persistence across relaunch
+3. session replacement by web login and by another mobile login
+4. dashboard load with active, scheduled, and recent data
+5. create immediate match
+6. create scheduled match
+7. start scheduled match
+8. score live match
+9. undo event
+10. end match
+11. completed match appears in history
+12. settings load and save for launch-critical club features
+13. help / password reset / feedback paths work
+
+### UX Signoff
+
+1. tap targets are usable one-handed on iPhone
+2. active, scheduled, and history cards remain readable with longer names
+3. iPad layouts do not clip controls or hide primary actions
+4. error and empty states are understandable
+5. loading states do not feel broken on slower networks
+
+### Release Blockers
+
+Do not sign off the release if any of the following fail:
+
+1. match scoring becomes stuck or inconsistent
+2. scheduled match start/edit flow is unreliable
+3. users are signed out unexpectedly during normal use
+4. club admins still need the web app for launch-critical match operations
+5. small-screen layouts hide important controls on iPhone or iPad
+
+---
+
+## 12) Recommended CI Gate Before Release
+
+### Pull Request Gate
+
+1. Python syntax check
+2. Frontend build check
+3. backend pytest subset for sessions and match lifecycle
+4. Playwright smoke for login, dashboard, and match list on one mobile and one desktop project
+
+### Nightly Gate
+
+1. full Playwright device matrix
+2. full backend test suite
+3. report of flaky tests and reruns
+
+### Release Candidate Gate
+
+1. staging smoke pass against deployed backend
+2. manual iPhone signoff
+3. manual iPad signoff
+4. explicit pass/fail checklist captured in release notes or test log
+
+---
+
+## 13) Flakiness Prevention Checklist
 
 - Prefer stable selectors (`data-testid`) over text-only selectors
 - Seed deterministic test data
@@ -286,7 +396,7 @@ In `frontend/package.json`:
 
 ---
 
-## 12) Definition of Done for “Automated Testing in Place”
+## 14) Definition of Done for “Automated Testing in Place”
 
 You can consider automation established when:
 
@@ -296,3 +406,8 @@ You can consider automation established when:
 - iPad and desktop full runs happen on nightly/release pipeline
 - Failures produce actionable artifacts (trace, screenshot, logs)
 
+For the iOS launch specifically, also require:
+
+- the manual iPhone and iPad signoff checklist is documented and completed
+- session replacement behavior has been exercised end-to-end
+- scheduled-match create/start/edit/score path has been exercised at least once

@@ -15,13 +15,17 @@ Suggested format:
 
 ## Current State
 
-No App Store or external TestFlight release has been produced from this
-repository yet.
+TestFlight builds have already been produced from this repository for testing.
+An App Store launch has not been completed yet.
 
 Current unreleased iOS build state:
 
 - organisation login and persisted session are implemented
+- dashboard shell now includes `Home`, `Matches`, `History`, `Settings`, and `Need Help`
 - dashboard loads active, scheduled, and recent matches
+- native start-new-match flow is implemented
 - scheduled matches can be started from the native dashboard
 - live scoring supports score taps, stroke, let, undo, early end, serve-side toggle, match details, completed-game strip, and event timeline
-- native timer/warm-up parity with the web scoring screen is still outstanding
+- native timer flow includes warm-up, interval, and match-duration behavior
+- native settings now supports organisation details, user management, and court management for club accounts
+- in-match settings parity and final release hardening are still outstanding before launch
