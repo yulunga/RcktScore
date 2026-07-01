@@ -140,7 +140,12 @@ struct DashboardView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $navigationTarget) { route in
-                MatchScoringView(matchID: route.id, openSettingsOnLoad: route.openSettingsOnLoad)
+                switch route.presentation {
+                case .live(let openSettingsOnLoad):
+                    MatchScoringView(matchID: route.id, openSettingsOnLoad: openSettingsOnLoad)
+                case .historic:
+                    HistoricMatchView(matchID: route.id)
+                }
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
@@ -1007,7 +1012,7 @@ struct DashboardView: View {
             VStack(spacing: 12) {
                 ForEach(matches) { match in
                     Button {
-                        navigationTarget = MatchRoute(id: match.id)
+                        navigationTarget = MatchRoute(id: match.id, presentation: .historic)
                     } label: {
                         recentMatchCard(match)
                     }
@@ -1197,7 +1202,7 @@ struct DashboardView: View {
                     .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
 
                     Button("Edit") {
-                        navigationTarget = MatchRoute(id: match.id, openSettingsOnLoad: true)
+                        navigationTarget = MatchRoute(id: match.id, presentation: .live(openSettingsOnLoad: true))
                     }
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.dashboardBrand)
@@ -2072,8 +2077,7 @@ struct DashboardView: View {
     }
 
     private func formatDateOnly(_ value: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: value) else {
+        guard let date = parsedISODate(value) else {
             return value
         }
 
@@ -2081,12 +2085,19 @@ struct DashboardView: View {
     }
 
     private func formatDate(_ value: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: value) else {
+        guard let date = parsedISODate(value) else {
             return value
         }
 
         return DateFormatter.dashboardSummary.string(from: date)
+    }
+
+    private func parsedISODate(_ value: String) -> Date? {
+        if let date = ISO8601DateFormatter.dashboardWithFractionalSeconds.date(from: value) {
+            return date
+        }
+
+        return ISO8601DateFormatter.dashboardStandard.date(from: value)
     }
 
     private func isValidEmail(_ value: String) -> Bool {
@@ -2112,7 +2123,12 @@ struct DashboardView: View {
 
 private struct MatchRoute: Hashable, Identifiable {
     let id: String
-    var openSettingsOnLoad: Bool = false
+    var presentation: MatchPresentation = .live(openSettingsOnLoad: false)
+}
+
+private enum MatchPresentation: Hashable {
+    case live(openSettingsOnLoad: Bool)
+    case historic
 }
 
 private enum DashboardSheet: Identifiable {
@@ -2199,6 +2215,20 @@ private extension DateFormatter {
     static let dashboardDateOnly: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private extension ISO8601DateFormatter {
+    static let dashboardWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static let dashboardStandard: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }()
 }
