@@ -480,7 +480,7 @@ struct HistoricMatchView: View {
             return nil
         }
 
-        return "\(player1)-\(player2)"
+        return "\(player1)|\(player2)"
     }
 
     private func fullName(firstName: String, surname: String?) -> String {
