@@ -1214,6 +1214,7 @@ struct StartNewMatchView: View {
 
 private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
     static let dashboardBackgroundStart = Color(red: 236 / 255, green: 245 / 255, blue: 255 / 255)
     static let dashboardBackgroundEnd = Color(red: 248 / 255, green: 251 / 255, blue: 255 / 255)
