@@ -140,7 +140,7 @@ struct DashboardView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $navigationTarget) { route in
-                MatchScoringView(matchID: route.id)
+                MatchScoringView(matchID: route.id, openSettingsOnLoad: route.openSettingsOnLoad)
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
@@ -702,7 +702,7 @@ struct DashboardView: View {
             Text("Game Setup")
                 .font(.headline.weight(.semibold))
 
-            Text("Operational club settings are now available in native settings. Match-side game controls and edit-in-match configuration remain part of the next scorer parity phase.")
+            Text("Operational club settings are available here. Live match format changes, shirt colours, and scheduled-match edits are now handled inside the native match screen.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -1229,18 +1229,27 @@ struct DashboardView: View {
 
                 playerColumn(firstName: player2.firstName, surname: player2.surname, alignment: .trailing)
 
-                Button(startingScheduledMatchID == match.id ? "Starting..." : "Start") {
-                    action()
+                VStack(spacing: 8) {
+                    Button(startingScheduledMatchID == match.id ? "Starting..." : "Start") {
+                        action()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.dashboardBrand)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                    .buttonStyle(.plain)
+                    .disabled(startingScheduledMatchID != nil)
+                    .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
+
+                    Button("Edit") {
+                        navigationTarget = MatchRoute(id: match.id, openSettingsOnLoad: true)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .buttonStyle(.plain)
                 }
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color.dashboardBrand)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(startingScheduledMatchID != nil)
-                .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
             }
 
             if let updatedAt = match.updatedAt {
@@ -2106,6 +2115,7 @@ struct DashboardView: View {
 
 private struct MatchRoute: Hashable, Identifiable {
     let id: String
+    var openSettingsOnLoad: Bool = false
 }
 
 private enum DashboardSheet: Identifiable {

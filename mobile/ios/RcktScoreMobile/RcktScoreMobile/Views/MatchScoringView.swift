@@ -4,6 +4,23 @@ import SwiftUI
 private let warmupSeconds = 60
 private let intervalSeconds = 90
 private let matchTimerStorageKeyPrefix = "rcktscore.matchTimer"
+private let scoreTypeOptions = [11, 15]
+private let bestOfOptions = [1, 3, 5]
+
+private struct ShirtColorOption: Identifiable {
+    let id: String
+    let value: String
+    let label: String
+    let fill: Color
+    let border: Color
+}
+
+private struct MatchGameSettingsForm {
+    var scoreType: Int = 15
+    var bestOf: Int = 5
+    var player1ShirtColor: String = "navy"
+    var player2ShirtColor: String = "white"
+}
 
 private enum MatchTimerPhase: String, Codable {
     case warmupReady = "warmup_ready"
@@ -41,12 +58,16 @@ struct MatchScoringView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let matchID: String
+    let openSettingsOnLoad: Bool
 
     @State private var match: MatchDetail?
+    @State private var displayAccess: MatchDisplayAccess?
     @State private var isLoading = false
     @State private var isMutating = false
     @State private var errorMessage: String?
     @State private var showDetails = false
+    @State private var showGameSettingsSheet = false
+    @State private var gameSettingsForm = MatchGameSettingsForm()
     @State private var timerPhase: MatchTimerPhase = .warmupReady
     @State private var timerSeconds = warmupSeconds
     @State private var matchDurationSeconds = 0
@@ -54,11 +75,23 @@ struct MatchScoringView: View {
     @State private var bootstrappedMatchID: String?
     @State private var previousGameHistoryCount = 0
     @State private var durationSyncedMatchID: String?
+    @State private var settingsAutoloaded = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var live: MatchState? { match?.state }
     private var isPersonalAccount: Bool { container.sessionStore.session?.isPersonalAccount ?? false }
+    private var canChoosePlayerShirtColors: Bool {
+        container.sessionStore.session?.canChooseShirtColors ?? false
+    }
+    private var scoreboardURL: String {
+        "https://app.hitnscore.com/scoreboard"
+    }
+    private var displayCode: String {
+        displayAccess?.displayCode
+            ?? match?.courtDisplayCode
+            ?? ""
+    }
 
     private var isMatchComplete: Bool {
         live?.matchComplete == true || match?.status.lowercased() == "completed"
@@ -216,6 +249,30 @@ struct MatchScoringView: View {
         pointRailEntries.map(\.id).joined(separator: "|")
     }
 
+    private var startingScheduledLabel: String {
+        isMutating ? "Starting..." : "Start Match"
+    }
+
+    private var shirtColorOptions: [ShirtColorOption] {
+        [
+            ShirtColorOption(id: "navy", value: "navy", label: "Navy", fill: Color(red: 25/255, green: 66/255, blue: 121/255), border: Color(red: 18/255, green: 50/255, blue: 92/255)),
+            ShirtColorOption(id: "blue", value: "blue", label: "Blue", fill: Color.blue, border: Color.blue.opacity(0.8)),
+            ShirtColorOption(id: "red", value: "red", label: "Red", fill: Color.red, border: Color.red.opacity(0.8)),
+            ShirtColorOption(id: "green", value: "green", label: "Green", fill: Color.green, border: Color.green.opacity(0.8)),
+            ShirtColorOption(id: "black", value: "black", label: "Black", fill: Color.black, border: Color.gray.opacity(0.7)),
+            ShirtColorOption(id: "white", value: "white", label: "White", fill: Color.white, border: Color.gray.opacity(0.7)),
+            ShirtColorOption(id: "yellow", value: "yellow", label: "Yellow", fill: Color.yellow, border: Color.yellow.opacity(0.9)),
+            ShirtColorOption(id: "orange", value: "orange", label: "Orange", fill: Color.orange, border: Color.orange.opacity(0.8)),
+            ShirtColorOption(id: "purple", value: "purple", label: "Purple", fill: Color.purple, border: Color.purple.opacity(0.8)),
+            ShirtColorOption(id: "pink", value: "pink", label: "Pink", fill: Color.pink, border: Color.pink.opacity(0.8))
+        ]
+    }
+
+    init(matchID: String, openSettingsOnLoad: Bool = false) {
+        self.matchID = matchID
+        self.openSettingsOnLoad = openSettingsOnLoad
+    }
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -263,6 +320,10 @@ struct MatchScoringView: View {
             await loadMatch()
         }
         .task(id: match?.id) {
+            await loadDisplayAccessIfNeeded()
+            autoOpenSettingsIfNeeded()
+        }
+        .task(id: match?.id) {
             if let match {
                 bootstrapTimerIfNeeded(for: match)
             }
@@ -288,6 +349,9 @@ struct MatchScoringView: View {
         .onReceive(timerTicker) { _ in
             advanceTimerTick()
         }
+        .sheet(isPresented: $showGameSettingsSheet) {
+            gameSettingsSheet
+        }
     }
 
     @ViewBuilder
@@ -310,6 +374,37 @@ struct MatchScoringView: View {
                         .background(Color.rcktBlue.opacity(0.12))
                         .clipShape(Capsule())
                 }
+            }
+
+            HStack(spacing: 10) {
+                Button("Game Settings") {
+                    openGameSettings()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.rcktBlue.opacity(0.12))
+                .foregroundStyle(Color.rcktBlue)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(isMutating)
+
+                if match.status.lowercased() == "scheduled" {
+                    Button(startingScheduledLabel) {
+                        Task { await startScheduledMatchFromScorer() }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.rcktBlue)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                    .buttonStyle(.plain)
+                    .disabled(isMutating)
+                    .opacity(isMutating ? 0.72 : 1)
+                }
+
+                Spacer()
             }
 
             HStack(alignment: .top, spacing: 12) {
@@ -679,8 +774,31 @@ struct MatchScoringView: View {
                     detailItem("Referee", value: match.refereeName ?? "Not set")
                 }
 
+                HStack(spacing: 12) {
+                    detailItem("Match Format", value: "Best of \(live?.bestOf ?? match.bestOf)")
+                    detailItem("Game Format", value: "PAR-\(live?.scoreType ?? match.scoreType)")
+                    detailItem("Court Alias", value: match.courtAlias ?? "Not set")
+                }
+
+                if canChoosePlayerShirtColors {
+                    HStack(spacing: 12) {
+                        detailItem("P1 Shirt", value: (live?.player1ShirtColor ?? match.player1ShirtColor ?? "navy").capitalized)
+                        detailItem("P2 Shirt", value: (live?.player2ShirtColor ?? match.player2ShirtColor ?? "white").capitalized)
+                    }
+                }
+
                 if displayedTimerSeconds > 0 {
                     detailItem("Match Time", value: formatSeconds(displayedTimerSeconds))
+                }
+
+                if !isPersonalAccount {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Spectator Display")
+                            .font(.headline)
+
+                        detailItem("Scoreboard URL", value: scoreboardURL)
+                        detailItem("Court Display Code", value: displayCode.isEmpty ? "Not available" : displayCode)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -888,6 +1006,115 @@ struct MatchScoringView: View {
         .opacity(isDisabled ? 0.72 : 1)
     }
 
+    private var gameSettingsSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Match Format")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Picker("Match Format", selection: $gameSettingsForm.bestOf) {
+                            ForEach(bestOfOptions, id: \.self) { option in
+                                Text("Best of \(option)").tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Game Format")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Picker("Game Format", selection: $gameSettingsForm.scoreType) {
+                            ForEach(scoreTypeOptions, id: \.self) { option in
+                                Text("PAR-\(option)").tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    if canChoosePlayerShirtColors {
+                        shirtColorEditor(
+                            title: "Player 1 Shirt",
+                            selection: $gameSettingsForm.player1ShirtColor
+                        )
+                        shirtColorEditor(
+                            title: "Player 2 Shirt",
+                            selection: $gameSettingsForm.player2ShirtColor
+                        )
+                    }
+
+                    if let errorMessage {
+                        dashboardLikeError(errorMessage)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Game Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showGameSettingsSheet = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isMutating ? "Saving..." : "Save") {
+                        Task { await saveGameSettings() }
+                    }
+                    .disabled(isMutating)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func shirtColorEditor(title: String, selection: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10) {
+                ForEach(shirtColorOptions) { option in
+                    Button {
+                        selection.wrappedValue = option.value
+                    } label: {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(option.fill)
+                                .frame(width: 18, height: 18)
+                                .overlay(Circle().stroke(option.border, lineWidth: 1))
+                            Text(option.label)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(selection.wrappedValue == option.value ? Color.rcktBlue.opacity(0.12) : Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(selection.wrappedValue == option.value ? Color.rcktBlue : Color.rcktBorder, lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func dashboardLikeError(_ message: String) -> some View {
+        Text(message)
+            .font(.footnote)
+            .foregroundStyle(.red)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var warmupOverlayMessage: String {
         switch timerPhase {
         case .warmupReady:
@@ -932,6 +1159,78 @@ struct MatchScoringView: View {
                 errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load the match."
                 isLoading = false
             }
+        }
+    }
+
+    private func loadDisplayAccessIfNeeded() async {
+        guard !isPersonalAccount else {
+            await MainActor.run {
+                displayAccess = nil
+            }
+            return
+        }
+
+        do {
+            let access = try await container.apiClient.getMatchDisplayAccess(matchID: matchID)
+            await MainActor.run {
+                displayAccess = access
+            }
+        } catch {
+            await MainActor.run {
+                displayAccess = nil
+            }
+        }
+    }
+
+    private func autoOpenSettingsIfNeeded() {
+        guard openSettingsOnLoad, !settingsAutoloaded, match != nil else {
+            return
+        }
+
+        settingsAutoloaded = true
+        openGameSettings()
+    }
+
+    private func openGameSettings() {
+        let currentMatch = match
+        gameSettingsForm = MatchGameSettingsForm(
+            scoreType: currentMatch?.scoreType ?? live?.scoreType ?? 15,
+            bestOf: currentMatch?.bestOf ?? live?.bestOf ?? 5,
+            player1ShirtColor: currentMatch?.player1ShirtColor
+                ?? live?.player1ShirtColor
+                ?? "navy",
+            player2ShirtColor: currentMatch?.player2ShirtColor
+                ?? live?.player2ShirtColor
+                ?? "white"
+        )
+        showGameSettingsSheet = true
+    }
+
+    private func saveGameSettings() async {
+        await performMutation {
+            try await container.apiClient.updateMatchSettings(
+                matchID: matchID,
+                scoreType: gameSettingsForm.scoreType,
+                bestOf: gameSettingsForm.bestOf,
+                player1ShirtColor: canChoosePlayerShirtColors ? gameSettingsForm.player1ShirtColor : nil,
+                player2ShirtColor: canChoosePlayerShirtColors ? gameSettingsForm.player2ShirtColor : nil
+            )
+        }
+
+        await MainActor.run {
+            if errorMessage == nil {
+                showGameSettingsSheet = false
+            }
+        }
+    }
+
+    private func startScheduledMatchFromScorer() async {
+        guard match?.status.lowercased() == "scheduled" else {
+            return
+        }
+
+        await performMutation {
+            try await container.apiClient.startScheduledMatch(matchID: matchID)
         }
     }
 

@@ -108,6 +108,10 @@ struct MatchResponseData: Decodable {
     let match: MatchDetail
 }
 
+struct MatchDisplayAccessResponseData: Decodable {
+    let displayAccess: MatchDisplayAccess
+}
+
 struct ScorePointRequest: Encodable {
     let matchID: String
     let scorer: String
@@ -223,6 +227,24 @@ struct EndMatchRequest: Encodable {
         case endedEarly = "ended_early"
         case reason
         case matchDurationSeconds = "match_duration_seconds"
+    }
+}
+
+struct MatchSettingsRequest: Encodable {
+    let matchID: String
+    let actionType: String
+    let scoreType: Int
+    let bestOf: Int
+    let player1ShirtColor: String?
+    let player2ShirtColor: String?
+
+    enum CodingKeys: String, CodingKey {
+        case matchID = "match_id"
+        case actionType = "action_type"
+        case scoreType = "score_type"
+        case bestOf = "best_of"
+        case player1ShirtColor = "player1_shirt_color"
+        case player2ShirtColor = "player2_shirt_color"
     }
 }
 
@@ -569,6 +591,17 @@ final class APIClient {
         return match
     }
 
+    func getMatchDisplayAccess(matchID: String) async throws -> MatchDisplayAccess {
+        let request = try makeRequest(path: "/match_display_access/\(matchID)", method: "GET")
+        let envelope: APIEnvelope<MatchDisplayAccessResponseData> = try await send(request)
+
+        guard let displayAccess = envelope.data?.displayAccess else {
+            throw APIErrorResponse(code: "empty_response", message: "No match display access returned.", details: nil)
+        }
+
+        return displayAccess
+    }
+
     func scorePoint(matchID: String, scorer: String) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/score_point",
@@ -706,6 +739,28 @@ final class APIClient {
             path: "/start_scheduled_match",
             method: "POST",
             body: MatchIDRequest(matchID: matchID)
+        )
+        return try await unwrapMatchResponse(request)
+    }
+
+    func updateMatchSettings(
+        matchID: String,
+        scoreType: Int,
+        bestOf: Int,
+        player1ShirtColor: String?,
+        player2ShirtColor: String?
+    ) async throws -> MatchDetail {
+        let request = try makeRequest(
+            path: "/event_action",
+            method: "POST",
+            body: MatchSettingsRequest(
+                matchID: matchID,
+                actionType: "match_settings",
+                scoreType: scoreType,
+                bestOf: bestOf,
+                player1ShirtColor: player1ShirtColor,
+                player2ShirtColor: player2ShirtColor
+            )
         )
         return try await unwrapMatchResponse(request)
     }

@@ -4,6 +4,19 @@ struct OrganizationSettings: Decodable {
     let organization: OrganizationProfile
     let users: [OrganizationUser]
     let courts: [CourtSummary]
+
+    enum CodingKeys: String, CodingKey {
+        case organization
+        case users
+        case courts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        organization = try container.decode(OrganizationProfile.self, forKey: .organization)
+        users = try container.decodeIfPresent([OrganizationUser].self, forKey: .users) ?? []
+        courts = try container.decodeIfPresent([CourtSummary].self, forKey: .courts) ?? []
+    }
 }
 
 struct OrganizationProfile: Decodable {
@@ -31,6 +44,21 @@ struct OrganizationProfile: Decodable {
         case organizationType = "org_type"
         case plan
         case isHidden = "is_hidden"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        organizationName = try container.decodeIfPresent(String.self, forKey: .organizationName) ?? ""
+        organizationAddress = try container.decodeIfPresent(String.self, forKey: .organizationAddress) ?? ""
+        organizationPostcode = try container.decodeIfPresent(String.self, forKey: .organizationPostcode) ?? ""
+        organizationContact = try container.decodeIfPresent(String.self, forKey: .organizationContact) ?? ""
+        organizationTelephone = try container.decodeIfPresent(String.self, forKey: .organizationTelephone) ?? ""
+        organizationEmail = try container.decodeIfPresent(String.self, forKey: .organizationEmail) ?? ""
+        organizationWebAddress = try container.decodeIfPresent(String.self, forKey: .organizationWebAddress) ?? ""
+        organizationType = try container.decodeIfPresent(String.self, forKey: .organizationType) ?? "club"
+        plan = try container.decodeIfPresent(String.self, forKey: .plan)
+        isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
     }
 }
 
@@ -62,6 +90,22 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         case invitationSentAt = "invitation_sent_at"
         case canEditPassword = "can_edit_password"
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        role = try container.decodeIfPresent(String.self, forKey: .role) ?? "user"
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? "approved"
+        firstName = try container.decodeIfPresent(String.self, forKey: .firstName) ?? ""
+        surname = try container.decodeIfPresent(String.self, forKey: .surname) ?? ""
+        country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
+        cityLocation = try container.decodeIfPresent(String.self, forKey: .cityLocation) ?? ""
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        approvedAt = try container.decodeIfPresent(String.self, forKey: .approvedAt)
+        invitationSentAt = try container.decodeIfPresent(String.self, forKey: .invitationSentAt)
+        canEditPassword = try container.decodeIfPresent(Bool.self, forKey: .canEditPassword) ?? false
+    }
 }
 
 struct CourtSummary: Decodable, Identifiable, Hashable {
@@ -83,6 +127,18 @@ struct CourtSummary: Decodable, Identifiable, Hashable {
         case createdAt = "created_at"
         case displayCodeCreatedAt = "display_code_created_at"
         case displayCodeLastUsedAt = "display_code_last_used_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        courtName = try container.decodeIfPresent(String.self, forKey: .courtName) ?? ""
+        courtAlias = try container.decodeIfPresent(String.self, forKey: .courtAlias) ?? ""
+        displayCode = try container.decodeIfPresent(String.self, forKey: .displayCode)
+        displayCodeEnabled = try container.decodeIfPresent(Bool.self, forKey: .displayCodeEnabled) ?? false
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        displayCodeCreatedAt = try container.decodeIfPresent(String.self, forKey: .displayCodeCreatedAt)
+        displayCodeLastUsedAt = try container.decodeIfPresent(String.self, forKey: .displayCodeLastUsedAt)
     }
 }
 

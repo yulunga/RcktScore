@@ -45,6 +45,7 @@ The following launch phases are now complete:
 
 1. Phase 1: Data And API Parity
 2. Phase 2: Club Settings
+3. Phase 3: Scorer Parity
 
 ## Launch Decision
 
@@ -74,16 +75,14 @@ repeatable.
 
 ### Partial
 
-- matches tab parity with web mobile
-- history browsing and filtering
+- matches/history polish
 - deeper club settings breadth
 - help and support flows
 
 ### Missing Or Not Release-Ready
 
-- native in-match game settings editing
-- spectator/display tooling parity
 - release-grade automated and manual signoff coverage
+- final release hardening and regression signoff
 
 ## Must Have Before Launch
 
@@ -227,6 +226,11 @@ Exit criteria:
 
 - a scorer can create, edit, run, and complete a club match from iOS
 
+Status:
+
+- completed for native in-match game settings, scheduled-match edit entry, and scorer-side display visibility
+- remaining work now shifts to release hardening and final regression coverage
+
 ### Phase 4: Release Hardening
 
 Goal:
@@ -310,6 +314,6 @@ Recommended positioning:
 Implement the launch-critical parity work in this order:
 
 1. native in-match game settings and scheduled-match edit flow
-2. matches and history polish against current mobile web behaviour
-3. manual iPhone/iPad launch regression pass
-4. release notes and final launch checklist review
+2. manual iPhone/iPad launch regression pass
+3. release notes and final launch checklist review
+4. release hardening fixes from testing feedback

@@ -28,4 +28,5 @@ Current unreleased iOS build state:
 - live scoring supports score taps, stroke, let, undo, early end, serve-side toggle, match details, completed-game strip, and event timeline
 - native timer flow includes warm-up, interval, and match-duration behavior
 - native settings now supports organisation details, user management, and court management for club accounts
-- in-match settings parity and final release hardening are still outstanding before launch
+- native scorer now supports in-match game settings editing, scheduled-match edit entry, and spectator display visibility
+- final release hardening and regression signoff are still outstanding before launch
