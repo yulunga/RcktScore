@@ -308,31 +308,21 @@ struct DashboardView: View {
     private var homeContent: some View {
         VStack(spacing: 18) {
             dashboardSection(
-                title: "Active Matches",
-                subtitle: isPersonalAccount ? "Your current live matches." : "Live matches for your club."
+                title: "Active Matches"
             ) {
                 activeMatchesContent(matches: homeActiveMatches)
             }
 
-            quickSwitchRow(
-                primaryTitle: "Matches",
-                primaryTab: .matches,
-                secondaryTitle: "History",
-                secondaryTab: .history
-            )
-
             if !isPersonalAccount {
                 dashboardSection(
-                    title: "Scheduled Matches",
-                    subtitle: "Upcoming matches ready to start."
+                    title: "Scheduled Matches"
                 ) {
                     scheduledMatchesContent(matches: homeScheduledMatches)
                 }
             }
 
             dashboardSection(
-                title: "Recent Matches",
-                subtitle: recentMatchesSubtitle
+                title: "Recent Matches"
             ) {
                 recentMatchesContent(matches: homeRecentMatches)
             }
@@ -1064,43 +1054,6 @@ struct DashboardView: View {
         )
     }
 
-    private func quickSwitchRow(
-        primaryTitle: String,
-        primaryTab: DashboardTab,
-        secondaryTitle: String,
-        secondaryTab: DashboardTab
-    ) -> some View {
-        HStack(spacing: 12) {
-            dashboardMiniAction(title: primaryTitle, systemImage: primaryTab.icon) {
-                selectedTab = primaryTab
-            }
-            dashboardMiniAction(title: secondaryTitle, systemImage: secondaryTab.icon) {
-                selectedTab = secondaryTab
-            }
-        }
-    }
-
-    private func dashboardMiniAction(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.footnote.weight(.semibold))
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.dashboardCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.dashboardBorder, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Color.dashboardBrand)
-    }
-
     private func matchesSubsection<Content: View>(
         title: String,
         icon: String,
@@ -1265,26 +1218,28 @@ struct DashboardView: View {
     }
 
     private func recentMatchCard(_ match: MatchSummary) -> some View {
-        let winner = historyWinnerLine(for: match)
-        let players = matchDisplayName(for: match)
+        let player1 = splitPlayerName(match.player1Name, surname: match.player1Surname)
+        let player2 = splitPlayerName(match.player2Name, surname: match.player2Surname)
+        let winnerSide = historyWinnerSide(for: match)
 
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(players)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                recentPlayersLine(
+                    player1: player1.firstName,
+                    player2: player2.firstName,
+                    winnerSide: winnerSide
+                )
+                .font(.subheadline.weight(.bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
 
                 Text(formattedMatchDate(for: match))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Text(winner)
+                Text(historyFinalScoreLine(for: match))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.dashboardInk)
-
-                Text(historyScoreLine(for: match))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 8)
@@ -2043,6 +1998,28 @@ struct DashboardView: View {
         match.winnerName ?? match.state?.winnerName ?? "Completed match"
     }
 
+    private func historyWinnerSide(for match: MatchSummary) -> Int? {
+        let player1Games = match.state?.player1GamesWon ?? 0
+        let player2Games = match.state?.player2GamesWon ?? 0
+
+        if player1Games > player2Games {
+            return 1
+        }
+        if player2Games > player1Games {
+            return 2
+        }
+
+        let winnerName = historyWinnerLine(for: match).lowercased()
+        if winnerName == match.player1Name.lowercased() {
+            return 1
+        }
+        if winnerName == match.player2Name.lowercased() {
+            return 2
+        }
+
+        return nil
+    }
+
     private func historyScoreLine(for match: MatchSummary) -> String {
         let player1Games = match.state?.player1GamesWon ?? 0
         let player2Games = match.state?.player2GamesWon ?? 0
@@ -2054,13 +2031,10 @@ struct DashboardView: View {
         return "\(player1Games)-\(player2Games) [\(scoreSeries)]"
     }
 
-    private var recentMatchesSubtitle: String {
-        if isPersonalAccount {
-            return "Completed matches available on your current plan."
-        }
-
-        let count = organizationSummary?.historyLimit ?? recentMatches.count
-        return "Showing the latest \(count) completed matches for your club plan."
+    private func historyFinalScoreLine(for match: MatchSummary) -> String {
+        let player1Games = match.state?.player1GamesWon ?? 0
+        let player2Games = match.state?.player2GamesWon ?? 0
+        return "\(player1Games)-\(player2Games)"
     }
 
     private func currentScoreLine(for match: MatchSummary) -> String {
@@ -2075,12 +2049,35 @@ struct DashboardView: View {
 
     private func formattedMatchDate(for match: MatchSummary) -> String {
         if let completedAt = match.completedAt, !completedAt.isEmpty {
-            return formatDate(completedAt)
+            return formatDateOnly(completedAt)
         }
         if let updatedAt = match.updatedAt, !updatedAt.isEmpty {
-            return formatDate(updatedAt)
+            return formatDateOnly(updatedAt)
         }
         return "Unknown date"
+    }
+
+    private func recentPlayersLine(player1: String, player2: String, winnerSide: Int?) -> some View {
+        let player1Color = winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardInk
+        let player2Color = winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardInk
+
+        return HStack(spacing: 0) {
+            Text(player1)
+                .foregroundStyle(player1Color)
+            Text(" vs ")
+                .foregroundStyle(Color.secondary)
+            Text(player2)
+                .foregroundStyle(player2Color)
+        }
+    }
+
+    private func formatDateOnly(_ value: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: value) else {
+            return value
+        }
+
+        return DateFormatter.dashboardDateOnly.string(from: date)
     }
 
     private func formatDate(_ value: String) -> String {
@@ -2196,6 +2193,12 @@ private extension DateFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
+        return formatter
+    }()
+
+    static let dashboardDateOnly: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
 }
