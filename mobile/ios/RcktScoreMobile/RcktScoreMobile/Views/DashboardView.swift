@@ -260,7 +260,7 @@ struct DashboardView: View {
                     await loadOrganizationSettingsIfNeeded()
                 }
             }
-            .onChange(of: isOnline) { isOnline in
+            .onChange(of: isOnline) { _, isOnline in
                 if isOnline {
                     Task { await loadDashboard() }
                 } else if errorMessage == "Unable to fetch dashboard data." {
@@ -684,7 +684,7 @@ struct DashboardView: View {
                 ("Club Pro", "Higher-tier club package for advanced reporting and expansion.", (session?.plan ?? "").lowercased() == "club_pro")
             ]
 
-        VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Subscription")
                 .font(.headline.weight(.semibold))
 

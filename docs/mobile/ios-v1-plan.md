@@ -5,10 +5,10 @@
 This document tracks the current native iOS baseline and the remaining work to
 turn it into a confident first release.
 
-The immediate product priority is now the iPhone scoring experience.
-Foundation, dashboard, match setup, settings, and history are already in place.
-The next phase should redesign the live scorer so it feels intentional and safe
-for real event-day use on iPhone before broader launch hardening resumes.
+The native app now covers the main day-of-use journeys, including native match
+setup, settings, history, and first-pass tennis support. The remaining work is
+less about proving the app concept and more about finishing release hardening,
+closing unsupported edge cases, and polishing the last iPhone-first flows.
 
 ## Current Baseline
 
@@ -26,17 +26,23 @@ Already in place:
 - player and referee lookup suggestions
 - court selection plus automatic scheduled fallback when a court is busy
 - handicap setup and tier-aware shirt-colour handling
+- enabled-sport-aware native setup flow for squash, racketball, and tennis
 - scheduled match start
 - live scoring with warm-up, first-server selection, score taps, stroke, let,
   undo, early end, serve-side changes, in-match game settings, completed-game
-  strip, and event timeline
+  strip, event timeline, and first-pass tennis scoring
 - warm-up, interval, and match timer flow
 - historic-match timeline with grouped point history and game-duration summary
 - history search and separate matches/history views
-- native club settings sections for organisation details, users, and courts
+- native plan-aware settings menus for subscription, profile, association,
+  racket sports, game settings, help, and club-admin tools
 - native organisation, user, court, and court display-code mutations through the
   existing backend
+- native password-reset access from login and from settings
+- local profile photo picking in native settings
 - in-app feedback and password-reset request flow
+- quieter offline dashboard behavior that no longer leaves a persistent fetch
+  error visible when the device is offline
 
 ## Current Gaps
 
@@ -44,9 +50,14 @@ These are the main gaps still visible in the current iOS build:
 
 - iOS login does not yet expose the backend `organizationSelection` branch for
   multi-membership users
-- the live scoring screen is functionally rich but visually crowded on iPhone
-- the timer, match details, secondary controls, and destructive actions compete
-  too strongly in the current scoring layout
+- the live scoring screen is much better than the earlier layout, but still
+  needs final small-screen polish and confidence-building QA
+- the native tennis flow is first-pass and still needs broader regression
+  coverage before release confidence is high
+- the dashboard bell has no real notification-center flow yet
+- settings areas for association links, account-level game-settings presets,
+  reporting, and stats are still placeholder surfaces
+- offline history and offline scoring sync are not complete
 - there is no documented mobile CI/archive/release pipeline yet
 - there is no completed realtime/WebSocket sync path yet
 - release-grade automated and manual signoff coverage is still missing
@@ -69,33 +80,28 @@ release.
 
 ## Next Active Workstream
 
-### Phase 4: iPhone Scoring Redesign
+### Phase 4: Final UX And Edge-Case Polish
 
 Goal:
 
-- keep the current scorer feature set, but redesign the screen around iPhone
-  usability, visual hierarchy, and safer match control
+- keep the current feature set, but finish the last polish needed for iPhone
+  confidence and predictable edge-case handling
 
 Required work:
 
-1. make the live score the dominant visual focus
-2. separate primary scoring actions from secondary match-management actions
-3. clarify warm-up, first-server, and timer phases so the scorer always knows
-   the current match state
-4. reduce below-the-fold dependence for common scoring actions
-5. move destructive actions into a safer visual and interaction pattern
-6. decide whether completed-game history and detailed timeline belong inline,
-   collapsed, or in a secondary surface
-7. preserve existing backend contracts and event behavior while changing the UI
+1. finish iPhone scorer polish across squash/racketball and tennis
+2. validate dark-mode device behavior for flows that intentionally force light presentation
+3. decide what the dashboard bell should do at launch if notifications remain unimplemented
+4. decide whether placeholder settings sections should stay visible at launch
+5. preserve existing backend contracts and event behavior while tightening the UX
 
 Definition of done:
 
 - common scoring actions feel fast and comfortable one-handed on a typical
   iPhone
 - the scorer can always see match state, current score, and next likely action
-- secondary controls no longer compete with the main scoring task
-- the layout is cleaner without dropping warm-up, timer, undo, or settings
-  capability
+- the launch build no longer contains obvious dead-end UI affordances
+- the layout is cleaner without dropping warm-up, timer, undo, or settings capability
 
 ### Phase 5: Launch Hardening
 
@@ -111,6 +117,7 @@ Required work:
 3. session-expiry and session-replacement handling verification
 4. docs, release notes, and signoff checklist refresh
 5. decision on how multi-organisation membership selection should work in iOS
+6. decision on whether placeholder settings sections ship or are hidden
 
 Definition of done:
 
@@ -127,6 +134,7 @@ Do not proceed to release if:
 3. scheduled matches cannot be started reliably from iPhone
 4. session bugs sign users out unexpectedly
 5. the app still lacks a clear decision for multi-membership login behavior
+6. the launch build still contains visible placeholder/dead-end flows that confuse users
 
 ## Deferred For Later
 

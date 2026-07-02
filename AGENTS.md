@@ -28,7 +28,9 @@ The old Flask code in `version1/` is reference-only and should not be treated as
 
 ## Current Release Posture
 
-The repository is closest to a web beta than a full production launch.
+The repository is still pre-launch. Web and backend flows are in late beta, and
+the native iOS app is in active device hardening rather than production release
+readiness.
 
 What is real and implemented:
 
@@ -38,9 +40,11 @@ What is real and implemented:
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
+- separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
+- native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout, with personal-account profile/photo controls, subscription/profile/association menu sections, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout, with personal-account profile/photo controls, subscription/profile/association menu sections, password-reset access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -50,8 +54,11 @@ What is still partial or risky:
 - some root-admin organisation actions use `x-root-admin-request` header bypass logic
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - iOS login does not yet expose multi-organisation membership selection when the backend returns `organizationSelection`
-- the current iPhone scoring layout is functional but still needs redesign before release
-- some settings sections are still UI scaffolds only, including organisation-level handicap toggles and association/federation profile links
+- the current iPhone scoring layout is much improved but still needs final UX hardening before release
+- some native settings sections are still UI scaffolds only, including account-level game-settings presets, association/federation profile links, and reporting/stats views
+- the native notification center behind the dashboard bell is not implemented yet
+- offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable
+- there is no documented iOS CI/archive/release pipeline in the repo yet
 - no automated test suite is checked into the repo
 
 ## Repository Layout
@@ -66,7 +73,7 @@ What is still partial or risky:
 - `backend/`
   - Lambda handlers in `functions/*/handler.py`
   - shared backend logic in `common/*.py`
-  - sport engines currently split across `common/match_logic.py`, `common/squash_match_logic.py`, and `common/tennis_match_logic.py`
+  - sport engines currently split across `common/match_logic.py`, `common/squash_match_logic.py`, `common/tennis_match_logic.py`, plus placeholder engine files for `padel`, `table_tennis`, `badminton`, and `pickleball`
   - schema migrations in `schema/*.sql`
   - SAM template in `template.yaml`
 - `mobile/`

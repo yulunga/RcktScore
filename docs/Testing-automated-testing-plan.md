@@ -335,12 +335,15 @@ Each of these should be explicitly checked on-device:
 5. create immediate match
 6. create scheduled match
 7. start scheduled match
-8. score live match
-9. undo event
-10. end match
-11. completed match appears in history
-12. settings load and save for launch-critical club features
-13. help / password reset / feedback paths work
+8. score live squash/racketball match
+9. score live tennis match
+10. undo event
+11. end match
+12. completed match appears in history
+13. settings load and save for launch-critical club features, including sport visibility
+14. dark-mode device opens native match setup with readable colors
+15. offline dashboard state does not strand the user with a persistent fetch-error banner
+16. help / password reset / feedback paths work
 
 ### UX Signoff
 
@@ -349,6 +352,7 @@ Each of these should be explicitly checked on-device:
 3. iPad layouts do not clip controls or hide primary actions
 4. error and empty states are understandable
 5. loading states do not feel broken on slower networks
+6. the current compact recent-match cards remain readable with longer names
 
 ### Release Blockers
 
@@ -359,6 +363,7 @@ Do not sign off the release if any of the following fail:
 3. users are signed out unexpectedly during normal use
 4. club admins still need the web app for launch-critical match operations
 5. small-screen layouts hide important controls on iPhone or iPad
+6. the live tennis flow cannot be started and scored cleanly
 
 ---
 

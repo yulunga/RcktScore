@@ -302,6 +302,8 @@ The root-admin club page performs some of these mutations using `rootAdminReques
    - normalizes the requested sport
    - rejects sports that are not present in the organisation or personal account `enabled_sports` list
    - dispatches match creation to the correct sport engine
+   - allows live match creation today for squash, racketball, and tennis
+   - fails safely for sport engines that are wired but not yet implemented
    - blocks personal accounts from having more than one active match
    - can auto-schedule a club match if the chosen court already has an active match
    - writes a `matches` row
@@ -335,6 +337,7 @@ Current live sport engines:
 
 - squash and racketball share [backend/common/squash_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/squash_match_logic.py)
 - tennis uses [backend/common/tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/tennis_match_logic.py)
+- padel, table tennis, badminton, and pickleball engine files exist but are not live scoring paths yet
 
 ### Supported event actions
 
@@ -394,17 +397,21 @@ The root-admin frontend experience exists, but the backend trust model is not ye
 1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`.
 2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, and persists `data.session` in `UserDefaults`.
 3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`.
-4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. Personal accounts see subscription, profile, association, racket-sport, game-settings, and help sections with a device-local profile photo picker, while club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
-5. The native profile page currently shows first name, surname, and email, and uses the password-reset route rather than a dedicated in-app password change endpoint.
-6. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow, and now forces a light appearance so device dark mode does not make the setup form unreadable.
-7. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end.
+4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. Personal accounts see subscription, profile, association, racket-sport, game-settings, and help sections with a device-local profile photo picker. Personal+ additionally exposes reporting and stats menu entries, but those are still placeholder views today. Club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
+5. The native profile page currently shows first name, surname, and email, and uses the shared password-reset request route rather than a dedicated in-app password change endpoint.
+6. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. The picker only shows sports that are both enabled for the tenant and implemented in the iOS client today, and the flow now forces a light appearance so device dark mode does not make the setup form unreadable.
+7. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end. The current native scorer supports squash/racketball plus first-pass tennis presentation and scoring behavior.
 8. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
+9. The dashboard now suppresses the old persistent offline fetch-error banner when the device is offline, but the native app is still not a full offline-first client.
 
 ### Current native gap
 
 - the iOS login flow does not yet handle `data.organizationSelection` for
   multi-membership users
-- the current iPhone scoring layout is functional but still needs redesign
+- the current iPhone scoring layout is much improved but still needs final polish
+- the native notification bell does not have a live notification center behind it yet
+- reporting, stats, game-settings presets, and association/federation integrations in native settings are not fully implemented
+- offline history and offline scoring sync are still incomplete
 - release pipeline, realtime sync, and final signoff coverage are still partial
 
 ## 16. Current Cross-Cutting Gaps

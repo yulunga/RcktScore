@@ -18,6 +18,10 @@ This document is reserved for iOS code signing and distribution setup.
 The native iOS target has been committed at
 `mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj`.
 
+TestFlight-style device builds have already been generated from this repo for
+live testing, but the project still does not have a documented end-to-end
+archive/sign/distribute runbook in version control.
+
 Observed project values:
 
 - bundle identifier: `rcktScore.RcktScoreMobile`

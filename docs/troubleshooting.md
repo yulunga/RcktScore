@@ -39,6 +39,16 @@ xcodebuild -list -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj
 This is a quick way to confirm the native target and scheme are still present
 before debugging app-specific issues.
 
+### iOS CLI build smoke
+
+```bash
+xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme RcktScoreMobile -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/RcktScoreMobileDerivedData build
+```
+
+If this fails with `No available simulator runtimes for platform iphonesimulator`,
+the local Xcode/CoreSimulator installation needs attention before native CLI
+builds will complete.
+
 ## Current Debugging Mindset
 
 Start by deciding which of these layers is failing:
@@ -276,6 +286,8 @@ Common symptoms:
 - club-admin sport visibility changes save in iOS settings but do not affect native match setup
 - a personal-account profile photo disappears after reinstalling or signing in on another device
 - the native start-match form looks washed out or unreadable on a device running dark mode
+- `xcodebuild` reaches Swift compilation but fails later in asset-catalog tooling with no simulator runtimes available
+- the dashboard bell appears to do nothing because no notification center flow exists yet
 
 What to check:
 
@@ -288,6 +300,7 @@ What to check:
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
 - whether the installed build includes the `StartNewMatchFlowView` and `StartNewMatchView` `.preferredColorScheme(.light)` fix
+- whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
 
 Important current truths:
 
@@ -295,6 +308,7 @@ Important current truths:
   native organisation-selection UI
 - historic matches are online-only in the native app
 - the dashboard now stays quiet when the device is offline instead of showing a persistent fetch-failure banner
+- the dashboard bell no longer shows a placeholder message, but there is still no real notification-center implementation behind it
 - the current scorer is functionally ahead of the docs that used to describe it,
   but its iPhone layout still needs redesign
 
@@ -304,9 +318,10 @@ These are current product limitations, not accidental breakage:
 
 - root-admin backend auth is incomplete
 - organisation handicap toggle in settings is scaffold-only
-- social-profile fields are scaffold-only
+- association, reporting, stats, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
 - there is no native iOS organisation-selection UI for multi-membership login yet
+- there is no native notification-center flow behind the dashboard bell yet
 - there is no automated test suite in the repo yet
 
 ## Maintenance Rule

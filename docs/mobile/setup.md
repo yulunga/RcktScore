@@ -17,8 +17,7 @@ client in the `RcktScore` repository.
 - Frontend hosting: AWS Amplify
 - Backend: AWS SAM / Lambda
 - Database: Supabase Postgres
-- Active API base URL:
-  `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod`
+- Native runtime configuration: `Config.plist` and `AppConfig.swift`
 
 ## Current Mobile Scope
 
@@ -27,21 +26,23 @@ Current implemented native scope:
 1. organisation login
 2. persisted session
 3. mobile dashboard with active, scheduled, and recent matches
-4. scheduled match start
-5. live scoring match screen
+4. native start-new-match flow with sport picker, lookup suggestions, court selection, and scheduled fallback
+5. live scoring match screen for squash/racketball plus first-pass tennis
+6. historic match viewer
+7. native settings and help flows
 
 Current remaining v1 scope:
 
-1. native timer/warm-up parity with the web scoring screen
-2. first-server selection after warm-up
-3. 90 second between-game interval
+1. multi-organisation membership selection in iOS login
+2. final iPhone scoring and settings polish
+3. release-grade QA, CI/archive notes, and signoff process
 
 Still out of scope for the first native release:
 
-1. native new-match setup
-2. organisation settings management
-3. root admin portal
-4. spectator display configuration
+1. root admin portal
+2. full offline scoring sync
+3. deep notification-center flows
+4. live padel, table tennis, badminton, and pickleball scoring
 
 ## Environment Guidance
 

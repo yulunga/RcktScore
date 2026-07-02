@@ -22,6 +22,7 @@ Current code supports:
 - protected dashboard, matches, history, settings, match setup, and match scoring routes
 - public single-match display route
 - event-sourced match history through `matches` and `match_events`
+- organisation and personal-account sport visibility control through `enabled_sports`
 
 ### Match operations
 
@@ -30,6 +31,7 @@ Current match/scoring capabilities include:
 - create active match
 - create scheduled match when a court already has an active match
 - activate scheduled match
+- live scoring engines for squash, racketball, and first-pass tennis
 - score point
 - event actions:
   - let
@@ -125,6 +127,8 @@ These are safe to describe as implemented today:
 - Personal free has reduced match-history access
 - Personal plus unlocks deeper history than personal free and shirt colours
 - Clubs have multi-user workspace, court management, and club match operations
+- clubs and personal accounts can have sport visibility rolled out selectively
+- tennis is a live selectable scoring sport alongside squash and racketball
 - Public display route exists
 
 ## Not Yet Safe To Promise As Fully Implemented
@@ -132,11 +136,12 @@ These are safe to describe as implemented today:
 - enterprise-grade root-admin security
 - guaranteed realtime display
 - persisted organisation-level game settings
-- persisted social profiles
+- persisted social profiles or association/federation profile links
 - dedicated player registry/CRM
 - advanced analytics and reporting
 - exports/downloadable reports
 - hard plan guardrails for club scale
+- live padel, table tennis, badminton, or pickleball scoring
 
 ## Suggested Tier Framing Based On Current Code
 

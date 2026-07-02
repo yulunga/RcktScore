@@ -82,6 +82,11 @@ Current runtime path:
 - [common/tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/tennis_match_logic.py)
   - tennis point, game, set, and tie-break scoring rules
   - tennis match serialization
+- [common/padel_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/padel_match_logic.py)
+- [common/table_tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/table_tennis_match_logic.py)
+- [common/badminton_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/badminton_match_logic.py)
+- [common/pickleball_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/pickleball_match_logic.py)
+  - these sport-engine modules are wired into the dispatcher but currently fail safely until scoring rules are implemented
 - [common/match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py)
   - player/referee lookup for match setup
 
@@ -188,7 +193,7 @@ Current organisation-settings behavior:
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
-- the native iOS settings profile page currently uses `POST /request_password_reset` for password changes; there is no separate in-app password-update endpoint
+- the native iOS settings profile page currently uses `POST /password_reset/request` for password changes; there is no separate in-app password-update endpoint
 
 ### Match and scoring routes
 
@@ -272,6 +277,7 @@ Current behavior:
   - `organization`
   - `users`
   - `courts`
+  - `organization.enabled_sports`
 
 ### Personal profile
 
@@ -340,9 +346,14 @@ Current behavior:
 - these routes are backend-authorized against the match tenant through `authorize_match_session(...)`
 - personal accounts can only have one active match at a time
 - clubs can auto-schedule a match if the chosen court already has an active match
-- supported score types:
-  - `11`
-  - `15`
+- live sport engines today:
+  - squash
+  - racketball
+  - tennis
+- additional engine files for `padel`, `table_tennis`, `badminton`, and `pickleball` are wired but currently raise a safe unsupported-sport error
+- supported score types by live engine:
+  - squash/racketball: `11`, `15`
+  - tennis: `4`, `6`
 - supported best-of values:
   - `1`
   - `3`
