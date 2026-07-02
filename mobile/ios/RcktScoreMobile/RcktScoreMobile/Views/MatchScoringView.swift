@@ -2130,8 +2130,8 @@ struct MatchScoringView: View {
     }
 
     private func formatSeconds(_ value: Int) -> String {
-        let minutes = String(max(0, value) / 60).padding(toLength: 2, withPad: "0", startingAt: 0)
-        let seconds = String(max(0, value) % 60).padding(toLength: 2, withPad: "0", startingAt: 0)
+        let minutes = String(format: "%02d", max(0, value) / 60)
+        let seconds = String(format: "%02d", max(0, value) % 60)
         return "\(minutes):\(seconds)"
     }
 
