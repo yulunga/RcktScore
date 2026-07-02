@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct DashboardView: View {
@@ -19,8 +20,7 @@ struct DashboardView: View {
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
     @State private var selectedTab: DashboardTab = .home
-    @State private var selectedSettingsGroup: SettingsGroup = .profile
-    @State private var selectedSettingsSection: SettingsSection = .profileOrganization
+    @State private var selectedSettingsSection: SettingsSection = .subscription
     @State private var organizationDetailsDraft = OrganizationDetailsDraft()
     @State private var newOrganizationUserDraft = OrganizationUserDraft()
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
@@ -40,16 +40,40 @@ struct DashboardView: View {
     @State private var isRequestingPasswordReset = false
     @State private var resetErrorMessage: String?
     @State private var resetMessage: String?
+    @State private var selectedProfilePhotoItem: PhotosPickerItem?
+    @State private var selectedProfilePhotoData: Data?
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
+    private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var headerPlanLine: String {
         session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
     }
-    private var headerUserLine: String {
-        session?.email ?? session?.username ?? ""
+    private var currentUserDisplayName: String {
+        let name = session?.fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !name.isEmpty {
+            return name
+        }
+
+        let firstName = session?.firstName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let surname = session?.surname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let composedName = [firstName, surname]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if !composedName.isEmpty {
+            return composedName
+        }
+
+        return session?.username ?? "Player"
+    }
+    private var currentUserInitials: String {
+        let components = currentUserDisplayName
+            .split(separator: " ")
+            .map(String.init)
+        let initials = components.prefix(2).compactMap { $0.first.map { String($0).uppercased() } }.joined()
+        return initials.isEmpty ? "HS" : initials
     }
     private var homeActiveMatches: [MatchSummary] { Array(activeMatches.prefix(3)) }
     private var homeScheduledMatches: [MatchSummary] { Array(scheduledMatches.prefix(3)) }
@@ -101,15 +125,52 @@ struct DashboardView: View {
     private var enabledSportIDs: Set<String> {
         Set(enabledSportsDraft.map { $0.lowercased() })
     }
-    private var secondarySettingsSections: [SettingsSection] {
-        switch selectedSettingsGroup {
-        case .profile:
-            return [.profileOrganization, .profileLocation]
-        case .admin:
-            return [.adminUsers, .adminCourts]
-        case .setup:
-            return [.setupSports]
+    private var personalSettingsItems: [SettingsMenuItem] {
+        var items: [SettingsMenuItem] = [
+            .subscription,
+            .profile,
+            .racketSports,
+            .gameSettings,
+            .helpFeedback
+        ]
+        if isPersonalPlus {
+            items.append(contentsOf: [.reporting, .stats])
         }
+        return items
+    }
+    private var clubSettingsPrimaryItems: [SettingsMenuItem] {
+        [
+            .subscription,
+            .profile,
+            .racketSports,
+            .gameSettings,
+            .helpFeedback,
+            .reporting,
+            .stats
+        ]
+    }
+    private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
+        if isPersonalAccount {
+            return [
+                SettingsMenuSectionDescriptor(title: nil, items: personalSettingsItems)
+            ]
+        }
+
+        return [
+            SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems),
+            SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .users, .courts])
+        ]
+    }
+    private var settingsAvailableItems: [SettingsMenuItem] {
+        settingsMenuSections.flatMap(\.items)
+    }
+    private var selectedProfileImage: Image? {
+        guard let selectedProfilePhotoData,
+              let uiImage = UIImage(data: selectedProfilePhotoData) else {
+            return nil
+        }
+
+        return Image(uiImage: uiImage)
     }
 
     var body: some View {
@@ -185,9 +246,13 @@ struct DashboardView: View {
                 seedHelpDefaults()
                 await loadDashboard()
             }
+            .task(id: selectedProfilePhotoItem) {
+                await loadSelectedProfilePhoto()
+            }
             .task(id: selectedTab) {
                 seedHelpDefaults()
                 if selectedTab == .settings {
+                    normalizeSelectedSettingsMenuItem()
                     await loadOrganizationSettingsIfNeeded()
                 }
             }
@@ -215,40 +280,18 @@ struct DashboardView: View {
                     )
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if !headerUserLine.isEmpty {
-                        Text(headerUserLine)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Color.dashboardInk.opacity(0.88))
-                            .lineLimit(1)
-                    }
-
-                    Text(headerPlanLine)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
                 }
                 .padding(.top, 2)
 
                 VStack(alignment: .trailing, spacing: 12) {
-                    HStack(spacing: 10) {
-                        Button {
-                            dashboardNotice = "Notifications are not added yet."
-                        } label: {
-                            Image(systemName: "bell")
-                                .font(.system(size: 22, weight: .medium))
-                                .foregroundStyle(Color.dashboardInk)
-                        }
-                        .buttonStyle(.plain)
-
-                        Button("Logout") {
-                            Task {
-                                await container.logout()
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.dashboardBrand)
+                    Button {
+                        dashboardNotice = "Notifications are not added yet."
+                    } label: {
+                        Image(systemName: "bell")
+                            .font(.system(size: 22, weight: .medium))
+                            .foregroundStyle(Color.dashboardInk)
                     }
+                    .buttonStyle(.plain)
                 }
                 .padding(.top, 8)
             }
@@ -267,30 +310,30 @@ struct DashboardView: View {
         Button {
             activeSheet = .newMatch
         } label: {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(.white)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 34, height: 34)
                     .overlay(
                         Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .light))
+                            .font(.system(size: 18, weight: .regular))
                             .foregroundStyle(Color.dashboardBrand)
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Start New Match")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                 }
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 LinearGradient(
@@ -302,12 +345,12 @@ struct DashboardView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(
                 color: colorScheme == .dark ? .clear : Color.black.opacity(0.12),
-                radius: 16,
+                radius: 12,
                 x: 0,
-                y: 10
+                y: 8
             )
         }
         .buttonStyle(.plain)
@@ -445,28 +488,15 @@ struct DashboardView: View {
 
     private var personalSettingsContent: some View {
         VStack(spacing: 12) {
-            settingsSummaryCard
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Account")
-                    .font(.headline.weight(.semibold))
-
-                settingsValueRow(title: "Username", value: session?.username ?? "Not available")
-                settingsValueRow(title: "Email", value: session?.email ?? "Not available")
-                settingsValueRow(title: "Plan", value: headerPlanLine)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.dashboardInnerCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            personalSettingsHeader
+            settingsMenuSectionsList
+            settingsDetailContent
         }
     }
 
     private var clubSettingsContent: some View {
         VStack(spacing: 12) {
             settingsSummaryCard
-            settingsPrimaryPicker
-            settingsSectionPicker
 
             if !isAdmin {
                 Text("You are in view-only mode. Only organisation admins can save changes.")
@@ -475,99 +505,284 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            switch selectedSettingsSection {
-            case .profileOrganization:
-                organizationProfileCard
-            case .profileLocation:
-                organizationLocationCard
-            case .adminUsers:
-                organizationUsersCard
-            case .adminCourts:
-                organizationCourtsCard
-            case .setupSports:
-                sportSetupCard
+            settingsMenuSectionsList
+            settingsDetailContent
+        }
+    }
+
+    private var personalSettingsHeader: some View {
+        VStack(spacing: 12) {
+            profileAvatarView(size: 92)
+
+            Text(currentUserDisplayName)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+
+            if let email = session?.email, !email.isEmpty {
+                Text(email)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
+                Text(selectedProfileImage == nil ? "Add Photo" : "Change Photo")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(Color.dashboardInputBackground)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.dashboardBorder, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Text("Profile photos stay on this device for now.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var settingsMenuSectionsList: some View {
+        VStack(spacing: 14) {
+            ForEach(settingsMenuSections) { section in
+                settingsMenuSection(section)
             }
         }
     }
 
-    private var settingsPrimaryPicker: some View {
-        HStack(spacing: 10) {
-            ForEach(SettingsGroup.allCases) { group in
-                Button {
-                    selectedSettingsGroup = group
-                    if let firstSection = group.sections.first {
-                        selectedSettingsSection = firstSection
-                    }
-                } label: {
-                    Text(group.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(selectedSettingsGroup == group ? .white : Color.dashboardBrand)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            selectedSettingsGroup == group
-                                ? Color.dashboardBrand
-                                : Color.dashboardInputBackground
-                        )
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(
-                                    selectedSettingsGroup == group ? Color.dashboardBrand : Color.dashboardBorder,
-                                    lineWidth: 1
-                                )
-                        )
+    private func settingsMenuSection(_ section: SettingsMenuSectionDescriptor) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let title = section.title {
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(section.items.enumerated()), id: \.element) { index, item in
+                    settingsMenuRow(item, isLast: index == section.items.count - 1)
                 }
-                .buttonStyle(.plain)
             }
-        }
-    }
-
-    private var settingsSectionPicker: some View {
-        HStack(spacing: 10) {
-            settingsSectionIcon
-
-            ForEach(secondarySettingsSections) { section in
-                Button {
-                    selectedSettingsSection = section
-                } label: {
-                    Text(section.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(selectedSettingsSection == section ? .white : Color.dashboardBrand)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            selectedSettingsSection == section
-                                ? Color.dashboardBrand
-                                : Color.dashboardInputBackground
-                        )
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(
-                                    selectedSettingsSection == section ? Color.dashboardBrand : Color.dashboardBorder,
-                                    lineWidth: 1
-                                )
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var settingsSectionIcon: some View {
-        Image(systemName: selectedSettingsGroup.symbolName)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(Color.dashboardBrand)
-            .frame(width: 48, height: 48)
-            .background(Color.dashboardInputBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(Color.dashboardBorder, lineWidth: 1)
             )
+        }
+    }
+
+    private func settingsMenuRow(_ item: SettingsMenuItem, isLast: Bool) -> some View {
+        Button {
+            selectedSettingsSection = item.section
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(selectedSettingsSection == item.section ? Color.dashboardBrand : Color.secondary)
+                    .frame(width: 24)
+
+                Text(item.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+
+                Spacer(minLength: 12)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                selectedSettingsSection == item.section
+                    ? Color.dashboardBrand.opacity(0.08)
+                    : Color.clear
+            )
+            .overlay(alignment: .bottom) {
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.dashboardBorder.opacity(0.9))
+                        .frame(height: 1)
+                        .padding(.leading, 54)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var settingsDetailContent: some View {
+        switch selectedSettingsSection {
+        case .subscription:
+            subscriptionSettingsCard
+        case .profile:
+            profileSettingsCard
+        case .racketSports:
+            if isPersonalAccount {
+                readOnlySportAccessCard
+            } else {
+                sportSetupCard
+            }
+        case .gameSettings:
+            gameSettingsCard
+        case .helpFeedback:
+            VStack(spacing: 12) {
+                feedbackForm
+                resetForm
+            }
+        case .reporting:
+            reportingPlaceholderCard
+        case .stats:
+            statsPlaceholderCard
+        case .organisation:
+            organizationOverviewCard
+        case .orgSettings:
+            VStack(spacing: 12) {
+                organizationProfileCard
+                organizationLocationCard
+            }
+        case .users:
+            organizationUsersCard
+        case .courts:
+            organizationCourtsCard
+        }
+    }
+
+    private var subscriptionSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Subscription")
+                .font(.headline.weight(.semibold))
+
+            settingsValueRow(title: "Plan", value: headerPlanLine)
+            settingsValueRow(title: "Account", value: isPersonalAccount ? "Personal" : "Club")
+
+            Text(isPersonalPlus ? "Personal+ extras like reporting and stats are available on this account." : "Your current plan controls which features and racket sports are available.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var profileSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Profile")
+                .font(.headline.weight(.semibold))
+
+            settingsValueRow(title: "Name", value: currentUserDisplayName)
+            settingsValueRow(title: "Username", value: session?.username ?? "Not available")
+            settingsValueRow(title: "Email", value: session?.email ?? "Not available")
+            settingsValueRow(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var readOnlySportAccessCard: some View {
+        let sportColumns = [
+            GridItem(.adaptive(minimum: 120), spacing: 10)
+        ]
+
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Racket Sports")
+                .font(.headline.weight(.semibold))
+
+            Text("These sports are available on your account.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: sportColumns, alignment: .leading, spacing: 10) {
+                ForEach(availableSportOptions.filter { enabledSportIDs.contains($0.rawValue) }) { sport in
+                    settingsBadge(title: sport.displayName)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            Text("Sport access for personal accounts is managed by your plan or by the admin portal.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var gameSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Game Settings")
+                .font(.headline.weight(.semibold))
+
+            Text("Match format controls remain tied to the sport and setup flow you choose when starting a new match. Broader account presets will live here as the settings model expands.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var reportingPlaceholderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Reporting")
+                .font(.headline.weight(.semibold))
+
+            Text("Reporting views are being prepared for this plan tier. This section will surface downloadable summaries and period views as that work lands.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var statsPlaceholderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Stats")
+                .font(.headline.weight(.semibold))
+
+            Text("Personal and club performance stats will appear here once the reporting layer is connected to completed match summaries.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var organizationOverviewCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Organisation")
+                .font(.headline.weight(.semibold))
+
+            settingsValueRow(title: "Name", value: settingsOrganizationName)
+            settingsValueRow(title: "Plan", value: settingsPlanLine)
+            settingsValueRow(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
+            settingsValueRow(title: "Contact", value: organizationDetailsDraft.organizationContact)
+            settingsValueRow(title: "Email", value: organizationDetailsDraft.organizationEmail)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var organizationProfileCard: some View {
@@ -1421,38 +1636,66 @@ struct DashboardView: View {
         let player1 = splitPlayerName(match.player1Name, surname: match.player1Surname)
         let player2 = splitPlayerName(match.player2Name, surname: match.player2Surname)
         let winnerSide = historyWinnerSide(for: match)
+        let dateParts = recentMatchDateParts(for: match)
+        let player1Games = match.state?.player1GamesWon ?? 0
+        let player2Games = match.state?.player2GamesWon ?? 0
 
-        return HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                recentPlayersLine(
-                    player1: player1.firstName,
-                    player2: player2.firstName,
-                    winnerSide: winnerSide
-                )
-                .font(.subheadline.weight(.bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
+        return HStack(spacing: 0) {
+            VStack(spacing: 4) {
+                Text(dateParts.day)
+                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
 
-                Text(formattedMatchDate(for: match))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(historyFinalScoreLine(for: match))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.dashboardInk)
+                Text(dateParts.month)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
             }
+            .frame(width: 92)
+            .padding(.vertical, 10)
+            .background(Color.dashboardAccentPink.opacity(0.26))
 
-            Spacer(minLength: 8)
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text([player1.firstName, player1.surname].filter { !$0.isEmpty }.joined(separator: " "))
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardBrand)
+                        .lineLimit(1)
 
-            Image(systemName: "chevron.right")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color.dashboardBrand)
-                .frame(width: 36, height: 36)
-                .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
+                    Text("vs")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+
+                    Text([player2.firstName, player2.surname].filter { !$0.isEmpty }.joined(separator: " "))
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardBrand)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 6)
+
+                VStack(spacing: 2) {
+                    Text("\(player1Games)")
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dashboardBrand)
+                    Text("\(player2Games)")
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .frame(width: 38, height: 38)
+                    .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -1698,10 +1941,7 @@ struct DashboardView: View {
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
         enabledSportsDraft = settings.organization.enabledSports
-
-        if !selectedSettingsGroup.sections.contains(selectedSettingsSection) {
-            selectedSettingsSection = selectedSettingsGroup.sections.first ?? .profileOrganization
-        }
+        normalizeSelectedSettingsMenuItem()
     }
 
     private func loadDashboard() async {
@@ -2294,6 +2534,26 @@ struct DashboardView: View {
         return "Unknown date"
     }
 
+    private func recentMatchDateParts(for match: MatchSummary) -> (day: String, month: String) {
+        let rawValue: String
+        if let completedAt = match.completedAt, !completedAt.isEmpty {
+            rawValue = completedAt
+        } else if let updatedAt = match.updatedAt, !updatedAt.isEmpty {
+            rawValue = updatedAt
+        } else {
+            return ("--", "Unknown")
+        }
+
+        guard let date = parsedISODate(rawValue) else {
+            return ("--", "Unknown")
+        }
+
+        return (
+            DateFormatter.dashboardRecentDay.string(from: date),
+            DateFormatter.dashboardRecentMonth.string(from: date)
+        )
+    }
+
     private func recentPlayersLine(player1: String, player2: String, winnerSide: Int?) -> some View {
         let player1Color = winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardInk
         let player2Color = winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardInk
@@ -2335,6 +2595,63 @@ struct DashboardView: View {
     private func isValidEmail(_ value: String) -> Bool {
         let emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
         return value.range(of: emailPattern, options: .regularExpression) != nil
+    }
+
+    private func normalizeSelectedSettingsMenuItem() {
+        if !settingsAvailableItems.contains(where: { $0.section == selectedSettingsSection }) {
+            selectedSettingsSection = settingsAvailableItems.first?.section ?? .subscription
+        }
+    }
+
+    private func loadSelectedProfilePhoto() async {
+        guard let selectedProfilePhotoItem else {
+            return
+        }
+
+        do {
+            if let data = try await selectedProfilePhotoItem.loadTransferable(type: Data.self) {
+                await MainActor.run {
+                    selectedProfilePhotoData = data
+                }
+            }
+        } catch {
+            await MainActor.run {
+                dashboardNotice = "Unable to load that profile photo."
+            }
+        }
+    }
+
+    private func profileAvatarView(size: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.dashboardAccentPink.opacity(0.9),
+                            Color.dashboardBrand.opacity(0.78)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            if let selectedProfileImage {
+                selectedProfileImage
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Text(currentUserInitials)
+                    .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(
+            Circle()
+                .stroke(Color.white.opacity(0.85), lineWidth: 3)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
     }
 
     private func sportEnabledBinding(for sport: MatchSport) -> Binding<Bool> {
@@ -2465,69 +2782,128 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
     }
 }
 
-private enum SettingsGroup: String, CaseIterable, Identifiable {
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case subscription
     case profile
-    case admin
-    case setup
+    case racketSports
+    case gameSettings
+    case helpFeedback
+    case reporting
+    case stats
+    case organisation
+    case orgSettings
+    case users
+    case courts
+
+    var id: String { rawValue }
+}
+
+private enum SettingsMenuItem: String, CaseIterable, Identifiable {
+    case subscription
+    case profile
+    case racketSports
+    case gameSettings
+    case helpFeedback
+    case reporting
+    case stats
+    case organisation
+    case orgSettings
+    case users
+    case courts
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .subscription:
+            return "Subscription"
         case .profile:
             return "Profile"
-        case .admin:
-            return "Admin"
-        case .setup:
-            return "Setup"
+        case .racketSports:
+            return "Racket Sports"
+        case .gameSettings:
+            return "Game Settings"
+        case .helpFeedback:
+            return "Help & Feedback"
+        case .reporting:
+            return "Reporting"
+        case .stats:
+            return "Stats"
+        case .organisation:
+            return "Organisation"
+        case .orgSettings:
+            return "Org Settings"
+        case .users:
+            return "Users"
+        case .courts:
+            return "Courts"
         }
     }
 
-    var symbolName: String {
+    var icon: String {
         switch self {
+        case .subscription:
+            return "creditcard"
         case .profile:
-            return "gearshape"
-        case .admin:
-            return "gearshape"
-        case .setup:
+            return "person.crop.circle"
+        case .racketSports:
+            return "sportscourt"
+        case .gameSettings:
             return "slider.horizontal.3"
+        case .helpFeedback:
+            return "bubble.left.and.bubble.right"
+        case .reporting:
+            return "chart.bar.xaxis"
+        case .stats:
+            return "gauge.with.dots.needle.33percent"
+        case .organisation:
+            return "building.2"
+        case .orgSettings:
+            return "gearshape.2"
+        case .users:
+            return "person.3"
+        case .courts:
+            return "square.grid.2x2"
         }
     }
 
-    var sections: [SettingsSection] {
+    var section: SettingsSection {
         switch self {
+        case .subscription:
+            return .subscription
         case .profile:
-            return [.profileOrganization, .profileLocation]
-        case .admin:
-            return [.adminUsers, .adminCourts]
-        case .setup:
-            return [.setupSports]
+            return .profile
+        case .racketSports:
+            return .racketSports
+        case .gameSettings:
+            return .gameSettings
+        case .helpFeedback:
+            return .helpFeedback
+        case .reporting:
+            return .reporting
+        case .stats:
+            return .stats
+        case .organisation:
+            return .organisation
+        case .orgSettings:
+            return .orgSettings
+        case .users:
+            return .users
+        case .courts:
+            return .courts
         }
     }
 }
 
-private enum SettingsSection: String, CaseIterable, Identifiable {
-    case profileOrganization
-    case profileLocation
-    case adminUsers
-    case adminCourts
-    case setupSports
+private struct SettingsMenuSectionDescriptor: Identifiable {
+    let title: String?
+    let items: [SettingsMenuItem]
 
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .profileOrganization:
-            return "Org"
-        case .profileLocation:
-            return "Location"
-        case .adminUsers:
-            return "Users"
-        case .adminCourts:
-            return "Courts"
-        case .setupSports:
-            return "Sports"
+    var id: String {
+        if let title {
+            return title
         }
+        return items.map(\.rawValue).joined(separator: "-")
     }
 }
 
@@ -2542,6 +2918,18 @@ private extension DateFormatter {
     static let dashboardDateOnly: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    static let dashboardRecentDay: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd"
+        return formatter
+    }()
+
+    static let dashboardRecentMonth: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM"
         return formatter
     }()
 }

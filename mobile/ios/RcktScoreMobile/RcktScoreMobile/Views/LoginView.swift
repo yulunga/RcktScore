@@ -68,10 +68,7 @@ struct LoginView: View {
             VStack {
                 Spacer(minLength: 40)
 
-                ZStack(alignment: .topTrailing) {
-                    loginCard
-                    betaBadge
-                }
+                loginCard
 
                 Spacer()
             }
@@ -225,22 +222,6 @@ struct LoginView: View {
                 Spacer()
             }
         }
-    }
-
-    private var betaBadge: some View {
-        Text("BETA")
-            .font(.caption2.weight(.black))
-            .tracking(1.2)
-            .foregroundStyle(Color.loginBetaText)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.loginBetaBackground)
-            .overlay(
-                Capsule()
-                    .stroke(Color.loginBetaBorder, lineWidth: 1)
-            )
-            .clipShape(Capsule())
-            .offset(x: 10, y: -12)
     }
 
     @ViewBuilder

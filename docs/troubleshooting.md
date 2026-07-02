@@ -274,6 +274,7 @@ Common symptoms:
 - completed matches do not appear while offline
 - iPhone scorer feels visually crowded even when the backend state is correct
 - club-admin sport visibility changes save in iOS settings but do not affect native match setup
+- a personal-account profile photo disappears after reinstalling or signing in on another device
 
 What to check:
 
@@ -284,6 +285,7 @@ What to check:
 - whether `NetworkMonitor.swift` has marked the device offline
 - whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
+- whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
 
 Important current truths:
 

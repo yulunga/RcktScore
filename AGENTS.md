@@ -40,7 +40,7 @@ What is real and implemented:
 - sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native club-admin settings now expose organisation, user, court, and racket-sport visibility controls from the iOS settings tab
+- native settings now use a plan-aware menu layout, with personal-account profile/photo controls and club-admin access to organisation, user, court, and racket-sport visibility controls
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
