@@ -34,7 +34,8 @@ What the current app does:
 - native historic-match view with grouped point timeline and match/game timing
 - native settings with plan-aware account menus, local profile photo picking,
   subscription/profile/association pages, self-profile editing, password-reset
-  access, association switching, sign-out access, and club-admin
+  access, association switching, an About page for app version/build visibility,
+  sign-out access, and club-admin
   organisation/user/court/racket-sport controls
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
@@ -44,6 +45,8 @@ What the current app does:
   to multiple approved clubs/accounts
 - start-new-match now respects dark mode styling and allows personal-tier
   squash/racketball handicap setup
+- tennis match setup now supports singles/doubles switching, and the live tennis
+  scorer now runs a 5-minute warm-up before opening serve/receive selection
 
 What it does not yet match perfectly:
 

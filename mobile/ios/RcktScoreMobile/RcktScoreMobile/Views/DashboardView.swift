@@ -132,6 +132,17 @@ struct DashboardView: View {
             ? "We will send your message to the Hit n Score support inbox."
             : "Your message will include your club context so support can help faster."
     }
+    private var appDisplayName: String {
+        let bundleName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+        return bundleName ?? appName ?? "Hit n Score"
+    }
+    private var appVersionNumber: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "Unknown"
+    }
+    private var appBuildNumber: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String) ?? "Unknown"
+    }
     private var organizationSettingsUsers: [OrganizationUser] {
         organizationSettings?.users ?? []
     }
@@ -154,7 +165,7 @@ struct DashboardView: View {
         Set(enabledSportsDraft.map { $0.lowercased() })
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        var items: [SettingsMenuItem] = [.subscription, .profile, .association, .racketSports, .gameSettings]
+        var items: [SettingsMenuItem] = [.subscription, .profile, .association, .racketSports, .gameSettings, .about]
         if isPersonalPlus {
             items.append(contentsOf: [.reporting, .stats])
         }
@@ -162,7 +173,7 @@ struct DashboardView: View {
         return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [.subscription, .profile, .association, .racketSports, .gameSettings, .reporting, .stats, .helpFeedback]
+        [.subscription, .profile, .association, .racketSports, .gameSettings, .about, .reporting, .stats, .helpFeedback]
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
@@ -689,6 +700,8 @@ struct DashboardView: View {
             }
         case .gameSettings:
             gameSettingsCard
+        case .about:
+            aboutSettingsCard
         case .helpFeedback:
             VStack(spacing: 12) {
                 feedbackForm
@@ -917,6 +930,26 @@ struct DashboardView: View {
             Text("Match format controls remain tied to the sport and setup flow you choose when starting a new match. Broader account presets will live here as the settings model expands.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var aboutSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("About")
+                .font(.headline.weight(.semibold))
+
+            Text("This page shows the app version and build currently installed on this device.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            settingsValueRow(title: "App", value: appDisplayName)
+            settingsValueRow(title: "Version", value: appVersionNumber)
+            settingsValueRow(title: "Build", value: appBuildNumber)
+            settingsValueRow(title: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "rcktScore.RcktScoreMobile")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2174,8 +2207,7 @@ struct DashboardView: View {
                     .fill(Color.dashboardBrand.opacity(0.12))
                     .frame(width: 24, height: 24)
 
-                racketSportGlyph(for: .tennis, isAvailable: true)
-                    .scaleEffect(0.55)
+                settingsRacketGlyph
             }
             .frame(width: 24, height: 24)
         } else {
@@ -2183,6 +2215,21 @@ struct DashboardView: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(Color.secondary)
                 .frame(width: 24)
+        }
+    }
+
+    private var settingsRacketGlyph: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.dashboardBrand, lineWidth: 1.8)
+                .frame(width: 11, height: 13)
+                .offset(x: -1.5, y: -2.5)
+
+            RoundedRectangle(cornerRadius: 1.4, style: .continuous)
+                .fill(Color.dashboardBrand)
+                .frame(width: 2.4, height: 8.5)
+                .rotationEffect(.degrees(-32))
+                .offset(x: 4.5, y: 4.6)
         }
     }
 
@@ -3344,6 +3391,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case association
     case racketSports
     case gameSettings
+    case about
     case helpFeedback
     case reporting
     case stats
@@ -3361,6 +3409,7 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case association
     case racketSports
     case gameSettings
+    case about
     case helpFeedback
     case reporting
     case stats
@@ -3383,6 +3432,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Racket Sports"
         case .gameSettings:
             return "Game Settings"
+        case .about:
+            return "About"
         case .helpFeedback:
             return "Help & Feedback"
         case .reporting:
@@ -3412,6 +3463,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "sportscourt"
         case .gameSettings:
             return "slider.horizontal.3"
+        case .about:
+            return "info.circle"
         case .helpFeedback:
             return "bubble.left.and.bubble.right"
         case .reporting:
@@ -3441,6 +3494,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .racketSports
         case .gameSettings:
             return .gameSettings
+        case .about:
+            return .about
         case .helpFeedback:
             return .helpFeedback
         case .reporting:

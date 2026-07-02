@@ -308,7 +308,8 @@ Important current truths:
 - historic matches are online-only in the native app
 - the dashboard now stays quiet when the device is offline instead of showing a persistent fetch-failure banner
 - the dashboard bell no longer shows a placeholder message, but there is still no real notification-center implementation behind it
-- native settings now push each section onto its own page, allow self-profile edits and association switching, but profile-photo selection is still device-local only
+- native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, but profile-photo selection is still device-local only
+- native tennis scoring now expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
 - the current scorer is functionally ahead of the docs that used to describe it,
   but its iPhone layout still needs redesign
 

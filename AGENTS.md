@@ -39,13 +39,13 @@ What is real and implemented:
 - dashboard, history, and match lists
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - match create, schedule, start, score, event actions, undo, and end
-- sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
+- sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup metadata and opening serve/receive selection support
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions

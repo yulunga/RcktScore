@@ -194,6 +194,8 @@ Current organisation-settings behavior:
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
 - the native iOS settings profile page uses `PUT /personal_profile/{organization_id}` for first name, surname, email/username, telephone, and country updates, and still uses `POST /password_reset/request` for password-reset emails
+- the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
+- native tennis match creation can now include optional team-format and lineup metadata for doubles, and the tennis `server` event path accepts opening serve/receive order metadata in the event payload
 
 ### Match and scoring routes
 

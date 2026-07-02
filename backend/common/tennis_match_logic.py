@@ -15,6 +15,7 @@ TENNIS_POINT_LABELS = {
     2: "30",
     3: "40",
 }
+VALID_TEAM_FORMATS = {"singles", "doubles"}
 
 
 def _player_name(match_like, side):
@@ -27,6 +28,205 @@ def _player_name(match_like, side):
 
 def _opponent(side):
     return "player2" if side == "player1" else "player1"
+
+
+def _team_format_value(value):
+    parsed = str(value or "singles").strip().lower()
+    return parsed if parsed in VALID_TEAM_FORMATS else "singles"
+
+
+def _display_name(first_name, surname=None):
+    parts = [
+        str(first_name or "").strip(),
+        str(surname or "").strip(),
+    ]
+    return " ".join(part for part in parts if part)
+
+
+def _build_tennis_teams(match_payload):
+    team_format = _team_format_value(match_payload.get("team_format"))
+    team1_primary = {
+        "id": "team1_player1",
+        "first_name": str(match_payload.get("team1_player1_name") or match_payload.get("player1_name") or "").strip(),
+        "surname": str(match_payload.get("team1_player1_surname") or match_payload.get("player1_surname") or "").strip() or None,
+    }
+    team2_primary = {
+        "id": "team2_player1",
+        "first_name": str(match_payload.get("team2_player1_name") or match_payload.get("player2_name") or "").strip(),
+        "surname": str(match_payload.get("team2_player1_surname") or match_payload.get("player2_surname") or "").strip() or None,
+    }
+
+    for player in (team1_primary, team2_primary):
+        player["display_name"] = _display_name(player["first_name"], player["surname"])
+
+    teams = {
+        "player1": [team1_primary],
+        "player2": [team2_primary],
+    }
+
+    if team_format == "doubles":
+        team1_secondary = {
+            "id": "team1_player2",
+            "first_name": str(match_payload.get("team1_player2_name") or "").strip(),
+            "surname": str(match_payload.get("team1_player2_surname") or "").strip() or None,
+        }
+        team2_secondary = {
+            "id": "team2_player2",
+            "first_name": str(match_payload.get("team2_player2_name") or "").strip(),
+            "surname": str(match_payload.get("team2_player2_surname") or "").strip() or None,
+        }
+        team1_secondary["display_name"] = _display_name(team1_secondary["first_name"], team1_secondary["surname"])
+        team2_secondary["display_name"] = _display_name(team2_secondary["first_name"], team2_secondary["surname"])
+
+        if team1_secondary["display_name"]:
+            teams["player1"].append(team1_secondary)
+        if team2_secondary["display_name"]:
+            teams["player2"].append(team2_secondary)
+
+    return team_format, teams
+
+
+def _participant_lookup(state):
+    teams = state.get("tennis_teams") or {}
+    lookup = {}
+    for side, participants in teams.items():
+        for participant in participants or []:
+            lookup[participant["id"]] = {
+                **participant,
+                "side": side,
+            }
+    return lookup
+
+
+def _participant_name(state, participant_id):
+    participant = _participant_lookup(state).get(participant_id)
+    if not participant:
+        return None
+    return participant.get("display_name") or _display_name(
+        participant.get("first_name"),
+        participant.get("surname"),
+    )
+
+
+def _participant_side(state, participant_id):
+    participant = _participant_lookup(state).get(participant_id)
+    return participant.get("side") if participant else None
+
+
+def _team_participants(state, side):
+    return list((state.get("tennis_teams") or {}).get(side) or [])
+
+
+def _team_service_order(state, side):
+    order = list((state.get("team_service_order") or {}).get(side) or [])
+    if order:
+        return order
+    return [participant["id"] for participant in _team_participants(state, side)]
+
+
+def _rotate_order(order, participant_id):
+    if participant_id not in order:
+        return order
+    index = order.index(participant_id)
+    return order[index:] + order[:index]
+
+
+def _partner_participant_id(state, participant_id):
+    side = _participant_side(state, participant_id)
+    if not side:
+        return participant_id
+    participants = [participant["id"] for participant in _team_participants(state, side)]
+    if len(participants) <= 1:
+        return participants[0] if participants else participant_id
+    for candidate in participants:
+        if candidate != participant_id:
+            return candidate
+    return participant_id
+
+
+def _receiver_for_side(state, receiving_side, service_side):
+    participants = [participant["id"] for participant in _team_participants(state, receiving_side)]
+    if not participants:
+        return None
+
+    deuce_receiver = (state.get("receiver_deuce_order") or {}).get(receiving_side) or participants[0]
+    if len(participants) == 1:
+        return deuce_receiver
+    if str(service_side or "Right").lower() == "right":
+        return deuce_receiver
+    return _partner_participant_id(state, deuce_receiver)
+
+
+def _combined_serve_order(state):
+    serve_order = list(state.get("serve_order") or [])
+    if serve_order:
+        return serve_order
+
+    player1_order = _team_service_order(state, "player1")
+    player2_order = _team_service_order(state, "player2")
+    combined = []
+    max_len = max(len(player1_order), len(player2_order), 1)
+    for index in range(max_len):
+        if index < len(player1_order):
+            combined.append(player1_order[index])
+        if index < len(player2_order):
+            combined.append(player2_order[index])
+    return combined
+
+
+def _build_initial_serve_order(state, starting_server_participant_id):
+    starting_side = _participant_side(state, starting_server_participant_id) or "player1"
+    other_side = _opponent(starting_side)
+    starting_team_order = _rotate_order(_team_service_order(state, starting_side), starting_server_participant_id)
+    other_team_order = _team_service_order(state, other_side)
+
+    combined = []
+    max_len = max(len(starting_team_order), len(other_team_order), 1)
+    for index in range(max_len):
+        if index < len(starting_team_order):
+            combined.append(starting_team_order[index])
+        if index < len(other_team_order):
+            combined.append(other_team_order[index])
+    return combined
+
+
+def _current_game_server_participant_id(state):
+    serve_order = _combined_serve_order(state)
+    if not serve_order:
+        return None
+    games_played = shared._coerce_int(state.get("player1_set_games")) + shared._coerce_int(state.get("player2_set_games"))
+    return serve_order[games_played % len(serve_order)]
+
+
+def _next_tie_break_server_participant(serve_order, total_points_played):
+    if not serve_order:
+        return None
+    if total_points_played <= 0:
+        return serve_order[0]
+    if len(serve_order) == 1:
+        return serve_order[0]
+    block_index = (total_points_played - 1) // 2
+    return serve_order[(1 + block_index) % len(serve_order)]
+
+
+def _apply_current_service_participants(state, server_participant_id=None, service_side=None):
+    resolved_server_id = server_participant_id or _current_game_server_participant_id(state)
+    if not resolved_server_id:
+        return state
+
+    resolved_service_side = service_side or state.get("service_side") or "Right"
+    server_side = _participant_side(state, resolved_server_id) or state.get("current_server_side") or "player1"
+    receiver_side = _opponent(server_side)
+    receiver_participant_id = _receiver_for_side(state, receiver_side, resolved_service_side)
+
+    state["current_server_participant_id"] = resolved_server_id
+    state["current_server_side"] = server_side
+    state["current_server"] = _participant_name(state, resolved_server_id) or _player_name(state, server_side)
+    state["service_side"] = resolved_service_side
+    state["current_receiver_side"] = receiver_side
+    state["current_receiver_participant_id"] = receiver_participant_id
+    state["current_receiver"] = _participant_name(state, receiver_participant_id) or _player_name(state, receiver_side)
+    return state
 
 
 def _best_of_value(value):
@@ -176,7 +376,8 @@ def _initial_state(match_row):
     best_of = _best_of_value(match_row.get("best_of", 3))
     score_type = _score_type_value(match_row.get("score_type", 6))
     player1_score_label, player2_score_label = _tennis_score_labels(0, 0, False)
-    return {
+    team_format, tennis_teams = _build_tennis_teams(match_row)
+    state = {
         "player1_score": 0,
         "player2_score": 0,
         "score_type": score_type,
@@ -193,9 +394,24 @@ def _initial_state(match_row):
         "current_game_number": shared._coerce_int(match_row.get("current_game_number"), 1),
         "games_to_win": shared._coerce_int(match_row.get("games_to_win"), _games_to_win(best_of)),
         "best_of": best_of,
+        "team_format": team_format,
+        "tennis_teams": tennis_teams,
+        "team_service_order": {
+            "player1": [participant["id"] for participant in tennis_teams.get("player1", [])],
+            "player2": [participant["id"] for participant in tennis_teams.get("player2", [])],
+        },
+        "receiver_deuce_order": {
+            "player1": (tennis_teams.get("player1", [{}])[0] or {}).get("id"),
+            "player2": (tennis_teams.get("player2", [{}])[0] or {}).get("id"),
+        },
+        "serve_order": [],
         "current_server": match_row["player1_name"],
         "current_server_side": "player1",
+        "current_server_participant_id": (tennis_teams.get("player1", [{}])[0] or {}).get("id"),
         "service_side": "Right",
+        "current_receiver": match_row["player2_name"],
+        "current_receiver_side": "player2",
+        "current_receiver_participant_id": (tennis_teams.get("player2", [{}])[0] or {}).get("id"),
         "handicap": {
             "enabled": False,
             "player1_band": None,
@@ -207,6 +423,7 @@ def _initial_state(match_row):
         "player2_set_games": 0,
         "is_tie_break": False,
         "tiebreak_first_server_side": None,
+        "tiebreak_first_server_participant_id": None,
         "score_display_mode": "tennis",
         "player1_score_label": player1_score_label,
         "player2_score_label": player2_score_label,
@@ -219,7 +436,16 @@ def _initial_state(match_row):
         "match_duration_seconds": shared._coerce_int(match_row.get("match_duration_seconds")),
         "events": [],
     }
-
+    state["serve_order"] = _build_initial_serve_order(
+        state,
+        state.get("current_server_participant_id") or "team1_player1",
+    )
+    return _apply_current_service_participants(
+        state,
+        server_participant_id=state.get("current_server_participant_id"),
+        service_side="Right",
+    )
+ 
 
 def _apply_score_labels(state):
     player1_label, player2_label = _tennis_score_labels(
@@ -263,8 +489,40 @@ def _build_state(match_row, event_rows):
                 payload.get("player2_shirt_color"),
                 state["player2_shirt_color"],
             )
+            if payload.get("team_format"):
+                state["team_format"] = _team_format_value(payload.get("team_format"))
+            if payload.get("tennis_teams"):
+                state["tennis_teams"] = payload.get("tennis_teams")
+            if payload.get("team_service_order"):
+                state["team_service_order"] = payload.get("team_service_order")
+            if payload.get("receiver_deuce_order"):
+                state["receiver_deuce_order"] = payload.get("receiver_deuce_order")
+            if payload.get("serve_order"):
+                state["serve_order"] = payload.get("serve_order")
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
             state["tiebreak_first_server_side"] = payload.get("tiebreak_first_server_side")
+            state["tiebreak_first_server_participant_id"] = payload.get(
+                "tiebreak_first_server_participant_id",
+                state.get("tiebreak_first_server_participant_id"),
+            )
+            state["current_server_participant_id"] = payload.get(
+                "current_server_participant_id",
+                state.get("current_server_participant_id"),
+            )
+            state["current_receiver_participant_id"] = payload.get(
+                "current_receiver_participant_id",
+                state.get("current_receiver_participant_id"),
+            )
+            state["current_receiver_side"] = payload.get(
+                "current_receiver_side",
+                state.get("current_receiver_side"),
+            )
+            state["current_receiver"] = payload.get("current_receiver", state.get("current_receiver"))
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
+            )
             _apply_score_labels(state)
         elif event_type == "match_settings":
             state["score_type"] = _score_type_value(payload.get("score_type", state["score_type"]))
@@ -292,10 +550,29 @@ def _build_state(match_row, event_rows):
             state["current_server"] = payload.get("current_server", state["current_server"])
             state["current_server_side"] = payload.get("current_server_side", state["current_server_side"])
             state["service_side"] = payload.get("service_side", state["service_side"])
+            state["current_server_participant_id"] = payload.get(
+                "current_server_participant_id",
+                state.get("current_server_participant_id"),
+            )
+            state["current_receiver"] = payload.get("current_receiver", state.get("current_receiver"))
+            state["current_receiver_side"] = payload.get(
+                "current_receiver_side",
+                state.get("current_receiver_side"),
+            )
+            state["current_receiver_participant_id"] = payload.get(
+                "current_receiver_participant_id",
+                state.get("current_receiver_participant_id"),
+            )
+            if payload.get("serve_order"):
+                state["serve_order"] = payload.get("serve_order")
             state["player1_set_games"] = shared._coerce_int(payload.get("player1_set_games"), state["player1_set_games"])
             state["player2_set_games"] = shared._coerce_int(payload.get("player2_set_games"), state["player2_set_games"])
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
             state["tiebreak_first_server_side"] = payload.get("tiebreak_first_server_side")
+            state["tiebreak_first_server_participant_id"] = payload.get(
+                "tiebreak_first_server_participant_id",
+                state.get("tiebreak_first_server_participant_id"),
+            )
             if payload.get("match_completed"):
                 state["match_complete"] = True
                 state["winner_side"] = payload.get("winner_side")
@@ -303,12 +580,39 @@ def _build_state(match_row, event_rows):
             _apply_score_labels(state)
         elif event_type == "serve_side":
             state["service_side"] = payload.get("side", state["service_side"])
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
+            )
         elif event_type == "server":
             server_side = payload.get("current_server_side")
             if server_side in {"player1", "player2"}:
                 state["current_server_side"] = server_side
                 state["current_server"] = _player_name(match_row, server_side)
                 state["service_side"] = payload.get("service_side") or "Right"
+            if payload.get("serve_order"):
+                state["serve_order"] = payload.get("serve_order")
+            if payload.get("receiver_deuce_order"):
+                state["receiver_deuce_order"] = payload.get("receiver_deuce_order")
+            state["current_server_participant_id"] = payload.get(
+                "current_server_participant_id",
+                state.get("current_server_participant_id"),
+            )
+            state["current_receiver"] = payload.get("current_receiver", state.get("current_receiver"))
+            state["current_receiver_side"] = payload.get(
+                "current_receiver_side",
+                state.get("current_receiver_side"),
+            )
+            state["current_receiver_participant_id"] = payload.get(
+                "current_receiver_participant_id",
+                state.get("current_receiver_participant_id"),
+            )
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
+            )
         elif event_type == "match_ended":
             state["match_complete"] = True
             state["ended_early"] = bool(payload.get("ended_early"))
@@ -327,6 +631,10 @@ def _build_state(match_row, event_rows):
                 state["match_duration_seconds"],
             )
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
+            state["tiebreak_first_server_participant_id"] = payload.get(
+                "tiebreak_first_server_participant_id",
+                state.get("tiebreak_first_server_participant_id"),
+            )
             _apply_score_labels(state)
         elif event_type == "timer":
             state["match_duration_seconds"] = shared._coerce_int(
@@ -652,6 +960,22 @@ def create_match(connection, payload, source="api"):
             },
         )
 
+        team_format, tennis_teams = _build_tennis_teams(match_payload)
+        initial_state = _initial_state(
+            {
+                **match_payload,
+                "best_of": best_of,
+                "score_type": score_type,
+                "games_to_win": games_to_win,
+                "player1_games_won": 0,
+                "player2_games_won": 0,
+                "current_game_number": 1,
+                "player1_shirt_color": player1_shirt_color,
+                "player2_shirt_color": player2_shirt_color,
+                "status": match_status,
+                "match_duration_seconds": 0,
+            }
+        )
         player1_score_label, player2_score_label = _tennis_score_labels(0, 0, False)
         cursor.execute(
             """
@@ -675,9 +999,18 @@ def create_match(connection, payload, source="api"):
                     "player2_games_won": 0,
                     "player1_set_games": 0,
                     "player2_set_games": 0,
-                    "current_server": match_payload["player1_name"],
-                    "current_server_side": "player1",
+                    "team_format": team_format,
+                    "tennis_teams": tennis_teams,
+                    "team_service_order": initial_state.get("team_service_order"),
+                    "receiver_deuce_order": initial_state.get("receiver_deuce_order"),
+                    "serve_order": initial_state.get("serve_order"),
+                    "current_server": initial_state.get("current_server"),
+                    "current_server_side": initial_state.get("current_server_side"),
+                    "current_server_participant_id": initial_state.get("current_server_participant_id"),
                     "service_side": "Right",
+                    "current_receiver": initial_state.get("current_receiver"),
+                    "current_receiver_side": initial_state.get("current_receiver_side"),
+                    "current_receiver_participant_id": initial_state.get("current_receiver_participant_id"),
                     "player1_shirt_color": player1_shirt_color,
                     "player2_shirt_color": player2_shirt_color,
                     "player1_score": 0,
@@ -749,7 +1082,10 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     sets_to_win = state["games_to_win"]
     score_type = state["score_type"]
     current_server_side = state.get("current_server_side") or "player1"
+    current_server_participant_id = state.get("current_server_participant_id") or _current_game_server_participant_id(state)
+    serve_order = _combined_serve_order(state)
     tiebreak_first_server_side = state.get("tiebreak_first_server_side")
+    tiebreak_first_server_participant_id = state.get("tiebreak_first_server_participant_id")
     is_tie_break = bool(state.get("is_tie_break"))
 
     if scorer_side == "player1":
@@ -762,14 +1098,19 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     winner_side = None
     winner_name = None
     next_server_side = current_server_side
+    next_server_participant_id = current_server_participant_id
     next_service_side = _service_side_for_next_point(player1_score, player2_score)
+    next_receiver_side = _opponent(current_server_side)
+    next_receiver_participant_id = _receiver_for_side(state, next_receiver_side, next_service_side)
     next_set_number = current_set_number
     next_tie_break = is_tie_break
     next_tiebreak_first_server_side = tiebreak_first_server_side
+    next_tiebreak_first_server_participant_id = tiebreak_first_server_participant_id
     set_result = None
 
     if is_tie_break:
         first_server_side = tiebreak_first_server_side or current_server_side
+        first_server_participant_id = tiebreak_first_server_participant_id or current_server_participant_id
         if _is_tie_break_complete(player1_score, player2_score):
             set_completed = True
             winner_side = _winner_side(player1_score, player2_score)
@@ -797,10 +1138,19 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 player2_set_games = 0
                 next_tie_break = False
                 next_tiebreak_first_server_side = None
-                next_server_side = _opponent(first_server_side)
+                next_tiebreak_first_server_participant_id = None
+                if serve_order and first_server_participant_id in serve_order:
+                    next_server_participant_id = serve_order[(serve_order.index(first_server_participant_id) + 1) % len(serve_order)]
+                    next_server_side = _participant_side(state, next_server_participant_id) or _opponent(first_server_side)
+                else:
+                    next_server_side = _opponent(first_server_side)
                 next_service_side = "Right"
         else:
-            next_server_side = _next_tie_break_server(first_server_side, player1_score, player2_score)
+            next_server_participant_id = _next_tie_break_server_participant(
+                serve_order,
+                player1_score + player2_score,
+            ) or first_server_participant_id
+            next_server_side = _participant_side(state, next_server_participant_id) or _next_tie_break_server(first_server_side, player1_score, player2_score)
     else:
         if _is_regular_game_complete(player1_score, player2_score):
             game_winner_side = _winner_side(player1_score, player2_score)
@@ -827,29 +1177,51 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 if player1_sets_won >= sets_to_win or player2_sets_won >= sets_to_win:
                     match_completed = True
                 else:
+                    completed_set_games = player1_set_games + player2_set_games
                     next_set_number += 1
                     player1_set_games = 0
                     player2_set_games = 0
                     player1_score = 0
                     player2_score = 0
-                    next_server_side = _opponent(current_server_side)
+                    if serve_order:
+                        next_server_participant_id = serve_order[completed_set_games % len(serve_order)]
+                        next_server_side = _participant_side(state, next_server_participant_id) or _opponent(current_server_side)
+                    else:
+                        next_server_side = _opponent(current_server_side)
                     next_service_side = "Right"
             elif _should_start_tie_break(player1_set_games, player2_set_games, score_type):
                 player1_score = 0
                 player2_score = 0
                 next_tie_break = True
-                next_tiebreak_first_server_side = _opponent(current_server_side)
-                next_server_side = next_tiebreak_first_server_side
+                if serve_order:
+                    total_games_played = player1_set_games + player2_set_games
+                    next_tiebreak_first_server_participant_id = serve_order[total_games_played % len(serve_order)]
+                    next_server_participant_id = next_tiebreak_first_server_participant_id
+                    next_tiebreak_first_server_side = _participant_side(state, next_tiebreak_first_server_participant_id) or _opponent(current_server_side)
+                    next_server_side = next_tiebreak_first_server_side
+                else:
+                    next_tiebreak_first_server_side = _opponent(current_server_side)
+                    next_server_side = next_tiebreak_first_server_side
                 next_service_side = "Right"
             else:
                 player1_score = 0
                 player2_score = 0
-                next_server_side = _opponent(current_server_side)
+                if serve_order:
+                    total_games_played = player1_set_games + player2_set_games
+                    next_server_participant_id = serve_order[total_games_played % len(serve_order)]
+                    next_server_side = _participant_side(state, next_server_participant_id) or _opponent(current_server_side)
+                else:
+                    next_server_side = _opponent(current_server_side)
                 next_service_side = "Right"
 
     if not match_completed:
         winner_side = None
         winner_name = None
+
+    next_receiver_side = _opponent(next_server_side)
+    next_receiver_participant_id = _receiver_for_side(state, next_receiver_side, next_service_side)
+    next_server_name = _participant_name(state, next_server_participant_id) or _player_name(match, next_server_side)
+    next_receiver_name = _participant_name(state, next_receiver_participant_id) or _player_name(match, next_receiver_side)
 
     player1_score_label, player2_score_label = _tennis_score_labels(player1_score, player2_score, next_tie_break)
     payload = {
@@ -865,11 +1237,17 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "player2_games_won": player2_sets_won,
         "player1_set_games": player1_set_games,
         "player2_set_games": player2_set_games,
-        "current_server": _player_name(match, next_server_side),
+        "current_server": next_server_name,
         "current_server_side": next_server_side,
+        "current_server_participant_id": next_server_participant_id,
         "service_side": next_service_side,
+        "current_receiver": next_receiver_name,
+        "current_receiver_side": next_receiver_side,
+        "current_receiver_participant_id": next_receiver_participant_id,
         "is_tie_break": next_tie_break,
         "tiebreak_first_server_side": next_tiebreak_first_server_side,
+        "tiebreak_first_server_participant_id": next_tiebreak_first_server_participant_id,
+        "serve_order": serve_order,
         "player1_score_label": player1_score_label,
         "player2_score_label": player2_score_label,
         "score_display_mode": "tennis",
@@ -889,13 +1267,19 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "player1_games_won": player1_sets_won,
         "player2_games_won": player2_sets_won,
         "current_game_number": next_set_number,
-        "current_server": _player_name(match, next_server_side),
+        "current_server": next_server_name,
         "current_server_side": next_server_side,
+        "current_server_participant_id": next_server_participant_id,
         "service_side": next_service_side,
+        "current_receiver": next_receiver_name,
+        "current_receiver_side": next_receiver_side,
+        "current_receiver_participant_id": next_receiver_participant_id,
         "player1_set_games": player1_set_games,
         "player2_set_games": player2_set_games,
         "is_tie_break": next_tie_break,
         "tiebreak_first_server_side": next_tiebreak_first_server_side,
+        "tiebreak_first_server_participant_id": next_tiebreak_first_server_participant_id,
+        "serve_order": serve_order,
         "score_display_mode": "tennis",
         "player1_score_label": player1_score_label,
         "player2_score_label": player2_score_label,
@@ -1068,6 +1452,58 @@ def _record_match_duration(connection, match_id, payload, source="api"):
     )
 
 
+def _prepare_server_selection(match, payload):
+    state = match["state"]
+    server_side = payload.get("current_server_side")
+    if server_side not in {"player1", "player2"}:
+        raise ValueError("server selection requires current_server_side = 'player1' or 'player2'")
+
+    participant_lookup = _participant_lookup(state)
+    server_participant_id = payload.get("current_server_participant_id")
+    if not server_participant_id:
+        default_order = _team_service_order(state, server_side)
+        server_participant_id = default_order[0] if default_order else None
+    if server_participant_id not in participant_lookup:
+        raise ValueError("Invalid opening server selection")
+    if _participant_side(state, server_participant_id) != server_side:
+        raise ValueError("Opening server must belong to the selected serving team")
+
+    receiver_side = _opponent(server_side)
+    receiver_participant_id = payload.get("current_receiver_participant_id")
+    if not receiver_participant_id:
+        receiver_participant_id = _receiver_for_side(state, receiver_side, payload.get("service_side") or "Right")
+    if receiver_participant_id not in participant_lookup:
+        raise ValueError("Invalid opening receiver selection")
+    if _participant_side(state, receiver_participant_id) != receiver_side:
+        raise ValueError("Opening receiver must belong to the receiving team")
+
+    receiver_deuce_order = dict(state.get("receiver_deuce_order") or {})
+    receiver_deuce_order[receiver_side] = receiver_participant_id
+    if receiver_deuce_order.get(server_side) is None:
+        default_receiving_side = _receiver_for_side(state, server_side, "Right")
+        if default_receiving_side:
+            receiver_deuce_order[server_side] = default_receiving_side
+
+    state_for_order = {
+        **state,
+        "receiver_deuce_order": receiver_deuce_order,
+    }
+    serve_order = payload.get("serve_order") or _build_initial_serve_order(state_for_order, server_participant_id)
+
+    return {
+        **payload,
+        "current_server_side": server_side,
+        "current_server_participant_id": server_participant_id,
+        "current_server": _participant_name(state, server_participant_id) or _player_name(match, server_side),
+        "service_side": payload.get("service_side") or "Right",
+        "current_receiver_side": receiver_side,
+        "current_receiver_participant_id": receiver_participant_id,
+        "current_receiver": _participant_name(state, receiver_participant_id) or _player_name(match, receiver_side),
+        "receiver_deuce_order": receiver_deuce_order,
+        "serve_order": serve_order,
+    }
+
+
 def event_action(connection, match_id, action_type, payload, source="api"):
     if action_type not in ALLOWED_ACTION_TYPES:
         raise ValueError(f"action_type must be one of: {', '.join(sorted(ALLOWED_ACTION_TYPES))}")
@@ -1077,6 +1513,13 @@ def event_action(connection, match_id, action_type, payload, source="api"):
 
     if action_type == "timer":
         return _record_match_duration(connection, match_id, payload, source=source)
+
+    if action_type == "server":
+        match = get_match(connection, match_id)
+        if not match:
+            return None
+        prepared_payload = _prepare_server_selection(match, payload)
+        return _append_event(connection, match_id, action_type, prepared_payload, source=source)
 
     if action_type == "stroke":
         scorer_side = payload.get("player_side")

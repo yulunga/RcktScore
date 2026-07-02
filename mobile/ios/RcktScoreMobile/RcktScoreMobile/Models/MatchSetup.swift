@@ -192,6 +192,15 @@ struct CreateMatchRequest: Encodable {
     let player2Offset: Int
     let sport: String
     let status: String
+    let teamFormat: String?
+    let team1Player1Name: String?
+    let team1Player1Surname: String?
+    let team1Player2Name: String?
+    let team1Player2Surname: String?
+    let team2Player1Name: String?
+    let team2Player1Surname: String?
+    let team2Player2Name: String?
+    let team2Player2Surname: String?
 
     enum CodingKeys: String, CodingKey {
         case tenantID = "tenant_id"
@@ -218,6 +227,15 @@ struct CreateMatchRequest: Encodable {
         case player2Offset = "player2_offset"
         case sport
         case status
+        case teamFormat = "team_format"
+        case team1Player1Name = "team1_player1_name"
+        case team1Player1Surname = "team1_player1_surname"
+        case team1Player2Name = "team1_player2_name"
+        case team1Player2Surname = "team1_player2_surname"
+        case team2Player1Name = "team2_player1_name"
+        case team2Player1Surname = "team2_player1_surname"
+        case team2Player2Name = "team2_player2_name"
+        case team2Player2Surname = "team2_player2_surname"
     }
 }
 

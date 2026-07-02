@@ -1,7 +1,7 @@
 import Combine
 import SwiftUI
 
-private let warmupSeconds = 60
+private let defaultWarmupSeconds = 60
 private let intervalSeconds = 90
 private let matchTimerStorageKeyPrefix = "rcktscore.matchTimer"
 private let squashScoreTypeOptions = [11, 15]
@@ -77,19 +77,27 @@ struct MatchScoringView: View {
     @State private var selectedSheetSection: MatchSheetSection = .settings
     @State private var gameSettingsForm = MatchGameSettingsForm()
     @State private var timerPhase: MatchTimerPhase = .warmupReady
-    @State private var timerSeconds = warmupSeconds
+    @State private var timerSeconds = defaultWarmupSeconds
     @State private var matchDurationSeconds = 0
     @State private var timerRunning = false
     @State private var bootstrappedMatchID: String?
     @State private var previousGameHistoryCount = 0
     @State private var durationSyncedMatchID: String?
     @State private var settingsAutoloaded = false
+    @State private var selectedOpeningServerParticipantID: String?
+    @State private var selectedOpeningReceiverParticipantID: String?
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var live: MatchState? { match?.state }
     private var isTennisMatch: Bool {
         (match?.sport ?? "").lowercased() == "tennis" || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
+    }
+    private var isTennisDoublesMatch: Bool {
+        isTennisMatch && (live?.teamFormat ?? "").lowercased() == "doubles"
+    }
+    private var warmupDurationSeconds: Int {
+        isTennisMatch ? 300 : defaultWarmupSeconds
     }
     private var isPersonalAccount: Bool { container.sessionStore.session?.isPersonalAccount ?? false }
     private var canChoosePlayerShirtColors: Bool {
@@ -152,11 +160,11 @@ struct MatchScoringView: View {
         case .warmupReady:
             return "Warm-Up Ready"
         case .warmupSideOne:
-            return "Warm-Up: Side 1"
+            return isTennisMatch ? "Warm-Up" : "Warm-Up: Side 1"
         case .warmupSideTwo:
             return "Warm-Up: Side 2"
         case .firstServer:
-            return "First Server"
+            return isTennisMatch ? "Serve & Receive" : "First Server"
         case .interval:
             return "Game Break - 90s"
         case .matchLive:
@@ -175,9 +183,13 @@ struct MatchScoringView: View {
         case .warmupReady:
             return "Warm-up starts when both players are ready."
         case .warmupSideOne, .warmupSideTwo:
-            return "Warm-up runs for 60 seconds on each side of the court."
+            return isTennisMatch
+                ? "Warm-up runs for 5 minutes before the opening serve and receiver are confirmed."
+                : "Warm-up runs for 60 seconds on each side of the court."
         case .firstServer:
-            return "Choose the opening server to begin the live match clock."
+            return isTennisMatch
+                ? "Choose the opening server and receiver to begin the live match clock."
+                : "Choose the opening server to begin the live match clock."
         case .interval:
             return "90 second break between games."
         case .matchLive:
@@ -270,6 +282,14 @@ struct MatchScoringView: View {
         )
 
         return historyEntries + [currentServe]
+    }
+
+    private var tennisTeamOneParticipants: [TennisParticipant] {
+        live?.tennisTeams?["player1"] ?? []
+    }
+
+    private var tennisTeamTwoParticipants: [TennisParticipant] {
+        live?.tennisTeams?["player2"] ?? []
     }
 
     private var availableScoreTypeOptions: [Int] {
@@ -608,41 +628,49 @@ struct MatchScoringView: View {
     private var warmupOverlay: some View {
         if timerPhase == .firstServer, let match {
             VStack(alignment: .leading, spacing: 18) {
-                Text("First Server")
+                Text(isTennisMatch ? "Serve & Receive" : "First Server")
                     .font(.title2.weight(.bold))
 
-                Text("Choose which player starts serving. The match begins after this selection.")
+                Text(
+                    isTennisMatch
+                        ? "Choose the opening server and the opening receiver. The match begins after this selection."
+                        : "Choose which player starts serving. The match begins after this selection."
+                )
                     .font(.body)
                     .foregroundStyle(.secondary)
 
-                VStack(spacing: 12) {
-                    Button {
-                        Task { await chooseFirstServer("player1", using: match) }
-                    } label: {
-                        Text(fullName(firstName: match.player1Name, surname: match.player1Surname))
-                            .font(.headline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.rcktBlue)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isMutating)
+                if isTennisMatch {
+                    tennisOpeningSelectionOverlay(match)
+                } else {
+                    VStack(spacing: 12) {
+                        Button {
+                            Task { await chooseFirstServer("player1", using: match) }
+                        } label: {
+                            Text(fullName(firstName: match.player1Name, surname: match.player1Surname))
+                                .font(.headline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.rcktBlue)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isMutating)
 
-                    Button {
-                        Task { await chooseFirstServer("player2", using: match) }
-                    } label: {
-                        Text(fullName(firstName: match.player2Name, surname: match.player2Surname))
-                            .font(.headline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.rcktSlate)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        Button {
+                            Task { await chooseFirstServer("player2", using: match) }
+                        } label: {
+                            Text(fullName(firstName: match.player2Name, surname: match.player2Surname))
+                                .font(.headline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.rcktSlate)
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isMutating)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isMutating)
                 }
             }
             .padding(24)
@@ -718,6 +746,98 @@ struct MatchScoringView: View {
                     .stroke(Color.rcktBorder, lineWidth: 1)
             )
         }
+    }
+
+    @ViewBuilder
+    private func tennisOpeningSelectionOverlay(_ match: MatchDetail) -> some View {
+        let serverParticipants = isTennisDoublesMatch
+            ? (tennisTeamOneParticipants + tennisTeamTwoParticipants)
+            : [
+                TennisParticipant(id: "team1_player1", firstName: match.player1Name, surname: match.player1Surname, displayName: fullName(firstName: match.player1Name, surname: match.player1Surname)),
+                TennisParticipant(id: "team2_player1", firstName: match.player2Name, surname: match.player2Surname, displayName: fullName(firstName: match.player2Name, surname: match.player2Surname)),
+            ]
+        let receivingParticipants = openingReceiverCandidates(for: selectedOpeningServerParticipantID, match: match)
+
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Opening Server")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            ForEach(serverParticipants, id: \.id) { participant in
+                selectionOverlayButton(
+                    title: participant.displayName,
+                    isSelected: selectedOpeningServerParticipantID == participant.id
+                ) {
+                    selectedOpeningServerParticipantID = participant.id
+                    if let selectedReceiver = selectedOpeningReceiverParticipantID,
+                       !receivingParticipants.map(\.id).contains(selectedReceiver) {
+                        selectedOpeningReceiverParticipantID = nil
+                    }
+                }
+            }
+
+            Text("Opening Receiver")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.top, 4)
+
+            ForEach(receivingParticipants, id: \.id) { participant in
+                selectionOverlayButton(
+                    title: participant.displayName,
+                    isSelected: selectedOpeningReceiverParticipantID == participant.id
+                ) {
+                    selectedOpeningReceiverParticipantID = participant.id
+                }
+            }
+
+            Button {
+                Task { await chooseTennisOpeningOrder(using: match) }
+            } label: {
+                Text("Begin Match")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.rcktBlue)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(
+                isMutating
+                    || selectedOpeningServerParticipantID == nil
+                    || selectedOpeningReceiverParticipantID == nil
+            )
+            .opacity(
+                (isMutating || selectedOpeningServerParticipantID == nil || selectedOpeningReceiverParticipantID == nil) ? 0.7 : 1
+            )
+            .padding(.top, 6)
+        }
+    }
+
+    private func selectionOverlayButton(
+        title: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 10)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(isSelected ? Color.rcktBlue : Color.rcktSlate)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var intervalOverlay: some View {
@@ -1334,11 +1454,15 @@ struct MatchScoringView: View {
     private var warmupOverlayMessage: String {
         switch timerPhase {
         case .warmupReady:
-            return "Start 60 seconds on side 1, swap sides for another 60 seconds, then choose the first server."
+            return isTennisMatch
+                ? "Start a single 5 minute warm-up, then confirm the opening server and receiver."
+                : "Start 60 seconds on side 1, swap sides for another 60 seconds, then choose the first server."
         case .warmupSideTwo:
             return "Side 1 is complete. Players should change sides while the second warm-up runs."
         default:
-            return "Warm-up is running. Keep this screen open until the first server is selected."
+            return isTennisMatch
+                ? "Warm-up is running. Keep this screen open until the opening serve and return are confirmed."
+                : "Warm-up is running. Keep this screen open until the first server is selected."
         }
     }
 
@@ -1480,7 +1604,7 @@ struct MatchScoringView: View {
 
         if isFreshMatch(match) {
             timerPhase = .warmupReady
-            timerSeconds = warmupSeconds
+            timerSeconds = warmupDurationSeconds
             matchDurationSeconds = 0
             timerRunning = false
             return
@@ -1590,9 +1714,15 @@ struct MatchScoringView: View {
     private func handleElapsedTimedPhase() {
         switch timerPhase {
         case .warmupSideOne:
-            timerPhase = .warmupSideTwo
-            timerSeconds = warmupSeconds
-            timerRunning = true
+            if isTennisMatch {
+                timerPhase = .firstServer
+                timerSeconds = 0
+                timerRunning = false
+            } else {
+                timerPhase = .warmupSideTwo
+                timerSeconds = warmupDurationSeconds
+                timerRunning = true
+            }
         case .warmupSideTwo:
             timerPhase = .firstServer
             timerSeconds = 0
@@ -1625,7 +1755,7 @@ struct MatchScoringView: View {
 
     private func handleStartWarmup() {
         timerPhase = .warmupSideOne
-        timerSeconds = warmupSeconds
+        timerSeconds = warmupDurationSeconds
         matchDurationSeconds = 0
         timerRunning = true
     }
@@ -1664,6 +1794,55 @@ struct MatchScoringView: View {
                 currentServer: selectedPlayerName,
                 currentServerSide: playerSide,
                 serviceSide: serviceSide
+            )
+        }
+
+        await MainActor.run {
+            if errorMessage == nil {
+                timerPhase = .matchLive
+                timerSeconds = matchDurationSeconds
+                timerRunning = true
+            }
+        }
+    }
+
+    private func chooseTennisOpeningOrder(using match: MatchDetail) async {
+        guard !isMutating,
+              let serverParticipantID = selectedOpeningServerParticipantID,
+              let receiverParticipantID = selectedOpeningReceiverParticipantID else {
+            return
+        }
+
+        let serverSide = serverParticipantID.hasPrefix("team1") ? "player1" : "player2"
+        let receiverSide = receiverParticipantID.hasPrefix("team1") ? "player1" : "player2"
+        guard serverSide != receiverSide else {
+            await MainActor.run {
+                errorMessage = "The opening receiver must be on the opposite team."
+            }
+            return
+        }
+
+        let currentServer = tennisParticipantDisplayName(serverParticipantID, match: match)
+        let currentReceiver = tennisParticipantDisplayName(receiverParticipantID, match: match)
+        let serviceSide = "Right"
+        let serveOrder = openingServeOrder(startingServerParticipantID: serverParticipantID)
+        let receiverDeuceOrder = openingReceiverDeuceOrder(
+            serverParticipantID: serverParticipantID,
+            receiverParticipantID: receiverParticipantID
+        )
+
+        await performMutation {
+            try await container.apiClient.selectFirstServer(
+                matchID: matchID,
+                currentServer: currentServer,
+                currentServerSide: serverSide,
+                serviceSide: serviceSide,
+                currentServerParticipantID: serverParticipantID,
+                currentReceiver: currentReceiver,
+                currentReceiverSide: receiverSide,
+                currentReceiverParticipantID: receiverParticipantID,
+                serveOrder: serveOrder,
+                receiverDeuceOrder: receiverDeuceOrder
             )
         }
 
@@ -1832,6 +2011,102 @@ struct MatchScoringView: View {
         return "\(firstName) \(surname)"
     }
 
+    private func tennisParticipantDisplayName(_ participantID: String, match: MatchDetail) -> String {
+        let allParticipants = tennisTeamOneParticipants + tennisTeamTwoParticipants
+        if let participant = allParticipants.first(where: { $0.id == participantID }) {
+            return participant.displayName
+        }
+
+        switch participantID {
+        case "team1_player1":
+            return fullName(firstName: match.player1Name, surname: match.player1Surname)
+        case "team2_player1":
+            return fullName(firstName: match.player2Name, surname: match.player2Surname)
+        default:
+            return participantID
+        }
+    }
+
+    private func openingReceiverCandidates(for serverParticipantID: String?, match: MatchDetail) -> [TennisParticipant] {
+        guard let serverParticipantID else {
+            if isTennisDoublesMatch {
+                return []
+            }
+            return [
+                TennisParticipant(id: "team2_player1", firstName: match.player2Name, surname: match.player2Surname, displayName: fullName(firstName: match.player2Name, surname: match.player2Surname)),
+                TennisParticipant(id: "team1_player1", firstName: match.player1Name, surname: match.player1Surname, displayName: fullName(firstName: match.player1Name, surname: match.player1Surname)),
+            ]
+        }
+
+        let serverIsTeamOne = serverParticipantID.hasPrefix("team1")
+        if isTennisDoublesMatch {
+            return serverIsTeamOne ? tennisTeamTwoParticipants : tennisTeamOneParticipants
+        }
+
+        if serverIsTeamOne {
+            return [
+                TennisParticipant(id: "team2_player1", firstName: match.player2Name, surname: match.player2Surname, displayName: fullName(firstName: match.player2Name, surname: match.player2Surname))
+            ]
+        }
+
+        return [
+            TennisParticipant(id: "team1_player1", firstName: match.player1Name, surname: match.player1Surname, displayName: fullName(firstName: match.player1Name, surname: match.player1Surname))
+        ]
+    }
+
+    private func openingServeOrder(startingServerParticipantID: String) -> [String] {
+        let teamOne = tennisTeamOneParticipants.map(\.id)
+        let teamTwo = tennisTeamTwoParticipants.map(\.id)
+        let serverIsTeamOne = startingServerParticipantID.hasPrefix("team1")
+        let servingTeam = rotatedParticipantIDs(
+            serverIsTeamOne ? teamOne : teamTwo,
+            startingAt: startingServerParticipantID
+        )
+        let receivingTeam = serverIsTeamOne ? teamTwo : teamOne
+
+        var order: [String] = []
+        let maxCount = max(servingTeam.count, receivingTeam.count)
+        for index in 0..<maxCount {
+            if index < servingTeam.count {
+                order.append(servingTeam[index])
+            }
+            if index < receivingTeam.count {
+                order.append(receivingTeam[index])
+            }
+        }
+        return order
+    }
+
+    private func openingReceiverDeuceOrder(
+        serverParticipantID: String,
+        receiverParticipantID: String
+    ) -> [String: String] {
+        let serverSide = serverParticipantID.hasPrefix("team1") ? "player1" : "player2"
+        let receiverSide = receiverParticipantID.hasPrefix("team1") ? "player1" : "player2"
+
+        var result: [String: String] = [:]
+        result[receiverSide] = receiverParticipantID
+
+        let defaultServerSideReceiver: String?
+        if serverSide == "player1" {
+            defaultServerSideReceiver = tennisTeamOneParticipants.first?.id
+        } else {
+            defaultServerSideReceiver = tennisTeamTwoParticipants.first?.id
+        }
+        if let defaultServerSideReceiver {
+            result[serverSide] = defaultServerSideReceiver
+        }
+
+        return result
+    }
+
+    private func rotatedParticipantIDs(_ ids: [String], startingAt target: String) -> [String] {
+        guard let index = ids.firstIndex(of: target) else {
+            return ids
+        }
+        return Array(ids[index...] + ids[..<index])
+    }
+
     private func initials(for value: String?) -> String {
         guard let value else { return "--" }
         let parts = value
@@ -1907,14 +2182,28 @@ struct MatchScoringView: View {
                 remainingElapsed = 0
             case .warmupSideOne:
                 if seconds <= 0 {
+                    if isTennisMatch {
+                        phase = .firstServer
+                        seconds = 0
+                        running = false
+                        remainingElapsed = 0
+                        continue
+                    }
                     phase = .warmupSideTwo
-                    seconds = warmupSeconds
+                    seconds = warmupDurationSeconds
                     continue
                 }
                 if remainingElapsed >= seconds {
                     remainingElapsed -= seconds
-                    phase = .warmupSideTwo
-                    seconds = warmupSeconds
+                    if isTennisMatch {
+                        phase = .firstServer
+                        seconds = 0
+                        running = false
+                        remainingElapsed = 0
+                    } else {
+                        phase = .warmupSideTwo
+                        seconds = warmupDurationSeconds
+                    }
                 } else {
                     seconds -= remainingElapsed
                     remainingElapsed = 0

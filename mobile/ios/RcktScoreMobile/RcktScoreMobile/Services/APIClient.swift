@@ -154,6 +154,12 @@ struct EventActionRequest: Encodable {
     let currentServerSide: String?
     let serviceSide: String?
     let matchDurationSeconds: Int?
+    let currentServerParticipantID: String?
+    let currentReceiver: String?
+    let currentReceiverSide: String?
+    let currentReceiverParticipantID: String?
+    let serveOrder: [String]?
+    let receiverDeuceOrder: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -165,6 +171,12 @@ struct EventActionRequest: Encodable {
         case currentServerSide = "current_server_side"
         case serviceSide = "service_side"
         case matchDurationSeconds = "match_duration_seconds"
+        case currentServerParticipantID = "current_server_participant_id"
+        case currentReceiver = "current_receiver"
+        case currentReceiverSide = "current_receiver_side"
+        case currentReceiverParticipantID = "current_receiver_participant_id"
+        case serveOrder = "serve_order"
+        case receiverDeuceOrder = "receiver_deuce_order"
     }
 }
 
@@ -674,7 +686,13 @@ final class APIClient {
                 currentServer: nil,
                 currentServerSide: nil,
                 serviceSide: nil,
-                matchDurationSeconds: nil
+                matchDurationSeconds: nil,
+                currentServerParticipantID: nil,
+                currentReceiver: nil,
+                currentReceiverSide: nil,
+                currentReceiverParticipantID: nil,
+                serveOrder: nil,
+                receiverDeuceOrder: nil
             )
         )
         return try await unwrapMatchResponse(request)
@@ -693,7 +711,13 @@ final class APIClient {
                 currentServer: nil,
                 currentServerSide: nil,
                 serviceSide: nil,
-                matchDurationSeconds: nil
+                matchDurationSeconds: nil,
+                currentServerParticipantID: nil,
+                currentReceiver: nil,
+                currentReceiverSide: nil,
+                currentReceiverParticipantID: nil,
+                serveOrder: nil,
+                receiverDeuceOrder: nil
             )
         )
         return try await unwrapMatchResponse(request)
@@ -712,7 +736,13 @@ final class APIClient {
                 currentServer: nil,
                 currentServerSide: nil,
                 serviceSide: nil,
-                matchDurationSeconds: nil
+                matchDurationSeconds: nil,
+                currentServerParticipantID: nil,
+                currentReceiver: nil,
+                currentReceiverSide: nil,
+                currentReceiverParticipantID: nil,
+                serveOrder: nil,
+                receiverDeuceOrder: nil
             )
         )
         return try await unwrapMatchResponse(request)
@@ -722,7 +752,13 @@ final class APIClient {
         matchID: String,
         currentServer: String,
         currentServerSide: String,
-        serviceSide: String
+        serviceSide: String,
+        currentServerParticipantID: String? = nil,
+        currentReceiver: String? = nil,
+        currentReceiverSide: String? = nil,
+        currentReceiverParticipantID: String? = nil,
+        serveOrder: [String]? = nil,
+        receiverDeuceOrder: [String: String]? = nil
     ) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
@@ -736,7 +772,13 @@ final class APIClient {
                 currentServer: currentServer,
                 currentServerSide: currentServerSide,
                 serviceSide: serviceSide,
-                matchDurationSeconds: nil
+                matchDurationSeconds: nil,
+                currentServerParticipantID: currentServerParticipantID,
+                currentReceiver: currentReceiver,
+                currentReceiverSide: currentReceiverSide,
+                currentReceiverParticipantID: currentReceiverParticipantID,
+                serveOrder: serveOrder,
+                receiverDeuceOrder: receiverDeuceOrder
             )
         )
         return try await unwrapMatchResponse(request)
@@ -755,7 +797,13 @@ final class APIClient {
                 currentServer: nil,
                 currentServerSide: nil,
                 serviceSide: nil,
-                matchDurationSeconds: durationSeconds
+                matchDurationSeconds: durationSeconds,
+                currentServerParticipantID: nil,
+                currentReceiver: nil,
+                currentReceiverSide: nil,
+                currentReceiverParticipantID: nil,
+                serveOrder: nil,
+                receiverDeuceOrder: nil
             )
         )
         return try await unwrapMatchResponse(request)

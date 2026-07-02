@@ -137,6 +137,14 @@ struct MatchState: Decodable {
     let player1ScoreLabel: String?
     let player2ScoreLabel: String?
     let isTieBreak: Bool
+    let teamFormat: String?
+    let tennisTeams: [String: [TennisParticipant]]?
+    let currentServerParticipantID: String?
+    let currentReceiver: String?
+    let currentReceiverSide: String?
+    let currentReceiverParticipantID: String?
+    let serveOrder: [String]?
+    let receiverDeuceOrder: [String: String]?
     let handicap: MatchHandicap?
     let matchDurationSeconds: Int
     let gameHistory: [GameHistoryEntry]
@@ -163,6 +171,14 @@ struct MatchState: Decodable {
         case player1ScoreLabel = "player1_score_label"
         case player2ScoreLabel = "player2_score_label"
         case isTieBreak = "is_tie_break"
+        case teamFormat = "team_format"
+        case tennisTeams = "tennis_teams"
+        case currentServerParticipantID = "current_server_participant_id"
+        case currentReceiver = "current_receiver"
+        case currentReceiverSide = "current_receiver_side"
+        case currentReceiverParticipantID = "current_receiver_participant_id"
+        case serveOrder = "serve_order"
+        case receiverDeuceOrder = "receiver_deuce_order"
         case handicap
         case matchDurationSeconds = "match_duration_seconds"
         case gameHistory = "game_history"
@@ -191,12 +207,34 @@ struct MatchState: Decodable {
         player1ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player1ScoreLabel)
         player2ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player2ScoreLabel)
         isTieBreak = try container.decodeIfPresent(Bool.self, forKey: .isTieBreak) ?? false
+        teamFormat = try container.decodeIfPresent(String.self, forKey: .teamFormat)
+        tennisTeams = try container.decodeIfPresent([String: [TennisParticipant]].self, forKey: .tennisTeams)
+        currentServerParticipantID = try container.decodeIfPresent(String.self, forKey: .currentServerParticipantID)
+        currentReceiver = try container.decodeIfPresent(String.self, forKey: .currentReceiver)
+        currentReceiverSide = try container.decodeIfPresent(String.self, forKey: .currentReceiverSide)
+        currentReceiverParticipantID = try container.decodeIfPresent(String.self, forKey: .currentReceiverParticipantID)
+        serveOrder = try container.decodeIfPresent([String].self, forKey: .serveOrder)
+        receiverDeuceOrder = try container.decodeIfPresent([String: String].self, forKey: .receiverDeuceOrder)
         handicap = try container.decodeIfPresent(MatchHandicap.self, forKey: .handicap)
         matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds) ?? 0
         gameHistory = try container.decodeIfPresent([GameHistoryEntry].self, forKey: .gameHistory) ?? []
         matchComplete = try container.decodeIfPresent(Bool.self, forKey: .matchComplete) ?? false
         winnerName = try container.decodeIfPresent(String.self, forKey: .winnerName)
         events = try container.decodeIfPresent([MatchEvent].self, forKey: .events) ?? []
+    }
+}
+
+struct TennisParticipant: Decodable, Hashable {
+    let id: String
+    let firstName: String
+    let surname: String?
+    let displayName: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case firstName = "first_name"
+        case surname
+        case displayName = "display_name"
     }
 }
 
@@ -277,6 +315,12 @@ struct MatchEventPayload: Decodable {
     let bestOf: Int?
     let player1ShirtColor: String?
     let player2ShirtColor: String?
+    let currentServerParticipantID: String?
+    let currentReceiver: String?
+    let currentReceiverSide: String?
+    let currentReceiverParticipantID: String?
+    let serveOrder: [String]?
+    let receiverDeuceOrder: [String: String]?
 
     enum CodingKeys: String, CodingKey {
         case scorer
@@ -298,6 +342,12 @@ struct MatchEventPayload: Decodable {
         case bestOf = "best_of"
         case player1ShirtColor = "player1_shirt_color"
         case player2ShirtColor = "player2_shirt_color"
+        case currentServerParticipantID = "current_server_participant_id"
+        case currentReceiver = "current_receiver"
+        case currentReceiverSide = "current_receiver_side"
+        case currentReceiverParticipantID = "current_receiver_participant_id"
+        case serveOrder = "serve_order"
+        case receiverDeuceOrder = "receiver_deuce_order"
     }
 }
 
