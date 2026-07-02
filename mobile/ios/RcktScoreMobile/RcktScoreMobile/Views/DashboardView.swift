@@ -21,6 +21,7 @@ struct DashboardView: View {
     @State private var dashboardNotice: String?
     @State private var selectedTab: DashboardTab = .home
     @State private var selectedSettingsSection: SettingsSection = .subscription
+    @State private var settingsNavigationItem: SettingsMenuItem?
     @State private var organizationDetailsDraft = OrganizationDetailsDraft()
     @State private var newOrganizationUserDraft = OrganizationUserDraft()
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
@@ -230,6 +231,9 @@ struct DashboardView: View {
                 case .historic:
                     HistoricMatchView(matchID: route.id)
                 }
+            }
+            .navigationDestination(item: $settingsNavigationItem) { item in
+                settingsDetailPage(for: item)
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
@@ -462,7 +466,7 @@ struct DashboardView: View {
     }
 
     private var settingsContent: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 10) {
             if isLoadingSettings && organizationSettings == nil {
                 HStack {
                     ProgressView()
@@ -497,15 +501,14 @@ struct DashboardView: View {
     }
 
     private var personalSettingsContent: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             personalSettingsHeader
             settingsMenuSectionsList
-            settingsDetailContent
         }
     }
 
     private var clubSettingsContent: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             settingsSummaryCard
 
             if !isAdmin {
@@ -516,13 +519,30 @@ struct DashboardView: View {
             }
 
             settingsMenuSectionsList
-            settingsDetailContent
         }
     }
 
     private var personalSettingsHeader: some View {
-        VStack(spacing: 12) {
-            profileAvatarView(size: 92)
+        VStack(spacing: 10) {
+            PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
+                ZStack(alignment: .bottomTrailing) {
+                    profileAvatarView(size: 92)
+
+                    Circle()
+                        .fill(Color.dashboardBrand)
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Image(systemName: "pencil")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white, lineWidth: 2)
+                        )
+                }
+            }
+            .buttonStyle(.plain)
 
             Text(currentUserDisplayName)
                 .font(.title3.weight(.bold))
@@ -535,27 +555,9 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-
-            PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
-                Text(selectedProfileImage == nil ? "Add Photo" : "Change Photo")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.dashboardBrand)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(Color.dashboardInputBackground)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.dashboardBorder, lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-
-            Text("Profile photos stay on this device for now.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
-        .padding(18)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -595,11 +597,12 @@ struct DashboardView: View {
     private func settingsMenuRow(_ item: SettingsMenuItem, isLast: Bool) -> some View {
         Button {
             selectedSettingsSection = item.section
+            settingsNavigationItem = item
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: item.icon)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(selectedSettingsSection == item.section ? Color.dashboardBrand : Color.secondary)
+                    .foregroundStyle(Color.secondary)
                     .frame(width: 24)
 
                 Text(item.title)
@@ -614,11 +617,6 @@ struct DashboardView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(
-                selectedSettingsSection == item.section
-                    ? Color.dashboardBrand.opacity(0.08)
-                    : Color.clear
-            )
             .overlay(alignment: .bottom) {
                 if !isLast {
                     Rectangle()
@@ -632,8 +630,8 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var settingsDetailContent: some View {
-        switch selectedSettingsSection {
+    private func settingsDetailContent(for section: SettingsSection) -> some View {
+        switch section {
         case .subscription:
             subscriptionSettingsCard
         case .profile:
@@ -669,6 +667,38 @@ struct DashboardView: View {
         case .courts:
             organizationCourtsCard
         }
+    }
+
+    private func settingsDetailPage(for item: SettingsMenuItem) -> some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                if let settingsErrorMessage {
+                    dashboardInlineError(settingsErrorMessage)
+                }
+
+                if let settingsSuccessMessage {
+                    dashboardInlineSuccess(settingsSuccessMessage)
+                }
+
+                settingsDetailContent(for: item.section)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
+        }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.dashboardBackgroundStart,
+                    Color.dashboardBackgroundEnd
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle(item.title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var subscriptionSettingsCard: some View {

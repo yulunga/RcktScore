@@ -35,6 +35,7 @@ What the current app does:
 - native settings with plan-aware account menus, local profile photo picking,
   subscription/profile/association pages, password-reset access, and club-admin
   organisation/user/court/racket-sport controls
+- each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
 - dashboard offline handling now suppresses the old persistent fetch-error
   banner when the device is offline
@@ -47,6 +48,7 @@ What it does not yet match perfectly:
 - native notification-center flows behind the dashboard bell
 - full implementation behind the native settings `Association`, `Game Settings`,
   `Reporting`, and `Stats` placeholder pages
+- central/shared profile-photo storage across devices and users
 - offline history and offline scoring sync
 - documented CI/archive/release pipeline
 - completed realtime/WebSocket sync

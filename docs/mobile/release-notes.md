@@ -41,6 +41,7 @@ Current unreleased iOS build state:
   selection, password-reset access, organisation details, user management,
   court management, racket-sport visibility, and display-code regeneration
   for club accounts
+- each settings menu row now opens its own dedicated page rather than expanding inline
 - native help flows support in-app feedback and password reset requests
 
 Known gaps before launch:
@@ -49,6 +50,7 @@ Known gaps before launch:
 - the current scoring layout is much stronger but still needs final iPhone-first UX polish
 - the dashboard bell does not yet open a real notification center
 - association links, account-level game settings, reporting, and stats are still placeholder sections in native settings
+- profile photos are still stored locally on the device rather than in a central shared profile store
 - offline history and offline scoring sync are still incomplete
 - final release hardening and regression signoff are still outstanding
 - no documented mobile CI/archive/release pipeline yet

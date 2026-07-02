@@ -44,7 +44,7 @@ What is real and implemented:
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout, with personal-account profile/photo controls, subscription/profile/association menu sections, password-reset access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout with dedicated per-section pages, personal-account profile/photo controls, password-reset access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -57,6 +57,7 @@ What is still partial or risky:
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including account-level game-settings presets, association/federation profile links, and reporting/stats views
 - the native notification center behind the dashboard bell is not implemented yet
+- native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable
 - there is no documented iOS CI/archive/release pipeline in the repo yet
 - no automated test suite is checked into the repo
