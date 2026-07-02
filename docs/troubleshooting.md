@@ -75,6 +75,7 @@ What to check:
 - `approval_status` is approved when login should succeed
 - `org_user_sessions` contains the expected current or revoked rows
 - the browser is actually sending `Authorization: Bearer <token>`
+- the returned session or membership payload contains the expected `enabled_sports` list for that club or personal account
 
 ## 2. Dashboard, History, and Settings Issues
 
@@ -100,11 +101,13 @@ What to check:
 - whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
 - whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
+- the `enabled_sports` JSON on `SkwshOrgSettings` matches what the UI should expose
 - whether the UI control is real or scaffold-only
 
 Important current truth:
 
 - organisation-level handicap settings are not persisted yet
+- racket-sport visibility settings are persisted through `enabled_sports`
 - social profile fields are not persisted yet
 
 ## 3. Root-Admin Issues
@@ -144,20 +147,25 @@ Common symptoms:
 - a club match becomes scheduled instead of active
 - score or server state looks wrong after undo
 - shirt-colour changes do not apply for a personal-free account
+- tennis appears in setup but cannot be created
+- tennis score labels or server rotation look wrong during tie-breaks
 
 What to check:
 
 - tenant plan and organisation type
+- `matches.sport` and the tenant `enabled_sports` list
 - court conflict behavior
 - latest `match_events` entries
 - whether the action used `score_point` or `event_action`
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
+- whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
 
 Important current truths:
 
 - personal accounts are intentionally limited to one active match
 - scheduled club matches can be created automatically when a court is busy
 - undo works by removing the last non-`match_started` event and rebuilding state
+- `common/match_logic.py` is now a dispatcher facade, not the only scoring implementation file
 
 ## 5. Display and WebSocket Issues
 

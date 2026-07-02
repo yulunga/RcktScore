@@ -1,4 +1,4 @@
-from common.root_admin_logic import update_root_admin_personal_account_plan
+from common.root_admin_logic import update_root_admin_personal_account_settings
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, path_parameter, success_response
 
@@ -17,10 +17,11 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            personal_account = update_root_admin_personal_account_plan(
+            personal_account = update_root_admin_personal_account_settings(
                 connection,
                 numeric_request_id,
-                payload.get("personal_plan"),
+                personal_plan=payload.get("personal_plan"),
+                enabled_sports=payload.get("enabled_sports"),
                 updated_by=payload.get("updated_by"),
             )
     except ValueError as request_error:

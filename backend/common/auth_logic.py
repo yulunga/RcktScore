@@ -1,6 +1,7 @@
 from werkzeug.security import check_password_hash
 
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
+from common.sport_config import normalize_enabled_sports
 
 
 def _serialize_org_user(user_row):
@@ -36,6 +37,7 @@ def _serialize_org_user(user_row):
         "organization_name": user_row.get("organization_name"),
         "organization_type": user_row.get("org_type") or "club",
         "plan": user_row.get("plan") or "club_essentials",
+        "enabled_sports": normalize_enabled_sports(user_row.get("enabled_sports")),
         "status": user_row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": first_name,
         "surname": surname,
@@ -65,6 +67,7 @@ def get_org_users(connection, username):
                 u.approval_status,
                 o.org_type,
                 o.plan,
+                o.enabled_sports,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u

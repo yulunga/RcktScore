@@ -30,6 +30,7 @@ struct OrganizationProfile: Decodable {
     let organizationWebAddress: String
     let organizationType: String
     let plan: String?
+    let enabledSports: [String]
     let isHidden: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -43,6 +44,7 @@ struct OrganizationProfile: Decodable {
         case organizationWebAddress = "org_webaddress"
         case organizationType = "org_type"
         case plan
+        case enabledSports = "enabled_sports"
         case isHidden = "is_hidden"
     }
 
@@ -58,6 +60,7 @@ struct OrganizationProfile: Decodable {
         organizationWebAddress = try container.decodeIfPresent(String.self, forKey: .organizationWebAddress) ?? ""
         organizationType = try container.decodeIfPresent(String.self, forKey: .organizationType) ?? "club"
         plan = try container.decodeIfPresent(String.self, forKey: .plan)
+        enabledSports = try container.decodeIfPresent([String].self, forKey: .enabledSports) ?? ["squash", "racketball", "tennis"]
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
     }
 }

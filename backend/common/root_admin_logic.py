@@ -2,6 +2,8 @@ import secrets
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
+from common.sport_config import normalize_enabled_sports
+from psycopg.types.json import Jsonb
 from psycopg.errors import UndefinedTable
 
 from common.organization_logic import (
@@ -204,6 +206,7 @@ def _serialize_personal_account(row):
         "organization_name": row.get("organization_name") or "",
         "use_type": "personal",
         "personal_plan": row.get("personal_plan") or "personal_free",
+        "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
         "account_status": row.get("account_status") or PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL,
         "approval_status": row.get("account_status") or PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL,
         "email_validated": bool(row.get("email_validated")),
@@ -310,6 +313,7 @@ def get_root_admin_personal_accounts(connection, plan=None):
                 i.surname,
                 o.owner_username AS username,
                 o.plan AS personal_plan,
+                o.enabled_sports,
                 u.id AS user_id,
                 CASE
                     WHEN u.approval_status = 'approved' THEN 'live'
@@ -581,6 +585,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
         "first_name": interest_row.get("first_name") or "",
         "surname": interest_row.get("surname") or "",
         "personal_plan": interest_row.get("personal_plan") or "personal_free",
+        "enabled_sports": normalize_enabled_sports(None),
         "account_status": (
             PERSONAL_ACCOUNT_STATUS_LIVE
             if account_user_row.get("approval_status") == "approved"
@@ -670,17 +675,38 @@ def update_root_admin_interest_request_status(
     return result
 
 
-def update_root_admin_personal_account_plan(connection, request_id, personal_plan, updated_by=None):
-    requested_plan = (personal_plan or "").strip().lower()
-    if requested_plan not in PERSONAL_PLANS:
-        raise ValueError("personal_plan must be personal_free or personal_plus")
+def update_root_admin_personal_account_settings(
+    connection,
+    request_id,
+    personal_plan=None,
+    enabled_sports=None,
+    updated_by=None,
+):
+    updates = {}
+    if personal_plan is not None:
+        requested_plan = (personal_plan or "").strip().lower()
+        if requested_plan not in PERSONAL_PLANS:
+            raise ValueError("personal_plan must be personal_free or personal_plus")
+        updates["plan"] = requested_plan
+    if enabled_sports is not None:
+        updates["enabled_sports"] = normalize_enabled_sports(enabled_sports)
+    if not updates:
+        raise ValueError("At least one personal account setting must be provided")
 
     now = _utcnow()
     with connection.cursor() as cursor:
+        set_parts = []
+        params = {"id": request_id}
+        if "plan" in updates:
+            set_parts.append("plan = %(personal_plan)s")
+            params["personal_plan"] = updates["plan"]
+        if "enabled_sports" in updates:
+            set_parts.append("enabled_sports = %(enabled_sports)s")
+            params["enabled_sports"] = Jsonb(updates["enabled_sports"])
         cursor.execute(
-            """
+            f"""
             UPDATE "SkwshOrgSettings"
-            SET plan = %(personal_plan)s
+            SET {", ".join(set_parts)}
             WHERE id = %(id)s
                 AND org_type = 'personal'
             RETURNING
@@ -689,12 +715,10 @@ def update_root_admin_personal_account_plan(connection, request_id, personal_pla
                 created_at,
                 interest_request_id,
                 owner_username AS username,
-                plan AS personal_plan
+                plan AS personal_plan,
+                enabled_sports
             """,
-            {
-                "id": request_id,
-                "personal_plan": requested_plan,
-            },
+            params,
         )
         organization_row = cursor.fetchone()
 
@@ -713,6 +737,7 @@ def update_root_admin_personal_account_plan(connection, request_id, personal_pla
                     i.surname,
                     o.owner_username AS username,
                     o.plan AS personal_plan,
+                    o.enabled_sports,
                     u.id AS user_id,
                     CASE
                         WHEN u.approval_status = 'approved' THEN 'live'

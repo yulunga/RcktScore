@@ -2,11 +2,13 @@ import re
 import secrets
 from datetime import datetime, timezone
 
+from psycopg.types.json import Jsonb
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
+from common.sport_config import normalize_enabled_sports
 
 VALID_ROLES = {"admin", "user"}
 USER_STATUS_PENDING = "pending"
@@ -41,6 +43,7 @@ def _serialize_organization(row):
         "org_webaddress": row.get("org_webaddress") or "",
         "org_type": row.get("org_type") or "club",
         "plan": row.get("plan") or "club_essentials",
+        "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
         "is_hidden": bool(row.get("is_hidden")),
         "social_profiles": {
             "facebook": "",
@@ -275,6 +278,7 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 org_webaddress,
                 org_type,
                 plan,
+                enabled_sports,
                 is_hidden
             FROM "SkwshOrgSettings"
             WHERE id = %(organization_id)s
@@ -350,10 +354,17 @@ def update_organization_details(connection, organization_id, payload):
         for field in ORGANIZATION_FIELDS
         if field in payload
     }
+    if "enabled_sports" in payload:
+        updates["enabled_sports"] = normalize_enabled_sports(payload.get("enabled_sports"))
 
     if updates:
         set_clause = ", ".join(f'{field} = %({field})s' for field in updates)
-        params = {**updates, "organization_id": org_id}
+        params = {
+            **updates,
+            "organization_id": org_id,
+        }
+        if "enabled_sports" in params:
+            params["enabled_sports"] = Jsonb(params["enabled_sports"])
         with connection.cursor() as cursor:
             cursor.execute(
                 f'''

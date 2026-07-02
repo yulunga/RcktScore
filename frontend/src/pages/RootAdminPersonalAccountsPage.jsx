@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
+import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchSports";
 import { useRootAdmin } from "../hooks/useRootAdmin";
 import {
   getRootAdminPersonalAccounts,
@@ -104,6 +105,24 @@ export default function RootAdminPersonalAccountsPage() {
     }
   }
 
+  async function updateEnabledSports(account, nextEnabledSports) {
+    setSavingId(account.id);
+    setMessage("");
+    setError("");
+    try {
+      await updateRootAdminPersonalAccount(account.id, {
+        enabled_sports: normalizeEnabledSports(nextEnabledSports),
+        updated_by: session?.username || "Root Admin",
+      });
+      await loadPersonalAccounts();
+      setMessage(`Enabled racket sports updated for ${account.full_name || account.email}.`);
+    } catch (requestError) {
+      setError(requestError.message || "Failed to update enabled racket sports.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   return (
     <main className="page-shell stack">
       <RootAdminSessionBar />
@@ -169,6 +188,7 @@ export default function RootAdminPersonalAccountsPage() {
           {visiblePersonalAccounts.map((account) => {
             const currentPlan = account.personal_plan || "personal_free";
             const currentStatus = account.account_status || "pending_email_validation";
+            const enabledSports = normalizeEnabledSports(account.enabled_sports);
             return (
               <article key={account.id} className="root-admin-interest-row">
                 <div className="root-admin-interest-main">
@@ -205,6 +225,33 @@ export default function RootAdminPersonalAccountsPage() {
                   >
                     Set Personal+ Paid
                   </button>
+                </div>
+
+                <div className="sport-grid">
+                  {MATCH_SPORT_OPTIONS.map((sport) => {
+                    const enabled = enabledSports.includes(sport.value);
+                    const nextEnabledSports = enabled
+                      ? enabledSports.filter((value) => value !== sport.value)
+                      : [...enabledSports, sport.value];
+                    return (
+                      <article
+                        key={`${account.id}-${sport.value}`}
+                        className={`sport-option${enabled ? " active" : " disabled"}`}
+                      >
+                        <strong>{sport.label}</strong>
+                        <span>{enabled ? "Enabled" : "Disabled"}</span>
+                        <p>{sport.note}</p>
+                        <button
+                          type="button"
+                          className={enabled ? "secondary" : ""}
+                          disabled={savingId === account.id}
+                          onClick={() => updateEnabledSports(account, nextEnabledSports)}
+                        >
+                          {enabled ? "Disable" : "Enable"}
+                        </button>
+                      </article>
+                    );
+                  })}
                 </div>
               </article>
             );

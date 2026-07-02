@@ -188,13 +188,14 @@ Some root-admin routes still have no real server-side authorization layer.
    - `organization`
    - `users`
    - `courts`
+   - `organization.enabled_sports`
 4. The frontend renders:
    - organisation details
    - personal profile
    - user admin
    - court admin
    - map preview
-   - scaffold-only game settings
+   - persisted racket-sport visibility controls
    - scaffold-only social profile fields
 
 ### Current limitation
@@ -294,10 +295,13 @@ The root-admin club page performs some of these mutations using `rootAdminReques
 
 ### Current path
 
-1. The operator submits player, court, referee, score type, best-of, and optional handicap data.
+1. The operator submits player, court, referee, sport, score type, best-of, and optional handicap data.
 2. The frontend calls `POST /start_match`.
 3. [backend/functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py) authorizes the org-user session.
 4. [backend/common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py):
+   - normalizes the requested sport
+   - rejects sports that are not present in the organisation or personal account `enabled_sports` list
+   - dispatches match creation to the correct sport engine
    - blocks personal accounts from having more than one active match
    - can auto-schedule a club match if the chosen court already has an active match
    - writes a `matches` row
@@ -317,15 +321,20 @@ The root-admin club page performs some of these mutations using `rootAdminReques
 
 1. The page loads `GET /get_score/{match_id}`.
 2. The backend authorizes access to the match tenant.
-3. Shared logic loads `matches` plus `match_events`.
+3. Shared logic loads `matches` plus `match_events`, then dispatches serialization through the sport engine for that match.
 4. Live state is rebuilt from the event stream.
 5. Operator actions call:
    - `POST /score_point`
    - `POST /event_action`
    - `POST /undo_action`
    - `POST /end_match`
-6. Shared logic updates event history and match summary columns.
+6. Shared logic updates event history and match summary columns using the active sport engine.
 7. The frontend updates local match state from the returned `data.match`.
+
+Current live sport engines:
+
+- squash and racketball share [backend/common/squash_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/squash_match_logic.py)
+- tennis uses [backend/common/tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/tennis_match_logic.py)
 
 ### Supported event actions
 

@@ -37,7 +37,9 @@ What is real and implemented:
 - dashboard, history, and match lists
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - match create, schedule, start, score, event actions, undo, and end
+- sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
+- organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -48,7 +50,7 @@ What is still partial or risky:
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - iOS login does not yet expose multi-organisation membership selection when the backend returns `organizationSelection`
 - the current iPhone scoring layout is functional but still needs redesign before release
-- some settings sections are still UI scaffolds only
+- some settings sections are still UI scaffolds only, including organisation-level handicap toggles and social profile fields
 - no automated test suite is checked into the repo
 
 ## Repository Layout
@@ -63,6 +65,7 @@ What is still partial or risky:
 - `backend/`
   - Lambda handlers in `functions/*/handler.py`
   - shared backend logic in `common/*.py`
+  - sport engines currently split across `common/match_logic.py`, `common/squash_match_logic.py`, and `common/tennis_match_logic.py`
   - schema migrations in `schema/*.sql`
   - SAM template in `template.yaml`
 - `mobile/`
@@ -114,6 +117,7 @@ See the backend/API reference for the exact route list.
 
 - org-user session enforcement is real in `backend/common/session_logic.py`
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
+- sport visibility is now enforced through organisation-level `enabled_sports` settings before match creation
 - root-admin login is real, but root-admin session/token enforcement is not yet implemented as a backend-wide control
 - do not describe the current root-admin surface as fully secured
 - do not describe WebSocket live display as production-complete

@@ -70,12 +70,18 @@ Current runtime path:
   - active, scheduled, and completed match aggregation
   - plan-aware history limits
 - [common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
-  - match create/start
-  - squash scoring rules
+  - stable match facade and sport dispatcher
+  - enabled-sport enforcement before match creation
+  - shared match entrypoints used by Lambda handlers
+- [common/squash_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/squash_match_logic.py)
+  - squash and racketball scoring rules
   - event sourcing
   - undo
   - early/manual end
   - match serialization
+- [common/tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/tennis_match_logic.py)
+  - tennis point, game, set, and tie-break scoring rules
+  - tennis match serialization
 - [common/match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py)
   - player/referee lookup for match setup
 
@@ -114,6 +120,8 @@ Duplicate login behavior:
 - `POST /login` can also return `data.organizationSelection` for users with
   multiple approved memberships, so clients must handle both `session` and
   selection payloads
+- session and membership payloads now include `enabled_sports`, which is the
+  racket-sport visibility list for that organisation membership
 
 ### Root-admin users
 
@@ -156,6 +164,10 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /root_admin/personal_accounts`
 - `PUT /root_admin/personal_accounts/{request_id}`
 
+Current root-admin personal-account behavior:
+
+- `PUT /root_admin/personal_accounts/{request_id}` can now update `personal_plan`, `enabled_sports`, or both for a personal account organisation
+
 ### Organisation and dashboard routes
 
 - `GET /dashboard/{organization_id}`
@@ -170,6 +182,11 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `PUT /organization_courts/{court_id}`
 - `DELETE /organization_courts/{court_id}`
 - `POST /organization_courts/{court_id}/display-code`
+
+Current organisation-settings behavior:
+
+- `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
+- `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 
 ### Match and scoring routes
 
@@ -199,6 +216,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - returns `data.session` when there is exactly one approved membership
 - returns `data.organizationSelection` when the same email belongs to multiple approved organisations
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
+- successful session payloads include `enabled_sports`
 
 ### Logout
 

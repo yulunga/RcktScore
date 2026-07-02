@@ -9,6 +9,7 @@ struct UserSession: Codable {
     let organizationName: String
     let organizationType: String?
     let plan: String?
+    let enabledSports: [String]?
     let firstName: String?
     let surname: String?
     let fullName: String?
@@ -23,6 +24,7 @@ struct UserSession: Codable {
         case organizationName = "organization_name"
         case organizationType = "organization_type"
         case plan
+        case enabledSports = "enabled_sports"
         case firstName = "first_name"
         case surname
         case fullName = "full_name"
@@ -31,6 +33,16 @@ struct UserSession: Codable {
 }
 
 extension UserSession {
+    var normalizedEnabledSports: [String] {
+        guard let enabledSports else {
+            return ["squash", "racketball", "tennis"]
+        }
+
+        return enabledSports
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+    }
+
     var isPersonalAccount: Bool {
         if organizationType?.lowercased() == "personal" {
             return true

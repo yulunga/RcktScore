@@ -274,6 +274,7 @@ def _get_membership_row(connection, username, organization_id):
                 u.approval_status,
                 o.org_type,
                 o.plan,
+                o.enabled_sports,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u

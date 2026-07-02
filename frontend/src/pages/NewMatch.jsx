@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { COUNTRIES } from "../constants/countries";
-import { getMatchSportOption, normalizeMatchSport } from "../constants/matchSports";
+import { getMatchSportOption, getPlayableMatchSports, normalizeMatchSport } from "../constants/matchSports";
 import {
   DEFAULT_PLAYER_SHIRT_COLORS,
   PLAYER_SHIRT_COLORS,
@@ -16,6 +16,10 @@ import { getDashboard, getOrganizationSettings, searchMatchSetupLookup } from ".
 const scoreTypeOptions = [
   { value: 11, label: "PAR-11" },
   { value: 15, label: "PAR-15" },
+];
+const tennisScoreTypeOptions = [
+  { value: 4, label: "First to 4 Games" },
+  { value: 6, label: "First to 6 Games" },
 ];
 const bestOfOptions = [
   { value: 1, label: "Best of 1" },
@@ -107,6 +111,10 @@ export default function NewMatch() {
   const organizationId = session?.organization_id ? String(session.organization_id) : "";
   const selectedSport = normalizeMatchSport(searchParams.get("sport"));
   const selectedSportOption = getMatchSportOption(selectedSport);
+  const playableSports = useMemo(() => getPlayableMatchSports(session?.enabled_sports), [session?.enabled_sports]);
+  const selectedSportIsAvailable = playableSports.some((sport) => sport.value === selectedSport);
+  const isTennisMatch = selectedSport === "tennis";
+  const visibleScoreTypeOptions = isTennisMatch ? tennisScoreTypeOptions : scoreTypeOptions;
   const isPersonalAccount = organizationType === "personal";
   const canChooseShirtColors = !isPersonalAccount || organizationPlan === "personal_plus";
   const personalActiveMatch = isPersonalAccount ? activeMatches[0] : null;
@@ -277,7 +285,7 @@ export default function NewMatch() {
   }
 
   function handleHandicapToggle(checked) {
-    if (isPersonalAccount) {
+    if (isPersonalAccount || isTennisMatch) {
       return;
     }
 
@@ -298,7 +306,7 @@ export default function NewMatch() {
   }
 
   useEffect(() => {
-    if (!isPersonalAccount) {
+    if (!isPersonalAccount && !isTennisMatch) {
       return;
     }
 
@@ -318,7 +326,30 @@ export default function NewMatch() {
         player2_offset: 0,
       };
     });
-  }, [isPersonalAccount]);
+  }, [isPersonalAccount, isTennisMatch]);
+
+  useEffect(() => {
+    setFormState((current) => {
+      if (isTennisMatch) {
+        return {
+          ...current,
+          score_type: tennisScoreTypeOptions.some((option) => option.value === current.score_type) ? current.score_type : 6,
+          best_of: [1, 3, 5].includes(current.best_of) ? current.best_of : 3,
+          handicap_enabled: false,
+          handicap_mode: "custom",
+          player1_band: "",
+          player2_band: "",
+          player1_offset: 0,
+          player2_offset: 0,
+        };
+      }
+
+      return {
+        ...current,
+        score_type: scoreTypeOptions.some((option) => option.value === current.score_type) ? current.score_type : 15,
+      };
+    });
+  }, [isTennisMatch]);
 
   useEffect(() => {
     const nextOrganizationType = inferOrganizationType(session);
@@ -329,8 +360,13 @@ export default function NewMatch() {
   useEffect(() => {
     if (!selectedSport) {
       navigate("/match/new", { replace: true });
+      return;
     }
-  }, [navigate, selectedSport]);
+
+    if (!selectedSportIsAvailable) {
+      navigate("/match/new", { replace: true });
+    }
+  }, [navigate, selectedSport, selectedSportIsAvailable]);
 
   useEffect(() => {
     async function loadCourts() {
@@ -1001,13 +1037,13 @@ export default function NewMatch() {
             <div className="field">
               <label htmlFor="score_type">Game Format</label>
               <select
-                disabled={formState.handicap_enabled}
+                disabled={!isTennisMatch && formState.handicap_enabled}
                 id="score_type"
                 name="score_type"
                 value={formState.score_type}
                 onChange={(event) => handleChange("score_type", event.target.value)}
               >
-                {scoreTypeOptions.map((scoreType) => (
+                {visibleScoreTypeOptions.map((scoreType) => (
                   <option key={scoreType.value} value={scoreType.value}>
                     {scoreType.label}
                   </option>
@@ -1015,7 +1051,7 @@ export default function NewMatch() {
               </select>
             </div>
 
-            {!isPersonalAccount ? (
+            {!isPersonalAccount && !isTennisMatch ? (
               <div className="field checkbox-field match-setup-checkbox-field">
                 <label className="checkbox-label" htmlFor="handicap_enabled">
                   <input
@@ -1033,7 +1069,7 @@ export default function NewMatch() {
 
         </div>
 
-        {!isPersonalAccount && formState.handicap_enabled ? (
+        {!isPersonalAccount && !isTennisMatch && formState.handicap_enabled ? (
           <div className="panel stack compact">
             <div className="panel-heading">
               <h2>Handicap Setup</h2>

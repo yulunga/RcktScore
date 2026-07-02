@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
-import { MATCH_SPORT_OPTIONS } from "../constants/matchSports";
+import { getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
@@ -139,6 +139,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
+  const playableSports = useMemo(() => getPlayableMatchSports(session?.enabled_sports), [session?.enabled_sports]);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -785,7 +786,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             </div>
 
             <div className="match-sport-overlay__grid">
-              {MATCH_SPORT_OPTIONS.map((sport) => (
+              {playableSports.map((sport) => (
                 <button
                   key={sport.value}
                   className="match-sport-overlay__option"

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
+import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchSports";
 import {
   createOrganizationCourt,
   createOrganizationCourtDisplayCode,
@@ -50,12 +51,6 @@ const emptyCourtForm = {
   court_alias: "",
 };
 
-const sportOptions = [
-  { name: "Squash", status: "active", note: "Primary launch scoring mode" },
-  { name: "Tennis", status: "planned", note: "Planned after squash launch" },
-  { name: "Racketball", status: "planned", note: "Planned after squash launch" },
-  { name: "Badminton", status: "planned", note: "Planned after squash launch" },
-];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROOT_ADMIN_REQUEST_OPTIONS = { rootAdminRequest: true };
 
@@ -86,6 +81,7 @@ export default function RootAdminClubPage() {
   const [courtForm, setCourtForm] = useState(emptyCourtForm);
   const [courtDrafts, setCourtDrafts] = useState({});
   const [userRoleDrafts, setUserRoleDrafts] = useState({});
+  const [enabledSports, setEnabledSports] = useState(() => normalizeEnabledSports());
   const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState("club-details");
   const [loading, setLoading] = useState(true);
@@ -143,6 +139,7 @@ export default function RootAdminClubPage() {
     setUserRoleDrafts(
       Object.fromEntries((nextSettings?.users || []).map((user) => [user.id, user.role || "user"])),
     );
+    setEnabledSports(normalizeEnabledSports(nextSettings?.organization?.enabled_sports));
   }, []);
 
   const loadSettings = useCallback(async () => {
@@ -180,6 +177,22 @@ export default function RootAdminClubPage() {
     } finally {
       setSavingSection("");
     }
+  }
+
+  function toggleEnabledSport(sportValue) {
+    setEnabledSports((current) => (
+      current.includes(sportValue)
+        ? current.filter((value) => value !== sportValue)
+        : [...current, sportValue]
+    ));
+  }
+
+  async function handleEnabledSportsSave() {
+    await runMutation(
+      "enabled-sports",
+      () => updateOrganizationDetails(organizationId, { enabled_sports: enabledSports }, ROOT_ADMIN_REQUEST_OPTIONS),
+      "Enabled racket sports updated.",
+    );
   }
 
   async function handleOrganizationSubmit(event) {
@@ -678,21 +691,42 @@ export default function RootAdminClubPage() {
           <div className="panel-heading">
             <h3>Racket Sports</h3>
             <p className="helper-text">
-              Squash is the active launch sport. The others are shown for roadmap visibility only.
+              Control which racket sports this club can see when starting a new match.
             </p>
           </div>
 
           <div className="sport-grid">
-            {sportOptions.map((sport) => (
+            {MATCH_SPORT_OPTIONS.map((sport) => {
+              const enabled = enabledSports.includes(sport.value);
+              return (
               <article
-                key={sport.name}
-                className={`sport-option ${sport.status === "active" ? "active" : "disabled"}`}
+                key={sport.value}
+                className={`sport-option ${enabled ? "active" : "disabled"}`}
               >
-                <strong>{sport.name}</strong>
-                <span>{sport.status}</span>
+                <strong>{sport.label}</strong>
+                <span>{enabled ? "Enabled" : "Disabled"}</span>
                 <p>{sport.note}</p>
+                <button
+                  type="button"
+                  className={enabled ? "secondary" : ""}
+                  disabled={savingSection === "enabled-sports"}
+                  onClick={() => toggleEnabledSport(sport.value)}
+                >
+                  {enabled ? "Disable" : "Enable"}
+                </button>
               </article>
-            ))}
+              );
+            })}
+          </div>
+
+          <div className="button-row">
+            <button
+              type="button"
+              disabled={savingSection === "enabled-sports"}
+              onClick={handleEnabledSportsSave}
+            >
+              {savingSection === "enabled-sports" ? "Saving..." : "Save Racket Sports"}
+            </button>
           </div>
         </section>
       ) : null}

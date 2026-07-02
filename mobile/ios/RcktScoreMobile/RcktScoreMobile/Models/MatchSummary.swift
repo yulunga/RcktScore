@@ -123,6 +123,8 @@ struct MatchState: Decodable {
     let player2Score: Int
     let player1GamesWon: Int
     let player2GamesWon: Int
+    let player1SetGames: Int
+    let player2SetGames: Int
     let currentGameNumber: Int
     let bestOf: Int
     let scoreType: Int
@@ -131,6 +133,10 @@ struct MatchState: Decodable {
     let serviceSide: String?
     let player1ShirtColor: String?
     let player2ShirtColor: String?
+    let scoreDisplayMode: String?
+    let player1ScoreLabel: String?
+    let player2ScoreLabel: String?
+    let isTieBreak: Bool
     let handicap: MatchHandicap?
     let matchDurationSeconds: Int
     let gameHistory: [GameHistoryEntry]
@@ -143,6 +149,8 @@ struct MatchState: Decodable {
         case player2Score = "player2_score"
         case player1GamesWon = "player1_games_won"
         case player2GamesWon = "player2_games_won"
+        case player1SetGames = "player1_set_games"
+        case player2SetGames = "player2_set_games"
         case currentGameNumber = "current_game_number"
         case bestOf = "best_of"
         case scoreType = "score_type"
@@ -151,6 +159,10 @@ struct MatchState: Decodable {
         case serviceSide = "service_side"
         case player1ShirtColor = "player1_shirt_color"
         case player2ShirtColor = "player2_shirt_color"
+        case scoreDisplayMode = "score_display_mode"
+        case player1ScoreLabel = "player1_score_label"
+        case player2ScoreLabel = "player2_score_label"
+        case isTieBreak = "is_tie_break"
         case handicap
         case matchDurationSeconds = "match_duration_seconds"
         case gameHistory = "game_history"
@@ -165,6 +177,8 @@ struct MatchState: Decodable {
         player2Score = try container.decodeIfPresent(Int.self, forKey: .player2Score) ?? 0
         player1GamesWon = try container.decodeIfPresent(Int.self, forKey: .player1GamesWon) ?? 0
         player2GamesWon = try container.decodeIfPresent(Int.self, forKey: .player2GamesWon) ?? 0
+        player1SetGames = try container.decodeIfPresent(Int.self, forKey: .player1SetGames) ?? 0
+        player2SetGames = try container.decodeIfPresent(Int.self, forKey: .player2SetGames) ?? 0
         currentGameNumber = try container.decodeIfPresent(Int.self, forKey: .currentGameNumber) ?? 1
         bestOf = try container.decodeIfPresent(Int.self, forKey: .bestOf) ?? 1
         scoreType = try container.decodeIfPresent(Int.self, forKey: .scoreType) ?? 15
@@ -173,6 +187,10 @@ struct MatchState: Decodable {
         serviceSide = try container.decodeIfPresent(String.self, forKey: .serviceSide)
         player1ShirtColor = try container.decodeIfPresent(String.self, forKey: .player1ShirtColor)
         player2ShirtColor = try container.decodeIfPresent(String.self, forKey: .player2ShirtColor)
+        scoreDisplayMode = try container.decodeIfPresent(String.self, forKey: .scoreDisplayMode)
+        player1ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player1ScoreLabel)
+        player2ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player2ScoreLabel)
+        isTieBreak = try container.decodeIfPresent(Bool.self, forKey: .isTieBreak) ?? false
         handicap = try container.decodeIfPresent(MatchHandicap.self, forKey: .handicap)
         matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds) ?? 0
         gameHistory = try container.decodeIfPresent([GameHistoryEntry].self, forKey: .gameHistory) ?? []

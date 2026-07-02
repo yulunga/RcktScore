@@ -53,11 +53,11 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
         "Start \(displayName) Match"
     }
 
-    var isAvailableToday: Bool {
+    var isImplementedToday: Bool {
         switch self {
-        case .squash, .racketball:
+        case .squash, .racketball, .tennis:
             return true
-        case .tennis, .padel, .tableTennis, .pickleball, .badminton:
+        case .padel, .tableTennis, .pickleball, .badminton:
             return false
         }
     }
@@ -133,6 +133,7 @@ private struct MatchSetupFormState {
 }
 
 struct StartNewMatchFlowView: View {
+    @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
 
     let activeMatches: [MatchSummary]
@@ -143,69 +144,55 @@ struct StartNewMatchFlowView: View {
         GridItem(.flexible(), spacing: 14)
     ]
 
+    private var enabledSportIDs: Set<String> {
+        Set(container.sessionStore.session?.normalizedEnabledSports ?? ["squash", "racketball", "tennis"])
+    }
+
+    private var availableSports: [MatchSport] {
+        MatchSport.allCases.filter { $0.isImplementedToday && enabledSportIDs.contains($0.rawValue) }
+    }
+
     var body: some View {
         ScrollView {
             LazyVGrid(columns: sportGridColumns, spacing: 14) {
-                ForEach(MatchSport.allCases) { sport in
+                ForEach(availableSports) { sport in
                     NavigationLink(value: sport) {
                         VStack(spacing: 14) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill((sport.isAvailableToday ? Color.dashboardAccentPink : Color.secondary).opacity(sport.isAvailableToday ? 0.95 : 0.18))
+                                    .fill(Color.dashboardAccentPink.opacity(0.95))
                                     .frame(width: 62, height: 62)
 
-                                sportGlyph(for: sport, isAvailable: sport.isAvailableToday)
+                                sportGlyph(for: sport, isAvailable: true)
                             }
 
                             Text(sport.displayName)
                                 .font(.headline.weight(.bold))
-                                .foregroundStyle(sport.isAvailableToday ? .white : .secondary)
+                                .foregroundStyle(.white)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                                 .minimumScaleFactor(0.85)
-
-                            if !sport.isAvailableToday {
-                                Text("Soon")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(Color.white.opacity(0.7))
-                                    .clipShape(Capsule())
-                            }
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 168)
                         .padding(.horizontal, 14)
                         .background(
-                            sport.isAvailableToday
-                                ? AnyView(
-                                    LinearGradient(
-                                        colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                : AnyView(Color.dashboardCardBackground.opacity(0.72))
+                            LinearGradient(
+                                colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(
-                                    sport.isAvailableToday ? Color.clear : Color.dashboardBorder,
-                                    lineWidth: 1
-                                )
-                        )
+                        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.clear, lineWidth: 1))
                         .shadow(
-                            color: sport.isAvailableToday ? Color.black.opacity(0.08) : .clear,
+                            color: Color.black.opacity(0.08),
                             radius: 10,
                             x: 0,
                             y: 6
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(!sport.isAvailableToday)
-                    .opacity(sport.isAvailableToday ? 1 : 0.62)
                 }
             }
             .padding()
@@ -340,6 +327,7 @@ struct StartNewMatchView: View {
     @State private var refereeSuggestions: [String] = []
     @State private var loadedOrganizationType: String?
     @State private var loadedOrganizationPlan: String?
+    @State private var loadedEnabledSports: [String] = []
     @State private var isLoading = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
@@ -375,9 +363,17 @@ struct StartNewMatchView: View {
     }
 
     private var isPersonalAccount: Bool { organizationType == "personal" }
+    private var isTennisMatch: Bool { selectedSport == .tennis }
 
     private var canChooseShirtColors: Bool {
         !isPersonalAccount || organizationPlan == "personal_plus"
+    }
+
+    private var enabledSportIDs: Set<String> {
+        let source = loadedEnabledSports.isEmpty
+            ? (session?.normalizedEnabledSports ?? ["squash", "racketball", "tennis"])
+            : loadedEnabledSports
+        return Set(source.map { $0.lowercased() })
     }
 
     private var personalActiveMatch: MatchSummary? {
@@ -401,7 +397,7 @@ struct StartNewMatchView: View {
             && !formState.player2Name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasCourt = isPersonalAccount || (!formState.courtID.isEmpty && !formState.courtName.isEmpty)
         let hasBands = !formState.handicapEnabled || (!formState.player1Band.isEmpty && !formState.player2Band.isEmpty)
-        return hasPlayers && hasCourt && hasBands && personalActiveMatch == nil
+        return hasPlayers && hasCourt && hasBands && personalActiveMatch == nil && enabledSportIDs.contains(selectedSport.rawValue)
     }
 
     var body: some View {
@@ -585,14 +581,17 @@ struct StartNewMatchView: View {
                         "Best of \(value)"
                     }
 
-                    selectionCard(title: "Game Format", value: $formState.scoreType, options: [11, 15]) { value in
-                        "PAR-\(value)"
+                    selectionCard(title: "Game Format", value: $formState.scoreType, options: isTennisMatch ? [4, 6] : [11, 15]) { value in
+                        if isTennisMatch {
+                            return "First to \(value)"
+                        }
+                        return "PAR-\(value)"
                     }
                     .disabled(formState.handicapEnabled)
                     .opacity(formState.handicapEnabled ? 0.6 : 1)
                 }
 
-                if !isPersonalAccount {
+                if !isPersonalAccount && !isTennisMatch {
                     Toggle(isOn: $formState.handicapEnabled) {
                         Text("Handicap Match")
                             .font(.subheadline.weight(.semibold))
@@ -610,6 +609,12 @@ struct StartNewMatchView: View {
                         refreshSetupNotice()
                     }
 
+                    Toggle(isOn: $formState.scheduleMatch) {
+                        Text("Schedule Match")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .tint(Color.dashboardBrand)
+                } else if !isPersonalAccount {
                     Toggle(isOn: $formState.scheduleMatch) {
                         Text("Schedule Match")
                             .font(.subheadline.weight(.semibold))
@@ -1015,6 +1020,10 @@ struct StartNewMatchView: View {
                 availableCourts = settings.courts
                 loadedOrganizationType = settings.organization.organizationType
                 loadedOrganizationPlan = settings.organization.plan
+                loadedEnabledSports = settings.organization.enabledSports
+                if !settings.organization.enabledSports.map({ $0.lowercased() }).contains(selectedSport.rawValue) {
+                    errorMessage = "\(selectedSport.displayName) is not enabled for this account or club."
+                }
                 applyOrganizationDefaults()
                 refreshSetupNotice()
                 isLoading = false
@@ -1028,6 +1037,16 @@ struct StartNewMatchView: View {
     }
 
     private func applyOrganizationDefaults() {
+        if isTennisMatch {
+            formState.scoreType = [4, 6].contains(formState.scoreType) ? formState.scoreType : 6
+            formState.bestOf = [1, 3, 5].contains(formState.bestOf) ? formState.bestOf : 3
+            formState.handicapEnabled = false
+            formState.player1Band = ""
+            formState.player2Band = ""
+            formState.player1Offset = 0
+            formState.player2Offset = 0
+        }
+
         if isPersonalAccount {
             let personalCourt = availableCourts.first
             formState.courtID = personalCourt.map { String($0.id) } ?? ""
