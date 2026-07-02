@@ -559,7 +559,11 @@ struct DashboardView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity)
-        .background(Color.dashboardInnerCardBackground)
+        .background(
+            colorScheme == .dark
+                ? Color.dashboardInnerCardBackground.opacity(0.05)
+                : Color.dashboardInnerCardBackground
+        )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
