@@ -463,6 +463,8 @@ struct StartNewMatchView: View {
                 if isTennisMatch && formState.isDoubles {
                     doublesTeamCard(
                         title: "Doubles Team 1",
+                        primaryPlayerTitle: "Player 1",
+                        secondaryPlayerTitle: "Player 2",
                         primaryFirstName: $formState.player1Name,
                         primarySurname: $formState.player1Surname,
                         secondaryFirstName: $formState.player2Name,
@@ -476,6 +478,8 @@ struct StartNewMatchView: View {
 
                     doublesTeamCard(
                         title: "Doubles Team 2",
+                        primaryPlayerTitle: "Player 3",
+                        secondaryPlayerTitle: "Player 4",
                         primaryFirstName: $formState.player3Name,
                         primarySurname: $formState.player3Surname,
                         secondaryFirstName: $formState.player4Name,
@@ -614,7 +618,7 @@ struct StartNewMatchView: View {
     }
 
     private var matchTypeCard: some View {
-        cardSection(title: "Match Type") {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 toggleOptionButton(title: "Singles", isSelected: !formState.isDoubles) {
                     formState.isDoubles = false
@@ -625,6 +629,14 @@ struct StartNewMatchView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(Color.dashboardCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private var courtCard: some View {
@@ -896,6 +908,8 @@ struct StartNewMatchView: View {
 
     private func doublesTeamCard(
         title: String,
+        primaryPlayerTitle: String,
+        secondaryPlayerTitle: String,
         primaryFirstName: Binding<String>,
         primarySurname: Binding<String>,
         secondaryFirstName: Binding<String>,
@@ -909,7 +923,7 @@ struct StartNewMatchView: View {
         cardSection(title: title) {
             VStack(spacing: 14) {
                 doublesPlayerFields(
-                    title: "Player 1",
+                    title: primaryPlayerTitle,
                     firstName: primaryFirstName,
                     surname: primarySurname,
                     nameFocus: primaryNameFocus,
@@ -917,7 +931,7 @@ struct StartNewMatchView: View {
                 )
 
                 doublesPlayerFields(
-                    title: "Player 2",
+                    title: secondaryPlayerTitle,
                     firstName: secondaryFirstName,
                     surname: secondarySurname,
                     nameFocus: secondaryNameFocus,
