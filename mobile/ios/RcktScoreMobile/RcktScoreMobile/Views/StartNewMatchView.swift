@@ -211,6 +211,7 @@ struct StartNewMatchFlowView: View {
         )
         .navigationTitle("Choose Racket Sport")
         .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(.light)
         .navigationDestination(for: MatchSport.self) { sport in
             StartNewMatchView(
                 selectedSport: sport,
@@ -474,6 +475,7 @@ struct StartNewMatchView: View {
         )
         .navigationTitle(selectedSport.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(.light)
         .task { await loadSetup() }
         .onChange(of: formState.player1Name) { queueLookupIfNeeded() }
         .onChange(of: formState.player1Surname) { queueLookupIfNeeded() }

@@ -75,6 +75,23 @@ struct DashboardView: View {
         let initials = components.prefix(2).compactMap { $0.first.map { String($0).uppercased() } }.joined()
         return initials.isEmpty ? "HS" : initials
     }
+    private var currentUserFirstName: String {
+        let firstName = session?.firstName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !firstName.isEmpty {
+            return firstName
+        }
+
+        return currentUserDisplayName.split(separator: " ").first.map(String.init) ?? ""
+    }
+    private var currentUserSurname: String {
+        let surname = session?.surname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !surname.isEmpty {
+            return surname
+        }
+
+        let components = currentUserDisplayName.split(separator: " ").map(String.init)
+        return components.count > 1 ? components.dropFirst().joined(separator: " ") : ""
+    }
     private var homeActiveMatches: [MatchSummary] { Array(activeMatches.prefix(3)) }
     private var homeScheduledMatches: [MatchSummary] { Array(scheduledMatches.prefix(3)) }
     private var homeRecentMatches: [MatchSummary] { Array(recentMatches.prefix(3)) }
@@ -126,28 +143,15 @@ struct DashboardView: View {
         Set(enabledSportsDraft.map { $0.lowercased() })
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        var items: [SettingsMenuItem] = [
-            .subscription,
-            .profile,
-            .racketSports,
-            .gameSettings,
-            .helpFeedback
-        ]
+        var items: [SettingsMenuItem] = [.subscription, .profile, .association, .racketSports, .gameSettings]
         if isPersonalPlus {
             items.append(contentsOf: [.reporting, .stats])
         }
+        items.append(.helpFeedback)
         return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [
-            .subscription,
-            .profile,
-            .racketSports,
-            .gameSettings,
-            .helpFeedback,
-            .reporting,
-            .stats
-        ]
+        [.subscription, .profile, .association, .racketSports, .gameSettings, .reporting, .stats, .helpFeedback]
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
@@ -256,6 +260,13 @@ struct DashboardView: View {
                     await loadOrganizationSettingsIfNeeded()
                 }
             }
+            .onChange(of: isOnline) { isOnline in
+                if isOnline {
+                    Task { await loadDashboard() }
+                } else if errorMessage == "Unable to fetch dashboard data." {
+                    errorMessage = nil
+                }
+            }
             .refreshable { await loadDashboard() }
         }
     }
@@ -285,7 +296,6 @@ struct DashboardView: View {
 
                 VStack(alignment: .trailing, spacing: 12) {
                     Button {
-                        dashboardNotice = "Notifications are not added yet."
                     } label: {
                         Image(systemName: "bell")
                             .font(.system(size: 22, weight: .medium))
@@ -628,6 +638,8 @@ struct DashboardView: View {
             subscriptionSettingsCard
         case .profile:
             profileSettingsCard
+        case .association:
+            associationSettingsCard
         case .racketSports:
             if isPersonalAccount {
                 readOnlySportAccessCard
@@ -660,14 +672,27 @@ struct DashboardView: View {
     }
 
     private var subscriptionSettingsCard: some View {
+        let planCards: [(title: String, subtitle: String, isCurrent: Bool)] = isPersonalAccount
+            ? [
+                ("Personal", "Singles scoring with core personal access.", (session?.plan ?? "").lowercased() == "personal_free"),
+                ("Personal+", "Adds expanded match customisation and premium features.", (session?.plan ?? "").lowercased() == "personal_plus"),
+                ("Club Essentials", "Club management with courts, users, and match operations.", false),
+                ("Club Pro", "Expanded club package with higher-tier operational tooling.", false)
+            ]
+            : [
+                ("Club Essentials", "Core club package for match operations and member management.", (session?.plan ?? "").lowercased() == "club_essentials"),
+                ("Club Pro", "Higher-tier club package for advanced reporting and expansion.", (session?.plan ?? "").lowercased() == "club_pro")
+            ]
+
         VStack(alignment: .leading, spacing: 12) {
             Text("Subscription")
                 .font(.headline.weight(.semibold))
 
-            settingsValueRow(title: "Plan", value: headerPlanLine)
-            settingsValueRow(title: "Account", value: isPersonalAccount ? "Personal" : "Club")
+            ForEach(planCards, id: \.title) { card in
+                subscriptionOptionCard(title: card.title, subtitle: card.subtitle, isCurrent: card.isCurrent)
+            }
 
-            Text(isPersonalPlus ? "Personal+ extras like reporting and stats are available on this account." : "Your current plan controls which features and racket sports are available.")
+            Text("The highlighted subscription is the one currently active on this account.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -682,10 +707,53 @@ struct DashboardView: View {
             Text("Profile")
                 .font(.headline.weight(.semibold))
 
-            settingsValueRow(title: "Name", value: currentUserDisplayName)
-            settingsValueRow(title: "Username", value: session?.username ?? "Not available")
+            settingsValueRow(title: "First Name", value: currentUserFirstName)
+            settingsValueRow(title: "Surname", value: currentUserSurname)
             settingsValueRow(title: "Email", value: session?.email ?? "Not available")
-            settingsValueRow(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
+
+            Button(isRequestingPasswordReset ? "Sending Reset Link..." : "Send Password Reset Link") {
+                resetEmail = session?.email ?? resetEmail
+                requestPasswordReset()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(isRequestingPasswordReset || (session?.email ?? "").isEmpty)
+            .opacity((isRequestingPasswordReset || (session?.email ?? "").isEmpty) ? 0.7 : 1)
+
+            if let resetErrorMessage {
+                dashboardInlineError(resetErrorMessage)
+            }
+
+            if let resetMessage {
+                dashboardInlineSuccess(resetMessage)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var associationSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Association")
+                .font(.headline.weight(.semibold))
+
+            settingsValueRow(title: "Account Type", value: isPersonalAccount ? "Personal" : "Club")
+            settingsValueRow(title: "Organisation", value: settingsOrganizationName)
+            settingsValueRow(title: "Tier", value: settingsPlanLine)
+
+            Text(isPersonalAccount
+                ? "Association and competition links can be added here when federation account support is connected."
+                : "Club association and league links can be surfaced here as that integration layer is added."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1726,28 +1794,59 @@ struct DashboardView: View {
     }
 
     private var settingsSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(settingsOrganizationName)
-                .font(.headline.weight(.bold))
+                .font(.title3.weight(.bold))
                 .foregroundStyle(.primary)
 
-            HStack(spacing: 12) {
-                settingsBadge(title: settingsPlanLine)
-                if let organizationType = organizationSummary?.type ?? session?.organizationType {
-                    settingsBadge(title: organizationType.capitalized)
-                }
-            }
+            Text(settingsPlanLine)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.dashboardBrand)
 
             HStack(spacing: 12) {
                 settingsMetric(title: "Courts", value: String(organizationSummary?.courtCount ?? organizationSettings?.courts.count ?? 0))
                 settingsMetric(title: "Users", value: String(organizationSummary?.userCount ?? organizationSettings?.users.count ?? 0))
-                settingsMetric(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func subscriptionOptionCard(title: String, subtitle: String, isCurrent: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text(isCurrent ? "Current" : "Available")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isCurrent ? Color.dashboardBrand : .secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        (isCurrent ? Color.dashboardBrand : Color.dashboardBorder)
+                            .opacity(isCurrent ? 0.14 : 0.3)
+                    )
+                    .clipShape(Capsule())
+            }
+
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isCurrent ? Color.dashboardBrand.opacity(0.08) : Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(isCurrent ? Color.dashboardBrand.opacity(0.25) : Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private func settingsCourtsCard(_ courts: [CourtSummary]) -> some View {
@@ -1962,6 +2061,14 @@ struct DashboardView: View {
         await MainActor.run {
             isLoading = true
             errorMessage = nil
+        }
+
+        guard isOnline else {
+            await MainActor.run {
+                isLoading = false
+                errorMessage = nil
+            }
+            return
         }
 
         do {
@@ -2794,6 +2901,7 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case subscription
     case profile
+    case association
     case racketSports
     case gameSettings
     case helpFeedback
@@ -2810,6 +2918,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case subscription
     case profile
+    case association
     case racketSports
     case gameSettings
     case helpFeedback
@@ -2828,6 +2937,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Subscription"
         case .profile:
             return "Profile"
+        case .association:
+            return "Association"
         case .racketSports:
             return "Racket Sports"
         case .gameSettings:
@@ -2855,6 +2966,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "creditcard"
         case .profile:
             return "person.crop.circle"
+        case .association:
+            return "person.2.wave.2"
         case .racketSports:
             return "sportscourt"
         case .gameSettings:
@@ -2882,6 +2995,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .subscription
         case .profile:
             return .profile
+        case .association:
+            return .association
         case .racketSports:
             return .racketSports
         case .gameSettings:

@@ -40,7 +40,7 @@ What is real and implemented:
 - sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout, with personal-account profile/photo controls and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout, with personal-account profile/photo controls, subscription/profile/association menu sections, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -51,7 +51,7 @@ What is still partial or risky:
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - iOS login does not yet expose multi-organisation membership selection when the backend returns `organizationSelection`
 - the current iPhone scoring layout is functional but still needs redesign before release
-- some settings sections are still UI scaffolds only, including organisation-level handicap toggles and social profile fields
+- some settings sections are still UI scaffolds only, including organisation-level handicap toggles and association/federation profile links
 - no automated test suite is checked into the repo
 
 ## Repository Layout

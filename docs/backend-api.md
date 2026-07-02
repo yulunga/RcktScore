@@ -188,6 +188,7 @@ Current organisation-settings behavior:
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
+- the native iOS settings profile page currently uses `POST /request_password_reset` for password changes; there is no separate in-app password-update endpoint
 
 ### Match and scoring routes
 

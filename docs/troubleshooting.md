@@ -275,6 +275,7 @@ Common symptoms:
 - iPhone scorer feels visually crowded even when the backend state is correct
 - club-admin sport visibility changes save in iOS settings but do not affect native match setup
 - a personal-account profile photo disappears after reinstalling or signing in on another device
+- the native start-match form looks washed out or unreadable on a device running dark mode
 
 What to check:
 
@@ -286,12 +287,14 @@ What to check:
 - whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
+- whether the installed build includes the `StartNewMatchFlowView` and `StartNewMatchView` `.preferredColorScheme(.light)` fix
 
 Important current truths:
 
 - the iOS app currently expects `data.session` on login and does not yet present
   native organisation-selection UI
 - historic matches are online-only in the native app
+- the dashboard now stays quiet when the device is offline instead of showing a persistent fetch-failure banner
 - the current scorer is functionally ahead of the docs that used to describe it,
   but its iPhone layout still needs redesign
 
