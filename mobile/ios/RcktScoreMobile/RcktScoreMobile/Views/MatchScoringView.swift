@@ -22,6 +22,11 @@ private struct MatchGameSettingsForm {
     var player2ShirtColor: String = "white"
 }
 
+private enum MatchSheetSection {
+    case details
+    case settings
+}
+
 private enum MatchTimerPhase: String, Codable {
     case warmupReady = "warmup_ready"
     case warmupSideOne = "warmup_side_one"
@@ -68,6 +73,7 @@ struct MatchScoringView: View {
     @State private var errorMessage: String?
     @State private var showDetails = false
     @State private var showGameSettingsSheet = false
+    @State private var selectedSheetSection: MatchSheetSection = .settings
     @State private var gameSettingsForm = MatchGameSettingsForm()
     @State private var timerPhase: MatchTimerPhase = .warmupReady
     @State private var timerSeconds = warmupSeconds
@@ -408,7 +414,7 @@ struct MatchScoringView: View {
 
     @ViewBuilder
     private func scoreboardCard(_ match: MatchDetail, compact: Bool) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 10 : 14) {
+        VStack(alignment: .leading, spacing: compact ? 10 : 12) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(Color.rcktActive)
@@ -419,11 +425,12 @@ struct MatchScoringView: View {
                     .foregroundStyle(Color.rcktBlue)
                     .lineLimit(1)
             }
-            .padding(.horizontal, compact ? 12 : 14)
-            .padding(.vertical, compact ? 7 : 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, compact ? 10 : 12)
+            .padding(.vertical, compact ? 6 : 7)
             .background(Color.rcktBlue.opacity(0.12))
             .clipShape(Capsule())
-            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, compact ? 6 : 8)
 
             if match.status.lowercased() == "scheduled" {
                 HStack {
@@ -444,35 +451,54 @@ struct MatchScoringView: View {
 
                     Spacer()
                 }
+                .padding(.horizontal, compact ? 12 : 16)
             }
 
-            HStack(alignment: .top, spacing: compact ? 10 : 12) {
-                playerCard(
-                    side: "player1",
-                    firstName: match.player1Name,
-                    surname: match.player1Surname,
-                    score: live?.player1Score ?? 0,
-                    games: live?.player1GamesWon ?? 0,
-                    isServing: live?.currentServerSide == "player1",
-                    serviceSide: live?.serviceSide ?? "Right",
-                    compact: compact
-                )
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    playerHeaderStrip(
+                        firstName: match.player1Name,
+                        surname: match.player1Surname,
+                        isServing: live?.currentServerSide == "player1",
+                        serviceSide: live?.serviceSide ?? "Right",
+                        shirtColorValue: shirtColorValue(for: "player1", match: match),
+                        compact: compact
+                    )
 
-                pointRail(compact: compact)
+                    playerHeaderStrip(
+                        firstName: match.player2Name,
+                        surname: match.player2Surname,
+                        isServing: live?.currentServerSide == "player2",
+                        serviceSide: live?.serviceSide ?? "Right",
+                        shirtColorValue: shirtColorValue(for: "player2", match: match),
+                        compact: compact
+                    )
+                }
 
-                playerCard(
-                    side: "player2",
-                    firstName: match.player2Name,
-                    surname: match.player2Surname,
-                    score: live?.player2Score ?? 0,
-                    games: live?.player2GamesWon ?? 0,
-                    isServing: live?.currentServerSide == "player2",
-                    serviceSide: live?.serviceSide ?? "Right",
-                    compact: compact
-                )
+                HStack(alignment: .top, spacing: compact ? 12 : 14) {
+                    playerCard(
+                        side: "player1",
+                        score: live?.player1Score ?? 0,
+                        games: live?.player1GamesWon ?? 0,
+                        compact: compact
+                    )
+
+                    pointRail(compact: compact)
+
+                    playerCard(
+                        side: "player2",
+                        score: live?.player2Score ?? 0,
+                        games: live?.player2GamesWon ?? 0,
+                        compact: compact
+                    )
+                }
+                .padding(.horizontal, compact ? 10 : 12)
+                .padding(.top, compact ? 10 : 12)
+                .padding(.bottom, compact ? 12 : 14)
             }
 
             matchHistoryStrip
+                .padding(.horizontal, compact ? 12 : 16)
 
             VStack(spacing: compact ? 8 : 10) {
                 HStack(spacing: compact ? 8 : 10) {
@@ -496,8 +522,10 @@ struct MatchScoringView: View {
                     }
                 }
             }
+            .padding(.horizontal, compact ? 12 : 16)
+            .padding(.bottom, compact ? 12 : 14)
         }
-        .padding(compact ? 16 : 18)
+        .padding(.top, compact ? 8 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.rcktCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -719,14 +747,14 @@ struct MatchScoringView: View {
     private func pointRail(compact: Bool) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: compact ? 6 : 8) {
+                VStack(spacing: compact ? 8 : 10) {
                     ForEach(pointRailEntries) { entry in
-                        VStack(spacing: compact ? 5 : 6) {
-                            HStack(spacing: compact ? 6 : 8) {
+                        VStack(spacing: compact ? 6 : 8) {
+                            HStack(spacing: compact ? 8 : 10) {
                                 railMarker(kind: .server, active: entry.serverSide == "player1", label: entry.serverSide == "player1" ? (entry.serviceSideLabel ?? "") : "")
                                 railMarker(kind: .server, active: entry.serverSide == "player2", label: entry.serverSide == "player2" ? (entry.serviceSideLabel ?? "") : "")
                             }
-                            HStack(spacing: compact ? 6 : 8) {
+                            HStack(spacing: compact ? 8 : 10) {
                                 railMarker(kind: .winner, active: entry.winnerSide == "player1", label: entry.winnerSide == "player1" ? (entry.winnerScore ?? "") : "")
                                 railMarker(kind: .winner, active: entry.winnerSide == "player2", label: entry.winnerSide == "player2" ? (entry.winnerScore ?? "") : "")
                             }
@@ -737,7 +765,7 @@ struct MatchScoringView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
             }
-            .frame(width: compact ? 42 : 48, height: compact ? 210 : 248)
+            .frame(width: compact ? 52 : 60, height: compact ? 220 : 260)
             .onAppear {
                 if let last = pointRailEntries.last?.id {
                     proxy.scrollTo(last, anchor: .bottom)
@@ -779,77 +807,8 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func detailsCard(_ match: MatchDetail, compact: Bool) -> some View {
         DisclosureGroup(isExpanded: $showDetails) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Updated \(formatDate(match.updatedAt))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 12) {
-                    detailItem("Server", value: live?.currentServer ?? "Not set")
-                    detailItem("Service Side", value: live?.serviceSide ?? "Right")
-                    detailItem("Referee", value: match.refereeName ?? "Not set")
-                }
-
-                HStack(spacing: 12) {
-                    detailItem("Match Format", value: "Best of \(live?.bestOf ?? match.bestOf)")
-                    detailItem("Game Format", value: "PAR-\(live?.scoreType ?? match.scoreType)")
-                    detailItem("Court Alias", value: match.courtAlias ?? "Not set")
-                }
-
-                if canChoosePlayerShirtColors {
-                    HStack(spacing: 12) {
-                        detailItem("P1 Shirt", value: (live?.player1ShirtColor ?? match.player1ShirtColor ?? "navy").capitalized)
-                        detailItem("P2 Shirt", value: (live?.player2ShirtColor ?? match.player2ShirtColor ?? "white").capitalized)
-                    }
-                }
-
-                if displayedTimerSeconds > 0 {
-                    detailItem("Match Time", value: formatSeconds(displayedTimerSeconds))
-                }
-
-                if !isPersonalAccount {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Spectator Display")
-                            .font(.headline)
-
-                        detailItem("Scoreboard URL", value: scoreboardURL)
-                        detailItem("Court Display Code", value: displayCode.isEmpty ? "Not available" : displayCode)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Event Timeline")
-                        .font(.headline)
-
-                    if live?.events.isEmpty ?? true {
-                        Text("No events yet.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 10) {
-                                ForEach(Array((live?.events ?? []).reversed())) { event in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(event.summary ?? event.eventType.replacingOccurrences(of: "_", with: " ").capitalized)
-                                            .font(.subheadline.weight(.semibold))
-                                        if let createdAt = event.createdAt {
-                                            Text(formatDate(createdAt))
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(12)
-                                    .background(Color(.secondarySystemBackground))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                }
-                            }
-                        }
-                        .frame(maxHeight: 220)
-                    }
-                }
-            }
-            .padding(.top, 12)
+            matchDetailsContent(match)
+                .padding(.top, 12)
         } label: {
             HStack {
                 Text("Match Details")
@@ -868,28 +827,137 @@ struct MatchScoringView: View {
     }
 
     @ViewBuilder
-    private func playerCard(
-        side: String,
-        firstName: String,
-        surname: String?,
-        score: Int,
-        games: Int,
-        isServing: Bool,
-        serviceSide: String,
-        compact: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 10 : 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(firstName)
-                    .font(compact ? .headline.weight(.bold) : .title3.weight(.bold))
-                if let surname, !surname.isEmpty {
-                    Text(surname)
-                        .font(compact ? .headline.weight(.bold) : .title3.weight(.bold))
+    private func matchDetailsContent(_ match: MatchDetail) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Updated \(formatDate(match.updatedAt))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                detailItem("Server", value: live?.currentServer ?? "Not set")
+                detailItem("Service Side", value: live?.serviceSide ?? "Right")
+                detailItem("Referee", value: match.refereeName ?? "Not set")
+            }
+
+            HStack(spacing: 12) {
+                detailItem("Match Format", value: "Best of \(live?.bestOf ?? match.bestOf)")
+                detailItem("Game Format", value: "PAR-\(live?.scoreType ?? match.scoreType)")
+                detailItem("Court Alias", value: match.courtAlias ?? "Not set")
+            }
+
+            if canChoosePlayerShirtColors {
+                HStack(spacing: 12) {
+                    detailItem("P1 Shirt", value: (live?.player1ShirtColor ?? match.player1ShirtColor ?? "navy").capitalized)
+                    detailItem("P2 Shirt", value: (live?.player2ShirtColor ?? match.player2ShirtColor ?? "white").capitalized)
                 }
             }
-            .lineLimit(2)
-            .minimumScaleFactor(0.78)
 
+            if displayedTimerSeconds > 0 {
+                detailItem("Match Time", value: formatSeconds(displayedTimerSeconds))
+            }
+
+            if !isPersonalAccount {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Spectator Display")
+                        .font(.headline)
+
+                    detailItem("Scoreboard URL", value: scoreboardURL)
+                    detailItem("Court Display Code", value: displayCode.isEmpty ? "Not available" : displayCode)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Event Timeline")
+                    .font(.headline)
+
+                if live?.events.isEmpty ?? true {
+                    Text("No events yet.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array((live?.events ?? []).reversed())) { event in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(event.summary ?? event.eventType.replacingOccurrences(of: "_", with: " ").capitalized)
+                                        .font(.subheadline.weight(.semibold))
+                                    if let createdAt = event.createdAt {
+                                        Text(formatDate(createdAt))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(Color(.secondarySystemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 220)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func playerHeaderStrip(
+        firstName: String,
+        surname: String?,
+        isServing: Bool,
+        serviceSide: String,
+        shirtColorValue: String,
+        compact: Bool
+    ) -> some View {
+        let foreground = shirtForegroundColor(for: shirtColorValue)
+
+        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+            Text(fullName(firstName: firstName, surname: surname))
+                .font(compact ? .headline.weight(.bold) : .title3.weight(.bold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+
+            HStack {
+                if isServing {
+                    Button {
+                        Task { await toggleServeSide(current: serviceSide) }
+                    } label: {
+                        Text(serviceSide)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minWidth: compact ? 72 : 80)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, compact ? 9 : 10)
+                            .background(Color.rcktServe)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
+                    .opacity(canToggleCurrentServeSide ? 1 : 0.72)
+                } else {
+                    Capsule()
+                        .fill(Color.clear)
+                        .frame(width: compact ? 72 : 80, height: compact ? 40 : 42)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(.horizontal, compact ? 14 : 16)
+        .padding(.vertical, compact ? 12 : 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shirtFillColor(for: shirtColorValue))
+        .foregroundStyle(foreground)
+    }
+
+    @ViewBuilder
+    private func playerCard(
+        side: String,
+        score: Int,
+        games: Int,
+        compact: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 12 : 14) {
             Text("\(score)")
                 .font(.system(size: compact ? 44 : 52, weight: .heavy, design: .rounded))
                 .frame(maxWidth: .infinity)
@@ -903,35 +971,9 @@ struct MatchScoringView: View {
 
             Text("Games: \(games)")
                 .font(compact ? .subheadline.weight(.semibold) : .headline)
-
-            HStack {
-                if isServing {
-                    Button {
-                        Task { await toggleServeSide(current: serviceSide) }
-                    } label: {
-                        Text(serviceSide)
-                            .font(.headline.weight(.semibold))
-                            .frame(minWidth: 72)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, compact ? 9 : 10)
-                            .background(Color.rcktServe)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
-                    .opacity(canToggleCurrentServeSide ? 1 : 0.72)
-                } else {
-                    Capsule()
-                        .fill(Color.clear)
-                        .frame(width: 72, height: 42)
-                }
-
-                Spacer()
-            }
         }
         .padding(compact ? 14 : 16)
-        .frame(maxWidth: .infinity, minHeight: compact ? 220 : 260, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: compact ? 178 : 198, alignment: .topLeading)
         .background(Color.rcktNavy)
         .foregroundStyle(.white)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -954,6 +996,27 @@ struct MatchScoringView: View {
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func shirtColorValue(for side: String, match: MatchDetail) -> String {
+        if side == "player1" {
+            return live?.player1ShirtColor ?? match.player1ShirtColor ?? "navy"
+        }
+
+        return live?.player2ShirtColor ?? match.player2ShirtColor ?? "white"
+    }
+
+    private func shirtFillColor(for value: String) -> Color {
+        shirtColorOptions.first(where: { $0.value == value.lowercased() })?.fill ?? Color.rcktNavy
+    }
+
+    private func shirtForegroundColor(for value: String) -> Color {
+        switch value.lowercased() {
+        case "white", "yellow", "pink":
+            return .black
+        default:
+            return .white
+        }
     }
 
     @ViewBuilder
@@ -995,11 +1058,11 @@ struct MatchScoringView: View {
 
             if active {
                 Text(label)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(kind == .server ? .white : Color.rcktBlue)
             }
         }
-        .frame(width: 20, height: 20)
+        .frame(width: 24, height: 24)
     }
 
     @ViewBuilder
@@ -1026,45 +1089,66 @@ struct MatchScoringView: View {
         .opacity(isDisabled ? 0.72 : 1)
     }
 
+    @ViewBuilder
+    private var matchSettingsContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Match Format")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker("Match Format", selection: $gameSettingsForm.bestOf) {
+                    ForEach(bestOfOptions, id: \.self) { option in
+                        Text("Best of \(option)").tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Game Format")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker("Game Format", selection: $gameSettingsForm.scoreType) {
+                    ForEach(scoreTypeOptions, id: \.self) { option in
+                        Text("PAR-\(option)").tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            if canChoosePlayerShirtColors {
+                shirtColorEditor(
+                    title: "Player 1 Shirt",
+                    selection: $gameSettingsForm.player1ShirtColor
+                )
+                shirtColorEditor(
+                    title: "Player 2 Shirt",
+                    selection: $gameSettingsForm.player2ShirtColor
+                )
+            }
+        }
+    }
+
     private var gameSettingsSheet: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Match Format")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Picker("Match Format", selection: $gameSettingsForm.bestOf) {
-                            ForEach(bestOfOptions, id: \.self) { option in
-                                Text("Best of \(option)").tag(option)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                    HStack(spacing: 10) {
+                        sheetSectionButton("Match Details", section: .details)
+                        sheetSectionButton("Match Settings", section: .settings)
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Game Format")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Picker("Game Format", selection: $gameSettingsForm.scoreType) {
-                            ForEach(scoreTypeOptions, id: \.self) { option in
-                                Text("PAR-\(option)").tag(option)
-                            }
+                    if selectedSheetSection == .details {
+                        if let match {
+                            matchDetailsContent(match)
+                        } else {
+                            ProgressView("Loading match…")
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .pickerStyle(.segmented)
-                    }
-
-                    if canChoosePlayerShirtColors {
-                        shirtColorEditor(
-                            title: "Player 1 Shirt",
-                            selection: $gameSettingsForm.player1ShirtColor
-                        )
-                        shirtColorEditor(
-                            title: "Player 2 Shirt",
-                            selection: $gameSettingsForm.player2ShirtColor
-                        )
+                    } else {
+                        matchSettingsContent
                     }
 
                     if let errorMessage {
@@ -1073,23 +1157,43 @@ struct MatchScoringView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Game Settings")
+            .navigationTitle("Match")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button {
                         showGameSettingsSheet = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.bold))
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isMutating ? "Saving..." : "Save") {
-                        Task { await saveGameSettings() }
+                if selectedSheetSection == .settings {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(isMutating ? "Saving..." : "Save") {
+                            Task { await saveGameSettings() }
+                        }
+                        .disabled(isMutating)
                     }
-                    .disabled(isMutating)
                 }
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private func sheetSectionButton(_ title: String, section: MatchSheetSection) -> some View {
+        Button {
+            selectedSheetSection = section
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(selectedSheetSection == section ? Color.rcktBlue : Color(.secondarySystemBackground))
+                .foregroundStyle(selectedSheetSection == section ? .white : .primary)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func shirtColorEditor(title: String, selection: Binding<String>) -> some View {
@@ -1213,6 +1317,7 @@ struct MatchScoringView: View {
 
     private func openGameSettings() {
         let currentMatch = match
+        selectedSheetSection = .settings
         gameSettingsForm = MatchGameSettingsForm(
             scoreType: currentMatch?.scoreType ?? live?.scoreType ?? 15,
             bestOf: currentMatch?.bestOf ?? live?.bestOf ?? 5,
