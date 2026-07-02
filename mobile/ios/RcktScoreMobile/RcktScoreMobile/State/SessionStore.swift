@@ -27,7 +27,7 @@ final class SessionStore: ObservableObject {
     }
 
     func switchMembership(to membership: UserMembership) {
-        guard let currentSession else {
+        guard let currentSession = session else {
             return
         }
 
