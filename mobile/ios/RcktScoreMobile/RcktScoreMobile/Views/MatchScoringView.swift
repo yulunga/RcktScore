@@ -188,7 +188,19 @@ struct MatchScoringView: View {
         }
     }
 
+    private var hasBootstrappedCurrentMatch: Bool {
+        guard let match else {
+            return false
+        }
+
+        return bootstrappedMatchID == match.id
+    }
+
     private var showWarmupOverlay: Bool {
+        guard hasBootstrappedCurrentMatch else {
+            return false
+        }
+
         switch timerPhase {
         case .warmupReady, .warmupSideOne, .warmupSideTwo, .firstServer:
             return !isMatchComplete
@@ -198,7 +210,7 @@ struct MatchScoringView: View {
     }
 
     private var showIntervalOverlay: Bool {
-        timerPhase == .interval && !isMatchComplete
+        hasBootstrappedCurrentMatch && timerPhase == .interval && !isMatchComplete
     }
 
     private var isWarmupCountdownWarning: Bool {
@@ -294,10 +306,6 @@ struct MatchScoringView: View {
                     if let match {
                         scoreboardCard(match, compact: compactLayout)
                         timerCard(compact: compactLayout)
-
-                        if !isPersonalAccount {
-                            detailsCard(match, compact: compactLayout)
-                        }
                     }
 
                     if let errorMessage {
@@ -415,22 +423,7 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func scoreboardCard(_ match: MatchDetail, compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(Color.rcktActive)
-                    .frame(width: compact ? 8 : 10, height: compact ? 8 : 10)
-
-                Text("Score to \(match.scoreType) • Game \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)")
-                    .font(compact ? .footnote.weight(.semibold) : .caption.weight(.semibold))
-                    .foregroundStyle(Color.rcktBlue)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, compact ? 10 : 12)
-            .padding(.vertical, compact ? 6 : 7)
-            .background(Color.rcktBlue.opacity(0.12))
-            .clipShape(Capsule())
-            .padding(.horizontal, compact ? 6 : 8)
+            scoreSummaryBanner(match, compact: compact)
 
             if match.status.lowercased() == "scheduled" {
                 HStack {
@@ -475,7 +468,7 @@ struct MatchScoringView: View {
                     )
                 }
 
-                HStack(alignment: .top, spacing: compact ? 12 : 14) {
+                HStack(alignment: .top) {
                     playerCard(
                         side: "player1",
                         score: live?.player1Score ?? 0,
@@ -483,7 +476,11 @@ struct MatchScoringView: View {
                         compact: compact
                     )
 
+                    Spacer(minLength: compact ? 8 : 12)
+
                     pointRail(compact: compact)
+
+                    Spacer(minLength: compact ? 8 : 12)
 
                     playerCard(
                         side: "player2",
@@ -492,7 +489,7 @@ struct MatchScoringView: View {
                         compact: compact
                     )
                 }
-                .padding(.horizontal, compact ? 10 : 12)
+                .padding(.horizontal, compact ? 6 : 8)
                 .padding(.top, compact ? 10 : 12)
                 .padding(.bottom, compact ? 12 : 14)
             }
@@ -747,14 +744,14 @@ struct MatchScoringView: View {
     private func pointRail(compact: Bool) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: compact ? 8 : 10) {
+                VStack(spacing: compact ? 10 : 12) {
                     ForEach(pointRailEntries) { entry in
-                        VStack(spacing: compact ? 6 : 8) {
-                            HStack(spacing: compact ? 8 : 10) {
+                        VStack(spacing: compact ? 8 : 10) {
+                            HStack(spacing: compact ? 10 : 12) {
                                 railMarker(kind: .server, active: entry.serverSide == "player1", label: entry.serverSide == "player1" ? (entry.serviceSideLabel ?? "") : "")
                                 railMarker(kind: .server, active: entry.serverSide == "player2", label: entry.serverSide == "player2" ? (entry.serviceSideLabel ?? "") : "")
                             }
-                            HStack(spacing: compact ? 8 : 10) {
+                            HStack(spacing: compact ? 10 : 12) {
                                 railMarker(kind: .winner, active: entry.winnerSide == "player1", label: entry.winnerSide == "player1" ? (entry.winnerScore ?? "") : "")
                                 railMarker(kind: .winner, active: entry.winnerSide == "player2", label: entry.winnerSide == "player2" ? (entry.winnerScore ?? "") : "")
                             }
@@ -765,7 +762,7 @@ struct MatchScoringView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
             }
-            .frame(width: compact ? 52 : 60, height: compact ? 220 : 260)
+            .frame(width: compact ? 74 : 86, height: compact ? 220 : 252)
             .onAppear {
                 if let last = pointRailEntries.last?.id {
                     proxy.scrollTo(last, anchor: .bottom)
@@ -779,6 +776,29 @@ struct MatchScoringView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func scoreSummaryBanner(_ match: MatchDetail, compact: Bool) -> some View {
+        ZStack {
+            Text("Score to \(match.scoreType) • Game \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)")
+                .font(compact ? .footnote.weight(.semibold) : .caption.weight(.semibold))
+                .foregroundStyle(Color.rcktBlue)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack {
+                Circle()
+                    .fill(Color.rcktActive)
+                    .frame(width: compact ? 8 : 10, height: compact ? 8 : 10)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, compact ? 12 : 14)
+        .padding(.vertical, compact ? 10 : 12)
+        .background(Color.rcktBlue.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, compact ? 4 : 6)
     }
 
     @ViewBuilder
@@ -911,24 +931,31 @@ struct MatchScoringView: View {
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
 
-        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+        VStack(spacing: compact ? 8 : 10) {
             Text(fullName(firstName: firstName, surname: surname))
-                .font(compact ? .headline.weight(.bold) : .title3.weight(.bold))
+                .font(.system(size: compact ? 19 : 21, weight: .bold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
 
             HStack {
+                Spacer(minLength: 0)
                 if isServing {
                     Button {
                         Task { await toggleServeSide(current: serviceSide) }
                     } label: {
                         Text(serviceSide)
                             .font(.subheadline.weight(.semibold))
-                            .frame(minWidth: compact ? 72 : 80)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, compact ? 9 : 10)
-                            .background(Color.rcktServe)
-                            .foregroundStyle(.white)
+                            .frame(minWidth: compact ? 62 : 68)
+                            .padding(.horizontal, compact ? 10 : 12)
+                            .padding(.vertical, compact ? 7 : 8)
+                            .background(.white)
+                            .foregroundStyle(.black)
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.rcktCompleted, lineWidth: 2)
+                            )
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -937,15 +964,14 @@ struct MatchScoringView: View {
                 } else {
                     Capsule()
                         .fill(Color.clear)
-                        .frame(width: compact ? 72 : 80, height: compact ? 40 : 42)
+                        .frame(width: compact ? 62 : 68, height: compact ? 34 : 36)
                 }
-
                 Spacer(minLength: 0)
             }
         }
         .padding(.horizontal, compact ? 14 : 16)
         .padding(.vertical, compact ? 12 : 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(foreground)
     }
@@ -957,27 +983,29 @@ struct MatchScoringView: View {
         games: Int,
         compact: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 12 : 14) {
+        VStack(spacing: compact ? 8 : 10) {
             Text("\(score)")
-                .font(.system(size: compact ? 44 : 52, weight: .heavy, design: .rounded))
+                .font(.system(size: compact ? 40 : 46, weight: .heavy, design: .rounded))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, compact ? 14 : 18)
+                .padding(.vertical, compact ? 10 : 12)
                 .background(Color.white.opacity(0.18))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(Color.white.opacity(0.24), lineWidth: 2)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Text("Games: \(games)")
-                .font(compact ? .subheadline.weight(.semibold) : .headline)
+                .font(compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(compact ? 14 : 16)
-        .frame(maxWidth: .infinity, minHeight: compact ? 178 : 198, alignment: .topLeading)
+        .padding(.horizontal, compact ? 10 : 12)
+        .padding(.vertical, compact ? 12 : 14)
+        .frame(width: compact ? 118 : 128, minHeight: compact ? 148 : 164, alignment: .top)
         .background(Color.rcktNavy)
         .foregroundStyle(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture {
             Task { await addPoint(for: side) }
         }
@@ -1045,24 +1073,20 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func railMarker(kind: RailMarkerKind, active: Bool, label: String) -> some View {
         ZStack {
-            Circle()
-                .fill(kind == .server && active ? Color.rcktServe : Color.clear)
-                .overlay(
-                    Circle()
-                        .stroke(kind == .winner ? Color.rcktBlue : Color.clear, lineWidth: active ? 2.5 : 1.5)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(Color.rcktBlue.opacity(active ? 0 : 0.18), lineWidth: active ? 0 : 1.5)
-                )
-
             if active {
+                Circle()
+                    .fill(kind == .server ? Color.rcktServe : .white)
+                    .overlay(
+                        Circle()
+                            .stroke(kind == .winner ? Color.rcktBlue : Color.clear, lineWidth: kind == .winner ? 3 : 0)
+                    )
+
                 Text(label)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(kind == .server ? .white : Color.rcktBlue)
             }
         }
-        .frame(width: 24, height: 24)
+        .frame(width: 30, height: 30)
     }
 
     @ViewBuilder
