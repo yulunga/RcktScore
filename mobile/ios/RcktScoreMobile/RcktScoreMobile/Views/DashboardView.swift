@@ -1643,58 +1643,67 @@ struct DashboardView: View {
         return HStack(spacing: 0) {
             VStack(spacing: 4) {
                 Text(dateParts.day)
-                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
                 Text(dateParts.month)
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.dashboardBrand)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
             }
-            .frame(width: 92)
-            .padding(.vertical, 10)
-            .background(Color.dashboardAccentPink.opacity(0.26))
+            .frame(width: 64)
+            .padding(.vertical, 6)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color.yellow.opacity(0.88),
+                        Color.orange.opacity(0.72)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
 
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text([player1.firstName, player1.surname].filter { !$0.isEmpty }.joined(separator: " "))
-                        .font(.subheadline.weight(.bold))
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardBrand)
                         .lineLimit(1)
 
                     Text("vs")
-                        .font(.caption.weight(.bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundStyle(.secondary)
 
                     Text([player2.firstName, player2.surname].filter { !$0.isEmpty }.joined(separator: " "))
-                        .font(.subheadline.weight(.bold))
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardBrand)
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 6)
+                Spacer(minLength: 4)
 
-                VStack(spacing: 2) {
+                VStack(spacing: 0) {
                     Text("\(player1Games)")
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dashboardBrand)
                     Text("\(player2Games)")
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dashboardBrand)
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.headline.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Color.dashboardBrand)
-                    .frame(width: 38, height: 38)
+                    .frame(width: 28, height: 28)
                     .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
                     .clipShape(Circle())
                     .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
