@@ -219,13 +219,14 @@ struct CreateMatchRequest: Encodable {
 }
 
 struct UpdateOrganizationDetailsRequest: Encodable {
-    let organizationName: String
-    let organizationAddress: String
-    let organizationPostcode: String
-    let organizationContact: String
-    let organizationTelephone: String
-    let organizationEmail: String
-    let organizationWebAddress: String
+    let organizationName: String?
+    let organizationAddress: String?
+    let organizationPostcode: String?
+    let organizationContact: String?
+    let organizationTelephone: String?
+    let organizationEmail: String?
+    let organizationWebAddress: String?
+    let enabledSports: [String]?
 
     enum CodingKeys: String, CodingKey {
         case organizationName = "organization_name"
@@ -235,6 +236,7 @@ struct UpdateOrganizationDetailsRequest: Encodable {
         case organizationTelephone = "org_telephone"
         case organizationEmail = "org_email"
         case organizationWebAddress = "org_webaddress"
+        case enabledSports = "enabled_sports"
     }
 }
 

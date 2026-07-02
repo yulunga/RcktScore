@@ -273,6 +273,7 @@ Common symptoms:
 - iOS scorer loads, but court display code is missing
 - completed matches do not appear while offline
 - iPhone scorer feels visually crowded even when the backend state is correct
+- club-admin sport visibility changes save in iOS settings but do not affect native match setup
 
 What to check:
 
@@ -281,6 +282,8 @@ What to check:
 - whether the match has a court display code and `GET /match_display_access/{match_id}` is succeeding
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
 - whether `NetworkMonitor.swift` has marked the device offline
+- whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
+- whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 
 Important current truths:
 

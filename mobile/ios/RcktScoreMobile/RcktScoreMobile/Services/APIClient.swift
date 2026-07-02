@@ -421,7 +421,29 @@ final class APIClient {
                 organizationContact: draft.organizationContact,
                 organizationTelephone: draft.organizationTelephone,
                 organizationEmail: draft.organizationEmail,
-                organizationWebAddress: draft.organizationWebAddress
+                organizationWebAddress: draft.organizationWebAddress,
+                enabledSports: nil
+            )
+        )
+        return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func updateOrganizationEnabledSports(
+        organizationID: Int,
+        enabledSports: [String]
+    ) async throws -> OrganizationSettings {
+        let request = try makeRequest(
+            path: "/organization_details/\(organizationID)",
+            method: "PUT",
+            body: UpdateOrganizationDetailsRequest(
+                organizationName: nil,
+                organizationAddress: nil,
+                organizationPostcode: nil,
+                organizationContact: nil,
+                organizationTelephone: nil,
+                organizationEmail: nil,
+                organizationWebAddress: nil,
+                enabledSports: enabledSports
             )
         )
         return try await unwrapOrganizationSettingsResponse(request)

@@ -19,12 +19,14 @@ struct DashboardView: View {
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
     @State private var selectedTab: DashboardTab = .home
-    @State private var selectedSettingsSection: SettingsSection = .organization
+    @State private var selectedSettingsGroup: SettingsGroup = .profile
+    @State private var selectedSettingsSection: SettingsSection = .profileOrganization
     @State private var organizationDetailsDraft = OrganizationDetailsDraft()
     @State private var newOrganizationUserDraft = OrganizationUserDraft()
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
     @State private var newCourtDraft = CourtDraft()
     @State private var courtDrafts: [Int: CourtDraft] = [:]
+    @State private var enabledSportsDraft: [String] = []
     @State private var savingSettingsKey: String?
     @State private var historySearch = ""
     @State private var feedbackName = ""
@@ -92,6 +94,22 @@ struct DashboardView: View {
     }
     private var organizationSettingsCourts: [CourtSummary] {
         organizationSettings?.courts ?? []
+    }
+    private var availableSportOptions: [MatchSport] {
+        MatchSport.allCases
+    }
+    private var enabledSportIDs: Set<String> {
+        Set(enabledSportsDraft.map { $0.lowercased() })
+    }
+    private var secondarySettingsSections: [SettingsSection] {
+        switch selectedSettingsGroup {
+        case .profile:
+            return [.profileOrganization, .profileLocation]
+        case .admin:
+            return [.adminUsers, .adminCourts]
+        case .setup:
+            return [.setupSports]
+        }
     }
 
     var body: some View {
@@ -392,32 +410,33 @@ struct DashboardView: View {
 
     private var settingsContent: some View {
         VStack(spacing: 18) {
-            dashboardSection(
-                title: "Settings",
-                subtitle: isPersonalAccount
-                    ? "Profile and plan details for this account."
-                    : "Organisation, users, and courts for this club account."
-            ) {
-                if isLoadingSettings && organizationSettings == nil {
-                    HStack {
-                        ProgressView()
-                        Spacer()
+            if isLoadingSettings && organizationSettings == nil {
+                HStack {
+                    ProgressView()
+                    Spacer()
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.dashboardCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
+            } else {
+                VStack(spacing: 12) {
+                    if let settingsErrorMessage {
+                        dashboardInlineError(settingsErrorMessage)
                     }
-                } else {
-                    VStack(spacing: 14) {
-                        if let settingsErrorMessage {
-                            dashboardInlineError(settingsErrorMessage)
-                        }
 
-                        if let settingsSuccessMessage {
-                            dashboardInlineSuccess(settingsSuccessMessage)
-                        }
+                    if let settingsSuccessMessage {
+                        dashboardInlineSuccess(settingsSuccessMessage)
+                    }
 
-                        if isPersonalAccount {
-                            personalSettingsContent
-                        } else {
-                            clubSettingsContent
-                        }
+                    if isPersonalAccount {
+                        personalSettingsContent
+                    } else {
+                        clubSettingsContent
                     }
                 }
             }
@@ -425,7 +444,7 @@ struct DashboardView: View {
     }
 
     private var personalSettingsContent: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             settingsSummaryCard
 
             VStack(alignment: .leading, spacing: 12) {
@@ -444,8 +463,9 @@ struct DashboardView: View {
     }
 
     private var clubSettingsContent: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             settingsSummaryCard
+            settingsPrimaryPicker
             settingsSectionPicker
 
             if !isAdmin {
@@ -456,29 +476,67 @@ struct DashboardView: View {
             }
 
             switch selectedSettingsSection {
-            case .organization:
-                organizationDetailsCard
-            case .users:
+            case .profileOrganization:
+                organizationProfileCard
+            case .profileLocation:
+                organizationLocationCard
+            case .adminUsers:
                 organizationUsersCard
-            case .courts:
+            case .adminCourts:
                 organizationCourtsCard
-            case .gameSettings:
-                gameSettingsPlaceholderCard
+            case .setupSports:
+                sportSetupCard
+            }
+        }
+    }
+
+    private var settingsPrimaryPicker: some View {
+        HStack(spacing: 10) {
+            ForEach(SettingsGroup.allCases) { group in
+                Button {
+                    selectedSettingsGroup = group
+                    if let firstSection = group.sections.first {
+                        selectedSettingsSection = firstSection
+                    }
+                } label: {
+                    Text(group.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(selectedSettingsGroup == group ? .white : Color.dashboardBrand)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            selectedSettingsGroup == group
+                                ? Color.dashboardBrand
+                                : Color.dashboardInputBackground
+                        )
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    selectedSettingsGroup == group ? Color.dashboardBrand : Color.dashboardBorder,
+                                    lineWidth: 1
+                                )
+                        )
+                }
+                .buttonStyle(.plain)
             }
         }
     }
 
     private var settingsSectionPicker: some View {
         HStack(spacing: 10) {
-            ForEach(SettingsSection.allCases) { section in
+            settingsSectionIcon
+
+            ForEach(secondarySettingsSections) { section in
                 Button {
                     selectedSettingsSection = section
                 } label: {
                     Text(section.title)
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(selectedSettingsSection == section ? .white : Color.dashboardBrand)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                         .frame(maxWidth: .infinity)
                         .background(
                             selectedSettingsSection == section
@@ -499,9 +557,22 @@ struct DashboardView: View {
         }
     }
 
-    private var organizationDetailsCard: some View {
+    private var settingsSectionIcon: some View {
+        Image(systemName: selectedSettingsGroup.symbolName)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(Color.dashboardBrand)
+            .frame(width: 48, height: 48)
+            .background(Color.dashboardInputBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+    }
+
+    private var organizationProfileCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Organisation Details")
+            Text("Organisation Profile")
                 .font(.headline.weight(.semibold))
 
             dashboardTextField(
@@ -542,6 +613,30 @@ struct DashboardView: View {
             )
             .disabled(!isAdmin)
 
+            Button(currentSettingsButtonTitle(for: "organization-save", defaultTitle: "Save Organisation")) {
+                saveOrganizationDetails()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(!isAdmin || savingSettingsKey != nil)
+            .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var organizationLocationCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Location")
+                .font(.headline.weight(.semibold))
+
             dashboardTextField(
                 title: "Address",
                 placeholder: "Address",
@@ -556,7 +651,11 @@ struct DashboardView: View {
             )
             .disabled(!isAdmin)
 
-            Button(currentSettingsButtonTitle(for: "organization-save", defaultTitle: "Save Organisation Details")) {
+            Text("This is the club address shown with the organisation profile.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button(currentSettingsButtonTitle(for: "organization-save", defaultTitle: "Save Location")) {
                 saveOrganizationDetails()
             }
             .font(.subheadline.weight(.semibold))
@@ -701,22 +800,79 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private var gameSettingsPlaceholderCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Game Setup")
+    private var sportSetupCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Racket Sports")
                 .font(.headline.weight(.semibold))
 
-            Text("Operational club settings are available here. Live match format changes, shirt colours, and scheduled-match edits are now handled inside the native match screen.")
+            Text("Choose which racket sports club users can see when they start a match.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            settingsValueRow(title: "Plan", value: settingsPlanLine)
-            settingsValueRow(title: "Organisation Type", value: (organizationSummary?.type ?? session?.organizationType ?? "club").capitalized)
+            ForEach(availableSportOptions) { sport in
+                sportAccessRow(for: sport)
+            }
+
+            Text("Implemented sports are available in the current iOS setup flow. Other sports can be pre-configured here for later release.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Sport Access")) {
+                saveOrganizationEnabledSports()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(!isAdmin || savingSettingsKey != nil)
+            .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func sportAccessRow(for sport: MatchSport) -> some View {
+        Toggle(isOn: sportEnabledBinding(for: sport)) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(sport.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(sport.isImplementedToday ? "Live in the current app" : "Coming soon")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 10)
+
+                Text(sport.isImplementedToday ? "Ready" : "Future")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(sport.isImplementedToday ? Color.dashboardBrand : Color.dashboardAccentPink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        (sport.isImplementedToday ? Color.dashboardBrand : Color.dashboardAccentPink)
+                            .opacity(0.12)
+                    )
+                    .clipShape(Capsule())
+            }
+        }
+        .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
+        .disabled(!isAdmin)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private func organizationUserRow(_ user: OrganizationUser) -> some View {
@@ -1541,6 +1697,11 @@ struct DashboardView: View {
         courtDrafts = Dictionary(
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
+        enabledSportsDraft = settings.organization.enabledSports
+
+        if !selectedSettingsGroup.sections.contains(selectedSettingsSection) {
+            selectedSettingsSection = selectedSettingsGroup.sections.first ?? .profileOrganization
+        }
     }
 
     private func loadDashboard() async {
@@ -1640,6 +1801,37 @@ struct DashboardView: View {
             } catch {
                 await MainActor.run {
                     settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to save organisation details."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func saveOrganizationEnabledSports() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "sports-save"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                let settings = try await container.apiClient.updateOrganizationEnabledSports(
+                    organizationID: organizationID,
+                    enabledSports: normalizedEnabledSportsDraft()
+                )
+                await MainActor.run {
+                    organizationSettings = settings
+                    syncSettingsDrafts(from: settings)
+                    persistSessionEnabledSports(settings.organization.enabledSports)
+                    settingsSuccessMessage = "Sport access updated."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update sport access."
                     savingSettingsKey = nil
                 }
             }
@@ -2145,6 +2337,57 @@ struct DashboardView: View {
         return value.range(of: emailPattern, options: .regularExpression) != nil
     }
 
+    private func sportEnabledBinding(for sport: MatchSport) -> Binding<Bool> {
+        Binding(
+            get: { enabledSportIDs.contains(sport.rawValue) },
+            set: { isEnabled in
+                setSportEnabled(sport, isEnabled: isEnabled)
+            }
+        )
+    }
+
+    private func setSportEnabled(_ sport: MatchSport, isEnabled: Bool) {
+        var enabledIDs = enabledSportIDs
+        if isEnabled {
+            enabledIDs.insert(sport.rawValue)
+        } else {
+            enabledIDs.remove(sport.rawValue)
+        }
+
+        enabledSportsDraft = availableSportOptions
+            .map(\.rawValue)
+            .filter { enabledIDs.contains($0) }
+    }
+
+    private func normalizedEnabledSportsDraft() -> [String] {
+        availableSportOptions
+            .map(\.rawValue)
+            .filter { enabledSportIDs.contains($0) }
+    }
+
+    private func persistSessionEnabledSports(_ enabledSports: [String]) {
+        guard let currentSession = session else {
+            return
+        }
+
+        let updatedSession = UserSession(
+            id: currentSession.id,
+            username: currentSession.username,
+            role: currentSession.role,
+            sessionToken: currentSession.sessionToken,
+            organizationID: currentSession.organizationID,
+            organizationName: currentSession.organizationName,
+            organizationType: currentSession.organizationType,
+            plan: currentSession.plan,
+            enabledSports: enabledSports,
+            firstName: currentSession.firstName,
+            surname: currentSession.surname,
+            fullName: currentSession.fullName,
+            email: currentSession.email
+        )
+        container.sessionStore.save(updatedSession)
+    }
+
     private func planDisplayName(for plan: String) -> String {
         switch plan.lowercased() {
         case "personal_plus":
@@ -2222,24 +2465,68 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
     }
 }
 
-private enum SettingsSection: String, CaseIterable, Identifiable {
-    case organization
-    case users
-    case courts
-    case gameSettings
+private enum SettingsGroup: String, CaseIterable, Identifiable {
+    case profile
+    case admin
+    case setup
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .organization:
-            return "Organisation"
-        case .users:
+        case .profile:
+            return "Profile"
+        case .admin:
+            return "Admin"
+        case .setup:
+            return "Setup"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .profile:
+            return "gearshape"
+        case .admin:
+            return "gearshape"
+        case .setup:
+            return "slider.horizontal.3"
+        }
+    }
+
+    var sections: [SettingsSection] {
+        switch self {
+        case .profile:
+            return [.profileOrganization, .profileLocation]
+        case .admin:
+            return [.adminUsers, .adminCourts]
+        case .setup:
+            return [.setupSports]
+        }
+    }
+}
+
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case profileOrganization
+    case profileLocation
+    case adminUsers
+    case adminCourts
+    case setupSports
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .profileOrganization:
+            return "Org"
+        case .profileLocation:
+            return "Location"
+        case .adminUsers:
             return "Users"
-        case .courts:
+        case .adminCourts:
             return "Courts"
-        case .gameSettings:
-            return "Game Setup"
+        case .setupSports:
+            return "Sports"
         }
     }
 }
