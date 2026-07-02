@@ -345,13 +345,9 @@ struct MatchScoringView: View {
             }
 
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 10) {
-                    Text(match?.courtName ?? "Live Match")
-                        .font(.headline.weight(.bold))
-                        .lineLimit(1)
-
-                    statusPill(match?.status ?? "Active", compact: true)
-                }
+                Text(match?.courtName ?? "Live Match")
+                    .font(.headline.weight(.bold))
+                    .lineLimit(1)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -413,15 +409,21 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func scoreboardCard(_ match: MatchDetail, compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 14) {
-            Text("Score to \(match.scoreType) • Game \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)")
-                .font(compact ? .footnote.weight(.semibold) : .caption.weight(.semibold))
-                .foregroundStyle(Color.rcktBlue)
-                .padding(.horizontal, compact ? 12 : 14)
-                .padding(.vertical, compact ? 7 : 8)
-                .background(Color.rcktBlue.opacity(0.12))
-                .clipShape(Capsule())
-                .frame(maxWidth: .infinity, alignment: .center)
-                .lineLimit(1)
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.rcktActive)
+                    .frame(width: compact ? 8 : 10, height: compact ? 8 : 10)
+
+                Text("Score to \(match.scoreType) • Game \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)")
+                    .font(compact ? .footnote.weight(.semibold) : .caption.weight(.semibold))
+                    .foregroundStyle(Color.rcktBlue)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, compact ? 12 : 14)
+            .padding(.vertical, compact ? 7 : 8)
+            .background(Color.rcktBlue.opacity(0.12))
+            .clipShape(Capsule())
+            .frame(maxWidth: .infinity, alignment: .center)
 
             if match.status.lowercased() == "scheduled" {
                 HStack {
@@ -508,20 +510,8 @@ struct MatchScoringView: View {
 
     private func timerCard(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 14) {
-            HStack {
-                Text("Match Timer")
-                    .font(.headline)
-                Spacer()
-                if timerPhase == .matchLive && !isMatchComplete {
-                    Text(timerRunning ? "Running" : "Paused")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(timerRunning ? Color.rcktActive : .secondary)
-                }
-            }
-
-            Text(timerLabel)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+            Text("Match Timer")
+                .font(.headline)
 
             Button {
                 handleToggleTimer()
@@ -537,12 +527,6 @@ struct MatchScoringView: View {
             .buttonStyle(.plain)
             .disabled(isMatchComplete || timerPhase == .firstServer)
             .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
-
-            Text(timerHelperText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(compact ? 2 : 3)
-
             if let timerSkipLabel {
                 Button(timerSkipLabel) {
                     handleSkipTimedPhase()
