@@ -27,6 +27,7 @@ struct DashboardView: View {
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
     @State private var newCourtDraft = CourtDraft()
     @State private var courtDrafts: [Int: CourtDraft] = [:]
+    @State private var personalProfileDraft = PersonalProfileDraft()
     @State private var enabledSportsDraft: [String] = []
     @State private var savingSettingsKey: String?
     @State private var historySearch = ""
@@ -137,6 +138,15 @@ struct DashboardView: View {
     private var organizationSettingsCourts: [CourtSummary] {
         organizationSettings?.courts ?? []
     }
+    private var currentSettingsUser: OrganizationUser? {
+        let currentUsername = session?.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        return organizationSettingsUsers.first { user in
+            user.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == currentUsername
+        }
+    }
+    private var availableMemberships: [UserMembership] {
+        session?.availableMemberships ?? []
+    }
     private var availableSportOptions: [MatchSport] {
         MatchSport.allCases
     }
@@ -181,7 +191,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 22) {
+                VStack(spacing: selectedTab == .settings ? 12 : 22) {
                     headerSection
 
                     if selectedTab == .home {
@@ -466,7 +476,7 @@ struct DashboardView: View {
     }
 
     private var settingsContent: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             if isLoadingSettings && organizationSettings == nil {
                 HStack {
                     ProgressView()
@@ -501,14 +511,14 @@ struct DashboardView: View {
     }
 
     private var personalSettingsContent: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             personalSettingsHeader
             settingsMenuSectionsList
         }
     }
 
     private var clubSettingsContent: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             settingsSummaryCard
 
             if !isAdmin {
@@ -523,7 +533,7 @@ struct DashboardView: View {
     }
 
     private var personalSettingsHeader: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
                 ZStack(alignment: .bottomTrailing) {
                     profileAvatarView(size: 92)
@@ -557,7 +567,7 @@ struct DashboardView: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 16)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
         .background(
             colorScheme == .dark
@@ -572,6 +582,8 @@ struct DashboardView: View {
             ForEach(settingsMenuSections) { section in
                 settingsMenuSection(section)
             }
+
+            signOutMenuSection
         }
     }
 
@@ -604,10 +616,7 @@ struct DashboardView: View {
             settingsNavigationItem = item
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: item.icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.secondary)
-                    .frame(width: 24)
+                settingsMenuIconView(for: item)
 
                 Text(item.title)
                     .font(.subheadline.weight(.medium))
@@ -631,6 +640,36 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private var signOutMenuSection: some View {
+        VStack(spacing: 0) {
+            Button {
+                Task { await container.logout() }
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Color.dashboardCompletedStatus)
+                        .frame(width: 24)
+
+                    Text("Sign Out")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.dashboardCompletedStatus)
+
+                    Spacer(minLength: 12)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+        }
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -703,6 +742,26 @@ struct DashboardView: View {
         )
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    settingsNavigationItem = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.rcktBlue.opacity(0.12))
+                    .foregroundStyle(Color.rcktBlue)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var subscriptionSettingsCard: some View {
@@ -741,13 +800,18 @@ struct DashboardView: View {
             Text("Profile")
                 .font(.headline.weight(.semibold))
 
-            settingsValueRow(title: "First Name", value: currentUserFirstName)
-            settingsValueRow(title: "Surname", value: currentUserSurname)
-            settingsValueRow(title: "Email", value: session?.email ?? "Not available")
+            Text("Update the account details used for sign-in and player identity. Changing the email address updates your username and signs you back out so you can validate the new login.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
-            Button(isRequestingPasswordReset ? "Sending Reset Link..." : "Send Password Reset Link") {
-                resetEmail = session?.email ?? resetEmail
-                requestPasswordReset()
+            dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName)
+            dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname)
+            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress)
+            dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad)
+            dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country)
+
+            Button(currentSettingsButtonTitle(for: "profile-save", defaultTitle: "Save Profile")) {
+                savePersonalProfile()
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 18)
@@ -756,8 +820,26 @@ struct DashboardView: View {
             .foregroundStyle(.white)
             .clipShape(Capsule())
             .buttonStyle(.plain)
-            .disabled(isRequestingPasswordReset || (session?.email ?? "").isEmpty)
-            .opacity((isRequestingPasswordReset || (session?.email ?? "").isEmpty) ? 0.7 : 1)
+            .disabled(savingSettingsKey != nil)
+            .opacity(savingSettingsKey != nil ? 0.7 : 1)
+
+            VStack(spacing: 10) {
+                Button(isRequestingPasswordReset ? "Sending..." : "Password Reset") {
+                    resetEmail = personalProfileDraft.email.isEmpty ? (session?.email ?? resetEmail) : personalProfileDraft.email
+                    requestPasswordReset()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand.opacity(0.9))
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity((isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.7 : 1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 14)
 
             if let resetErrorMessage {
                 dashboardInlineError(resetErrorMessage)
@@ -778,16 +860,23 @@ struct DashboardView: View {
             Text("Association")
                 .font(.headline.weight(.semibold))
 
-            settingsValueRow(title: "Account Type", value: isPersonalAccount ? "Personal" : "Club")
-            settingsValueRow(title: "Organisation", value: settingsOrganizationName)
-            settingsValueRow(title: "Tier", value: settingsPlanLine)
+            if availableMemberships.count > 1 {
+                Text("Choose which club or account you want to work in for this session.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
 
-            Text(isPersonalAccount
-                ? "Association and competition links can be added here when federation account support is connected."
-                : "Club association and league links can be surfaced here as that integration layer is added."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+                ForEach(availableMemberships) { membership in
+                    associationMembershipRow(membership)
+                }
+            } else {
+                settingsValueRow(title: "Account Type", value: isPersonalAccount ? "Personal" : "Club")
+                settingsValueRow(title: "Organisation", value: settingsOrganizationName)
+                settingsValueRow(title: "Tier", value: settingsPlanLine)
+
+                Text("This login currently has access to a single account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -796,10 +885,6 @@ struct DashboardView: View {
     }
 
     private var readOnlySportAccessCard: some View {
-        let sportColumns = [
-            GridItem(.adaptive(minimum: 120), spacing: 10)
-        ]
-
         return VStack(alignment: .leading, spacing: 12) {
             Text("Racket Sports")
                 .font(.headline.weight(.semibold))
@@ -808,10 +893,9 @@ struct DashboardView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: sportColumns, alignment: .leading, spacing: 10) {
+            VStack(spacing: 10) {
                 ForEach(availableSportOptions.filter { enabledSportIDs.contains($0.rawValue) }) { sport in
-                    settingsBadge(title: sport.displayName)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    settingsSportBadgeRow(for: sport)
                 }
             }
 
@@ -1156,6 +1240,14 @@ struct DashboardView: View {
     private func sportAccessRow(for sport: MatchSport) -> some View {
         Toggle(isOn: sportEnabledBinding(for: sport)) {
             HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.dashboardBrand.opacity(0.12))
+                        .frame(width: 40, height: 40)
+
+                    racketSportGlyph(for: sport, isAvailable: sport.isImplementedToday)
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(sport.displayName)
                         .font(.subheadline.weight(.semibold))
@@ -2074,7 +2166,183 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
+    private func settingsMenuIconView(for item: SettingsMenuItem) -> some View {
+        if item == .racketSports {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.dashboardBrand.opacity(0.12))
+                    .frame(width: 24, height: 24)
+
+                racketSportGlyph(for: .tennis, isAvailable: true)
+                    .scaleEffect(0.55)
+            }
+            .frame(width: 24, height: 24)
+        } else {
+            Image(systemName: item.icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Color.secondary)
+                .frame(width: 24)
+        }
+    }
+
+    private func settingsSportBadgeRow(for sport: MatchSport) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.dashboardBrand.opacity(0.12))
+                    .frame(width: 42, height: 42)
+
+                racketSportGlyph(for: sport, isAvailable: true)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(sport.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(sport.isImplementedToday ? "Ready in the current app" : "Prepared for future release")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func associationMembershipRow(_ membership: UserMembership) -> some View {
+        let isCurrent = membership.organizationID == session?.organizationID
+
+        return Button {
+            switchAssociation(to: membership)
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(membership.organizationName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(planDisplayName(for: membership.plan ?? (membership.organizationType == "personal" ? "personal_free" : "club_essentials")))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(isCurrent ? "Current" : "Switch")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(isCurrent ? Color.dashboardBrand : Color.dashboardAccentPink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background((isCurrent ? Color.dashboardBrand : Color.dashboardAccentPink).opacity(0.12))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.dashboardInputBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isCurrent)
+        .opacity(isCurrent ? 0.92 : 1)
+    }
+
+    @ViewBuilder
+    private func racketSportGlyph(for sport: MatchSport, isAvailable: Bool) -> some View {
+        let foreground = isAvailable ? Color.dashboardBrand : Color.secondary.opacity(0.72)
+
+        switch sport {
+        case .squash:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.2)
+                    .frame(width: 16, height: 16)
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 4, height: 4)
+                    .offset(x: 3, y: -3)
+            }
+        case .racketball:
+            ZStack {
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 16, height: 16)
+                Circle()
+                    .fill(Color.dashboardAccentPink)
+                    .frame(width: 3.5, height: 3.5)
+                    .offset(x: -3, y: -3)
+                Circle()
+                    .fill(Color.dashboardAccentPink)
+                    .frame(width: 3.5, height: 3.5)
+                    .offset(x: 3, y: 3)
+            }
+        case .tennis, .padel:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.1)
+                    .frame(width: 18, height: 18)
+                Path { path in
+                    path.move(to: CGPoint(x: 14, y: 8))
+                    path.addQuadCurve(to: CGPoint(x: 14, y: 24), control: CGPoint(x: 8, y: 16))
+                    path.move(to: CGPoint(x: 26, y: 8))
+                    path.addQuadCurve(to: CGPoint(x: 26, y: 24), control: CGPoint(x: 20, y: 16))
+                }
+                .stroke(foreground, lineWidth: 1.8)
+                .frame(width: 34, height: 34)
+            }
+        case .tableTennis:
+            ZStack {
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 12, height: 12)
+                    .offset(x: -2, y: -5)
+                Capsule()
+                    .fill(foreground)
+                    .frame(width: 7, height: 16)
+                    .offset(x: 5, y: 6)
+            }
+        case .pickleball:
+            ZStack {
+                Circle()
+                    .stroke(foreground, lineWidth: 2.0)
+                    .frame(width: 16, height: 16)
+                ForEach([(-3.0), 0.0, 3.0], id: \.self) { y in
+                    Circle().fill(foreground).frame(width: 3, height: 3).offset(x: -3, y: y)
+                    Circle().fill(foreground).frame(width: 3, height: 3).offset(x: 3, y: y)
+                }
+            }
+        case .badminton:
+            VStack(spacing: 2) {
+                HStack(spacing: 2) {
+                    Capsule().fill(foreground).frame(width: 4, height: 10).rotationEffect(.degrees(-20))
+                    Capsule().fill(foreground).frame(width: 4, height: 10)
+                    Capsule().fill(foreground).frame(width: 4, height: 10).rotationEffect(.degrees(20))
+                }
+                Circle()
+                    .fill(foreground)
+                    .frame(width: 7, height: 7)
+            }
+        }
+    }
+
     private func syncSettingsDrafts(from settings: OrganizationSettings) {
+        let lookupEmails = Set(
+            [
+                session?.username,
+                session?.email,
+                personalProfileDraft.email
+            ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+        )
+        let profileUser = settings.users.first { user in
+            lookupEmails.contains(user.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        }
+
         organizationDetailsDraft = OrganizationDetailsDraft(profile: settings.organization)
         organizationUserDrafts = Dictionary(
             uniqueKeysWithValues: settings.users.map { ($0.id, OrganizationUserDraft(user: $0)) }
@@ -2083,6 +2351,7 @@ struct DashboardView: View {
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
         enabledSportsDraft = settings.organization.enabledSports
+        personalProfileDraft = PersonalProfileDraft(user: profileUser, fallbackSession: session)
         normalizeSelectedSettingsMenuItem()
     }
 
@@ -2158,6 +2427,66 @@ struct DashboardView: View {
             await MainActor.run {
                 settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load organisation settings."
                 isLoadingSettings = false
+            }
+        }
+    }
+
+    private func savePersonalProfile() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        let trimmedEmail = personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard isValidEmail(trimmedEmail) else {
+            settingsErrorMessage = "Enter a valid email address."
+            settingsSuccessMessage = nil
+            return
+        }
+
+        savingSettingsKey = "profile-save"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        let emailChanged = trimmedEmail != (session?.email ?? session?.username ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        Task {
+            do {
+                let settings = try await container.apiClient.updatePersonalProfile(
+                    organizationID: organizationID,
+                    firstName: personalProfileDraft.firstName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    surname: personalProfileDraft.surname.trimmingCharacters(in: .whitespacesAndNewlines),
+                    email: trimmedEmail,
+                    country: personalProfileDraft.country.trimmingCharacters(in: .whitespacesAndNewlines),
+                    telephone: personalProfileDraft.telephone.trimmingCharacters(in: .whitespacesAndNewlines),
+                    cityLocation: ""
+                )
+                await MainActor.run {
+                    organizationSettings = settings
+                    syncSettingsDrafts(from: settings)
+                    persistSessionProfile(
+                        firstName: personalProfileDraft.firstName.trimmingCharacters(in: .whitespacesAndNewlines),
+                        surname: personalProfileDraft.surname.trimmingCharacters(in: .whitespacesAndNewlines),
+                        email: trimmedEmail,
+                        country: personalProfileDraft.country.trimmingCharacters(in: .whitespacesAndNewlines),
+                        telephone: personalProfileDraft.telephone.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                    settingsSuccessMessage = emailChanged
+                        ? "Profile updated. Please sign in again with your new email."
+                        : "Profile updated."
+                    savingSettingsKey = nil
+                }
+
+                if emailChanged {
+                    try? await Task.sleep(nanoseconds: 900_000_000)
+                    await MainActor.run {
+                        container.sessionStore.clear()
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to save your profile."
+                    savingSettingsKey = nil
+                }
             }
         }
     }
@@ -2578,6 +2907,28 @@ struct DashboardView: View {
         }
     }
 
+    private func switchAssociation(to membership: UserMembership) {
+        guard membership.organizationID != session?.organizationID else {
+            return
+        }
+
+        container.sessionStore.switchMembership(to: membership)
+        organizationSummary = nil
+        organizationSettings = nil
+        activeMatches = []
+        scheduledMatches = []
+        recentMatches = []
+        settingsErrorMessage = nil
+        settingsSuccessMessage = "Switched to \(membership.organizationName)."
+        settingsNavigationItem = nil
+        dashboardNotice = nil
+
+        Task {
+            await loadDashboard()
+            await loadOrganizationSettingsIfNeeded(force: true)
+        }
+    }
+
     private func seedHelpDefaults() {
         if feedbackName.isEmpty {
             feedbackName = session?.fullName ?? session?.username ?? ""
@@ -2850,7 +3201,62 @@ struct DashboardView: View {
             firstName: currentSession.firstName,
             surname: currentSession.surname,
             fullName: currentSession.fullName,
-            email: currentSession.email
+            email: currentSession.email,
+            country: currentSession.country,
+            telephone: currentSession.telephone,
+            availableMemberships: currentSession.availableMemberships
+        )
+        container.sessionStore.save(updatedSession)
+    }
+
+    private func persistSessionProfile(
+        firstName: String,
+        surname: String,
+        email: String,
+        country: String,
+        telephone: String
+    ) {
+        guard let currentSession = session else {
+            return
+        }
+
+        let fullName = [firstName, surname].filter { !$0.isEmpty }.joined(separator: " ")
+        let updatedMemberships = currentSession.availableMemberships?.map { membership in
+            UserMembership(
+                id: membership.id,
+                username: email,
+                role: membership.role,
+                organizationID: membership.organizationID,
+                organizationName: membership.organizationName,
+                organizationType: membership.organizationType,
+                plan: membership.plan,
+                enabledSports: membership.enabledSports,
+                firstName: firstName,
+                surname: surname,
+                fullName: fullName,
+                email: email,
+                country: country,
+                telephone: telephone
+            )
+        }
+
+        let updatedSession = UserSession(
+            id: currentSession.id,
+            username: email,
+            role: currentSession.role,
+            sessionToken: currentSession.sessionToken,
+            organizationID: currentSession.organizationID,
+            organizationName: currentSession.organizationName,
+            organizationType: currentSession.organizationType,
+            plan: currentSession.plan,
+            enabledSports: currentSession.enabledSports,
+            firstName: firstName,
+            surname: surname,
+            fullName: fullName,
+            email: email,
+            country: country,
+            telephone: telephone,
+            availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)
     }

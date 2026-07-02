@@ -33,21 +33,24 @@ What the current app does:
   settings, tennis scoring presentation, and court display-code visibility
 - native historic-match view with grouped point timeline and match/game timing
 - native settings with plan-aware account menus, local profile photo picking,
-  subscription/profile/association pages, password-reset access, and club-admin
+  subscription/profile/association pages, self-profile editing, password-reset
+  access, association switching, sign-out access, and club-admin
   organisation/user/court/racket-sport controls
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
 - dashboard offline handling now suppresses the old persistent fetch-error
   banner when the device is offline
+- native login now presents an organisation chooser when the same email belongs
+  to multiple approved clubs/accounts
+- start-new-match now respects dark mode styling and allows personal-tier
+  squash/racketball handicap setup
 
 What it does not yet match perfectly:
 
-- multi-organisation membership selection when `/login` returns
-  `organizationSelection`
 - final iPhone-first polish of the scoring screen and secondary controls
 - native notification-center flows behind the dashboard bell
-- full implementation behind the native settings `Association`, `Game Settings`,
-  `Reporting`, and `Stats` placeholder pages
+- full implementation behind the native settings `Game Settings`, `Reporting`,
+  `Stats`, and deeper federation-style association pages
 - central/shared profile-photo storage across devices and users
 - offline history and offline scoring sync
 - documented CI/archive/release pipeline

@@ -19,14 +19,16 @@ def lambda_handler(event, context):
         return error_response(400, "VALIDATION_ERROR", "organization_id path parameter is required")
 
     payload = parse_body(event)
-    missing_fields = require_fields(payload, ["username"])
-    if missing_fields:
-        return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
 
     try:
         with get_db_connection() as connection:
-            authorize_personal_profile_session(connection, event, organization_id, payload["username"])
-            settings = update_personal_profile(connection, organization_id, payload["username"], payload)
+            auth_context = authorize_personal_profile_session(connection, event, organization_id)
+            settings = update_personal_profile(
+                connection,
+                organization_id,
+                auth_context["session"]["username"],
+                payload,
+            )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
     except ValueError as request_error:

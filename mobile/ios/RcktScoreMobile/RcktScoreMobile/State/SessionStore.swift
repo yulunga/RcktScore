@@ -26,6 +26,14 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func switchMembership(to membership: UserMembership) {
+        guard let currentSession else {
+            return
+        }
+
+        save(currentSession.switchingMembership(to: membership))
+    }
+
     func clear() {
         session = nil
         UserDefaults.standard.removeObject(forKey: key)

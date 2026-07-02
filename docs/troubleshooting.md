@@ -299,17 +299,16 @@ What to check:
 - whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
-- whether the installed build includes the `StartNewMatchFlowView` and `StartNewMatchView` `.preferredColorScheme(.light)` fix
+- whether the installed build includes the adaptive dark-mode styling now used by `StartNewMatchFlowView` and `StartNewMatchView`
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
 
 Important current truths:
 
-- the iOS app currently expects `data.session` on login and does not yet present
-  native organisation-selection UI
+- the iOS app now presents a native organisation-selection chooser when `/login` returns `data.organizationSelection`
 - historic matches are online-only in the native app
 - the dashboard now stays quiet when the device is offline instead of showing a persistent fetch-failure banner
 - the dashboard bell no longer shows a placeholder message, but there is still no real notification-center implementation behind it
-- native settings now push each section onto its own page, but profile-photo selection is still device-local only
+- native settings now push each section onto its own page, allow self-profile edits and association switching, but profile-photo selection is still device-local only
 - the current scorer is functionally ahead of the docs that used to describe it,
   but its iPhone layout still needs redesign
 
@@ -319,9 +318,8 @@ These are current product limitations, not accidental breakage:
 
 - root-admin backend auth is incomplete
 - organisation handicap toggle in settings is scaffold-only
-- association, reporting, stats, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
+- reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
-- there is no native iOS organisation-selection UI for multi-membership login yet
 - there is no native notification-center flow behind the dashboard bell yet
 - there is no automated test suite in the repo yet
 

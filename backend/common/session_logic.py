@@ -312,14 +312,8 @@ def authorize_organization_session(connection, event, organization_id, require_a
     }
 
 
-def authorize_personal_profile_session(connection, event, organization_id, username):
+def authorize_personal_profile_session(connection, event, organization_id):
     auth_context = authorize_organization_session(connection, event, organization_id, require_admin=False)
-    session_username = normalize_email_address(auth_context["session"]["username"])
-    requested_username = normalize_email_address(username)
-
-    if session_username != requested_username:
-        raise SessionAuthError(403, "SESSION_FORBIDDEN", "You can only update your own personal profile.")
-
     return auth_context
 
 

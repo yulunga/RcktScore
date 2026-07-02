@@ -73,6 +73,7 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
     let firstName: String
     let surname: String
     let country: String
+    let telephone: String
     let cityLocation: String
     let createdAt: String?
     let approvedAt: String?
@@ -87,6 +88,7 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         case firstName = "first_name"
         case surname
         case country
+        case telephone
         case cityLocation = "city_location"
         case createdAt = "created_at"
         case approvedAt = "approved_at"
@@ -103,6 +105,7 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         firstName = try container.decodeIfPresent(String.self, forKey: .firstName) ?? ""
         surname = try container.decodeIfPresent(String.self, forKey: .surname) ?? ""
         country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
+        telephone = try container.decodeIfPresent(String.self, forKey: .telephone) ?? ""
         cityLocation = try container.decodeIfPresent(String.self, forKey: .cityLocation) ?? ""
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         approvedAt = try container.decodeIfPresent(String.self, forKey: .approvedAt)
@@ -241,17 +244,19 @@ struct UpdateOrganizationDetailsRequest: Encodable {
 }
 
 struct UpdatePersonalProfileRequest: Encodable {
-    let username: String
     let firstName: String
     let surname: String
+    let email: String
     let country: String
+    let telephone: String
     let cityLocation: String
 
     enum CodingKeys: String, CodingKey {
-        case username
         case firstName = "first_name"
         case surname
+        case email
         case country
+        case telephone
         case cityLocation = "city_location"
     }
 }
@@ -348,6 +353,24 @@ struct OrganizationUserDraft {
         surname = user.surname
         username = user.username
         role = user.role
+    }
+}
+
+struct PersonalProfileDraft {
+    var firstName: String = ""
+    var surname: String = ""
+    var email: String = ""
+    var telephone: String = ""
+    var country: String = ""
+
+    init() {}
+
+    init(user: OrganizationUser?, fallbackSession: UserSession?) {
+        firstName = user?.firstName ?? fallbackSession?.firstName ?? ""
+        surname = user?.surname ?? fallbackSession?.surname ?? ""
+        email = user?.username ?? fallbackSession?.email ?? fallbackSession?.username ?? ""
+        telephone = user?.telephone ?? fallbackSession?.telephone ?? ""
+        country = user?.country ?? fallbackSession?.country ?? ""
     }
 }
 

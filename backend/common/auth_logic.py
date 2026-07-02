@@ -28,6 +28,8 @@ def _serialize_org_user(user_row):
         or ""
     )
     full_name = " ".join(part for part in [first_name, surname] if part).strip()
+    country = user_json.get("country") or ""
+    telephone = user_json.get("telephone") or ""
 
     return {
         "id": user_row["id"],
@@ -43,6 +45,8 @@ def _serialize_org_user(user_row):
         "surname": surname,
         "full_name": full_name,
         "email": email,
+        "country": country,
+        "telephone": telephone,
     }
 
 

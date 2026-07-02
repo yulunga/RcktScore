@@ -211,9 +211,9 @@ The organisation-level handicap setting and social-profile fields are still UI s
 ### Current path
 
 1. The signed-in personal user submits their profile form.
-2. The frontend calls `PUT /personal_profile/{organization_id}` with `username`.
-3. [backend/functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py) authorizes that the signed-in user matches the payload username.
-4. Shared logic updates the corresponding `SkwshOrgUsers` row.
+2. The frontend or iOS app calls `PUT /personal_profile/{organization_id}` with first name, surname, email, telephone, country, and optional city fields.
+3. [backend/functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py) authorizes the presented org-user session for that organisation and uses the session username as the source of truth.
+4. Shared logic updates the linked `SkwshOrgUsers` rows for that account. If the email changes, it also updates the login username and revokes active sessions so the user must sign in again.
 5. The API returns updated `organizationSettings`.
 
 ## 8. Organisation User Invite / Approval Flow
@@ -395,22 +395,21 @@ The root-admin frontend experience exists, but the backend trust model is not ye
 ### Current path
 
 1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`.
-2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, and persists `data.session` in `UserDefaults`.
+2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, and now branches between `data.session` and `data.organizationSelection`. For multi-membership users it presents a native account picker and persists the selected membership plus the available membership list in `UserDefaults`.
 3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`.
-4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. Personal accounts see subscription, profile, association, racket-sport, game-settings, and help sections with a device-local profile photo picker. Personal+ additionally exposes reporting and stats menu entries, but those are still placeholder views today. Each native settings row now pushes to its own detail page rather than expanding inline on the main settings screen. Club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
-5. The native profile page currently shows first name, surname, and email, uses the shared password-reset request route rather than a dedicated in-app password change endpoint, and still stores profile photos locally on device rather than in a central shared profile service.
-6. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. The picker only shows sports that are both enabled for the tenant and implemented in the iOS client today, and the flow now forces a light appearance so device dark mode does not make the setup form unreadable.
-7. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end. The current native scorer supports squash/racketball plus first-pass tennis presentation and scoring behavior.
-8. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
-9. The dashboard now suppresses the old persistent offline fetch-error banner when the device is offline, but the native app is still not a full offline-first client.
+4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. Personal accounts see subscription, profile, association, racket-sport, game-settings, and help sections with a device-local profile photo picker and a bottom sign-out row. Personal+ additionally exposes reporting and stats menu entries, but those are still placeholder views today. Each native settings row now pushes to its own detail page rather than expanding inline on the main settings screen. Club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
+5. The native profile page now edits first name, surname, email/username, telephone, and country through `PUT /personal_profile/{organization_id}`, and still uses the shared password-reset request route rather than a dedicated in-app password change endpoint. Profile photos remain local to the device and are not stored in a central shared profile service yet.
+6. The native association page now uses the locally persisted membership list from login to let multi-club users switch the active organisation without signing out. That switch refreshes dashboard and settings data against the selected membership.
+7. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. The picker only shows sports that are both enabled for the tenant and implemented in the iOS client today. The flow now uses the same dark/light adaptive palette as the dashboard, and personal-tier squash/racketball users can enable handicap setup there as well.
+8. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end. The current native scorer supports squash/racketball plus first-pass tennis presentation and scoring behavior.
+9. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
+10. The dashboard now suppresses the old persistent offline fetch-error banner when the device is offline, but the native app is still not a full offline-first client.
 
 ### Current native gap
 
-- the iOS login flow does not yet handle `data.organizationSelection` for
-  multi-membership users
 - the current iPhone scoring layout is much improved but still needs final polish
 - the native notification bell does not have a live notification center behind it yet
-- reporting, stats, game-settings presets, and association/federation integrations in native settings are not fully implemented
+- reporting, stats, game-settings presets, and deeper federation-style association integrations in native settings are not fully implemented
 - offline history and offline scoring sync are still incomplete
 - release pipeline, realtime sync, and final signoff coverage are still partial
 

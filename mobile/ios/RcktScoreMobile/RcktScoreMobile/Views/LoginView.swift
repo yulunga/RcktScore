@@ -1,12 +1,13 @@
 import SwiftUI
 import Combine
 
-private enum LoginOverlayMode {
+private enum LoginOverlayMode: Equatable {
     case registerInterest
     case helpOptions
     case pingUs
     case passwordReset
     case sessionConflict
+    case organizationSelection
 }
 
 private let feedbackCategories = [
@@ -30,6 +31,7 @@ struct LoginView: View {
     @State private var errorMessage: String?
     @State private var overlayMode: LoginOverlayMode?
     @State private var sessionConflictMessage = ""
+    @State private var pendingOrganizationSelection: OrganizationSelectionPayload?
 
     @State private var interestFirstName = ""
     @State private var interestSurname = ""
@@ -249,7 +251,7 @@ struct LoginView: View {
             Color.black.opacity(0.34)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    if !isOverlayBusy {
+                    if !isOverlayBusy && mode != .organizationSelection {
                         overlayMode = nil
                     }
                 }
@@ -267,6 +269,8 @@ struct LoginView: View {
                         passwordResetCard
                     case .sessionConflict:
                         sessionConflictCard
+                    case .organizationSelection:
+                        organizationSelectionCard
                     }
                 }
                 .padding(.horizontal, 24)
@@ -585,6 +589,59 @@ struct LoginView: View {
         )
     }
 
+    private var organizationSelectionCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overlayHeader("Choose Account")
+
+            Text("This email is linked to more than one club or account. Choose where you want to sign in.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 10) {
+                ForEach(pendingOrganizationSelection?.memberships ?? []) { membership in
+                    Button {
+                        completeOrganizationSelection(membership)
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(membership.organizationName)
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+
+                                Text(membership.plan.map { displayPlanName($0) } ?? displayPlanName(membership.organizationType == "personal" ? "personal_free" : "club_essentials"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 12)
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Color.loginAction)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
+                        .background(Color(.tertiarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.loginBorder, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: 420)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+    }
+
     private func overlayHeader(_ title: String) -> some View {
         HStack {
             Text(title)
@@ -651,14 +708,20 @@ struct LoginView: View {
 
         Task {
             do {
-                let session = try await container.apiClient.login(
+                let result = try await container.apiClient.login(
                     username: username,
                     password: password,
                     forceLogoutOther: forceLogoutOther
                 )
                 await MainActor.run {
-                    container.sessionStore.save(session)
-                    overlayMode = nil
+                    switch result {
+                    case .session(let session):
+                        container.sessionStore.save(session)
+                        overlayMode = nil
+                    case .organizationSelection(let selection):
+                        pendingOrganizationSelection = selection
+                        overlayMode = .organizationSelection
+                    }
                     isLoading = false
                 }
             } catch {
@@ -673,6 +736,50 @@ struct LoginView: View {
                     isLoading = false
                 }
             }
+        }
+    }
+
+    private func completeOrganizationSelection(_ membership: UserMembership) {
+        guard let selection = pendingOrganizationSelection else {
+            return
+        }
+
+        let chosenSession = UserSession(
+            id: membership.id,
+            username: membership.username,
+            role: membership.role,
+            sessionToken: selection.sessionToken,
+            organizationID: membership.organizationID,
+            organizationName: membership.organizationName,
+            organizationType: membership.organizationType,
+            plan: membership.plan,
+            enabledSports: membership.enabledSports,
+            firstName: membership.firstName,
+            surname: membership.surname,
+            fullName: membership.fullName,
+            email: membership.email,
+            country: membership.country,
+            telephone: membership.telephone,
+            availableMemberships: selection.memberships
+        )
+
+        container.sessionStore.save(chosenSession)
+        pendingOrganizationSelection = nil
+        overlayMode = nil
+    }
+
+    private func displayPlanName(_ plan: String) -> String {
+        switch plan.lowercased() {
+        case "personal_plus":
+            return "Personal+"
+        case "personal_free":
+            return "Personal"
+        case "club_pro":
+            return "Club Pro"
+        case "club_essentials":
+            return "Club Essentials"
+        default:
+            return plan.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 

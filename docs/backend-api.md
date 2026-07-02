@@ -193,7 +193,7 @@ Current organisation-settings behavior:
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
-- the native iOS settings profile page currently uses `POST /password_reset/request` for password changes; there is no separate in-app password-update endpoint
+- the native iOS settings profile page uses `PUT /personal_profile/{organization_id}` for first name, surname, email/username, telephone, and country updates, and still uses `POST /password_reset/request` for password-reset emails
 
 ### Match and scoring routes
 
@@ -224,6 +224,7 @@ Current organisation-settings behavior:
 - returns `data.organizationSelection` when the same email belongs to multiple approved organisations
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
 - successful session payloads include `enabled_sports`
+- session and membership payloads now also include `country` and `telephone` when those profile fields are populated
 
 ### Logout
 
@@ -282,6 +283,13 @@ Current behavior:
 ### Personal profile
 
 [functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py)
+
+Current personal-profile behavior:
+
+- authorizes the presented org-user session against the requested organisation
+- updates the signed-in user rather than trusting a username supplied by the client
+- accepts `first_name`, `surname`, `email`, `telephone`, `country`, and `city_location`
+- changing `email` updates the login username across all memberships linked to that account and revokes existing sessions so the user must sign in again
 
 - only the signed-in user can update their own personal profile
 - requires `username` in the payload

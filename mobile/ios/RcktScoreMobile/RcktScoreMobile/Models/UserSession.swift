@@ -1,5 +1,39 @@
 import Foundation
 
+struct UserMembership: Codable, Identifiable, Hashable {
+    let id: Int
+    let username: String
+    let role: String
+    let organizationID: Int
+    let organizationName: String
+    let organizationType: String?
+    let plan: String?
+    let enabledSports: [String]?
+    let firstName: String?
+    let surname: String?
+    let fullName: String?
+    let email: String?
+    let country: String?
+    let telephone: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case username
+        case role
+        case organizationID = "organization_id"
+        case organizationName = "organization_name"
+        case organizationType = "organization_type"
+        case plan
+        case enabledSports = "enabled_sports"
+        case firstName = "first_name"
+        case surname
+        case fullName = "full_name"
+        case email
+        case country
+        case telephone
+    }
+}
+
 struct UserSession: Codable {
     let id: Int
     let username: String
@@ -14,6 +48,9 @@ struct UserSession: Codable {
     let surname: String?
     let fullName: String?
     let email: String?
+    let country: String?
+    let telephone: String?
+    let availableMemberships: [UserMembership]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +66,9 @@ struct UserSession: Codable {
         case surname
         case fullName = "full_name"
         case email
+        case country
+        case telephone
+        case availableMemberships = "available_memberships"
     }
 }
 
@@ -68,5 +108,26 @@ extension UserSession {
 
     var canChooseShirtColors: Bool {
         !isPersonalAccount || (plan ?? "").lowercased() == "personal_plus"
+    }
+
+    func switchingMembership(to membership: UserMembership) -> UserSession {
+        UserSession(
+            id: membership.id,
+            username: membership.username,
+            role: membership.role,
+            sessionToken: sessionToken,
+            organizationID: membership.organizationID,
+            organizationName: membership.organizationName,
+            organizationType: membership.organizationType,
+            plan: membership.plan,
+            enabledSports: membership.enabledSports,
+            firstName: membership.firstName,
+            surname: membership.surname,
+            fullName: membership.fullName,
+            email: membership.email,
+            country: membership.country,
+            telephone: membership.telephone,
+            availableMemberships: availableMemberships
+        )
     }
 }

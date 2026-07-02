@@ -154,48 +154,56 @@ struct StartNewMatchFlowView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: sportGridColumns, spacing: 14) {
-                ForEach(availableSports) { sport in
-                    NavigationLink(value: sport) {
-                        VStack(spacing: 14) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .fill(Color.dashboardAccentPink.opacity(0.95))
-                                    .frame(width: 62, height: 62)
+            VStack {
+                LazyVGrid(columns: sportGridColumns, spacing: 14) {
+                    ForEach(availableSports) { sport in
+                        NavigationLink(value: sport) {
+                            VStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color.dashboardAccentPink.opacity(0.95))
+                                        .frame(width: 54, height: 54)
 
-                                sportGlyph(for: sport, isAvailable: true)
+                                    sportGlyph(for: sport, isAvailable: true)
+                                }
+
+                                Text(sport.displayName)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.85)
                             }
-
-                            Text(sport.displayName)
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.85)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 168)
-                        .padding(.horizontal, 14)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 148)
+                            .padding(.horizontal, 10)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.clear, lineWidth: 1))
-                        .shadow(
-                            color: Color.black.opacity(0.08),
-                            radius: 10,
-                            x: 0,
-                            y: 6
-                        )
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.dashboardBorder, lineWidth: 1)
+                            )
+                            .shadow(
+                                color: Color.black.opacity(0.08),
+                                radius: 10,
+                                x: 0,
+                                y: 6
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
+                .frame(maxWidth: 360)
             }
-            .padding()
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
@@ -211,7 +219,6 @@ struct StartNewMatchFlowView: View {
         )
         .navigationTitle("Choose Racket Sport")
         .navigationBarTitleDisplayMode(.inline)
-        .preferredColorScheme(.light)
         .navigationDestination(for: MatchSport.self) { sport in
             StartNewMatchView(
                 selectedSport: sport,
@@ -454,13 +461,16 @@ struct StartNewMatchView: View {
                     refereeCard
                 }
 
-                if !isPersonalAccount && formState.handicapEnabled {
+                if formState.handicapEnabled {
                     handicapCard
                 }
 
                 submitActions
             }
-            .padding()
+            .frame(maxWidth: 460)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
         }
         .background(
             LinearGradient(
@@ -475,7 +485,6 @@ struct StartNewMatchView: View {
         )
         .navigationTitle(selectedSport.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .preferredColorScheme(.light)
         .task { await loadSetup() }
         .onChange(of: formState.player1Name) { queueLookupIfNeeded() }
         .onChange(of: formState.player1Surname) { queueLookupIfNeeded() }
@@ -593,7 +602,7 @@ struct StartNewMatchView: View {
                     .opacity(formState.handicapEnabled ? 0.6 : 1)
                 }
 
-                if !isPersonalAccount && !isTennisMatch {
+                if !isTennisMatch {
                     Toggle(isOn: $formState.handicapEnabled) {
                         Text("Handicap Match")
                             .font(.subheadline.weight(.semibold))
@@ -611,11 +620,13 @@ struct StartNewMatchView: View {
                         refreshSetupNotice()
                     }
 
-                    Toggle(isOn: $formState.scheduleMatch) {
-                        Text("Schedule Match")
-                            .font(.subheadline.weight(.semibold))
+                    if !isPersonalAccount {
+                        Toggle(isOn: $formState.scheduleMatch) {
+                            Text("Schedule Match")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .tint(Color.dashboardBrand)
                     }
-                    .tint(Color.dashboardBrand)
                 } else if !isPersonalAccount {
                     Toggle(isOn: $formState.scheduleMatch) {
                         Text("Schedule Match")
@@ -1055,7 +1066,6 @@ struct StartNewMatchView: View {
             formState.courtName = personalCourt?.courtName ?? "Personal Match"
             formState.courtAlias = personalCourt?.courtAlias ?? "Personal Match"
             formState.refereeName = ""
-            formState.handicapEnabled = false
             formState.scheduleMatch = false
             return
         }
@@ -1230,11 +1240,11 @@ struct StartNewMatchView: View {
             refereeName: isPersonalAccount ? "" : formState.refereeName.trimmingCharacters(in: .whitespacesAndNewlines),
             scoreType: formState.scoreType,
             bestOf: formState.bestOf,
-            handicapEnabled: isPersonalAccount ? false : formState.handicapEnabled,
-            player1Band: isPersonalAccount ? "" : formState.player1Band,
-            player2Band: isPersonalAccount ? "" : formState.player2Band,
-            player1Offset: isPersonalAccount ? 0 : formState.player1Offset,
-            player2Offset: isPersonalAccount ? 0 : formState.player2Offset,
+            handicapEnabled: formState.handicapEnabled,
+            player1Band: formState.player1Band,
+            player2Band: formState.player2Band,
+            player1Offset: formState.player1Offset,
+            player2Offset: formState.player2Offset,
             sport: selectedSport.rawValue,
             status: shouldScheduleMatch ? "scheduled" : "active"
         )
@@ -1332,10 +1342,36 @@ private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
-    static let dashboardBackgroundStart = Color(red: 236 / 255, green: 245 / 255, blue: 255 / 255)
-    static let dashboardBackgroundEnd = Color(red: 248 / 255, green: 251 / 255, blue: 255 / 255)
-    static let dashboardCardBackground = Color.white.opacity(0.92)
-    static let dashboardHeroBackground = Color.white.opacity(0.96)
-    static let dashboardInnerCardBackground = Color(red: 243 / 255, green: 247 / 255, blue: 252 / 255)
-    static let dashboardBorder = Color(red: 212 / 255, green: 224 / 255, blue: 241 / 255)
+    static let dashboardBackgroundStart = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 14 / 255, green: 22 / 255, blue: 33 / 255, alpha: 1)
+                : UIColor(red: 233 / 255, green: 242 / 255, blue: 250 / 255, alpha: 1)
+        }
+    )
+    static let dashboardBackgroundEnd = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 9 / 255, green: 16 / 255, blue: 24 / 255, alpha: 1)
+                : UIColor(red: 245 / 255, green: 248 / 255, blue: 252 / 255, alpha: 1)
+        }
+    )
+    static let dashboardCardBackground = Color(UIColor.secondarySystemGroupedBackground)
+    static let dashboardHeroBackground = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 20 / 255, green: 31 / 255, blue: 45 / 255, alpha: 1)
+                : UIColor(red: 248 / 255, green: 251 / 255, blue: 255 / 255, alpha: 1)
+        }
+    )
+    static let dashboardInnerCardBackground = Color(UIColor.tertiarySystemGroupedBackground)
+    static let dashboardBorder = Color(
+        UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor.white.withAlphaComponent(0.08)
+            }
+
+            return UIColor(red: 217 / 255, green: 226 / 255, blue: 236 / 255, alpha: 1)
+        }
+    )
 }

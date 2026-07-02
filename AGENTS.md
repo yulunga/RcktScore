@@ -42,9 +42,11 @@ What is real and implemented:
 - sport-specific match engine dispatch with live squash/racketball and first-pass tennis scoring
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
+- native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout with dedicated per-section pages, personal-account profile/photo controls, password-reset access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions
 
@@ -53,9 +55,8 @@ What is still partial or risky:
 - root-admin backend authorization is not fully implemented
 - some root-admin organisation actions use `x-root-admin-request` header bypass logic
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
-- iOS login does not yet expose multi-organisation membership selection when the backend returns `organizationSelection`
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
-- some native settings sections are still UI scaffolds only, including account-level game-settings presets, association/federation profile links, and reporting/stats views
+- some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting/stats views
 - the native notification center behind the dashboard bell is not implemented yet
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable

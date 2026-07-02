@@ -67,6 +67,7 @@ def _serialize_user(row):
         "first_name": row.get("first_name") or "",
         "surname": row.get("surname") or "",
         "country": row.get("country") or "",
+        "telephone": row.get("telephone") or "",
         "city_location": row.get("city_location") or "",
         "created_at": created_at.isoformat() if created_at else None,
         "approved_at": approved_at.isoformat() if approved_at else None,
@@ -160,6 +161,7 @@ def _get_organization_user_row(connection, organization_id, user_id):
                 u.first_name,
                 u.surname,
                 u.country,
+                u.telephone,
                 u.city_location,
                 u.created_at,
                 u.invitation_sent_at,
@@ -304,6 +306,7 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 first_name,
                 surname,
                 country,
+                telephone,
                 city_location,
                 created_at,
                 invitation_sent_at,
@@ -381,15 +384,27 @@ def update_organization_details(connection, organization_id, payload):
 
 def update_personal_profile(connection, organization_id, username, payload):
     org_id = int(organization_id)
-    normalized_username = normalize_email_address(username)
-    if not normalized_username:
+    current_username = normalize_email_address(username)
+    if not current_username:
         raise ValueError("username is required")
 
-    updates = {
-        field: payload[field].strip() if isinstance(payload.get(field), str) else payload.get(field)
-        for field in ["first_name", "surname", "country", "city_location"]
-        if field in payload
-    }
+    target_username = normalize_email_address(payload.get("email") or current_username)
+    if not target_username:
+        raise ValueError("email is required")
+    if not is_valid_email_address(target_username):
+        raise ValueError("Email address must be valid")
+
+    updates = {}
+    for field in ["first_name", "surname", "country", "telephone", "city_location"]:
+        if field in payload:
+            value = payload.get(field)
+            updates[field] = value.strip() if isinstance(value, str) else value
+
+    updates["clubusername"] = target_username
+
+    conflicting_users = get_existing_org_users_by_username(connection, target_username)
+    if target_username != current_username and conflicting_users:
+        raise ValueError("Email address is already used by another account")
 
     if not updates:
         return get_organization_settings(connection, org_id)
@@ -398,18 +413,21 @@ def update_personal_profile(connection, organization_id, username, payload):
     params = {
         **updates,
         "organization_id": org_id,
-        "username": normalized_username,
+        "username": current_username,
     }
     with connection.cursor() as cursor:
         cursor.execute(
             f'''
             UPDATE "SkwshOrgUsers"
             SET {set_clause}
-            WHERE organization_id = %(organization_id)s
-                AND LOWER(clubusername) = LOWER(%(username)s)
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
             ''',
             params,
         )
+
+    if current_username != target_username:
+        from common.session_logic import revoke_active_sessions_for_username
+        revoke_active_sessions_for_username(connection, current_username, reason="profile_updated")
 
     connection.commit()
     return get_organization_settings(connection, org_id)

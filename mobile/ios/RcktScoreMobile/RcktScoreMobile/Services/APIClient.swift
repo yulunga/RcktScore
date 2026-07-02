@@ -74,6 +74,28 @@ struct LoginResponseData: Decodable {
     let session: UserSession
 }
 
+struct OrganizationSelectionPayload: Decodable {
+    let username: String
+    let memberships: [UserMembership]
+    let sessionToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case username
+        case memberships
+        case sessionToken = "session_token"
+    }
+}
+
+struct LoginEnvelopeData: Decodable {
+    let session: UserSession?
+    let organizationSelection: OrganizationSelectionPayload?
+}
+
+enum LoginResult {
+    case session(UserSession)
+    case organizationSelection(OrganizationSelectionPayload)
+}
+
 struct DashboardResponseData: Decodable {
     let dashboard: DashboardResponse
 }
@@ -270,7 +292,7 @@ final class APIClient {
         authToken = (trimmedToken?.isEmpty == false) ? trimmedToken : nil
     }
 
-    func login(username: String, password: String, forceLogoutOther: Bool = false) async throws -> UserSession {
+    func login(username: String, password: String, forceLogoutOther: Bool = false) async throws -> LoginResult {
         let payload = LoginRequest(
             username: username,
             password: password,
@@ -278,13 +300,17 @@ final class APIClient {
             forceLogoutOther: forceLogoutOther
         )
         let request = try makeRequest(path: "/login", method: "POST", body: payload)
-        let envelope: APIEnvelope<LoginResponseData> = try await send(request)
+        let envelope: APIEnvelope<LoginEnvelopeData> = try await send(request)
 
-        guard let user = envelope.data?.session else {
-            throw APIErrorResponse(code: "empty_response", message: "No user session returned.", details: nil)
+        if let user = envelope.data?.session {
+            return .session(user)
         }
 
-        return user
+        if let selection = envelope.data?.organizationSelection {
+            return .organizationSelection(selection)
+        }
+
+        throw APIErrorResponse(code: "empty_response", message: "No user session returned.", details: nil)
     }
 
     func requestPasswordReset(email: String) async throws {
@@ -451,20 +477,22 @@ final class APIClient {
 
     func updatePersonalProfile(
         organizationID: Int,
-        username: String,
         firstName: String,
         surname: String,
+        email: String,
         country: String,
+        telephone: String,
         cityLocation: String
     ) async throws -> OrganizationSettings {
         let request = try makeRequest(
             path: "/personal_profile/\(organizationID)",
             method: "PUT",
             body: UpdatePersonalProfileRequest(
-                username: username,
                 firstName: firstName,
                 surname: surname,
+                email: email,
                 country: country,
+                telephone: telephone,
                 cityLocation: cityLocation
             )
         )
