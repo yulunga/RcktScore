@@ -755,8 +755,8 @@ struct DashboardView: View {
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.rcktBlue.opacity(0.12))
-                    .foregroundStyle(Color.rcktBlue)
+                    .background(Color.dashboardBrand.opacity(0.12))
+                    .foregroundStyle(Color.dashboardBrand)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
