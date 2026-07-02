@@ -1001,7 +1001,8 @@ struct MatchScoringView: View {
         }
         .padding(.horizontal, compact ? 10 : 12)
         .padding(.vertical, compact ? 12 : 14)
-        .frame(width: compact ? 118 : 128, minHeight: compact ? 148 : 164, alignment: .top)
+        .frame(width: compact ? 118 : 128)
+        .frame(minHeight: compact ? 148 : 164, alignment: .top)
         .background(Color.rcktNavy)
         .foregroundStyle(.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
