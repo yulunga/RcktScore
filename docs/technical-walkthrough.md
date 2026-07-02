@@ -385,6 +385,8 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 1. The root-admin UI loads dashboard, club, interest, and personal-account data from root-admin routes.
 2. Some routes call backend functions with no full server-side root-admin session validation.
 3. Some club-detail routes call normal organisation endpoints with `x-root-admin-request: true`.
+4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
+5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
 
 ### Important current limitation
 

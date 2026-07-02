@@ -63,6 +63,7 @@ Current runtime path:
   - club creation and lookup
   - root-admin user management
   - interest request and personal-account admin flows
+  - root-admin match listing, archive, and delete flows
 
 ### Match and dashboard
 
@@ -160,6 +161,9 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`
+- `GET /root_admin/matches`
+- `PUT /root_admin/matches/{match_id}/archive`
+- `DELETE /root_admin/matches/{match_id}`
 - `POST /root_admin/organizations`
 - `GET /root_admin/organizations/search?q=...`
 - `POST /root_admin/organization_users`
@@ -172,6 +176,13 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 Current root-admin personal-account behavior:
 
 - `PUT /root_admin/personal_accounts/{request_id}` can now update `personal_plan`, `enabled_sports`, or both for a personal account organisation
+
+Current root-admin match-management behavior:
+
+- `GET /root_admin/matches` supports optional `sport` and `organization_id` query filters
+- archived matches are excluded from standard club/user match views and from the root-admin match directory by default
+- `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
+- `DELETE /root_admin/matches/{match_id}` permanently removes the match row and cascades `match_events`
 
 ### Organisation and dashboard routes
 

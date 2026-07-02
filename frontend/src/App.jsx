@@ -17,6 +17,7 @@ import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
+import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
 import RootAdminPersonalAccountsPage from "./pages/RootAdminPersonalAccountsPage";
 
 export default function App() {
@@ -39,6 +40,14 @@ export default function App() {
         element={(
           <RootAdminProtectedRoute>
             <RootAdminClubPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/matches"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminMatchesPage />
           </RootAdminProtectedRoute>
         )}
       />

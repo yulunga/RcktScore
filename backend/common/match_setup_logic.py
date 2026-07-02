@@ -17,6 +17,7 @@ def search_match_setup_lookups(connection, organization_id, query, limit=8):
                     updated_at
                 FROM matches
                 WHERE tenant_id = %(organization_id)s
+                  AND COALESCE(is_archived, false) = false
                   AND (
                     player1_name ILIKE %(query)s
                     OR coalesce(player1_surname, '') ILIKE %(query)s
@@ -31,6 +32,7 @@ def search_match_setup_lookups(connection, organization_id, query, limit=8):
                     updated_at
                 FROM matches
                 WHERE tenant_id = %(organization_id)s
+                  AND COALESCE(is_archived, false) = false
                   AND (
                     player2_name ILIKE %(query)s
                     OR coalesce(player2_surname, '') ILIKE %(query)s
@@ -61,6 +63,7 @@ def search_match_setup_lookups(connection, organization_id, query, limit=8):
                     updated_at
                 FROM matches
                 WHERE tenant_id = %(organization_id)s
+                  AND COALESCE(is_archived, false) = false
                   AND coalesce(trim(referee_name), '') <> ''
                   AND trim(referee_name) ILIKE %(query)s
 

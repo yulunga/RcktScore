@@ -48,7 +48,7 @@ What is real and implemented:
 - native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - register-interest, password reset, and feedback email flows
-- root-admin UI and supporting backend functions
+- root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 
 What is still partial or risky:
 
@@ -105,6 +105,7 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/rckscoreAdmin`
 - `/rckscoreAdmin/dashboard`
 - `/rckscoreAdmin/clubs/:organizationId`
+- `/rckscoreAdmin/matches`
 - `/rckscoreAdmin/interests`
 - `/rckscoreAdmin/personal-accounts`
 

@@ -183,6 +183,42 @@ Resources:
             Path: /root_admin/dashboard
             Method: GET
 
+  GetRootAdminMatchesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_matches/handler.lambda_handler
+      Events:
+        GetRootAdminMatches:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/matches
+            Method: GET
+
+  ArchiveRootAdminMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/archive_root_admin_match/handler.lambda_handler
+      Events:
+        ArchiveRootAdminMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/matches/{match_id}/archive
+            Method: PUT
+
+  DeleteRootAdminMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_root_admin_match/handler.lambda_handler
+      Events:
+        DeleteRootAdminMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/matches/{match_id}
+            Method: DELETE
+
   CreateRootAdminOrganizationFunction:
     Type: AWS::Serverless::Function
     Properties:

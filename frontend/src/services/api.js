@@ -161,6 +161,30 @@ export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
 }
 
+export function getRootAdminMatches(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.sport) {
+    params.set("sport", filters.sport);
+  }
+  if (filters.organizationId) {
+    params.set("organization_id", String(filters.organizationId));
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest(`/root_admin/matches${suffix}`);
+}
+
+export function archiveRootAdminMatch(matchId) {
+  return apiRequest(`/root_admin/matches/${matchId}/archive`, {
+    method: "PUT",
+  });
+}
+
+export function deleteRootAdminMatch(matchId) {
+  return apiRequest(`/root_admin/matches/${matchId}`, {
+    method: "DELETE",
+  });
+}
+
 export function getRootAdminInterestRequests(status = "") {
   const params = status ? new URLSearchParams({ status }) : null;
   const suffix = params ? `?${params.toString()}` : "";

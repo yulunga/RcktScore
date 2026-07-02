@@ -2,6 +2,7 @@ import secrets
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
+from common.sport_config import SPORT_LABELS
 from common.sport_config import normalize_enabled_sports
 from psycopg.types.json import Jsonb
 from psycopg.errors import UndefinedTable
@@ -33,6 +34,55 @@ def _serialize_root_admin_user(row):
         "organization_id": row["organization_id"],
         "organization_name": row.get("organization_name") or "",
         "created_at": created_at.isoformat() if created_at else None,
+    }
+
+
+def _serialize_root_admin_match(row):
+    created_at = row.get("created_at")
+    updated_at = row.get("updated_at")
+    completed_at = row.get("completed_at")
+    archived_at = row.get("archived_at")
+    sport = row.get("sport") or "squash"
+    player1_name = " ".join(
+        value for value in [row.get("player1_name") or "", row.get("player1_surname") or ""] if value
+    ).strip()
+    player2_name = " ".join(
+        value for value in [row.get("player2_name") or "", row.get("player2_surname") or ""] if value
+    ).strip()
+
+    return {
+        "id": str(row["id"]),
+        "tenant_id": row["tenant_id"],
+        "organization_id": row["tenant_id"],
+        "organization_name": row.get("organization_name") or f"Organisation {row['tenant_id']}",
+        "court_id": row.get("court_id"),
+        "court_name": row.get("court_name") or "",
+        "court_alias": row.get("court_alias") or "",
+        "sport": sport,
+        "sport_label": SPORT_LABELS.get(sport, sport.replace("_", " ").title()),
+        "player1_name": row.get("player1_name") or "",
+        "player1_surname": row.get("player1_surname") or "",
+        "player1_display_name": player1_name or (row.get("player1_name") or ""),
+        "player2_name": row.get("player2_name") or "",
+        "player2_surname": row.get("player2_surname") or "",
+        "player2_display_name": player2_name or (row.get("player2_name") or ""),
+        "score_type": row.get("score_type"),
+        "best_of": row.get("best_of"),
+        "current_game_number": row.get("current_game_number") or 1,
+        "player1_games_won": row.get("player1_games_won") or 0,
+        "player2_games_won": row.get("player2_games_won") or 0,
+        "player1_final_score": row.get("player1_final_score"),
+        "player2_final_score": row.get("player2_final_score"),
+        "winner_name": row.get("winner_name") or "",
+        "winner_side": row.get("winner_side") or "",
+        "ended_early": bool(row.get("ended_early")),
+        "end_reason": row.get("end_reason") or "",
+        "status": row.get("status") or "active",
+        "is_archived": bool(row.get("is_archived")),
+        "created_at": created_at.isoformat() if created_at else None,
+        "updated_at": updated_at.isoformat() if updated_at else None,
+        "completed_at": completed_at.isoformat() if completed_at else None,
+        "archived_at": archived_at.isoformat() if archived_at else None,
     }
 
 
@@ -121,6 +171,24 @@ def get_root_admin_dashboard(connection):
         except UndefinedTable:
             connection.rollback()
 
+        match_count = 0
+        completed_match_count = 0
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) AS match_count,
+                    COUNT(*) FILTER (WHERE status = 'completed') AS completed_match_count
+                FROM matches
+                WHERE COALESCE(is_archived, false) = false
+                """
+            )
+            match_summary = cursor.fetchone() or {}
+            match_count = match_summary.get("match_count") or 0
+            completed_match_count = match_summary.get("completed_match_count") or 0
+        except UndefinedTable:
+            connection.rollback()
+
     organizations = []
     organizations_by_id = {}
     for row in organization_rows:
@@ -150,8 +218,164 @@ def get_root_admin_dashboard(connection):
             "interest_count": interest_count,
             "pending_interest_count": pending_interest_count,
             "personal_account_count": personal_account_count,
+            "match_count": match_count,
+            "completed_match_count": completed_match_count,
         },
         "organizations": organizations,
+    }
+
+
+def get_root_admin_matches(connection, sport=None, organization_id=None):
+    requested_sport = (sport or "").strip().lower()
+    requested_organization_id = None
+    if organization_id not in (None, ""):
+        requested_organization_id = int(organization_id)
+
+    filters = ["COALESCE(matches.is_archived, false) = false"]
+    params = {}
+
+    if requested_sport in SPORT_LABELS:
+        filters.append("matches.sport = %(sport)s")
+        params["sport"] = requested_sport
+
+    if requested_organization_id is not None:
+        filters.append("matches.tenant_id = %(organization_id)s")
+        params["organization_id"] = requested_organization_id
+
+    where_clause = " AND ".join(filters)
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT
+                matches.*,
+                org.organization_name
+            FROM matches
+            LEFT JOIN "SkwshOrgSettings" AS org
+                ON org.id = matches.tenant_id
+            WHERE {where_clause}
+            ORDER BY
+                COALESCE(matches.completed_at, matches.updated_at, matches.created_at) DESC,
+                matches.updated_at DESC,
+                matches.id DESC
+            """,
+            params,
+        )
+        match_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT DISTINCT
+                org.id,
+                org.organization_name
+            FROM "SkwshOrgSettings" AS org
+            INNER JOIN matches
+                ON matches.tenant_id = org.id
+            WHERE COALESCE(matches.is_archived, false) = false
+            ORDER BY org.organization_name ASC, org.id ASC
+            """
+        )
+        organization_rows = cursor.fetchall()
+
+    serialized_matches = [_serialize_root_admin_match(row) for row in match_rows]
+    summary = {
+        "match_count": len(serialized_matches),
+        "active_count": sum(1 for match in serialized_matches if match["status"] == "active"),
+        "scheduled_count": sum(1 for match in serialized_matches if match["status"] == "scheduled"),
+        "completed_count": sum(1 for match in serialized_matches if match["status"] == "completed"),
+    }
+
+    return {
+        "summary": summary,
+        "matches": serialized_matches,
+        "filters": {
+            "sport": requested_sport if requested_sport in SPORT_LABELS else "",
+            "organization_id": requested_organization_id,
+        },
+        "organizations": [
+            {
+                "id": row["id"],
+                "organization_name": row.get("organization_name") or f"Organisation {row['id']}",
+            }
+            for row in organization_rows
+        ],
+        "sports": [
+            {
+                "value": sport_id,
+                "label": label,
+            }
+            for sport_id, label in SPORT_LABELS.items()
+        ],
+    }
+
+
+def _get_root_admin_match_row(connection, match_id, *, include_archived=False):
+    archive_clause = "" if include_archived else "AND COALESCE(matches.is_archived, false) = false"
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT
+                matches.*,
+                org.organization_name
+            FROM matches
+            LEFT JOIN "SkwshOrgSettings" AS org
+                ON org.id = matches.tenant_id
+            WHERE matches.id = %(match_id)s
+              {archive_clause}
+            LIMIT 1
+            """,
+            {"match_id": match_id},
+        )
+        return cursor.fetchone()
+
+
+def archive_root_admin_match(connection, match_id):
+    match_row = _get_root_admin_match_row(connection, match_id, include_archived=True)
+    if not match_row:
+        raise LookupError("Match not found")
+
+    if not bool(match_row.get("is_archived")):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE matches
+                SET is_archived = true,
+                    archived_at = %(archived_at)s,
+                    updated_at = %(updated_at)s
+                WHERE id = %(match_id)s
+                """,
+                {
+                    "match_id": match_id,
+                    "archived_at": _utcnow(),
+                    "updated_at": _utcnow(),
+                },
+            )
+        connection.commit()
+        match_row = _get_root_admin_match_row(connection, match_id, include_archived=True)
+
+    return _serialize_root_admin_match(match_row)
+
+
+def delete_root_admin_match(connection, match_id):
+    match_row = _get_root_admin_match_row(connection, match_id, include_archived=True)
+    if not match_row:
+        raise LookupError("Match not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            DELETE FROM matches
+            WHERE id = %(match_id)s
+            """,
+            {"match_id": match_id},
+        )
+
+    connection.commit()
+    return {
+        "id": str(match_row["id"]),
+        "organization_id": match_row["tenant_id"],
+        "organization_name": match_row.get("organization_name") or f"Organisation {match_row['tenant_id']}",
+        "status": match_row.get("status") or "active",
     }
 
 

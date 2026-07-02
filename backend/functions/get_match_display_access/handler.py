@@ -24,6 +24,7 @@ def _fetch_match_display_access(connection, match_id):
             LEFT JOIN "SkwshCourts" AS court
                 ON court.id = matches.court_id
             WHERE matches.id = %(match_id)s
+              AND COALESCE(matches.is_archived, false) = false
             LIMIT 1
             """,
             {"match_id": match_id},

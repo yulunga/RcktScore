@@ -178,6 +178,19 @@ export default function RootAdminDashboardPage() {
             </button>
             <span className="root-admin-summary-note">Approved personal</span>
           </div>
+          <div className="meta-item">
+            <strong>Match Scores</strong>
+            <button
+              className="root-admin-summary-count"
+              type="button"
+              onClick={() => navigate("/rckscoreAdmin/matches")}
+            >
+              {summary.match_count ?? 0}
+            </button>
+            <span className="root-admin-summary-note">
+              Completed {summary.completed_match_count ?? 0}
+            </span>
+          </div>
         </div>
       </section>
 

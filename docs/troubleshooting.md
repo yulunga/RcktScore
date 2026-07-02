@@ -127,6 +127,7 @@ Relevant files:
 - [frontend/src/context/RootAdminContext.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/context/RootAdminContext.jsx)
 - [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py)
 - [backend/functions/get_root_admin_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_root_admin_dashboard/handler.py)
+- [backend/functions/get_root_admin_matches/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_root_admin_matches/handler.py)
 - [frontend/src/pages/RootAdminClubPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminClubPage.jsx)
 
 Current risk areas:
@@ -138,6 +139,8 @@ If a root-admin issue appears:
 
 - verify whether the failing route is a true root-admin route or a reused organisation route
 - verify whether the request is depending on `rootAdminRequest: true`
+- if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
+- if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - do not assume root-admin failures will look like org-user session failures
 
 ## 4. Match Creation and Scoring Issues

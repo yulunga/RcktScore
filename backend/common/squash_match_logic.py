@@ -422,6 +422,8 @@ def _serialize_match(match_row, event_rows):
         "ended_early": bool(match_row.get("ended_early")),
         "end_reason": match_row.get("end_reason"),
         "match_duration_seconds": _coerce_int(match_row.get("match_duration_seconds")),
+        "is_archived": bool(match_row.get("is_archived")),
+        "archived_at": match_row["archived_at"].isoformat() if match_row.get("archived_at") else None,
         "status": match_row["status"],
         "created_at": match_row["created_at"].isoformat(),
         "completed_at": match_row["completed_at"].isoformat() if match_row.get("completed_at") else None,
@@ -445,6 +447,7 @@ def _fetch_match_row(connection, match_id):
             LEFT JOIN "SkwshCourts" AS court
                 ON court.id = matches.court_id
             WHERE matches.id = %(match_id)s
+              AND COALESCE(matches.is_archived, false) = false
             LIMIT 1
             """,
             {"match_id": match_id},
@@ -467,7 +470,10 @@ def _fetch_match_events(connection, match_id):
 
 
 def _auto_end_stale_active_matches(connection, tenant_id=None, match_id=None):
-    where_clauses = ["matches.status = 'active'"]
+    where_clauses = [
+        "matches.status = 'active'",
+        "COALESCE(matches.is_archived, false) = false",
+    ]
     params = {"cutoff": _utcnow()}
 
     if tenant_id is not None:
@@ -543,6 +549,7 @@ def list_matches(connection, tenant_id, status=None, limit=10):
         LEFT JOIN "SkwshCourts" AS court
             ON court.id = matches.court_id
         WHERE tenant_id = %(tenant_id)s
+          AND COALESCE(matches.is_archived, false) = false
         """
     ]
     params = {"tenant_id": tenant_id, "limit": limit}
@@ -576,6 +583,7 @@ def _find_active_match_on_court(connection, tenant_id, court_id):
             WHERE tenant_id = %(tenant_id)s
               AND court_id = %(court_id)s
               AND status = 'active'
+              AND COALESCE(matches.is_archived, false) = false
             ORDER BY matches.updated_at DESC, matches.created_at DESC
             LIMIT 1
             """,
@@ -599,6 +607,7 @@ def _find_active_match_for_tenant(connection, tenant_id):
                 ON court.id = matches.court_id
             WHERE tenant_id = %(tenant_id)s
               AND status = 'active'
+              AND COALESCE(matches.is_archived, false) = false
             ORDER BY matches.updated_at DESC, matches.created_at DESC
             LIMIT 1
             """,

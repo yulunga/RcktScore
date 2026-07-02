@@ -28,7 +28,10 @@ def _resolve_engine_for_match_id(connection, match_id):
 
 
 def _auto_end_stale_active_matches(connection, tenant_id=None, match_id=None):
-    where_clauses = ["matches.status = 'active'"]
+    where_clauses = [
+        "matches.status = 'active'",
+        "COALESCE(matches.is_archived, false) = false",
+    ]
     params = {"cutoff": squash_logic._utcnow()}
 
     if tenant_id is not None:
@@ -103,6 +106,7 @@ def list_matches(connection, tenant_id, status=None, limit=10):
         LEFT JOIN "SkwshCourts" AS court
             ON court.id = matches.court_id
         WHERE tenant_id = %(tenant_id)s
+          AND COALESCE(matches.is_archived, false) = false
         """
     ]
     params = {"tenant_id": tenant_id, "limit": limit}
