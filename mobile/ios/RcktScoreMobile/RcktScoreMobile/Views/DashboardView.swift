@@ -698,7 +698,7 @@ struct DashboardView: View {
             GridItem(.adaptive(minimum: 120), spacing: 10)
         ]
 
-        VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Racket Sports")
                 .font(.headline.weight(.semibold))
 
