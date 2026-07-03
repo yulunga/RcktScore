@@ -467,8 +467,7 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func scoringCanvas(
         compactLayout: Bool,
-        isTabletLandscape: Bool,
-        bottomDockReservedHeight: CGFloat
+        isTabletLandscape: Bool
     ) -> some View {
         ZStack {
             VStack(spacing: compactLayout ? 12 : 16) {
@@ -505,7 +504,6 @@ struct MatchScoringView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, compactLayout ? 12 : 16)
             .padding(.top, compactLayout ? 10 : 14)
-            .padding(.bottom, bottomDockReservedHeight)
 
             if showWarmupOverlay {
                 overlayBackdrop {
@@ -525,33 +523,17 @@ struct MatchScoringView: View {
         GeometryReader { geometry in
             let compactLayout = geometry.size.height < 760
             let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
-            let bottomDockInset = isTabletLandscape
-                ? max(geometry.safeAreaInsets.bottom, 28)
-                : max(geometry.safeAreaInsets.bottom, 10)
-            let bottomDockHeight = bottomDockReservedHeight(
+            scoringCanvas(
                 compactLayout: compactLayout,
-                isTabletLandscape: isTabletLandscape,
-                bottomInset: bottomDockInset
+                isTabletLandscape: isTabletLandscape
             )
-
-            ZStack(alignment: .bottom) {
-                scoringCanvas(
-                    compactLayout: compactLayout,
-                    isTabletLandscape: isTabletLandscape,
-                    bottomDockReservedHeight: match == nil ? 0 : bottomDockHeight
-                )
-
-                if match != nil {
-                    bottomScoringDock(
-                        compactLayout: compactLayout,
-                        isTabletLandscape: isTabletLandscape
-                    )
-                    .padding(.horizontal, compactLayout ? 12 : 16)
-                    .padding(.bottom, bottomDockInset)
-                }
-            }
         }
         .background(Color(.systemGroupedBackground))
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let _ = match {
+                dockInsetContent
+            }
+        }
         .navigationBarBackButtonHidden(true)
         .task {
             await loadMatch()
@@ -618,6 +600,21 @@ struct MatchScoringView: View {
                 pendingActionSelection = nil
             }
         }
+    }
+
+    @ViewBuilder
+    private var dockInsetContent: some View {
+        let screenBounds = UIScreen.main.bounds
+        let compactLayout = min(screenBounds.width, screenBounds.height) < 760
+        let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && screenBounds.width > screenBounds.height
+
+        bottomScoringDock(
+            compactLayout: compactLayout,
+            isTabletLandscape: isTabletLandscape
+        )
+        .padding(.horizontal, compactLayout ? 10 : 16)
+        .padding(.top, 6)
+        .padding(.bottom, isTabletLandscape ? 8 : 6)
     }
 
     @ViewBuilder
@@ -770,16 +767,23 @@ struct MatchScoringView: View {
                 .disabled(isMatchComplete)
             }
         }
-        .padding(.horizontal, compactLayout ? 10 : 12)
-        .padding(.top, compactLayout ? 8 : 10)
-        .padding(.bottom, compactLayout ? 8 : 10)
-        .background(Color.rcktCardBackground.opacity(colorScheme == .dark ? 0.94 : 0.98))
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, compactLayout ? 8 : 10)
+        .padding(.top, compactLayout ? 6 : 8)
+        .padding(.bottom, compactLayout ? 6 : 8)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.rcktBorder, lineWidth: 1)
+                .stroke(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.12)
+                        : Color.white.opacity(0.72),
+                    lineWidth: 1
+                )
         )
-        .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.08), radius: 20, x: 0, y: 8)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
     }
 
     private func bottomTimerControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
@@ -800,13 +804,7 @@ struct MatchScoringView: View {
             .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(compactLayout ? 10 : 12)
-        .background(Color.rcktCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.rcktBorder, lineWidth: 1)
-        )
+        .padding(compactLayout ? 6 : 8)
     }
 
     private func bottomActionControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
@@ -820,13 +818,20 @@ struct MatchScoringView: View {
                     .font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, isTabletLandscape ? 20 : (compactLayout ? 16 : 18))
-            .background(Color.rcktSlate)
-            .foregroundStyle(.white)
+            .padding(.vertical, isTabletLandscape ? 18 : (compactLayout ? 14 : 16))
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.42))
+            )
+            .foregroundStyle(colorScheme == .dark ? .white : Color.rcktSlate)
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.78), lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: isTabletLandscape ? 200 : (compactLayout ? 124 : 142))
+        .frame(width: isTabletLandscape ? 188 : (compactLayout ? 120 : 138))
     }
 
     @ViewBuilder
