@@ -455,7 +455,11 @@ struct MatchScoringView: View {
     }
 
     @ViewBuilder
-    private func scoringCanvas(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
+    private func scoringCanvas(
+        compactLayout: Bool,
+        isTabletLandscape: Bool,
+        bottomDockReservedHeight: CGFloat
+    ) -> some View {
         ZStack {
             VStack(spacing: compactLayout ? 12 : 16) {
                 scorerHeaderBar
@@ -470,7 +474,6 @@ struct MatchScoringView: View {
                         landscapeScoringLayout(match)
                     } else {
                         scoreboardCard(match, compact: compactLayout)
-                        timerCard(compact: compactLayout)
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -488,7 +491,7 @@ struct MatchScoringView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, compactLayout ? 12 : 16)
             .padding(.top, compactLayout ? 10 : 14)
-            .padding(.bottom, compactLayout ? 12 : 18)
+            .padding(.bottom, bottomDockReservedHeight)
 
             if showWarmupOverlay {
                 overlayBackdrop {
@@ -502,32 +505,35 @@ struct MatchScoringView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if isTabletLandscape, match != nil {
-                bottomTimerActionBar
-                    .padding(.horizontal, compactLayout ? 12 : 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                Color(.systemGroupedBackground).opacity(0.92),
-                                Color(.systemGroupedBackground)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            }
-        }
     }
 
     var body: some View {
         GeometryReader { geometry in
             let compactLayout = geometry.size.height < 760
             let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
+            let bottomDockInset = max(geometry.safeAreaInsets.bottom, 10)
+            let bottomDockHeight = bottomDockReservedHeight(
+                compactLayout: compactLayout,
+                isTabletLandscape: isTabletLandscape,
+                bottomInset: bottomDockInset
+            )
 
-            scoringCanvas(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
+            ZStack(alignment: .bottom) {
+                scoringCanvas(
+                    compactLayout: compactLayout,
+                    isTabletLandscape: isTabletLandscape,
+                    bottomDockReservedHeight: match == nil ? 0 : bottomDockHeight
+                )
+
+                if match != nil {
+                    bottomScoringDock(
+                        compactLayout: compactLayout,
+                        isTabletLandscape: isTabletLandscape
+                    )
+                    .padding(.horizontal, compactLayout ? 12 : 16)
+                    .padding(.bottom, bottomDockInset)
+                }
+            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationBarBackButtonHidden(true)
@@ -756,33 +762,19 @@ struct MatchScoringView: View {
         .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.05), radius: 16, x: 0, y: 8)
     }
 
-    private var bottomTimerActionBar: some View {
+    private func bottomTimerActionBar(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
         HStack(spacing: 14) {
-            bottomTimerControl
-            bottomActionControl
+            bottomTimerControl(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
+            bottomActionControl(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private func timerCard(compact: Bool) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 10 : 14) {
-            Text("Match Timer")
-                .font(.headline)
+    @ViewBuilder
+    private func bottomScoringDock(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
+        VStack(spacing: 10) {
+            bottomTimerActionBar(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
 
-            Button {
-                handleToggleTimer()
-            } label: {
-                Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
-                    .font(.system(size: compact ? 24 : 28, weight: .heavy, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, compact ? 14 : 18)
-                    .background(timerChipBackgroundColor)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(isMatchComplete || timerPhase == .firstServer)
-            .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
             if let timerSkipLabel {
                 Button(timerSkipLabel) {
                     handleSkipTimedPhase()
@@ -792,17 +784,19 @@ struct MatchScoringView: View {
                 .disabled(isMatchComplete)
             }
         }
-        .padding(compact ? 16 : 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.rcktCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, compactLayout ? 12 : 14)
+        .padding(.top, compactLayout ? 12 : 14)
+        .padding(.bottom, compactLayout ? 12 : 14)
+        .background(Color.rcktCardBackground.opacity(colorScheme == .dark ? 0.94 : 0.98))
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
+        .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.08), radius: 20, x: 0, y: 8)
     }
 
-    private var bottomTimerControl: some View {
+    private func bottomTimerControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Match Timer")
                 .font(.caption.weight(.semibold))
@@ -812,9 +806,9 @@ struct MatchScoringView: View {
                 handleToggleTimer()
             } label: {
                 Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .font(.system(size: isTabletLandscape ? 30 : (compactLayout ? 22 : 26), weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
+                    .padding(.vertical, isTabletLandscape ? 18 : (compactLayout ? 14 : 16))
                     .background(timerChipBackgroundColor)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -833,7 +827,7 @@ struct MatchScoringView: View {
         )
     }
 
-    private var bottomActionControl: some View {
+    private func bottomActionControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
         Button {
             showActionMenu = true
         } label: {
@@ -844,13 +838,13 @@ struct MatchScoringView: View {
                     .font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            .padding(.vertical, isTabletLandscape ? 24 : (compactLayout ? 20 : 22))
             .background(Color.rcktSlate)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: 220)
+        .frame(width: isTabletLandscape ? 220 : (compactLayout ? 136 : 152))
     }
 
     @ViewBuilder
@@ -1576,6 +1570,23 @@ struct MatchScoringView: View {
 
     private func timelineAccent(for side: String) -> Color {
         side == "player1" ? .rcktPink : .rcktBlue
+    }
+
+    private func bottomDockReservedHeight(
+        compactLayout: Bool,
+        isTabletLandscape: Bool,
+        bottomInset: CGFloat
+    ) -> CGFloat {
+        let contentHeight: CGFloat
+        if isTabletLandscape {
+            contentHeight = timerSkipLabel == nil ? 122 : 156
+        } else if compactLayout {
+            contentHeight = timerSkipLabel == nil ? 112 : 146
+        } else {
+            contentHeight = timerSkipLabel == nil ? 120 : 154
+        }
+
+        return contentHeight + bottomInset
     }
 
     @ViewBuilder
