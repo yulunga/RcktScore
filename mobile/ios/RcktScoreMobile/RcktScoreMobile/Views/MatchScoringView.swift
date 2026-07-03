@@ -473,7 +473,11 @@ struct MatchScoringView: View {
                     if isTabletLandscape {
                         landscapeScoringLayout(match)
                     } else {
-                        scoreboardCard(match, compact: compactLayout)
+                        scoreboardCard(
+                            match,
+                            compact: compactLayout,
+                            showsInlineControls: false
+                        )
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -610,7 +614,6 @@ struct MatchScoringView: View {
             scoreboardCard(
                 match,
                 compact: false,
-                showsInlineControls: false,
                 landscapeTablet: true
             )
 
@@ -630,7 +633,7 @@ struct MatchScoringView: View {
     private func scoreboardCard(
         _ match: MatchDetail,
         compact: Bool,
-        showsInlineControls: Bool = true,
+        showsInlineControls: Bool = false,
         landscapeTablet: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
@@ -721,35 +724,6 @@ struct MatchScoringView: View {
 
             matchHistoryStrip
                 .padding(.horizontal, compact ? 12 : 16)
-
-            if showsInlineControls {
-                VStack(spacing: compact ? 8 : 10) {
-                    if !isTennisMatch {
-                        HStack(spacing: compact ? 8 : 10) {
-                            controlButton("Stroke P1", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                                await awardStroke(to: "player1")
-                            }
-                            controlButton("Let", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                                await callLet()
-                            }
-                            controlButton("Stroke P2", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                                await awardStroke(to: "player2")
-                            }
-                        }
-                    }
-
-                    HStack(spacing: compact ? 8 : 10) {
-                        controlButton("Undo Last Action", color: .rcktDanger, isDisabled: isMutating || undoLocked, compact: compact) {
-                            await undoLastAction()
-                        }
-                        controlButton("End Match Early", color: .rcktDanger, isDisabled: isMutating || isMatchComplete, compact: compact) {
-                            await endMatchEarly()
-                        }
-                    }
-                }
-                .padding(.horizontal, compact ? 12 : 16)
-                .padding(.bottom, compact ? 12 : 14)
-            }
         }
         .padding(.top, compact ? 8 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -772,7 +746,7 @@ struct MatchScoringView: View {
 
     @ViewBuilder
     private func bottomScoringDock(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             bottomTimerActionBar(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
 
             if let timerSkipLabel {
@@ -784,9 +758,9 @@ struct MatchScoringView: View {
                 .disabled(isMatchComplete)
             }
         }
-        .padding(.horizontal, compactLayout ? 12 : 14)
-        .padding(.top, compactLayout ? 12 : 14)
-        .padding(.bottom, compactLayout ? 12 : 14)
+        .padding(.horizontal, compactLayout ? 10 : 12)
+        .padding(.top, compactLayout ? 8 : 10)
+        .padding(.bottom, compactLayout ? 8 : 10)
         .background(Color.rcktCardBackground.opacity(colorScheme == .dark ? 0.94 : 0.98))
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
@@ -797,18 +771,14 @@ struct MatchScoringView: View {
     }
 
     private func bottomTimerControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Match Timer")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
+        VStack(alignment: .leading, spacing: 0) {
             Button {
                 handleToggleTimer()
             } label: {
                 Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
-                    .font(.system(size: isTabletLandscape ? 30 : (compactLayout ? 22 : 26), weight: .heavy, design: .rounded))
+                    .font(.system(size: isTabletLandscape ? 28 : (compactLayout ? 21 : 24), weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, isTabletLandscape ? 18 : (compactLayout ? 14 : 16))
+                    .padding(.vertical, isTabletLandscape ? 16 : (compactLayout ? 12 : 14))
                     .background(timerChipBackgroundColor)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -818,7 +788,7 @@ struct MatchScoringView: View {
             .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(compactLayout ? 10 : 12)
         .background(Color.rcktCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
@@ -838,13 +808,13 @@ struct MatchScoringView: View {
                     .font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, isTabletLandscape ? 24 : (compactLayout ? 20 : 22))
+            .padding(.vertical, isTabletLandscape ? 20 : (compactLayout ? 16 : 18))
             .background(Color.rcktSlate)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: isTabletLandscape ? 220 : (compactLayout ? 136 : 152))
+        .frame(width: isTabletLandscape ? 200 : (compactLayout ? 124 : 142))
     }
 
     @ViewBuilder
@@ -1118,6 +1088,17 @@ struct MatchScoringView: View {
 
     @ViewBuilder
     private func pointRail(compact: Bool, landscapeTablet: Bool) -> some View {
+        let isTabletPortrait = UIDevice.current.userInterfaceIdiom == .pad && !landscapeTablet
+        let railHeight: CGFloat = {
+            if landscapeTablet {
+                return 360
+            }
+            if isTabletPortrait {
+                return 520
+            }
+            return compact ? 360 : 420
+        }()
+
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: landscapeTablet ? 14 : (compact ? 10 : 12)) {
@@ -1158,8 +1139,8 @@ struct MatchScoringView: View {
                 .padding(.vertical, 4)
             }
             .frame(
-                width: landscapeTablet ? 264 : (compact ? 120 : 140),
-                height: landscapeTablet ? 360 : (compact ? 220 : 252)
+                width: landscapeTablet ? 264 : (isTabletPortrait ? 150 : (compact ? 120 : 140)),
+                height: railHeight
             )
             .onAppear {
                 if let last = pointRailEntries.last?.id {
@@ -1579,11 +1560,11 @@ struct MatchScoringView: View {
     ) -> CGFloat {
         let contentHeight: CGFloat
         if isTabletLandscape {
-            contentHeight = timerSkipLabel == nil ? 122 : 156
+            contentHeight = timerSkipLabel == nil ? 98 : 126
         } else if compactLayout {
-            contentHeight = timerSkipLabel == nil ? 112 : 146
+            contentHeight = timerSkipLabel == nil ? 88 : 116
         } else {
-            contentHeight = timerSkipLabel == nil ? 120 : 154
+            contentHeight = timerSkipLabel == nil ? 94 : 122
         }
 
         return contentHeight + bottomInset
