@@ -288,6 +288,13 @@ struct MatchScoringView: View {
             isCurrentServe: true
         )
 
+        if let lastEntry = historyEntries.last,
+           lastEntry.serverSide == currentServe.serverSide,
+           lastEntry.displaySideLabel == currentServe.displaySideLabel,
+           lastEntry.displayScore == currentServe.displayScore {
+            return historyEntries
+        }
+
         return historyEntries + [currentServe]
     }
 
@@ -515,7 +522,9 @@ struct MatchScoringView: View {
         GeometryReader { geometry in
             let compactLayout = geometry.size.height < 760
             let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
-            let bottomDockInset = max(geometry.safeAreaInsets.bottom, 10)
+            let bottomDockInset = isTabletLandscape
+                ? max(geometry.safeAreaInsets.bottom, 28)
+                : max(geometry.safeAreaInsets.bottom, 10)
             let bottomDockHeight = bottomDockReservedHeight(
                 compactLayout: compactLayout,
                 isTabletLandscape: isTabletLandscape,
