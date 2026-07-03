@@ -1081,36 +1081,39 @@ struct StartNewMatchView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 40, maximum: 52), spacing: 12)
+                ],
+                spacing: 12
+            ) {
                 ForEach(shirtColorOptions) { option in
                     Button {
                         selection.wrappedValue = option.id
                     } label: {
-                        HStack(spacing: 10) {
+                        ZStack {
                             Circle()
                                 .fill(option.swatch)
-                                .frame(width: 18, height: 18)
+                                .frame(width: 34, height: 34)
                                 .overlay(
                                     Circle()
-                                        .stroke(option.border, lineWidth: 1)
+                                        .stroke(selection.wrappedValue == option.id ? option.border : option.border.opacity(0.5), lineWidth: 2)
                                 )
 
-                            Text(option.label)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(selection.wrappedValue == option.id ? option.foreground : .primary)
-
-                            Spacer(minLength: 0)
+                            if selection.wrappedValue == option.id {
+                                Image(systemName: "checkmark")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(option.foreground)
+                            }
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 11)
-                        .background(selection.wrappedValue == option.id ? option.swatch : Color.dashboardInnerCardBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(selection.wrappedValue == option.id ? option.border : Color.dashboardBorder, lineWidth: 1)
+                        .frame(width: 42, height: 42)
+                        .background(
+                            Circle()
+                                .fill(selection.wrappedValue == option.id ? option.swatch.opacity(0.18) : Color.dashboardInnerCardBackground)
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(option.label)
                 }
             }
         }

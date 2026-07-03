@@ -698,15 +698,15 @@ final class APIClient {
         return try await unwrapMatchResponse(request)
     }
 
-    func callLet(matchID: String) async throws -> MatchDetail {
+    func callLet(matchID: String, playerSide: String? = nil, note: String = "General let") async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
             body: EventActionRequest(
                 matchID: matchID,
                 actionType: "let",
-                playerSide: nil,
-                note: "General let",
+                playerSide: playerSide,
+                note: note,
                 side: nil,
                 currentServer: nil,
                 currentServerSide: nil,

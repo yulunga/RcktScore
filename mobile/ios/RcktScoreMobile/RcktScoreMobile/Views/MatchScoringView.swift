@@ -48,15 +48,14 @@ private struct MatchTimerSnapshot: Codable {
 private struct PointRailEntry: Identifiable {
     let id: String
     let serverSide: String?
-    let serviceSideLabel: String?
-    let winnerSide: String?
-    let winnerScore: String?
+    let displaySideLabel: String
+    let displayScore: String
     let isCurrentServe: Bool
 }
 
-private enum RailMarkerKind {
-    case server
-    case winner
+private enum MatchActionSelection {
+    case letAwarded
+    case strokeAgainst
 }
 
 struct MatchScoringView: View {
@@ -86,6 +85,9 @@ struct MatchScoringView: View {
     @State private var settingsAutoloaded = false
     @State private var selectedOpeningServerParticipantID: String?
     @State private var selectedOpeningReceiverParticipantID: String?
+    @State private var showActionMenu = false
+    @State private var pendingActionSelection: MatchActionSelection?
+    @State private var showPlayerActionSheet = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -265,19 +267,24 @@ struct MatchScoringView: View {
             return PointRailEntry(
                 id: event.id,
                 serverSide: serverSide,
-                serviceSideLabel: serviceSideLabel,
-                winnerSide: winnerSide,
-                winnerScore: winnerScore,
+                displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
+                displayScore: winnerScore,
                 isCurrentServe: false
             )
+        }
+
+        let currentScore: String
+        if live?.currentServerSide == "player2" {
+            currentScore = String(live?.player2Score ?? 0)
+        } else {
+            currentScore = String(live?.player1Score ?? 0)
         }
 
         let currentServe = PointRailEntry(
             id: "current-serve-\(match.id)-\(live?.currentServerSide ?? "player1")-\(live?.serviceSide ?? "Right")",
             serverSide: live?.currentServerSide,
-            serviceSideLabel: String(live?.serviceSide?.prefix(1) ?? "").uppercased(),
-            winnerSide: nil,
-            winnerScore: nil,
+            displaySideLabel: String(live?.serviceSide?.prefix(1) ?? "").uppercased(),
+            displayScore: currentScore,
             isCurrentServe: true
         )
 
@@ -304,6 +311,129 @@ struct MatchScoringView: View {
         isMutating ? "Starting..." : "Start Match"
     }
 
+    private var scorerBackButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left")
+                Text("Back")
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.rcktBlue.opacity(0.12))
+            .foregroundStyle(Color.rcktBlue)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var scorerTitleView: some View {
+        Text(match?.courtName ?? "Live Match")
+            .font(.headline.weight(.bold))
+            .lineLimit(1)
+    }
+
+    private var scorerSettingsButton: some View {
+        Button {
+            openGameSettings()
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.subheadline.weight(.bold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.rcktBlue.opacity(0.12))
+                .foregroundStyle(Color.rcktBlue)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(isMutating || match == nil)
+        .opacity((isMutating || match == nil) ? 0.72 : 1)
+        .accessibilityLabel("Game Settings")
+    }
+
+    private var scorerHeaderBar: some View {
+        HStack(spacing: 12) {
+            scorerBackButton
+            Spacer(minLength: 0)
+            scorerTitleView
+            Spacer(minLength: 0)
+            scorerSettingsButton
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var playerOneActionLabel: String {
+        fullName(firstName: match?.player1Name ?? "Player 1", surname: match?.player1Surname)
+    }
+
+    private var playerTwoActionLabel: String {
+        fullName(firstName: match?.player2Name ?? "Player 2", surname: match?.player2Surname)
+    }
+
+    @ViewBuilder
+    private var playerActionDialogButtons: some View {
+        Button(playerOneActionLabel) {
+            Task { await handlePendingActionSelection(for: "player1") }
+        }
+
+        Button(playerTwoActionLabel) {
+            Task { await handlePendingActionSelection(for: "player2") }
+        }
+
+        Button("Cancel", role: .cancel) {
+            pendingActionSelection = nil
+            showPlayerActionSheet = false
+        }
+    }
+
+    private var actionDialogTitle: String {
+        switch pendingActionSelection {
+        case .letAwarded:
+            return "Award Let"
+        case .strokeAgainst:
+            return "Stroke Against"
+        case nil:
+            return "Choose Player"
+        }
+    }
+
+    private var playerActionSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Text(actionDialogTitle)
+                    .font(.title3.weight(.bold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button(playerOneActionLabel) {
+                    Task { await handlePendingActionSelection(for: "player1") }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.rcktBlue)
+                .frame(maxWidth: .infinity)
+
+                Button(playerTwoActionLabel) {
+                    Task { await handlePendingActionSelection(for: "player2") }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.rcktBlue)
+                .frame(maxWidth: .infinity)
+
+                Button("Cancel", role: .cancel) {
+                    pendingActionSelection = nil
+                    showPlayerActionSheet = false
+                }
+                .buttonStyle(.bordered)
+
+                Spacer(minLength: 0)
+            }
+            .padding(24)
+            .navigationTitle("Choose Player")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
     private var shirtColorOptions: [ShirtColorOption] {
         [
             ShirtColorOption(id: "navy", value: "navy", label: "Navy", fill: Color(red: 25/255, green: 66/255, blue: 121/255), border: Color(red: 18/255, green: 50/255, blue: 92/255)),
@@ -324,107 +454,73 @@ struct MatchScoringView: View {
         self.openSettingsOnLoad = openSettingsOnLoad
     }
 
+    @ViewBuilder
+    private func scoringCanvas(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
+        ZStack {
+            VStack(spacing: compactLayout ? 12 : 16) {
+                scorerHeaderBar
+
+                if isLoading && match == nil {
+                    ProgressView("Loading match…")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if let match {
+                    if isTabletLandscape {
+                        landscapeScoringLayout(match)
+                    } else {
+                        scoreboardCard(match, compact: compactLayout)
+                        timerCard(compact: compactLayout)
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                } else {
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.horizontal, compactLayout ? 12 : 16)
+            .padding(.top, compactLayout ? 10 : 14)
+            .padding(.bottom, compactLayout ? 12 : 18)
+
+            if showWarmupOverlay {
+                overlayBackdrop {
+                    warmupOverlay
+                }
+            }
+
+            if showIntervalOverlay {
+                overlayBackdrop {
+                    intervalOverlay
+                }
+            }
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let compactLayout = geometry.size.height < 760
+            let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
 
-            ZStack {
-                VStack(spacing: compactLayout ? 12 : 16) {
-                    if isLoading && match == nil {
-                        ProgressView("Loading match…")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if let match {
-                        scoreboardCard(match, compact: compactLayout)
-                        timerCard(compact: compactLayout)
-                    }
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.horizontal, compactLayout ? 12 : 16)
-                .padding(.top, compactLayout ? 10 : 14)
-                .padding(.bottom, compactLayout ? 12 : 18)
-
-                if showWarmupOverlay {
-                    overlayBackdrop {
-                        warmupOverlay
-                    }
-                }
-
-                if showIntervalOverlay {
-                    overlayBackdrop {
-                        intervalOverlay
-                    }
-                }
-            }
+            scoringCanvas(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(match?.courtName ?? "Live Match")
-        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.rcktBlue.opacity(0.12))
-                    .foregroundStyle(Color.rcktBlue)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-
-            ToolbarItem(placement: .principal) {
-                Text(match?.courtName ?? "Live Match")
-                    .font(.headline.weight(.bold))
-                    .lineLimit(1)
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    openGameSettings()
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.subheadline.weight(.bold))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(Color.rcktBlue.opacity(0.12))
-                        .foregroundStyle(Color.rcktBlue)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .disabled(isMutating || match == nil)
-                .opacity((isMutating || match == nil) ? 0.72 : 1)
-                .accessibilityLabel("Game Settings")
-            }
-        }
         .task {
             await loadMatch()
         }
         .task(id: match?.id) {
-            await loadDisplayAccessIfNeeded()
-            autoOpenSettingsIfNeeded()
+            await handleMatchIdentityTask()
         }
         .task(id: match?.id) {
-            if let match {
-                bootstrapTimerIfNeeded(for: match)
-            }
+            handleTimerBootstrapTask()
         }
         .onChange(of: live?.gameHistory.count ?? 0) {
             syncIntervalState()
@@ -450,10 +546,71 @@ struct MatchScoringView: View {
         .sheet(isPresented: $showGameSettingsSheet) {
             gameSettingsSheet
         }
+        .sheet(isPresented: $showPlayerActionSheet) {
+            playerActionSheet
+        }
+        .confirmationDialog("Match Action", isPresented: $showActionMenu, titleVisibility: .visible) {
+            if !isTennisMatch {
+                Button("Stroke") {
+                    pendingActionSelection = .strokeAgainst
+                    showPlayerActionSheet = true
+                }
+                .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+
+                Button("Let") {
+                    pendingActionSelection = .letAwarded
+                    showPlayerActionSheet = true
+                }
+                .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+            }
+
+            Button("Undo Last Action") {
+                Task { await undoLastAction() }
+            }
+            .disabled(isMutating || undoLocked)
+
+            Button("End Match Early", role: .destructive) {
+                Task { await endMatchEarly() }
+            }
+            .disabled(isMutating || isMatchComplete)
+
+            Button("Cancel", role: .cancel) {
+                pendingActionSelection = nil
+            }
+        }
     }
 
     @ViewBuilder
-    private func scoreboardCard(_ match: MatchDetail, compact: Bool) -> some View {
+    private func landscapeScoringLayout(_ match: MatchDetail) -> some View {
+        VStack(spacing: 14) {
+            scoreboardCard(
+                match,
+                compact: false,
+                showsInlineControls: false,
+                landscapeTablet: true
+            )
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 0)
+
+            bottomTimerActionBar
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func scoreboardCard(
+        _ match: MatchDetail,
+        compact: Bool,
+        showsInlineControls: Bool = true,
+        landscapeTablet: Bool = false
+    ) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
             scoreSummaryBanner(match, compact: compact)
 
@@ -488,7 +645,8 @@ struct MatchScoringView: View {
                         serviceSide: live?.serviceSide ?? "Right",
                         sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player1", match: match),
-                        compact: compact
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
                     )
 
                     playerHeaderStrip(
@@ -498,7 +656,8 @@ struct MatchScoringView: View {
                         serviceSide: live?.serviceSide ?? "Right",
                         sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player2", match: match),
-                        compact: compact
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
                     )
                 }
 
@@ -510,14 +669,16 @@ struct MatchScoringView: View {
                         games: live?.player1GamesWon ?? 0,
                         currentSetGames: live?.player1SetGames ?? 0,
                         sport: match.sport ?? "",
-                        compact: compact
+                        shirtColorValue: shirtColorValue(for: "player1", match: match),
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
                     )
 
-                    Spacer(minLength: compact ? 8 : 12)
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 8 : 12))
 
-                    pointRail(compact: compact)
+                    pointRail(compact: compact, landscapeTablet: landscapeTablet)
 
-                    Spacer(minLength: compact ? 8 : 12)
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 8 : 12))
 
                     playerCard(
                         side: "player2",
@@ -526,43 +687,47 @@ struct MatchScoringView: View {
                         games: live?.player2GamesWon ?? 0,
                         currentSetGames: live?.player2SetGames ?? 0,
                         sport: match.sport ?? "",
-                        compact: compact
+                        shirtColorValue: shirtColorValue(for: "player2", match: match),
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
                     )
                 }
-                .padding(.horizontal, compact ? 6 : 8)
-                .padding(.top, compact ? 10 : 12)
-                .padding(.bottom, compact ? 12 : 14)
+                .padding(.horizontal, landscapeTablet ? 12 : (compact ? 6 : 8))
+                .padding(.top, landscapeTablet ? 16 : (compact ? 10 : 12))
+                .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
             }
 
             matchHistoryStrip
                 .padding(.horizontal, compact ? 12 : 16)
 
-            VStack(spacing: compact ? 8 : 10) {
-                if !isTennisMatch {
-                    HStack(spacing: compact ? 8 : 10) {
-                        controlButton("Stroke P1", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                            await awardStroke(to: "player1")
-                        }
-                        controlButton("Let", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                            await callLet()
-                        }
-                        controlButton("Stroke P2", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
-                            await awardStroke(to: "player2")
+            if showsInlineControls {
+                VStack(spacing: compact ? 8 : 10) {
+                    if !isTennisMatch {
+                        HStack(spacing: compact ? 8 : 10) {
+                            controlButton("Stroke P1", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
+                                await awardStroke(to: "player1")
+                            }
+                            controlButton("Let", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
+                                await callLet()
+                            }
+                            controlButton("Stroke P2", color: .rcktSlate, isDisabled: isMutating || timerPhase != .matchLive || isMatchComplete, compact: compact) {
+                                await awardStroke(to: "player2")
+                            }
                         }
                     }
-                }
 
-                HStack(spacing: compact ? 8 : 10) {
-                    controlButton("Undo Last Action", color: .rcktDanger, isDisabled: isMutating || undoLocked, compact: compact) {
-                        await undoLastAction()
-                    }
-                    controlButton("End Match Early", color: .rcktDanger, isDisabled: isMutating || isMatchComplete, compact: compact) {
-                        await endMatchEarly()
+                    HStack(spacing: compact ? 8 : 10) {
+                        controlButton("Undo Last Action", color: .rcktDanger, isDisabled: isMutating || undoLocked, compact: compact) {
+                            await undoLastAction()
+                        }
+                        controlButton("End Match Early", color: .rcktDanger, isDisabled: isMutating || isMatchComplete, compact: compact) {
+                            await endMatchEarly()
+                        }
                     }
                 }
+                .padding(.horizontal, compact ? 12 : 16)
+                .padding(.bottom, compact ? 12 : 14)
             }
-            .padding(.horizontal, compact ? 12 : 16)
-            .padding(.bottom, compact ? 12 : 14)
         }
         .padding(.top, compact ? 8 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -573,6 +738,13 @@ struct MatchScoringView: View {
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
         .shadow(color: colorScheme == .dark ? .clear : Color.black.opacity(0.05), radius: 16, x: 0, y: 8)
+    }
+
+    private var bottomTimerActionBar: some View {
+        HStack(spacing: 14) {
+            bottomTimerControl
+            bottomActionControl
+        }
     }
 
     private func timerCard(compact: Bool) -> some View {
@@ -611,6 +783,57 @@ struct MatchScoringView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
+    }
+
+    private var bottomTimerControl: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Match Timer")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Button {
+                handleToggleTimer()
+            } label: {
+                Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(timerChipBackgroundColor)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isMatchComplete || timerPhase == .firstServer)
+            .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.rcktCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.rcktBorder, lineWidth: 1)
+        )
+    }
+
+    private var bottomActionControl: some View {
+        Button {
+            showActionMenu = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.headline.weight(.bold))
+                Text("Action")
+                    .font(.headline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(Color.rcktSlate)
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .frame(width: 220)
     }
 
     @ViewBuilder
@@ -883,19 +1106,35 @@ struct MatchScoringView: View {
     }
 
     @ViewBuilder
-    private func pointRail(compact: Bool) -> some View {
+    private func pointRail(compact: Bool, landscapeTablet: Bool) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: compact ? 10 : 12) {
+                VStack(spacing: landscapeTablet ? 14 : (compact ? 10 : 12)) {
                     ForEach(pointRailEntries) { entry in
-                        VStack(spacing: compact ? 8 : 10) {
-                            HStack(spacing: compact ? 10 : 12) {
-                                railMarker(kind: .server, active: entry.serverSide == "player1", label: entry.serverSide == "player1" ? (entry.serviceSideLabel ?? "") : "")
-                                railMarker(kind: .server, active: entry.serverSide == "player2", label: entry.serverSide == "player2" ? (entry.serviceSideLabel ?? "") : "")
+                        HStack {
+                            if entry.serverSide == "player2" {
+                                Spacer(minLength: 0)
                             }
-                            HStack(spacing: compact ? 10 : 12) {
-                                railMarker(kind: .winner, active: entry.winnerSide == "player1", label: entry.winnerSide == "player1" ? (entry.winnerScore ?? "") : "")
-                                railMarker(kind: .winner, active: entry.winnerSide == "player2", label: entry.winnerSide == "player2" ? (entry.winnerScore ?? "") : "")
+
+                            HStack(spacing: landscapeTablet ? 10 : 8) {
+                                scoreSheetMarker(
+                                    label: entry.displaySideLabel,
+                                    isCurrentServe: entry.isCurrentServe,
+                                    accent: .rcktServe,
+                                    compact: compact,
+                                    landscapeTablet: landscapeTablet
+                                )
+                                scoreSheetMarker(
+                                    label: entry.displayScore,
+                                    isCurrentServe: entry.isCurrentServe,
+                                    accent: .rcktBlue,
+                                    compact: compact,
+                                    landscapeTablet: landscapeTablet
+                                )
+                            }
+
+                            if entry.serverSide != "player2" {
+                                Spacer(minLength: 0)
                             }
                         }
                         .id(entry.id)
@@ -904,7 +1143,10 @@ struct MatchScoringView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
             }
-            .frame(width: compact ? 74 : 86, height: compact ? 220 : 252)
+            .frame(
+                width: landscapeTablet ? 148 : (compact ? 86 : 98),
+                height: landscapeTablet ? 360 : (compact ? 220 : 252)
+            )
             .onAppear {
                 if let last = pointRailEntries.last?.id {
                     proxy.scrollTo(last, anchor: .bottom)
@@ -1086,14 +1328,15 @@ struct MatchScoringView: View {
         serviceSide: String,
         sport: String,
         shirtColorValue: String,
-        compact: Bool
+        compact: Bool,
+        landscapeTablet: Bool
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
         let isTennisHeader = sport.lowercased() == "tennis"
 
         VStack(spacing: compact ? 8 : 10) {
             Text(fullName(firstName: firstName, surname: surname))
-                .font(.system(size: compact ? 19 : 21, weight: .bold))
+                .font(.system(size: landscapeTablet ? 24 : (compact ? 19 : 21), weight: .bold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.center)
@@ -1145,8 +1388,8 @@ struct MatchScoringView: View {
             }
         }
         .padding(.horizontal, compact ? 14 : 16)
-        .padding(.vertical, compact ? 12 : 14)
-        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
+        .frame(maxWidth: .infinity, minHeight: landscapeTablet ? 122 : (compact ? 92 : 102), alignment: .center)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(foreground)
     }
@@ -1159,24 +1402,26 @@ struct MatchScoringView: View {
         games: Int,
         currentSetGames: Int,
         sport: String,
-        compact: Bool
+        shirtColorValue: String,
+        compact: Bool,
+        landscapeTablet: Bool
     ) -> some View {
         let isTennisCard = sport.lowercased() == "tennis"
 
         VStack(spacing: compact ? 8 : 10) {
             Text(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
-                .font(.system(size: compact ? 40 : 46, weight: .heavy, design: .rounded))
+                .font(.system(size: landscapeTablet ? 56 : (compact ? 40 : 46), weight: .heavy, design: .rounded))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, compact ? 10 : 12)
+                .padding(.vertical, landscapeTablet ? 18 : (compact ? 10 : 12))
                 .background(Color.white.opacity(0.18))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous)
                         .stroke(Color.white.opacity(0.24), lineWidth: 2)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous))
 
             Text(isTennisCard ? "Games: \(currentSetGames)" : "Games: \(games)")
-                .font(compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
+                .font(landscapeTablet ? .subheadline.weight(.semibold) : (compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold)))
                 .frame(maxWidth: .infinity, alignment: .center)
 
             if isTennisCard {
@@ -1186,11 +1431,11 @@ struct MatchScoringView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .padding(.horizontal, compact ? 10 : 12)
-        .padding(.vertical, compact ? 12 : 14)
-        .frame(width: compact ? 118 : 128)
-        .frame(minHeight: compact ? 148 : 164, alignment: .top)
-        .background(Color.rcktNavy)
+        .padding(.horizontal, landscapeTablet ? 14 : (compact ? 10 : 12))
+        .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
+        .frame(width: landscapeTablet ? 182 : (compact ? 118 : 128))
+        .frame(minHeight: landscapeTablet ? 232 : (compact ? 148 : 164), alignment: .top)
+        .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -1259,22 +1504,28 @@ struct MatchScoringView: View {
     }
 
     @ViewBuilder
-    private func railMarker(kind: RailMarkerKind, active: Bool, label: String) -> some View {
-        ZStack {
-            if active {
-                Circle()
-                    .fill(kind == .server ? Color.rcktServe : .white)
-                    .overlay(
-                        Circle()
-                            .stroke(kind == .winner ? Color.rcktBlue : Color.clear, lineWidth: kind == .winner ? 3 : 0)
-                    )
-
-                Text(label)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(kind == .server ? .white : Color.rcktBlue)
-            }
-        }
-        .frame(width: 30, height: 30)
+    private func scoreSheetMarker(
+        label: String,
+        isCurrentServe: Bool,
+        accent: Color,
+        compact: Bool,
+        landscapeTablet: Bool
+    ) -> some View {
+        Text(label)
+            .font(.system(size: landscapeTablet ? 20 : (compact ? 15 : 17), weight: .bold, design: .rounded))
+            .frame(
+                width: landscapeTablet ? 48 : (compact ? 34 : 38),
+                height: landscapeTablet ? 44 : (compact ? 32 : 34)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: landscapeTablet ? 14 : 12, style: .continuous)
+                    .fill(isCurrentServe ? accent : Color.rcktCardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: landscapeTablet ? 14 : 12, style: .continuous)
+                    .stroke(accent, lineWidth: 2)
+            )
+            .foregroundStyle(isCurrentServe ? Color.white : accent)
     }
 
     @ViewBuilder
@@ -1881,10 +2132,30 @@ struct MatchScoringView: View {
         }
     }
 
-    private func callLet() async {
+    private func callLet(awardedTo side: String? = nil) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
         await performMutation {
-            try await container.apiClient.callLet(matchID: matchID)
+            try await container.apiClient.callLet(
+                matchID: matchID,
+                playerSide: side,
+                note: side.map { "Let awarded to \($0)" } ?? "General let"
+            )
+        }
+    }
+
+    private func handlePendingActionSelection(for side: String) async {
+        let action = pendingActionSelection
+        pendingActionSelection = nil
+        showPlayerActionSheet = false
+
+        switch action {
+        case .letAwarded:
+            await callLet(awardedTo: side)
+        case .strokeAgainst:
+            let awardedSide = side == "player1" ? "player2" : "player1"
+            await awardStroke(to: awardedSide)
+        case nil:
+            break
         }
     }
 
@@ -1923,6 +2194,21 @@ struct MatchScoringView: View {
         await performMutation {
             try await container.apiClient.recordMatchDuration(matchID: matchID, durationSeconds: durationSeconds)
         }
+    }
+
+    private func handleMatchIdentityTask() async {
+        await loadDisplayAccessIfNeeded()
+        await MainActor.run {
+            autoOpenSettingsIfNeeded()
+        }
+    }
+
+    private func handleTimerBootstrapTask() {
+        guard let match else {
+            return
+        }
+
+        bootstrapTimerIfNeeded(for: match)
     }
 
     private func performMutation(_ operation: @escaping () async throws -> MatchDetail) async {
