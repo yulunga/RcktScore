@@ -141,6 +141,7 @@ If a root-admin issue appears:
 - verify whether the request is depending on `rootAdminRequest: true`
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
+- if a sport disappears for every club and personal account at once, check the root-admin `platform_sports` setting and whether the bulk apply path updated `SkwshOrgSettings.enabled_sports`
 - do not assume root-admin failures will look like org-user session failures
 
 ## 4. Match Creation and Scoring Issues

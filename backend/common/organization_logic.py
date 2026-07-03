@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
-from common.sport_config import normalize_enabled_sports
+from common.sport_config import constrain_enabled_sports, normalize_enabled_sports
 
 VALID_ROLES = {"admin", "user"}
 USER_STATUS_PENDING = "pending"
@@ -358,7 +358,7 @@ def update_organization_details(connection, organization_id, payload):
         if field in payload
     }
     if "enabled_sports" in payload:
-        updates["enabled_sports"] = normalize_enabled_sports(payload.get("enabled_sports"))
+        updates["enabled_sports"] = constrain_enabled_sports(connection, payload.get("enabled_sports"))
 
     if updates:
         set_clause = ", ".join(f'{field} = %({field})s' for field in updates)

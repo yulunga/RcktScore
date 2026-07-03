@@ -183,6 +183,30 @@ Resources:
             Path: /root_admin/dashboard
             Method: GET
 
+  GetRootAdminPlatformSportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_platform_sports/handler.lambda_handler
+      Events:
+        GetRootAdminPlatformSports:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/platform_sports
+            Method: GET
+
+  UpdateRootAdminPlatformSportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_platform_sports/handler.lambda_handler
+      Events:
+        UpdateRootAdminPlatformSports:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/platform_sports
+            Method: PUT
+
   GetRootAdminMatchesFunction:
     Type: AWS::Serverless::Function
     Properties:

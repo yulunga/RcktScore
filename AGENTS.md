@@ -49,6 +49,7 @@ What is real and implemented:
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
+- root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
 
 What is still partial or risky:
 
@@ -106,6 +107,7 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/rckscoreAdmin/dashboard`
 - `/rckscoreAdmin/clubs/:organizationId`
 - `/rckscoreAdmin/matches`
+- `/rckscoreAdmin/racket-sports`
 - `/rckscoreAdmin/interests`
 - `/rckscoreAdmin/personal-accounts`
 

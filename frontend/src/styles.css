@@ -2365,6 +2365,10 @@ textarea {
   justify-content: flex-start;
 }
 
+.root-admin-dashboard-actions {
+  margin-top: 4px;
+}
+
 .root-admin-search {
   position: relative;
 }

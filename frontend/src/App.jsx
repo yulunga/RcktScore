@@ -19,6 +19,7 @@ import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
 import RootAdminPersonalAccountsPage from "./pages/RootAdminPersonalAccountsPage";
+import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
 
 export default function App() {
   return (
@@ -48,6 +49,14 @@ export default function App() {
         element={(
           <RootAdminProtectedRoute>
             <RootAdminMatchesPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/racket-sports"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminPlatformSportsPage />
           </RootAdminProtectedRoute>
         )}
       />

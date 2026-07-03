@@ -387,6 +387,7 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 3. Some club-detail routes call normal organisation endpoints with `x-root-admin-request: true`.
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
+6. The platform dashboard now also links to a root-admin `RacketSports` page that calls `GET /root_admin/platform_sports` and `PUT /root_admin/platform_sports` to set the globally allowed sport list and push that same list to all clubs and personal accounts.
 
 ### Important current limitation
 

@@ -161,6 +161,17 @@ export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
 }
 
+export function getRootAdminPlatformSports() {
+  return apiRequest("/root_admin/platform_sports");
+}
+
+export function updateRootAdminPlatformSports(payload) {
+  return apiRequest("/root_admin/platform_sports", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getRootAdminMatches(filters = {}) {
   const params = new URLSearchParams();
   if (filters.sport) {

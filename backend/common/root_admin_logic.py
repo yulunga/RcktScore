@@ -3,7 +3,7 @@ import secrets
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.sport_config import SPORT_LABELS
-from common.sport_config import normalize_enabled_sports
+from common.sport_config import constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports
 from psycopg.types.json import Jsonb
 from psycopg.errors import UndefinedTable
 
@@ -87,6 +87,7 @@ def _serialize_root_admin_match(row):
 
 
 def get_root_admin_dashboard(connection):
+    platform_enabled_sports = fetch_platform_enabled_sports(connection)
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -221,8 +222,58 @@ def get_root_admin_dashboard(connection):
             "match_count": match_count,
             "completed_match_count": completed_match_count,
         },
+        "platform_enabled_sports": platform_enabled_sports,
         "organizations": organizations,
     }
+
+
+def get_root_admin_platform_sports(connection):
+    enabled_sports = fetch_platform_enabled_sports(connection)
+    return {
+        "enabled_sports": enabled_sports,
+        "sports": [
+            {
+                "value": sport_id,
+                "label": label,
+            }
+            for sport_id, label in SPORT_LABELS.items()
+        ],
+    }
+
+
+def update_root_admin_platform_sports(connection, enabled_sports, updated_by=None):
+    normalized_enabled_sports = normalize_enabled_sports(enabled_sports)
+    now = _utcnow()
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO platform_settings (id, enabled_sports, updated_at)
+            VALUES ('default', %(enabled_sports)s, %(updated_at)s)
+            ON CONFLICT (id) DO UPDATE
+            SET enabled_sports = EXCLUDED.enabled_sports,
+                updated_at = EXCLUDED.updated_at
+            """,
+            {
+                "enabled_sports": Jsonb(normalized_enabled_sports),
+                "updated_at": now,
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgSettings"
+            SET enabled_sports = %(enabled_sports)s
+            """,
+            {"enabled_sports": Jsonb(normalized_enabled_sports)},
+        )
+        affected_organization_count = cursor.rowcount
+
+    connection.commit()
+    result = get_root_admin_platform_sports(connection)
+    result["updated_by"] = (updated_by or "").strip() or ""
+    result["updated_at"] = now.isoformat()
+    result["affected_organization_count"] = affected_organization_count
+    return result
 
 
 def get_root_admin_matches(connection, sport=None, organization_id=None):
@@ -577,6 +628,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
         part for part in [interest_row.get("first_name"), interest_row.get("surname")] if part
     ).strip()
     organization_name = f"{full_name or username} Personal"
+    platform_enabled_sports = fetch_platform_enabled_sports(connection)
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -603,6 +655,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                         WHEN plan IN ('personal_free', 'personal_plus') THEN plan
                         ELSE %(personal_plan)s
                     END,
+                    enabled_sports = %(enabled_sports)s,
                     interest_request_id = %(interest_request_id)s,
                     is_hidden = true
                 WHERE id = %(organization_id)s
@@ -613,6 +666,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     "username": username,
                     "contact_name": full_name or username,
                     "personal_plan": interest_row.get("personal_plan") or "personal_free",
+                    "enabled_sports": Jsonb(platform_enabled_sports),
                     "interest_request_id": interest_row["id"],
                 },
             )
@@ -633,7 +687,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     plan,
                     owner_username,
                     interest_request_id,
-                    is_hidden
+                    is_hidden,
+                    enabled_sports
                 )
                 VALUES (
                     %(organization_id)s,
@@ -645,7 +700,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     %(plan)s,
                     %(owner_username)s,
                     %(interest_request_id)s,
-                    true
+                    true,
+                    %(enabled_sports)s
                 )
                 """,
                 {
@@ -657,6 +713,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     "plan": interest_row.get("personal_plan") or "personal_free",
                     "owner_username": username,
                     "interest_request_id": interest_row["id"],
+                    "enabled_sports": Jsonb(platform_enabled_sports),
                 },
             )
 
@@ -809,7 +866,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
         "first_name": interest_row.get("first_name") or "",
         "surname": interest_row.get("surname") or "",
         "personal_plan": interest_row.get("personal_plan") or "personal_free",
-        "enabled_sports": normalize_enabled_sports(None),
+        "enabled_sports": platform_enabled_sports,
         "account_status": (
             PERSONAL_ACCOUNT_STATUS_LIVE
             if account_user_row.get("approval_status") == "approved"
@@ -913,7 +970,7 @@ def update_root_admin_personal_account_settings(
             raise ValueError("personal_plan must be personal_free or personal_plus")
         updates["plan"] = requested_plan
     if enabled_sports is not None:
-        updates["enabled_sports"] = normalize_enabled_sports(enabled_sports)
+        updates["enabled_sports"] = constrain_enabled_sports(connection, enabled_sports)
     if not updates:
         raise ValueError("At least one personal account setting must be provided")
 
@@ -1031,6 +1088,8 @@ def create_root_admin_organization(connection, payload):
     if not (updates.get("organization_name") or "").strip():
         raise ValueError("organization_name is required")
 
+    enabled_sports = fetch_platform_enabled_sports(connection)
+
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -1042,7 +1101,8 @@ def create_root_admin_organization(connection, payload):
                 org_contact,
                 org_telephone,
                 org_email,
-                org_webaddress
+                org_webaddress,
+                enabled_sports
             )
             VALUES (
                 %(created_at)s,
@@ -1052,7 +1112,8 @@ def create_root_admin_organization(connection, payload):
                 %(org_contact)s,
                 %(org_telephone)s,
                 %(org_email)s,
-                %(org_webaddress)s
+                %(org_webaddress)s,
+                %(enabled_sports)s
             )
             RETURNING
                 id,
@@ -1062,7 +1123,8 @@ def create_root_admin_organization(connection, payload):
                 org_contact,
                 org_telephone,
                 org_email,
-                org_webaddress
+                org_webaddress,
+                enabled_sports
             """,
             {
                 "created_at": _utcnow(),
@@ -1073,6 +1135,7 @@ def create_root_admin_organization(connection, payload):
                 "org_telephone": updates.get("org_telephone") or None,
                 "org_email": updates.get("org_email") or None,
                 "org_webaddress": updates.get("org_webaddress") or None,
+                "enabled_sports": Jsonb(enabled_sports),
             },
         )
         organization_row = cursor.fetchone()

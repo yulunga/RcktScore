@@ -192,6 +192,15 @@ export default function RootAdminDashboardPage() {
             </span>
           </div>
         </div>
+        <div className="button-row root-admin-actions root-admin-dashboard-actions">
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => navigate("/rckscoreAdmin/racket-sports")}
+          >
+            RacketSports
+          </button>
+        </div>
       </section>
 
       {loading ? <div className="notice">Loading root admin dashboard...</div> : null}

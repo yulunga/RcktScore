@@ -64,6 +64,7 @@ Current runtime path:
   - root-admin user management
   - interest request and personal-account admin flows
   - root-admin match listing, archive, and delete flows
+  - root-admin platform-wide racket-sport control
 
 ### Match and dashboard
 
@@ -161,6 +162,8 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`
+- `GET /root_admin/platform_sports`
+- `PUT /root_admin/platform_sports`
 - `GET /root_admin/matches`
 - `PUT /root_admin/matches/{match_id}/archive`
 - `DELETE /root_admin/matches/{match_id}`
@@ -183,6 +186,12 @@ Current root-admin match-management behavior:
 - archived matches are excluded from standard club/user match views and from the root-admin match directory by default
 - `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
 - `DELETE /root_admin/matches/{match_id}` permanently removes the match row and cascades `match_events`
+
+Current root-admin platform-sport behavior:
+
+- `GET /root_admin/platform_sports` returns the current globally allowed racket-sport list
+- `PUT /root_admin/platform_sports` updates the platform default and applies the same enabled sport list across all existing clubs and personal accounts
+- organisation-level and personal-account-level enabled-sport updates are now constrained to the currently allowed platform list
 
 ### Organisation and dashboard routes
 
