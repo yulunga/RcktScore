@@ -48,6 +48,7 @@ private struct MatchTimerSnapshot: Codable {
 private struct PointRailEntry: Identifiable {
     let id: String
     let serverSide: String?
+    let displaySide: String
     let displaySideLabel: String
     let displayScore: String
     let isCurrentServe: Bool
@@ -267,6 +268,7 @@ struct MatchScoringView: View {
             return PointRailEntry(
                 id: event.id,
                 serverSide: serverSide,
+                displaySide: winnerSide ?? serverSide ?? "player1",
                 displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
                 displayScore: winnerScore,
                 isCurrentServe: false
@@ -283,6 +285,7 @@ struct MatchScoringView: View {
         let currentServe = PointRailEntry(
             id: "current-serve-\(match.id)-\(live?.currentServerSide ?? "player1")-\(live?.serviceSide ?? "Right")",
             serverSide: live?.currentServerSide,
+            displaySide: live?.currentServerSide ?? "player1",
             displaySideLabel: String(live?.serviceSide?.prefix(1) ?? "").uppercased(),
             displayScore: currentScore,
             isCurrentServe: true
@@ -1098,6 +1101,15 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func pointRail(compact: Bool, landscapeTablet: Bool) -> some View {
         let isTabletPortrait = UIDevice.current.userInterfaceIdiom == .pad && !landscapeTablet
+        let laneWidth: CGFloat = {
+            if landscapeTablet {
+                return 122
+            }
+            if isTabletPortrait {
+                return 96
+            }
+            return compact ? 84 : 92
+        }()
         let railHeight: CGFloat = {
             if landscapeTablet {
                 return 360
@@ -1112,35 +1124,29 @@ struct MatchScoringView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: landscapeTablet ? 14 : (compact ? 10 : 12)) {
                     ForEach(pointRailEntries) { entry in
-                        HStack {
-                            if entry.serverSide == "player1" {
-                                pointRailSlot(
-                                    for: entry,
-                                    side: "player1",
-                                    compact: compact,
-                                    landscapeTablet: landscapeTablet
-                                )
-                            } else {
-                                Spacer(minLength: 0)
-                            }
+                        HStack(spacing: landscapeTablet ? 16 : 10) {
+                            pointRailLane(
+                                entry: entry,
+                                targetSide: "player1",
+                                laneWidth: laneWidth,
+                                compact: compact,
+                                landscapeTablet: landscapeTablet
+                            )
 
                             Rectangle()
                                 .fill(Color.rcktBorder.opacity(0.9))
                                 .frame(width: 1)
                                 .padding(.vertical, 4)
 
-                            if entry.serverSide == "player2" {
-                                pointRailSlot(
-                                    for: entry,
-                                    side: "player2",
-                                    compact: compact,
-                                    landscapeTablet: landscapeTablet
-                                )
-                            } else {
-                                Spacer(minLength: 0)
-                            }
+                            pointRailLane(
+                                entry: entry,
+                                targetSide: "player2",
+                                laneWidth: laneWidth,
+                                compact: compact,
+                                landscapeTablet: landscapeTablet
+                            )
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .id(entry.id)
                     }
                 }
@@ -1148,7 +1154,7 @@ struct MatchScoringView: View {
                 .padding(.vertical, 4)
             }
             .frame(
-                width: landscapeTablet ? 264 : (isTabletPortrait ? 150 : (compact ? 120 : 140)),
+                width: (laneWidth * 2) + (landscapeTablet ? 17 : 11),
                 height: railHeight
             )
             .onAppear {
@@ -1167,29 +1173,37 @@ struct MatchScoringView: View {
     }
 
     @ViewBuilder
-    private func pointRailSlot(
-        for entry: PointRailEntry,
-        side: String,
+    private func pointRailLane(
+        entry: PointRailEntry,
+        targetSide: String,
+        laneWidth: CGFloat,
         compact: Bool,
         landscapeTablet: Bool
     ) -> some View {
-        HStack(spacing: landscapeTablet ? 10 : 8) {
-            scoreSheetMarker(
-                label: entry.displaySideLabel,
-                isCurrentServe: entry.isCurrentServe,
-                accent: timelineAccent(for: side),
-                compact: compact,
-                landscapeTablet: landscapeTablet
-            )
-            scoreSheetMarker(
-                label: entry.displayScore,
-                isCurrentServe: entry.isCurrentServe,
-                accent: timelineAccent(for: side),
-                compact: compact,
-                landscapeTablet: landscapeTablet
-            )
+        Group {
+            if entry.displaySide == targetSide {
+                HStack(spacing: landscapeTablet ? 10 : 8) {
+                    scoreSheetMarker(
+                        label: entry.displaySideLabel,
+                        isCurrentServe: entry.isCurrentServe,
+                        accent: timelineAccent(for: targetSide),
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
+                    )
+                    scoreSheetMarker(
+                        label: entry.displayScore,
+                        isCurrentServe: entry.isCurrentServe,
+                        accent: timelineAccent(for: targetSide),
+                        compact: compact,
+                        landscapeTablet: landscapeTablet
+                    )
+                }
+                .frame(width: laneWidth, alignment: targetSide == "player1" ? .trailing : .leading)
+            } else {
+                Color.clear
+                    .frame(width: laneWidth, height: landscapeTablet ? 44 : (compact ? 32 : 34))
+            }
         }
-        .frame(maxWidth: .infinity, alignment: side == "player1" ? .trailing : .leading)
     }
 
     @ViewBuilder
