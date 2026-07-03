@@ -502,6 +502,24 @@ struct MatchScoringView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isTabletLandscape, match != nil {
+                bottomTimerActionBar
+                    .padding(.horizontal, compactLayout ? 12 : 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(.systemGroupedBackground).opacity(0.92),
+                                Color(.systemGroupedBackground)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            }
+        }
     }
 
     var body: some View {
@@ -598,8 +616,6 @@ struct MatchScoringView: View {
             }
 
             Spacer(minLength: 0)
-
-            bottomTimerActionBar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -745,6 +761,7 @@ struct MatchScoringView: View {
             bottomTimerControl
             bottomActionControl
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private func timerCard(compact: Bool) -> some View {
@@ -1112,31 +1129,34 @@ struct MatchScoringView: View {
                 VStack(spacing: landscapeTablet ? 14 : (compact ? 10 : 12)) {
                     ForEach(pointRailEntries) { entry in
                         HStack {
-                            if entry.serverSide == "player2" {
+                            if entry.serverSide == "player1" {
+                                pointRailSlot(
+                                    for: entry,
+                                    side: "player1",
+                                    compact: compact,
+                                    landscapeTablet: landscapeTablet
+                                )
+                            } else {
                                 Spacer(minLength: 0)
                             }
 
-                            HStack(spacing: landscapeTablet ? 10 : 8) {
-                                scoreSheetMarker(
-                                    label: entry.displaySideLabel,
-                                    isCurrentServe: entry.isCurrentServe,
-                                    accent: .rcktServe,
-                                    compact: compact,
-                                    landscapeTablet: landscapeTablet
-                                )
-                                scoreSheetMarker(
-                                    label: entry.displayScore,
-                                    isCurrentServe: entry.isCurrentServe,
-                                    accent: .rcktBlue,
-                                    compact: compact,
-                                    landscapeTablet: landscapeTablet
-                                )
-                            }
+                            Rectangle()
+                                .fill(Color.rcktBorder.opacity(0.9))
+                                .frame(width: 1)
+                                .padding(.vertical, 4)
 
-                            if entry.serverSide != "player2" {
+                            if entry.serverSide == "player2" {
+                                pointRailSlot(
+                                    for: entry,
+                                    side: "player2",
+                                    compact: compact,
+                                    landscapeTablet: landscapeTablet
+                                )
+                            } else {
                                 Spacer(minLength: 0)
                             }
                         }
+                        .frame(maxWidth: .infinity)
                         .id(entry.id)
                     }
                 }
@@ -1144,7 +1164,7 @@ struct MatchScoringView: View {
                 .padding(.vertical, 4)
             }
             .frame(
-                width: landscapeTablet ? 148 : (compact ? 86 : 98),
+                width: landscapeTablet ? 264 : (compact ? 120 : 140),
                 height: landscapeTablet ? 360 : (compact ? 220 : 252)
             )
             .onAppear {
@@ -1160,6 +1180,32 @@ struct MatchScoringView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func pointRailSlot(
+        for entry: PointRailEntry,
+        side: String,
+        compact: Bool,
+        landscapeTablet: Bool
+    ) -> some View {
+        HStack(spacing: landscapeTablet ? 10 : 8) {
+            scoreSheetMarker(
+                label: entry.displaySideLabel,
+                isCurrentServe: entry.isCurrentServe,
+                accent: timelineAccent(for: side),
+                compact: compact,
+                landscapeTablet: landscapeTablet
+            )
+            scoreSheetMarker(
+                label: entry.displayScore,
+                isCurrentServe: entry.isCurrentServe,
+                accent: timelineAccent(for: side),
+                compact: compact,
+                landscapeTablet: landscapeTablet
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: side == "player1" ? .trailing : .leading)
     }
 
     @ViewBuilder
@@ -1526,6 +1572,10 @@ struct MatchScoringView: View {
                     .stroke(accent, lineWidth: 2)
             )
             .foregroundStyle(isCurrentServe ? Color.white : accent)
+    }
+
+    private func timelineAccent(for side: String) -> Color {
+        side == "player1" ? .rcktPink : .rcktBlue
     }
 
     @ViewBuilder
@@ -2577,6 +2627,7 @@ private extension DateFormatter {
 
 private extension Color {
     static let rcktBlue = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    static let rcktPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
     static let rcktNavy = Color(red: 28 / 255, green: 61 / 255, blue: 99 / 255)
     static let rcktSlate = Color(red: 77 / 255, green: 107 / 255, blue: 139 / 255)
     static let rcktDanger = Color(red: 214 / 255, green: 69 / 255, blue: 69 / 255)
