@@ -467,7 +467,8 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func scoringCanvas(
         compactLayout: Bool,
-        isTabletLandscape: Bool
+        isTabletLandscape: Bool,
+        bottomDockReservedHeight: CGFloat
     ) -> some View {
         ZStack {
             VStack(spacing: compactLayout ? 12 : 16) {
@@ -485,8 +486,10 @@ struct MatchScoringView: View {
                         scoreboardCard(
                             match,
                             compact: compactLayout,
-                            showsInlineControls: false
+                            showsInlineControls: false,
+                            expandsVertically: true
                         )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -504,6 +507,7 @@ struct MatchScoringView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, compactLayout ? 12 : 16)
             .padding(.top, compactLayout ? 10 : 14)
+            .padding(.bottom, bottomDockReservedHeight)
 
             if showWarmupOverlay {
                 overlayBackdrop {
@@ -523,9 +527,16 @@ struct MatchScoringView: View {
         GeometryReader { geometry in
             let compactLayout = geometry.size.height < 760
             let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
+            let bottomDockInset = isTabletLandscape ? 2.0 : 6.0
+            let bottomDockHeight = bottomDockReservedHeight(
+                compactLayout: compactLayout,
+                isTabletLandscape: isTabletLandscape,
+                bottomInset: bottomDockInset
+            )
             scoringCanvas(
                 compactLayout: compactLayout,
-                isTabletLandscape: isTabletLandscape
+                isTabletLandscape: isTabletLandscape,
+                bottomDockReservedHeight: bottomDockHeight
             )
         }
         .background(Color(.systemGroupedBackground))
@@ -612,9 +623,9 @@ struct MatchScoringView: View {
             compactLayout: compactLayout,
             isTabletLandscape: isTabletLandscape
         )
-        .padding(.horizontal, compactLayout ? 10 : 16)
-        .padding(.top, 6)
-        .padding(.bottom, isTabletLandscape ? 8 : 6)
+        .padding(.horizontal, compactLayout ? 8 : 14)
+        .padding(.top, 2)
+        .padding(.bottom, isTabletLandscape ? 2 : 4)
     }
 
     @ViewBuilder
@@ -623,8 +634,10 @@ struct MatchScoringView: View {
             scoreboardCard(
                 match,
                 compact: false,
-                landscapeTablet: true
+                landscapeTablet: true,
+                expandsVertically: true
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -643,7 +656,8 @@ struct MatchScoringView: View {
         _ match: MatchDetail,
         compact: Bool,
         showsInlineControls: Bool = false,
-        landscapeTablet: Bool = false
+        landscapeTablet: Bool = false,
+        expandsVertically: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
             scoreSummaryBanner(match, compact: compact)
@@ -731,6 +745,10 @@ struct MatchScoringView: View {
                 .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
             }
 
+            if expandsVertically {
+                Spacer(minLength: 0)
+            }
+
             matchHistoryStrip
                 .padding(.horizontal, compact ? 12 : 16)
         }
@@ -767,9 +785,9 @@ struct MatchScoringView: View {
                 .disabled(isMatchComplete)
             }
         }
-        .padding(.horizontal, compactLayout ? 8 : 10)
-        .padding(.top, compactLayout ? 6 : 8)
-        .padding(.bottom, compactLayout ? 6 : 8)
+        .padding(.horizontal, compactLayout ? 6 : 8)
+        .padding(.top, compactLayout ? 4 : 6)
+        .padding(.bottom, compactLayout ? 4 : 6)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.ultraThinMaterial)
@@ -792,9 +810,9 @@ struct MatchScoringView: View {
                 handleToggleTimer()
             } label: {
                 Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
-                    .font(.system(size: isTabletLandscape ? 28 : (compactLayout ? 21 : 24), weight: .heavy, design: .rounded))
+                    .font(.system(size: isTabletLandscape ? 26 : (compactLayout ? 20 : 22), weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, isTabletLandscape ? 16 : (compactLayout ? 12 : 14))
+                    .padding(.vertical, isTabletLandscape ? 13 : (compactLayout ? 11 : 12))
                     .background(timerChipBackgroundColor)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -804,7 +822,7 @@ struct MatchScoringView: View {
             .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(compactLayout ? 6 : 8)
+        .padding(compactLayout ? 4 : 6)
     }
 
     private func bottomActionControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
@@ -818,7 +836,7 @@ struct MatchScoringView: View {
                     .font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, isTabletLandscape ? 18 : (compactLayout ? 14 : 16))
+            .padding(.vertical, isTabletLandscape ? 15 : (compactLayout ? 13 : 14))
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.42))
@@ -831,7 +849,7 @@ struct MatchScoringView: View {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: isTabletLandscape ? 188 : (compactLayout ? 120 : 138))
+        .frame(width: isTabletLandscape ? 170 : (compactLayout ? 116 : 132))
     }
 
     @ViewBuilder
@@ -1253,23 +1271,22 @@ struct MatchScoringView: View {
     @ViewBuilder
     private var matchHistoryStrip: some View {
         if let gameHistory = live?.gameHistory, !gameHistory.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(gameHistory) { game in
-                        VStack(spacing: 4) {
-                            Text("\(game.player1Score) - \(game.player2Score)")
-                                .font(.subheadline.weight(.semibold))
-                            Text(initials(for: game.winnerName))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 92)
-                        .padding(.vertical, 10)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            HStack(spacing: 8) {
+                ForEach(gameHistory) { game in
+                    VStack(spacing: 4) {
+                        Text("\(game.player1Score) - \(game.player2Score)")
+                            .font(.subheadline.weight(.semibold))
+                        Text(initials(for: game.winnerName))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(width: 92)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -1588,11 +1605,11 @@ struct MatchScoringView: View {
     ) -> CGFloat {
         let contentHeight: CGFloat
         if isTabletLandscape {
-            contentHeight = timerSkipLabel == nil ? 98 : 126
+            contentHeight = timerSkipLabel == nil ? 72 : 98
         } else if compactLayout {
-            contentHeight = timerSkipLabel == nil ? 88 : 116
+            contentHeight = timerSkipLabel == nil ? 74 : 102
         } else {
-            contentHeight = timerSkipLabel == nil ? 94 : 122
+            contentHeight = timerSkipLabel == nil ? 80 : 108
         }
 
         return contentHeight + bottomInset
