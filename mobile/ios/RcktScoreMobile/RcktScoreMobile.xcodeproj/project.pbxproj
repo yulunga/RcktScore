@@ -17,12 +17,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RcktScoreMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		347077DC2F756CF40099CAFA /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = RcktScoreMobileUITests.xctest; path = "/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/build/Debug-iphoneos/RcktScoreMobileUITests-Runner.app/PlugIns/RcktScoreMobileUITests.xctest"; sourceTree = "<absolute>"; };
+		347077DC2F756CF40099CAFA /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = RcktScoreMobile.app; path = "/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/build/Debug-iphoneos/RcktScoreMobile.app"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */ = {
@@ -60,17 +57,7 @@
 			children = (
 				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
-				347077DD2F756CF40099CAFA /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		347077DD2F756CF40099CAFA /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				347077DC2F756CF40099CAFA /* RcktScoreMobile.app */,
-				343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -150,7 +137,7 @@
 			mainGroup = 347077D32F756CF40099CAFA;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 347077DD2F756CF40099CAFA /* Products */;
+			productRefGroup = 347077D32F756CF40099CAFA;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
