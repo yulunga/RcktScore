@@ -4,31 +4,79 @@ struct ScoringScreen {
 
     let app: XCUIApplication
 
-    var player1ScoreButton: XCUIElement {
-        app.buttons["player1ScoreButton"]
+    var backButton: XCUIElement {
+        app.buttons["scoring.backButton"]
     }
 
-    var player2ScoreButton: XCUIElement {
-        app.buttons["player2ScoreButton"]
+    var gameSettingsButton: XCUIElement {
+        app.buttons["scoring.gameSettingsButton"]
     }
 
-    var undoButton: XCUIElement {
-        app.buttons["undoButton"]
+    var player1ScoreCard: XCUIElement {
+        app.otherElements["scoring.scoreCard.player1"]
     }
 
-    var scoreLabel: XCUIElement {
-        app.staticTexts["matchScoreLabel"]
+    var player2ScoreCard: XCUIElement {
+        app.otherElements["scoring.scoreCard.player2"]
+    }
+
+    var timerButton: XCUIElement {
+        app.buttons["scoring.timerButton"]
+    }
+
+    var timerSkipButton: XCUIElement {
+        app.buttons["scoring.timerSkipButton"]
+    }
+
+    var actionButton: XCUIElement {
+        app.buttons["scoring.actionButton"]
+    }
+
+    var undoActionButton: XCUIElement {
+        app.buttons["scoring.action.undo"]
+    }
+
+    var endMatchEarlyButton: XCUIElement {
+        app.buttons["scoring.action.endEarly"]
+    }
+
+    var strokeActionButton: XCUIElement {
+        app.buttons["scoring.action.stroke"]
+    }
+
+    var letActionButton: XCUIElement {
+        app.buttons["scoring.action.let"]
+    }
+
+    var warmupStartButton: XCUIElement {
+        app.buttons["scoring.warmup.startButton"]
+    }
+
+    var warmupSkipButton: XCUIElement {
+        app.buttons["scoring.warmup.skipButton"]
+    }
+
+    func verifyLoaded(timeout: TimeInterval = 8) {
+        XCTAssertTrue(
+            player1ScoreCard.waitForExistence(timeout: timeout)
+                || warmupStartButton.waitForExistence(timeout: timeout)
+                || timerButton.waitForExistence(timeout: timeout)
+        )
     }
 
     func scorePlayer1(times: Int) {
         for _ in 0..<times {
-            player1ScoreButton.tap()
+            player1ScoreCard.tap()
         }
     }
 
     func scorePlayer2(times: Int) {
         for _ in 0..<times {
-            player2ScoreButton.tap()
+            player2ScoreCard.tap()
         }
+    }
+
+    func openActionMenu() {
+        actionButton.tap()
     }
 }
