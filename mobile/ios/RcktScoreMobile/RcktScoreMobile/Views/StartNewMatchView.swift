@@ -224,6 +224,7 @@ struct StartNewMatchFlowView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("startMatch.sport.\(sport.rawValue)")
                     }
                 }
                 .frame(maxWidth: 360)
@@ -258,6 +259,7 @@ struct StartNewMatchFlowView: View {
                 Button("Close") {
                     dismiss()
                 }
+                .accessibilityIdentifier("startMatch.closeButton")
             }
         }
     }
@@ -575,6 +577,7 @@ struct StartNewMatchView: View {
                 Button("Close") {
                     dismiss()
                 }
+                .accessibilityIdentifier("startMatch.setup.closeButton")
             }
         }
     }
@@ -623,10 +626,12 @@ struct StartNewMatchView: View {
                 toggleOptionButton(title: "Singles", isSelected: !formState.isDoubles) {
                     formState.isDoubles = false
                 }
+                .accessibilityIdentifier("startMatch.matchType.singles")
 
                 toggleOptionButton(title: "Doubles", isSelected: formState.isDoubles) {
                     formState.isDoubles = true
                 }
+                .accessibilityIdentifier("startMatch.matchType.doubles")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -657,6 +662,7 @@ struct StartNewMatchView: View {
                                 Text(court.courtName).tag(String(court.id))
                             }
                         }
+                        .accessibilityIdentifier("startMatch.courtPicker")
                         .pickerStyle(.menu)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 14)
@@ -709,6 +715,7 @@ struct StartNewMatchView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .tint(Color.dashboardBrand)
+                    .accessibilityIdentifier("startMatch.handicapToggle")
                     .onChange(of: formState.handicapEnabled) {
                         if formState.handicapEnabled {
                             formState.scoreType = 15
@@ -727,6 +734,7 @@ struct StartNewMatchView: View {
                                 .font(.subheadline.weight(.semibold))
                         }
                         .tint(Color.dashboardBrand)
+                        .accessibilityIdentifier("startMatch.scheduleToggle")
                     }
                 } else if !isPersonalAccount {
                     Toggle(isOn: $formState.scheduleMatch) {
@@ -734,6 +742,7 @@ struct StartNewMatchView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .tint(Color.dashboardBrand)
+                    .accessibilityIdentifier("startMatch.scheduleToggle")
                 }
             }
         }
@@ -813,6 +822,7 @@ struct StartNewMatchView: View {
             .buttonStyle(.plain)
             .disabled(isSubmitting || !canSubmit)
             .opacity(isSubmitting || !canSubmit ? 0.7 : 1)
+            .accessibilityIdentifier("startMatch.startButton")
 
             if let personalActiveMatch {
                 Button("Resume Active Match") {
@@ -824,6 +834,7 @@ struct StartNewMatchView: View {
                 .buttonStyle(.plain)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.dashboardBrand)
+                .accessibilityIdentifier("startMatch.resumeActiveMatchButton")
             }
         }
     }
@@ -996,6 +1007,7 @@ struct StartNewMatchView: View {
                 .background(Color.dashboardInnerCardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .focused($focusedField, equals: focus)
+                .accessibilityIdentifier(accessibilityIdentifier(for: focus))
         }
     }
 
@@ -1017,6 +1029,7 @@ struct StartNewMatchView: View {
                 .background(Color.dashboardInnerCardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .focused($focusedField, equals: focus)
+                .accessibilityIdentifier(accessibilityIdentifier(for: focus))
 
             if focusedField == focus && !filteredCountries(for: text.wrappedValue).isEmpty {
                 suggestionList(filteredCountries(for: text.wrappedValue), id: \.self) { countryOption in
@@ -1114,6 +1127,7 @@ struct StartNewMatchView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(option.label)
+                    .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
                 }
             }
         }
@@ -1164,6 +1178,33 @@ struct StartNewMatchView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+
+    private func accessibilityIdentifier(for focus: MatchSetupFocusField) -> String {
+        switch focus {
+        case .player1Name:
+            return "startMatch.player1.firstNameField"
+        case .player1Surname:
+            return "startMatch.player1.surnameField"
+        case .player1Country:
+            return "startMatch.player1.countryField"
+        case .player2Name:
+            return "startMatch.player2.firstNameField"
+        case .player2Surname:
+            return "startMatch.player2.surnameField"
+        case .player2Country:
+            return "startMatch.player2.countryField"
+        case .player3Name:
+            return "startMatch.player3.firstNameField"
+        case .player3Surname:
+            return "startMatch.player3.surnameField"
+        case .player4Name:
+            return "startMatch.player4.firstNameField"
+        case .player4Surname:
+            return "startMatch.player4.surnameField"
+        case .referee:
+            return "startMatch.refereeField"
+        }
     }
 
     private func bandPicker(title: String, selection: Binding<String>) -> some View {

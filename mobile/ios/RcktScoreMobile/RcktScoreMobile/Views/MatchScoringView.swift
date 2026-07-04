@@ -337,6 +337,7 @@ struct MatchScoringView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("scoring.backButton")
     }
 
     private var scorerTitleView: some View {
@@ -361,6 +362,7 @@ struct MatchScoringView: View {
         .disabled(isMutating || match == nil)
         .opacity((isMutating || match == nil) ? 0.72 : 1)
         .accessibilityLabel("Game Settings")
+        .accessibilityIdentifier("scoring.gameSettingsButton")
     }
 
     private var scorerHeaderBar: some View {
@@ -422,6 +424,7 @@ struct MatchScoringView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.rcktBlue)
                 .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("scoring.playerAction.player1")
 
                 Button(playerTwoActionLabel) {
                     Task { await handlePendingActionSelection(for: "player2") }
@@ -429,12 +432,14 @@ struct MatchScoringView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.rcktBlue)
                 .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("scoring.playerAction.player2")
 
                 Button("Cancel", role: .cancel) {
                     pendingActionSelection = nil
                     showPlayerActionSheet = false
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("scoring.playerAction.cancel")
 
                 Spacer(minLength: 0)
             }
@@ -588,28 +593,33 @@ struct MatchScoringView: View {
                     pendingActionSelection = .strokeAgainst
                     showPlayerActionSheet = true
                 }
+                .accessibilityIdentifier("scoring.action.stroke")
                 .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
 
                 Button("Let") {
                     pendingActionSelection = .letAwarded
                     showPlayerActionSheet = true
                 }
+                .accessibilityIdentifier("scoring.action.let")
                 .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
             }
 
             Button("Undo Last Action") {
                 Task { await undoLastAction() }
             }
+            .accessibilityIdentifier("scoring.action.undo")
             .disabled(isMutating || undoLocked)
 
             Button("End Match Early", role: .destructive) {
                 Task { await endMatchEarly() }
             }
+            .accessibilityIdentifier("scoring.action.endEarly")
             .disabled(isMutating || isMatchComplete)
 
             Button("Cancel", role: .cancel) {
                 pendingActionSelection = nil
             }
+            .accessibilityIdentifier("scoring.action.cancel")
         }
     }
 
@@ -678,6 +688,7 @@ struct MatchScoringView: View {
                     .buttonStyle(.plain)
                     .disabled(isMutating)
                     .opacity(isMutating ? 0.72 : 1)
+                    .accessibilityIdentifier("scoring.startScheduledMatchButton")
 
                     Spacer()
                 }
@@ -783,6 +794,7 @@ struct MatchScoringView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.rcktBlue)
                 .disabled(isMatchComplete)
+                .accessibilityIdentifier("scoring.timerSkipButton")
             }
         }
         .padding(.horizontal, compactLayout ? 6 : 8)
@@ -802,6 +814,7 @@ struct MatchScoringView: View {
                 )
         )
         .shadow(color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
+        .accessibilityIdentifier("scoring.bottomDock")
     }
 
     private func bottomTimerControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
@@ -820,6 +833,7 @@ struct MatchScoringView: View {
             .buttonStyle(.plain)
             .disabled(isMatchComplete || timerPhase == .firstServer)
             .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
+            .accessibilityIdentifier("scoring.timerButton")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(compactLayout ? 4 : 6)
@@ -850,6 +864,7 @@ struct MatchScoringView: View {
         }
         .buttonStyle(.plain)
         .frame(width: isTabletLandscape ? 170 : (compactLayout ? 116 : 132))
+        .accessibilityIdentifier("scoring.actionButton")
     }
 
     @ViewBuilder
@@ -940,6 +955,7 @@ struct MatchScoringView: View {
                         .background(Color.rcktBlue)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .accessibilityIdentifier("scoring.warmup.startButton")
 
                         Button("Skip Warm-Up") {
                             handleSkipWarmup()
@@ -950,6 +966,7 @@ struct MatchScoringView: View {
                         .background(Color.rcktSlate)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .accessibilityIdentifier("scoring.warmup.skipButton")
                     }
                 } else {
                     Button {
@@ -964,6 +981,7 @@ struct MatchScoringView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("scoring.warmup.timerButton")
 
                     Button("Skip Warm-Up") {
                         handleSkipTimedPhase()
@@ -974,6 +992,7 @@ struct MatchScoringView: View {
                     .background(Color.rcktSlate)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .accessibilityIdentifier("scoring.warmup.skipTimedButton")
                 }
             }
             .padding(24)
@@ -1005,7 +1024,8 @@ struct MatchScoringView: View {
             ForEach(serverParticipants, id: \.id) { participant in
                 selectionOverlayButton(
                     title: participant.displayName,
-                    isSelected: selectedOpeningServerParticipantID == participant.id
+                    isSelected: selectedOpeningServerParticipantID == participant.id,
+                    identifier: "scoring.tennisOpening.server.\(participant.id)"
                 ) {
                     selectedOpeningServerParticipantID = participant.id
                     if let selectedReceiver = selectedOpeningReceiverParticipantID,
@@ -1023,7 +1043,8 @@ struct MatchScoringView: View {
             ForEach(receivingParticipants, id: \.id) { participant in
                 selectionOverlayButton(
                     title: participant.displayName,
-                    isSelected: selectedOpeningReceiverParticipantID == participant.id
+                    isSelected: selectedOpeningReceiverParticipantID == participant.id,
+                    identifier: "scoring.tennisOpening.receiver.\(participant.id)"
                 ) {
                     selectedOpeningReceiverParticipantID = participant.id
                 }
@@ -1050,12 +1071,14 @@ struct MatchScoringView: View {
                 (isMutating || selectedOpeningServerParticipantID == nil || selectedOpeningReceiverParticipantID == nil) ? 0.7 : 1
             )
             .padding(.top, 6)
+            .accessibilityIdentifier("scoring.tennisOpening.beginMatchButton")
         }
     }
 
     private func selectionOverlayButton(
         title: String,
         isSelected: Bool,
+        identifier: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -1077,6 +1100,7 @@ struct MatchScoringView: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier ?? title)
     }
 
     private var intervalOverlay: some View {
@@ -1508,6 +1532,9 @@ struct MatchScoringView: View {
         .onTapGesture {
             Task { await addPoint(for: side) }
         }
+        .accessibilityElement()
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("scoring.scoreCard.\(side)")
     }
 
     @ViewBuilder

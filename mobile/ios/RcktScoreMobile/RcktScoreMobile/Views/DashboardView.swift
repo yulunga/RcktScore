@@ -338,6 +338,7 @@ struct DashboardView: View {
                             .foregroundStyle(Color.dashboardInk)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("dashboard.notificationButton")
                 }
                 .padding(.top, 8)
             }
@@ -400,6 +401,7 @@ struct DashboardView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("dashboard.startNewMatchButton")
     }
 
     @ViewBuilder
@@ -662,6 +664,7 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.menu.\(item.rawValue)")
     }
 
     private var signOutMenuSection: some View {
@@ -685,6 +688,7 @@ struct DashboardView: View {
                 .padding(.vertical, 14)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("settings.signOutButton")
         }
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -828,11 +832,11 @@ struct DashboardView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-            dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName)
-            dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname)
-            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress)
-            dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad)
-            dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country)
+            dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName, accessibilityIdentifier: "settings.profile.firstNameField")
+            dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname, accessibilityIdentifier: "settings.profile.surnameField")
+            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress, accessibilityIdentifier: "settings.profile.emailField")
+            dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad, accessibilityIdentifier: "settings.profile.telephoneField")
+            dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country, accessibilityIdentifier: "settings.profile.countryField")
 
             Button(currentSettingsButtonTitle(for: "profile-save", defaultTitle: "Save Profile")) {
                 savePersonalProfile()
@@ -846,6 +850,7 @@ struct DashboardView: View {
             .buttonStyle(.plain)
             .disabled(savingSettingsKey != nil)
             .opacity(savingSettingsKey != nil ? 0.7 : 1)
+            .accessibilityIdentifier("settings.profile.saveButton")
 
             VStack(spacing: 10) {
                 Button(isRequestingPasswordReset ? "Sending..." : "Password Reset") {
@@ -861,6 +866,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .opacity((isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.profile.passwordResetButton")
             }
             .frame(maxWidth: .infinity)
             .padding(.top, 14)
@@ -888,6 +894,7 @@ struct DashboardView: View {
                     }
                     .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
                     .disabled(isUpdatingBiometricUnlock)
+                    .accessibilityIdentifier("settings.profile.biometricToggle")
 
                     if isUpdatingBiometricUnlock {
                         ProgressView()
@@ -1059,14 +1066,16 @@ struct DashboardView: View {
             dashboardTextField(
                 title: "Club Name",
                 placeholder: "Club name",
-                text: $organizationDetailsDraft.organizationName
+                text: $organizationDetailsDraft.organizationName,
+                accessibilityIdentifier: "settings.organization.nameField"
             )
             .disabled(!isAdmin)
 
             dashboardTextField(
                 title: "Primary Contact",
                 placeholder: "Primary contact",
-                text: $organizationDetailsDraft.organizationContact
+                text: $organizationDetailsDraft.organizationContact,
+                accessibilityIdentifier: "settings.organization.contactField"
             )
             .disabled(!isAdmin)
 
@@ -1074,7 +1083,8 @@ struct DashboardView: View {
                 title: "Telephone",
                 placeholder: "Telephone",
                 text: $organizationDetailsDraft.organizationTelephone,
-                keyboardType: .phonePad
+                keyboardType: .phonePad,
+                accessibilityIdentifier: "settings.organization.telephoneField"
             )
             .disabled(!isAdmin)
 
@@ -1082,7 +1092,8 @@ struct DashboardView: View {
                 title: "Email",
                 placeholder: "club@example.com",
                 text: $organizationDetailsDraft.organizationEmail,
-                keyboardType: .emailAddress
+                keyboardType: .emailAddress,
+                accessibilityIdentifier: "settings.organization.emailField"
             )
             .disabled(!isAdmin)
 
@@ -1090,7 +1101,8 @@ struct DashboardView: View {
                 title: "Website",
                 placeholder: "https://example.com",
                 text: $organizationDetailsDraft.organizationWebAddress,
-                keyboardType: .URL
+                keyboardType: .URL,
+                accessibilityIdentifier: "settings.organization.websiteField"
             )
             .disabled(!isAdmin)
 
@@ -1106,6 +1118,7 @@ struct DashboardView: View {
             .buttonStyle(.plain)
             .disabled(!isAdmin || savingSettingsKey != nil)
             .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            .accessibilityIdentifier("settings.organization.saveButton")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1121,14 +1134,16 @@ struct DashboardView: View {
             dashboardTextField(
                 title: "Address",
                 placeholder: "Address",
-                text: $organizationDetailsDraft.organizationAddress
+                text: $organizationDetailsDraft.organizationAddress,
+                accessibilityIdentifier: "settings.location.addressField"
             )
             .disabled(!isAdmin)
 
             dashboardTextField(
                 title: "Postcode",
                 placeholder: "Postcode",
-                text: $organizationDetailsDraft.organizationPostcode
+                text: $organizationDetailsDraft.organizationPostcode,
+                accessibilityIdentifier: "settings.location.postcodeField"
             )
             .disabled(!isAdmin)
 
@@ -1148,6 +1163,7 @@ struct DashboardView: View {
             .buttonStyle(.plain)
             .disabled(!isAdmin || savingSettingsKey != nil)
             .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            .accessibilityIdentifier("settings.location.saveButton")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1164,14 +1180,16 @@ struct DashboardView: View {
                 dashboardTextField(
                     title: "First Name",
                     placeholder: "First name",
-                    text: $newOrganizationUserDraft.firstName
+                    text: $newOrganizationUserDraft.firstName,
+                    accessibilityIdentifier: "settings.users.new.firstNameField"
                 )
                 .disabled(!isAdmin)
 
                 dashboardTextField(
                     title: "Surname",
                     placeholder: "Surname",
-                    text: $newOrganizationUserDraft.surname
+                    text: $newOrganizationUserDraft.surname,
+                    accessibilityIdentifier: "settings.users.new.surnameField"
                 )
                 .disabled(!isAdmin)
 
@@ -1179,7 +1197,8 @@ struct DashboardView: View {
                     title: "Email Address",
                     placeholder: "user@club.com",
                     text: $newOrganizationUserDraft.username,
-                    keyboardType: .emailAddress
+                    keyboardType: .emailAddress,
+                    accessibilityIdentifier: "settings.users.new.emailField"
                 )
                 .disabled(!isAdmin)
 
@@ -1199,10 +1218,11 @@ struct DashboardView: View {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(Color.dashboardBorder, lineWidth: 1)
                         )
+                        .accessibilityIdentifier("settings.users.new.passwordField")
                 }
                 .disabled(!isAdmin)
 
-                settingsRolePicker(selection: $newOrganizationUserDraft.role)
+                settingsRolePicker(selection: $newOrganizationUserDraft.role, accessibilityIdentifier: "settings.users.new.rolePicker")
                     .disabled(!isAdmin)
 
                 Button(currentSettingsButtonTitle(for: "user-create", defaultTitle: "Add User")) {
@@ -1217,6 +1237,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.users.new.addButton")
             }
 
             if organizationSettingsUsers.isEmpty {
@@ -1242,14 +1263,16 @@ struct DashboardView: View {
                 dashboardTextField(
                     title: "Court Name",
                     placeholder: "Court 1",
-                    text: $newCourtDraft.courtName
+                    text: $newCourtDraft.courtName,
+                    accessibilityIdentifier: "settings.courts.new.nameField"
                 )
                 .disabled(!isAdmin)
 
                 dashboardTextField(
                     title: "Court Alias",
                     placeholder: "Show court name",
-                    text: $newCourtDraft.courtAlias
+                    text: $newCourtDraft.courtAlias,
+                    accessibilityIdentifier: "settings.courts.new.aliasField"
                 )
                 .disabled(!isAdmin)
 
@@ -1265,6 +1288,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.courts.new.addButton")
             }
 
             if organizationSettingsCourts.isEmpty {
@@ -1310,6 +1334,7 @@ struct DashboardView: View {
             .buttonStyle(.plain)
             .disabled(!isAdmin || savingSettingsKey != nil)
             .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+            .accessibilityIdentifier("settings.sports.saveButton")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1354,6 +1379,7 @@ struct DashboardView: View {
         }
         .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
         .disabled(!isAdmin)
+        .accessibilityIdentifier("settings.sports.toggle.\(sport.rawValue)")
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(Color.dashboardInputBackground)
@@ -1390,11 +1416,11 @@ struct DashboardView: View {
                 }
             }
 
-            dashboardTextField(title: "First Name", placeholder: "First name", text: binding.firstName)
+            dashboardTextField(title: "First Name", placeholder: "First name", text: binding.firstName, accessibilityIdentifier: "settings.users.\(user.id).firstNameField")
                 .disabled(!isAdmin)
-            dashboardTextField(title: "Surname", placeholder: "Surname", text: binding.surname)
+            dashboardTextField(title: "Surname", placeholder: "Surname", text: binding.surname, accessibilityIdentifier: "settings.users.\(user.id).surnameField")
                 .disabled(!isAdmin)
-            dashboardTextField(title: "Email", placeholder: "Email", text: binding.username, keyboardType: .emailAddress)
+            dashboardTextField(title: "Email", placeholder: "Email", text: binding.username, keyboardType: .emailAddress, accessibilityIdentifier: "settings.users.\(user.id).emailField")
                 .disabled(!isAdmin)
 
             if user.canEditPassword {
@@ -1414,11 +1440,12 @@ struct DashboardView: View {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(Color.dashboardBorder, lineWidth: 1)
                         )
+                        .accessibilityIdentifier("settings.users.\(user.id).passwordField")
                 }
                 .disabled(!isAdmin)
             }
 
-            settingsRolePicker(selection: binding.role)
+            settingsRolePicker(selection: binding.role, accessibilityIdentifier: "settings.users.\(user.id).rolePicker")
                 .disabled(!isAdmin)
 
             HStack(spacing: 10) {
@@ -1434,6 +1461,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.users.\(user.id).saveButton")
 
                 Button(currentSettingsButtonTitle(for: "user-delete-\(user.id)", defaultTitle: "Delete")) {
                     deleteOrganizationUser(user)
@@ -1447,6 +1475,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.users.\(user.id).deleteButton")
             }
         }
         .padding(14)
@@ -1478,9 +1507,9 @@ struct DashboardView: View {
                 }
             }
 
-            dashboardTextField(title: "Court Name", placeholder: "Court", text: binding.courtName)
+            dashboardTextField(title: "Court Name", placeholder: "Court", text: binding.courtName, accessibilityIdentifier: "settings.courts.\(court.id).nameField")
                 .disabled(!isAdmin)
-            dashboardTextField(title: "Court Alias", placeholder: "Alias", text: binding.courtAlias)
+            dashboardTextField(title: "Court Alias", placeholder: "Alias", text: binding.courtAlias, accessibilityIdentifier: "settings.courts.\(court.id).aliasField")
                 .disabled(!isAdmin)
 
             HStack(spacing: 10) {
@@ -1496,6 +1525,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.courts.\(court.id).saveButton")
 
                 Button(currentSettingsButtonTitle(for: "court-code-\(court.id)", defaultTitle: "New Display Code")) {
                     regenerateCourtDisplayCode(court)
@@ -1510,6 +1540,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.courts.\(court.id).displayCodeButton")
 
                 Button(currentSettingsButtonTitle(for: "court-delete-\(court.id)", defaultTitle: "Delete")) {
                     deleteCourt(court)
@@ -1523,6 +1554,7 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .accessibilityIdentifier("settings.courts.\(court.id).deleteButton")
             }
         }
         .padding(14)
@@ -1535,7 +1567,7 @@ struct DashboardView: View {
         )
     }
 
-    private func settingsRolePicker(selection: Binding<String>) -> some View {
+    private func settingsRolePicker(selection: Binding<String>, accessibilityIdentifier: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Role")
                 .font(.caption.weight(.semibold))
@@ -1546,6 +1578,7 @@ struct DashboardView: View {
                 Text("Admin").tag("admin")
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier(accessibilityIdentifier ?? "settings.rolePicker")
         }
     }
 
@@ -1599,6 +1632,7 @@ struct DashboardView: View {
                     .padding(.bottom, usesCompactBottomNavigation ? 6 : 8)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("dashboard.tab.\(tab.rawValue)")
             }
         }
         .padding(.horizontal, usesCompactBottomNavigation ? 8 : 12)
@@ -2192,7 +2226,8 @@ struct DashboardView: View {
         title: String,
         placeholder: String,
         text: Binding<String>,
-        keyboardType: UIKeyboardType = .default
+        keyboardType: UIKeyboardType = .default,
+        accessibilityIdentifier: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
@@ -2203,6 +2238,7 @@ struct DashboardView: View {
                 .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
                 .autocorrectionDisabled(keyboardType == .emailAddress)
                 .keyboardType(keyboardType)
+                .accessibilityIdentifier(accessibilityIdentifier ?? "settings.field.\(title.replacingOccurrences(of: " ", with: "").lowercased())")
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(Color.dashboardInputBackground)
@@ -2346,6 +2382,7 @@ struct DashboardView: View {
         .buttonStyle(.plain)
         .disabled(isCurrent)
         .opacity(isCurrent ? 0.92 : 1)
+        .accessibilityIdentifier("settings.association.\(membership.organizationID)")
     }
 
     @ViewBuilder

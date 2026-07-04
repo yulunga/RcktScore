@@ -6,11 +6,27 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		343DE7702FF9077800C5F143 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 347077D42F756CF40099CAFA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 347077DB2F756CF40099CAFA;
+			remoteInfo = RcktScoreMobile;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RcktScoreMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		347077DC2F756CF40099CAFA /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RcktScoreMobileUITests;
+			sourceTree = "<group>";
+		};
 		347077DE2F756CF40099CAFA /* RcktScoreMobile */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = RcktScoreMobile;
@@ -19,6 +35,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		343DE7672FF9077800C5F143 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		347077D92F756CF40099CAFA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
+				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
 				347077DD2F756CF40099CAFA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				347077DC2F756CF40099CAFA /* RcktScoreMobile.app */,
+				343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +73,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		343DE7692FF9077800C5F143 /* RcktScoreMobileUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 343DE7722FF9077800C5F143 /* Build configuration list for PBXNativeTarget "RcktScoreMobileUITests" */;
+			buildPhases = (
+				343DE7662FF9077800C5F143 /* Sources */,
+				343DE7672FF9077800C5F143 /* Frameworks */,
+				343DE7682FF9077800C5F143 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				343DE7712FF9077800C5F143 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
+			);
+			name = RcktScoreMobileUITests;
+			packageProductDependencies = (
+			);
+			productName = RcktScoreMobileUITests;
+			productReference = 343DE76A2FF9077800C5F143 /* RcktScoreMobileUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		347077DB2F756CF40099CAFA /* RcktScoreMobile */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 347077E72F756CF60099CAFA /* Build configuration list for PBXNativeTarget "RcktScoreMobile" */;
@@ -77,9 +125,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2630;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					343DE7692FF9077800C5F143 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 347077DB2F756CF40099CAFA;
+					};
 					347077DB2F756CF40099CAFA = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -100,11 +152,19 @@
 			projectRoot = "";
 			targets = (
 				347077DB2F756CF40099CAFA /* RcktScoreMobile */,
+				343DE7692FF9077800C5F143 /* RcktScoreMobileUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		343DE7682FF9077800C5F143 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		347077DA2F756CF40099CAFA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +175,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		343DE7662FF9077800C5F143 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		347077D82F756CF40099CAFA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +191,59 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		343DE7712FF9077800C5F143 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 347077DB2F756CF40099CAFA /* RcktScoreMobile */;
+			targetProxy = 343DE7702FF9077800C5F143 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		343DE7732FF9077800C5F143 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6GVCHR2885;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rcktScore.RcktScoreMobileUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RcktScoreMobile;
+			};
+			name = Debug;
+		};
+		343DE7742FF9077800C5F143 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6GVCHR2885;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = rcktScore.RcktScoreMobileUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RcktScoreMobile;
+			};
+			name = Release;
+		};
 		347077E52F756CF60099CAFA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -331,6 +450,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		343DE7722FF9077800C5F143 /* Build configuration list for PBXNativeTarget "RcktScoreMobileUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				343DE7732FF9077800C5F143 /* Debug */,
+				343DE7742FF9077800C5F143 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		347077D72F756CF40099CAFA /* Build configuration list for PBXProject "RcktScoreMobile" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

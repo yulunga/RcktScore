@@ -10,6 +10,11 @@ private enum LoginOverlayMode: Equatable {
     case organizationSelection
 }
 
+private enum LoginFocusField: Hashable {
+    case username
+    case password
+}
+
 private let feedbackCategories = [
     "General Feedback",
     "Bug / Something not working",
@@ -59,6 +64,7 @@ struct LoginView: View {
     @State private var resetMessage: String?
     @State private var resetErrorMessage: String?
     @State private var isRequestingPasswordReset = false
+    @FocusState private var focusedField: LoginFocusField?
 
     private var isOverlayBusy: Bool {
         isSubmittingInterest || isSubmittingFeedback || isRequestingPasswordReset
@@ -167,6 +173,8 @@ struct LoginView: View {
                 TextField("Enter username", text: $username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
+                    .focused($focusedField, equals: .username)
+                    .accessibilityIdentifier("login.usernameField")
             }
 
             styledField(title: "Password") {
@@ -180,9 +188,11 @@ struct LoginView: View {
                     }
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
+                    .focused($focusedField, equals: .password)
+                    .accessibilityIdentifier("login.passwordField")
 
                     Button {
-                        showsPassword.toggle()
+                        togglePasswordVisibility()
                     } label: {
                         Image(systemName: showsPassword ? "eye.slash" : "eye")
                             .font(.system(size: 16, weight: .semibold))
@@ -190,6 +200,7 @@ struct LoginView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(showsPassword ? "Hide password" : "Show password")
+                    .accessibilityIdentifier("login.passwordVisibilityButton")
                 }
             }
         }
@@ -217,6 +228,7 @@ struct LoginView: View {
         .buttonStyle(.plain)
         .disabled(isLoading || username.isEmpty || password.isEmpty)
         .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
+        .accessibilityIdentifier("login.signInButton")
     }
 
     private var loginLinks: some View {
@@ -230,6 +242,7 @@ struct LoginView: View {
                 .buttonStyle(.plain)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.loginAction)
+                .accessibilityIdentifier("login.wantInButton")
             }
 
             HStack {
@@ -241,6 +254,7 @@ struct LoginView: View {
                 .buttonStyle(.plain)
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.loginBrandPink)
+                .accessibilityIdentifier("login.needHelpButton")
 
                 Spacer()
             }
@@ -721,6 +735,20 @@ struct LoginView: View {
                 )
         }
         .buttonStyle(.plain)
+    }
+
+    private func togglePasswordVisibility() {
+        let shouldRestorePasswordFocus = focusedField == .password
+        focusedField = nil
+        showsPassword.toggle()
+
+        guard shouldRestorePasswordFocus else {
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            focusedField = .password
+        }
     }
 
     private func submit(forceLogoutOther: Bool = false) {
