@@ -54,9 +54,9 @@ private extension LoginSmokeTests {
         // Verify Dashboard
         //
 
-        waitFor(dashboard.dashboardTitle)
+        dashboard.verifyLoaded()
 
-        captureScreenshot(
+        self.captureScreenshot(
             screenshotName(
                 user: user,
                 mode: lightMode,
@@ -71,7 +71,7 @@ private extension LoginSmokeTests {
 
         rotateLandscapeLeft()
 
-        captureScreenshot(
+        self.captureScreenshot(
             screenshotName(
                 user: user,
                 mode: lightMode,
@@ -86,7 +86,7 @@ private extension LoginSmokeTests {
 
         rotateLandscapeRight()
 
-        captureScreenshot(
+        self.captureScreenshot(
             screenshotName(
                 user: user,
                 mode: lightMode,
@@ -101,7 +101,7 @@ private extension LoginSmokeTests {
 
         rotatePortrait()
 
-        captureScreenshot(
+        self.captureScreenshot(
             screenshotName(
                 user: user,
                 mode: lightMode,
@@ -114,11 +114,11 @@ private extension LoginSmokeTests {
         // Settings
         //
 
-        dashboard.settingsButton.tap()
+        dashboard.openSettings()
 
-        waitFor(settings.signOutButton)
+        settings.verifyLoaded()
 
-        captureScreenshot(
+        self.captureScreenshot(
             screenshotName(
                 user: user,
                 mode: lightMode,
@@ -133,7 +133,7 @@ private extension LoginSmokeTests {
 
         settings.logout()
 
-        waitFor(login.loginButton)
+        login.verifyLoaded()
 
     }
 

@@ -21,25 +21,12 @@
 		347077DC2F756CF40099CAFA /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		343DE78F2FF91A7300C5F143 /* Exceptions for "RcktScoreMobileUITests" folder in "RcktScoreMobileUITests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Core/HitnScoreBaseUITest.swift,
-			);
-			target = 343DE7692FF9077800C5F143 /* RcktScoreMobileUITests */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				343DE78F2FF91A7300C5F143 /* Exceptions for "RcktScoreMobileUITests" folder in "RcktScoreMobileUITests" target */,
-			);
 			path = RcktScoreMobileUITests;
 			sourceTree = "<group>";
 		};
