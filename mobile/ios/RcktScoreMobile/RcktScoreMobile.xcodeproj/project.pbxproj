@@ -32,13 +32,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		343DE7902FF91A7300C5F143 /* Exceptions for "RcktScoreMobileUITests" folder in "Copy Bundle Resources" phase from "RcktScoreMobileUITests" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 343DE7682FF9077800C5F143 /* Resources */;
-			membershipExceptions = (
-				Core/HitnScoreBaseUITest.swift,
-			);
-		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -46,7 +39,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				343DE78F2FF91A7300C5F143 /* Exceptions for "RcktScoreMobileUITests" folder in "RcktScoreMobileUITests" target */,
-				343DE7902FF91A7300C5F143 /* Exceptions for "RcktScoreMobileUITests" folder in "Copy Bundle Resources" phase from "RcktScoreMobileUITests" target */,
 			);
 			path = RcktScoreMobileUITests;
 			sourceTree = "<group>";
