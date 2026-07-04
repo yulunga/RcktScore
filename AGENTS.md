@@ -43,10 +43,12 @@ What is real and implemented:
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
+- native iOS login now includes a show/hide password toggle and can unlock a saved local session with Face ID or Touch ID when enabled from settings
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
+- native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts

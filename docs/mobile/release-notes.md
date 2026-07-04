@@ -41,10 +41,14 @@ Current unreleased iOS build state:
   selection, self-profile editing, password-reset access, association
   switching, an About page for app version/build visibility, organisation details, user management, court management,
   racket-sport visibility, and display-code regeneration for club accounts
+- native login now supports password visibility toggling, and native settings
+  can enable local Face ID / Touch ID session unlock for a saved session
 - each settings menu row now opens its own dedicated page rather than expanding inline
 - native help flows support in-app feedback and password reset requests
 - native login now supports organisation selection when the same email belongs
   to multiple approved clubs/accounts
+- the shared native bottom navigation now compacts itself for larger Dynamic
+  Type sizes on smaller iPhones
 - tennis setup now supports singles/doubles switching, and tennis live scoring
   now uses a 5-minute warm-up followed by opening serve/receive selection
 

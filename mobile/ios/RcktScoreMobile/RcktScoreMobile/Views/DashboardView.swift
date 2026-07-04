@@ -4,6 +4,7 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var activeMatches: [MatchSummary] = []
     @State private var scheduledMatches: [MatchSummary] = []
@@ -44,6 +45,7 @@ struct DashboardView: View {
     @State private var resetMessage: String?
     @State private var selectedProfilePhotoItem: PhotosPickerItem?
     @State private var selectedProfilePhotoData: Data?
+    @State private var isUpdatingBiometricUnlock = false
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
@@ -163,6 +165,15 @@ struct DashboardView: View {
     }
     private var enabledSportIDs: Set<String> {
         Set(enabledSportsDraft.map { $0.lowercased() })
+    }
+    private var usesCompactBottomNavigation: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+    private var bottomNavigationIconSize: CGFloat {
+        usesCompactBottomNavigation ? 18 : 22
+    }
+    private var bottomNavigationFont: Font {
+        usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
         var items: [SettingsMenuItem] = [.subscription, .profile, .association, .racketSports, .gameSettings, .about]
@@ -854,12 +865,48 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 14)
 
+            if container.sessionStore.canUseBiometricUnlock {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("\(container.sessionStore.biometricDisplayName) Login")
+                        .font(.subheadline.weight(.semibold))
+
+                    Toggle(
+                        isOn: Binding(
+                            get: { container.sessionStore.biometricUnlockEnabled },
+                            set: { isEnabled in
+                                updateBiometricUnlockPreference(isEnabled)
+                            }
+                        )
+                    ) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Use \(container.sessionStore.biometricDisplayName)")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Unlock the saved app session on this device with \(container.sessionStore.biometricDisplayName).")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
+                    .disabled(isUpdatingBiometricUnlock)
+
+                    if isUpdatingBiometricUnlock {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+                .padding(.top, 8)
+            }
+
             if let resetErrorMessage {
                 dashboardInlineError(resetErrorMessage)
             }
 
             if let resetMessage {
                 dashboardInlineSuccess(resetMessage)
+            }
+
+            if let biometricMessage = container.sessionStore.biometricErrorMessage {
+                dashboardInlineError(biometricMessage)
             }
         }
         .padding(16)
@@ -1536,22 +1583,25 @@ struct DashboardView: View {
                 Button {
                     selectedTab = tab
                 } label: {
-                    VStack(spacing: 6) {
+                    VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                         Image(systemName: tab.icon)
-                            .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
+                            .font(.system(size: bottomNavigationIconSize, weight: selectedTab == tab ? .semibold : .regular))
 
                         Text(tab.title)
-                            .font(.caption.weight(selectedTab == tab ? .semibold : .medium))
+                            .font(bottomNavigationFont.weight(selectedTab == tab ? .semibold : .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                            .dynamicTypeSize(.xSmall ... .large)
                     }
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(selectedTab == tab ? Color.dashboardBrand : Color.dashboardTabMuted)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
+                    .padding(.top, usesCompactBottomNavigation ? 8 : 10)
+                    .padding(.bottom, usesCompactBottomNavigation ? 6 : 8)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, usesCompactBottomNavigation ? 8 : 12)
         .background(
             ZStack(alignment: .top) {
                 Color.dashboardTabBarBackground
@@ -2533,6 +2583,39 @@ struct DashboardView: View {
                 await MainActor.run {
                     settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to save your profile."
                     savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func updateBiometricUnlockPreference(_ isEnabled: Bool) {
+        guard !isUpdatingBiometricUnlock else {
+            return
+        }
+
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+        isUpdatingBiometricUnlock = true
+
+        Task {
+            if isEnabled {
+                do {
+                    try await container.sessionStore.enableBiometricUnlock()
+                    await MainActor.run {
+                        settingsSuccessMessage = "\(container.sessionStore.biometricDisplayName) login enabled for this device."
+                        isUpdatingBiometricUnlock = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        settingsErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Unable to enable biometric login."
+                        isUpdatingBiometricUnlock = false
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    container.sessionStore.disableBiometricUnlock()
+                    settingsSuccessMessage = "Biometric login disabled."
+                    isUpdatingBiometricUnlock = false
                 }
             }
         }

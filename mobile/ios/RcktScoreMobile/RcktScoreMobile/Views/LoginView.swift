@@ -27,6 +27,7 @@ struct LoginView: View {
 
     @State private var username = ""
     @State private var password = ""
+    @State private var showsPassword = false
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var overlayMode: LoginOverlayMode?
@@ -169,7 +170,27 @@ struct LoginView: View {
             }
 
             styledField(title: "Password") {
-                SecureField("Enter password", text: $password)
+                HStack(spacing: 10) {
+                    Group {
+                        if showsPassword {
+                            TextField("Enter password", text: $password)
+                        } else {
+                            SecureField("Enter password", text: $password)
+                        }
+                    }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+
+                    Button {
+                        showsPassword.toggle()
+                    } label: {
+                        Image(systemName: showsPassword ? "eye.slash" : "eye")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showsPassword ? "Hide password" : "Show password")
+                }
             }
         }
     }
