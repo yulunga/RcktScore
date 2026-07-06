@@ -21,6 +21,9 @@ class HitnScoreBaseUITest: XCTestCase {
     // MARK: - Launching
 
     func launchApp(lightMode: Bool = true) {
+        if let app, app.state != .notRunning {
+            app.terminate()
+        }
 
         app = XCUIApplication()
 
@@ -39,6 +42,16 @@ class HitnScoreBaseUITest: XCTestCase {
         }
 
         app.launch()
+
+    }
+
+    func closeApp() {
+
+        guard let app, app.state != .notRunning else {
+            return
+        }
+
+        app.terminate()
 
     }
 

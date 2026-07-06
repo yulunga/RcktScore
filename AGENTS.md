@@ -64,7 +64,7 @@ What is still partial or risky:
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable
 - there is no documented iOS CI/archive/release pipeline in the repo yet
-- no automated test suite is checked into the repo
+- a lightweight native iOS UI test bundle is now checked into `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`, but there is still no automated backend or web frontend test suite and the iOS smoke coverage is only a first pass
 
 ## Repository Layout
 

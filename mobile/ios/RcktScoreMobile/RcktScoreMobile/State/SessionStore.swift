@@ -12,8 +12,10 @@ final class SessionStore: ObservableObject {
 
     private let key = "rcktscore.mobile.session"
     private let biometricPreferenceKey = "rcktscore.mobile.biometricUnlockEnabled"
+    private let uiTestLaunchOptions: UITestLaunchOptions
 
-    init() {
+    init(uiTestLaunchOptions: UITestLaunchOptions = .current) {
+        self.uiTestLaunchOptions = uiTestLaunchOptions
         biometricUnlockEnabled = UserDefaults.standard.bool(forKey: biometricPreferenceKey)
         refreshBiometricAvailability()
         load()
@@ -71,6 +73,15 @@ final class SessionStore: ObservableObject {
     }
 
     func refreshBiometricAvailability() {
+        if uiTestLaunchOptions.isEnabled {
+            biometricType = .none
+            biometricUnlockEnabled = false
+            requiresBiometricUnlock = false
+            biometricErrorMessage = nil
+            UserDefaults.standard.set(false, forKey: biometricPreferenceKey)
+            return
+        }
+
         let context = LAContext()
         var error: NSError?
 

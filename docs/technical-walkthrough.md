@@ -424,7 +424,7 @@ The root-admin frontend experience exists, but the backend trust model is not ye
 - WebSocket infrastructure is incomplete
 - organisation game settings persistence is incomplete
 - social profile persistence is incomplete
-- no automated test suite is checked into the repo
+- a lightweight native iOS UI test bundle now exists in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`, including smoke-test launch helpers that can force light or dark mode and reset local app state at launch; there is still no automated backend or web frontend suite
 
 ## Maintenance Rule
 

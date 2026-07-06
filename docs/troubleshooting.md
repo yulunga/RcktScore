@@ -49,6 +49,22 @@ If this fails with `No available simulator runtimes for platform iphonesimulator
 the local Xcode/CoreSimulator installation needs attention before native CLI
 builds will complete.
 
+### iOS UI test build smoke
+
+```bash
+xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme RcktScoreMobile -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/rcktscore-xcode build-for-testing
+```
+
+The checked-in UITest bundle lives in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`.
+Its launch helpers currently use:
+
+- `UITEST_MODE`
+- `UITEST_LIGHT`
+- `UITEST_DARK`
+- `RESET_STATE=1`
+
+The app now honors those launch flags by forcing light/dark appearance and clearing local `UserDefaults` state before boot when `RESET_STATE=1` is present.
+
 ## Current Debugging Mindset
 
 Start by deciding which of these layers is failing:
@@ -328,7 +344,7 @@ These are current product limitations, not accidental breakage:
 - reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
 - there is no native notification-center flow behind the dashboard bell yet
-- there is no automated test suite in the repo yet
+- there is still no automated backend or web frontend suite in the repo, but there is now a lightweight native iOS UI test bundle and smoke-test scaffolding in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`
 
 ## Maintenance Rule
 

@@ -500,7 +500,7 @@ What is not fully protected today:
 
 ## Current Known Gaps
 
-- no automated backend/frontend test suite is checked into the repo
+- there is still no automated backend or web frontend test suite in the repo, but a lightweight native iOS UI test bundle now exists in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`
 - social profile settings are UI-only scaffolds right now
 - organisation-level handicap settings are UI scaffolds and are not persisted/enforced
 - root-admin security needs a proper backend auth layer
