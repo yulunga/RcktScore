@@ -13,11 +13,12 @@ final class AppContainer: ObservableObject {
         apiClient: APIClient? = nil,
         sessionStore: SessionStore? = nil,
         networkMonitor: NetworkMonitor? = nil,
-        uiTestLaunchOptions: UITestLaunchOptions = .current
+        uiTestLaunchOptions: UITestLaunchOptions? = nil
     ) {
-        self.uiTestLaunchOptions = uiTestLaunchOptions
+        let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
+        self.uiTestLaunchOptions = resolvedLaunchOptions
         self.apiClient = apiClient ?? APIClient()
-        self.sessionStore = sessionStore ?? SessionStore(uiTestLaunchOptions: uiTestLaunchOptions)
+        self.sessionStore = sessionStore ?? SessionStore(uiTestLaunchOptions: resolvedLaunchOptions)
         self.networkMonitor = networkMonitor ?? NetworkMonitor()
         self.apiClient.setSessionToken(self.sessionStore.sessionToken)
         self.apiClient.onSessionInvalidated = { [weak self] _ in

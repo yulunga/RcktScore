@@ -44,6 +44,10 @@ struct LoginScreen {
         app.buttons["login.needHelpButton"]
     }
 
+    var logoutOtherMobileSessionButton: XCUIElement {
+        app.buttons["Log Out Other Mobile Session"]
+    }
+
     func verifyLoaded(timeout: TimeInterval = 10) {
         XCTAssertTrue(signInButton.waitForExistence(timeout: timeout))
         XCTAssertTrue(usernameField.waitForExistence(timeout: timeout))
@@ -57,6 +61,7 @@ struct LoginScreen {
         focusAndType(in: passwordField, text: user.password)
 
         signInButton.tap()
+        resolveSessionConflictIfNeeded()
     }
 
     private func focusAndType(in element: XCUIElement, text: String) {
@@ -84,6 +89,12 @@ struct LoginScreen {
                 return
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+    }
+
+    private func resolveSessionConflictIfNeeded(timeout: TimeInterval = 3) {
+        if logoutOtherMobileSessionButton.waitForExistence(timeout: timeout) {
+            logoutOtherMobileSessionButton.tap()
         }
     }
 }

@@ -14,8 +14,9 @@ final class SessionStore: ObservableObject {
     private let biometricPreferenceKey = "rcktscore.mobile.biometricUnlockEnabled"
     private let uiTestLaunchOptions: UITestLaunchOptions
 
-    init(uiTestLaunchOptions: UITestLaunchOptions = .current) {
-        self.uiTestLaunchOptions = uiTestLaunchOptions
+    init(uiTestLaunchOptions: UITestLaunchOptions? = nil) {
+        let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
+        self.uiTestLaunchOptions = resolvedLaunchOptions
         biometricUnlockEnabled = UserDefaults.standard.bool(forKey: biometricPreferenceKey)
         refreshBiometricAvailability()
         load()
