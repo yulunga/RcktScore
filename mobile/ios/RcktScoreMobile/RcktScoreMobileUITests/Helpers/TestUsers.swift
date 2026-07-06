@@ -12,7 +12,7 @@ let testUsers: [TestUser] = [
 
     TestUser(
         username: "testclubess@hitnscore.com",
-        password: "TestPassword123",
+        password: "P4ssw0rd901!!",
         tier: "Club Essentials"
     ),
 
