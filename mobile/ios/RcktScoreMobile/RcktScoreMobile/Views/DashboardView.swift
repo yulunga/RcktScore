@@ -670,7 +670,7 @@ struct DashboardView: View {
     private var signOutMenuSection: some View {
         VStack(spacing: 0) {
             Button {
-                Task { await container.logout() }
+                container.logout()
             } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")

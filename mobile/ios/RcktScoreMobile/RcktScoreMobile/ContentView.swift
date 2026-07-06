@@ -78,7 +78,7 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
 
                 Button("Sign Out") {
-                    Task { await container.logout() }
+                    container.logout()
                 }
                 .buttonStyle(.bordered)
             }

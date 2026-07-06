@@ -56,6 +56,22 @@ struct SettingsScreen {
         app.switches["settings.profile.biometricToggle"]
     }
 
+    var loginSignInButton: XCUIElement {
+        let identifiedButton = app.buttons["login.signInButton"]
+        if identifiedButton.exists {
+            return identifiedButton
+        }
+        return app.buttons["Sign in"]
+    }
+
+    var loginUsernameField: XCUIElement {
+        let identifiedField = app.textFields["login.usernameField"]
+        if identifiedField.exists {
+            return identifiedField
+        }
+        return app.textFields["Enter username"]
+    }
+
     func verifyLoaded(timeout: TimeInterval = 5) {
         XCTAssertTrue(profileMenu.waitForExistence(timeout: timeout))
     }
@@ -85,8 +101,26 @@ struct SettingsScreen {
     }
 
     func logout() {
-        scrollToSignOutButton()
-        signOutButton.tap()
+        for _ in 0..<3 {
+            if loginScreenIsVisible(timeout: 1) {
+                return
+            }
+
+            scrollToSignOutButton()
+
+            if signOutButton.isHittable {
+                signOutButton.tap()
+            } else {
+                let coordinate = signOutButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                coordinate.tap()
+            }
+
+            if loginScreenIsVisible(timeout: 3) {
+                return
+            }
+        }
+
+        XCTAssertTrue(loginScreenIsVisible(timeout: 10))
     }
 
     private func scrollToSignOutButton(maxScrollAttempts: Int = 8) {
@@ -109,5 +143,12 @@ struct SettingsScreen {
         }
 
         XCTAssertTrue(signOutButton.waitForExistence(timeout: 2))
+    }
+
+    private func loginScreenIsVisible(timeout: TimeInterval) -> Bool {
+        if loginSignInButton.waitForExistence(timeout: timeout) {
+            return true
+        }
+        return loginUsernameField.waitForExistence(timeout: 1)
     }
 }

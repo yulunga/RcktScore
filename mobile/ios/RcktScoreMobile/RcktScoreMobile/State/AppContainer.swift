@@ -44,9 +44,11 @@ final class AppContainer: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func logout() async {
+    func logout() {
         let sessionToken = sessionStore.sessionToken
         sessionStore.clear()
-        await apiClient.logout(sessionTokenOverride: sessionToken)
+        Task {
+            await apiClient.logout(sessionTokenOverride: sessionToken)
+        }
     }
 }
