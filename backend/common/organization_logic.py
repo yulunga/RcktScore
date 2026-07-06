@@ -724,6 +724,84 @@ def approve_organization_user_membership(connection, token):
     }
 
 
+def approve_organization_user_by_id(connection, organization_id, user_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                u.id,
+                u.organization_id,
+                u.clubusername,
+                u.role,
+                u.approval_status,
+                u.first_name,
+                u.surname,
+                u.country,
+                u.telephone,
+                u.city_location,
+                u.created_at,
+                u.invitation_sent_at,
+                u.approved_at,
+                (
+                    SELECT COUNT(*)
+                    FROM "SkwshOrgUsers" AS all_u
+                    WHERE LOWER(all_u.clubusername) = LOWER(u.clubusername)
+                ) AS membership_count
+            FROM "SkwshOrgUsers" AS u
+            WHERE u.organization_id = %(organization_id)s
+              AND u.id = %(user_id)s
+            LIMIT 1
+            """,
+            {
+                "organization_id": int(organization_id),
+                "user_id": int(user_id),
+            },
+        )
+        user_row = cursor.fetchone()
+
+        if not user_row:
+            return None
+
+        if (user_row.get("approval_status") or USER_STATUS_APPROVED) != USER_STATUS_PENDING:
+            return _serialize_user(user_row)
+
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET approval_status = %(approval_status)s,
+                approved_at = %(approved_at)s
+            WHERE id = %(user_id)s
+            RETURNING
+                id,
+                clubusername,
+                role,
+                approval_status,
+                first_name,
+                surname,
+                country,
+                telephone,
+                city_location,
+                created_at,
+                invitation_sent_at,
+                approved_at,
+                (
+                    SELECT COUNT(*)
+                    FROM "SkwshOrgUsers" AS all_u
+                    WHERE LOWER(all_u.clubusername) = LOWER("SkwshOrgUsers".clubusername)
+                ) AS membership_count
+            """,
+            {
+                "approval_status": USER_STATUS_APPROVED,
+                "approved_at": _utcnow(),
+                "user_id": user_row["id"],
+            },
+        )
+        updated_row = cursor.fetchone()
+
+    connection.commit()
+    return _serialize_user(updated_row)
+
+
 def create_court(connection, organization_id, court_name, court_alias=None):
     org_id = int(organization_id)
     trimmed_name = court_name.strip()

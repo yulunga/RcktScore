@@ -38,6 +38,7 @@ What is real and implemented:
 - multi-organisation membership selection
 - dashboard, history, and match lists
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
+- root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup metadata and opening serve/receive selection support
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented

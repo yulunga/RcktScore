@@ -5,6 +5,7 @@ import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchSports";
 import {
+  approveRootAdminOrganizationUser,
   createOrganizationCourt,
   createOrganizationCourtDisplayCode,
   createRootAdminOrganizationUser,
@@ -240,6 +241,16 @@ export default function RootAdminClubPage() {
         role: userRoleDrafts[userId],
       }),
       "User role updated.",
+    );
+  }
+
+  async function handleUserApprove(userId) {
+    await runMutation(
+      `user-approve-${userId}`,
+      () => approveRootAdminOrganizationUser(userId, {
+        organization_id: organizationId,
+      }),
+      "User approved and can now sign in.",
     );
   }
 
@@ -528,6 +539,15 @@ export default function RootAdminClubPage() {
                     >
                       {savingSection === `user-role-${user.id}` ? "Saving..." : "Save Role"}
                     </button>
+                    {user.status === "pending" ? (
+                      <button
+                        disabled={savingSection === `user-approve-${user.id}`}
+                        type="button"
+                        onClick={() => handleUserApprove(user.id)}
+                      >
+                        {savingSection === `user-approve-${user.id}` ? "Approving..." : "Approve"}
+                      </button>
+                    ) : null}
                   </div>
                 </article>
               ))

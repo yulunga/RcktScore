@@ -231,6 +231,7 @@ The organisation-level handicap setting and social-profile fields are still UI s
    - creates an approval token
    - stores `approval_status = pending`
    - sends an invitation email when email settings are configured
+4. The root-admin club page can later approve that pending membership directly with `PUT /root_admin/organization_users/{user_id}/approve` if email approval is not desired.
 
 ### Edit or remove user
 
@@ -249,12 +250,14 @@ The organisation-level handicap setting and social-profile fields are still UI s
 1. The invited user opens the email link.
 2. `GET /organization_users/approve?token=...` runs.
 3. The Lambda updates the membership to approved and returns an HTML page.
+4. If `USER_APPROVAL_LOGIN_URL` is configured, the success page stays visible for three seconds and then redirects to sign in.
 
 ### Troubleshooting cues
 
 - a user may exist in multiple organisations with one password hash
 - login remains blocked until approval is accepted
 - the approval route returns HTML, not JSON
+- `USER_APPROVAL_BASE_URL` controls the branded approval-link host/path used in invitation emails
 
 ## 9. Court Flow
 

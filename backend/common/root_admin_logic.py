@@ -12,6 +12,7 @@ from common.organization_logic import (
     ORGANIZATION_FIELDS,
     _serialize_organization,
     _utcnow,
+    approve_organization_user_by_id,
     create_organization_user,
     update_organization_user_role,
 )
@@ -1168,3 +1169,7 @@ def create_root_admin_org_user(
 
 def update_root_admin_org_user_role(connection, organization_id, user_id, role):
     return update_organization_user_role(connection, organization_id, user_id, role)
+
+
+def approve_root_admin_org_user(connection, organization_id, user_id):
+    return approve_organization_user_by_id(connection, organization_id, user_id)

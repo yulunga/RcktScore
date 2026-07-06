@@ -171,6 +171,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /root_admin/organizations/search?q=...`
 - `POST /root_admin/organization_users`
 - `PUT /root_admin/organization_users/{user_id}`
+- `PUT /root_admin/organization_users/{user_id}/approve`
 - `GET /root_admin/interest_requests`
 - `PUT /root_admin/interest_requests/{request_id}`
 - `GET /root_admin/personal_accounts`
@@ -192,6 +193,11 @@ Current root-admin platform-sport behavior:
 - `GET /root_admin/platform_sports` returns the current globally allowed racket-sport list
 - `PUT /root_admin/platform_sports` updates the platform default and applies the same enabled sport list across all existing clubs and personal accounts
 - organisation-level and personal-account-level enabled-sport updates are now constrained to the currently allowed platform list
+
+Current root-admin club-user behavior:
+
+- `POST /root_admin/organization_users` creates a pending organisation membership and emails an approval link
+- `PUT /root_admin/organization_users/{user_id}/approve` lets root admin manually approve a pending organisation user without waiting for the email link flow
 
 ### Organisation and dashboard routes
 
@@ -273,6 +279,8 @@ Current behavior:
 
 - email invitations create approval tokens
 - the approval route returns HTML, not JSON
+- the approval page can now auto-redirect to a configured sign-in URL after three seconds when `USER_APPROVAL_LOGIN_URL` is set
+- invitation links can already be branded away from the raw API Gateway hostname by setting `USER_APPROVAL_BASE_URL`
 - results include:
   - invalid token
   - already approved

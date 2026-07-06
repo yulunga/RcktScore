@@ -248,6 +248,13 @@ export function updateRootAdminOrganizationUserRole(userId, payload) {
   });
 }
 
+export function approveRootAdminOrganizationUser(userId, payload) {
+  return apiRequest(`/root_admin/organization_users/${userId}/approve`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getOrganizationSettings(organizationId, options = {}) {
   return apiRequest(`/organization_settings/${organizationId}`, options);
 }

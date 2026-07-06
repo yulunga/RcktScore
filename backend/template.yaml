@@ -37,6 +37,9 @@ Parameters:
   UserApprovalBaseUrl:
     Type: String
     Default: ""
+  UserApprovalLoginUrl:
+    Type: String
+    Default: ""
   PasswordResetFromEmail:
     Type: String
     Default: rcktinterest@ucingo.com
@@ -151,6 +154,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: functions/approve_org_user/handler.lambda_handler
+      Environment:
+        Variables:
+          USER_APPROVAL_LOGIN_URL: !Ref UserApprovalLoginUrl
       Events:
         ApproveOrgUser:
           Type: HttpApi
@@ -336,6 +342,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/organization_users/{user_id}
+            Method: PUT
+
+  ApproveRootAdminOrgUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/approve_root_admin_org_user/handler.lambda_handler
+      Events:
+        ApproveRootAdminOrgUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organization_users/{user_id}/approve
             Method: PUT
 
   GetRootAdminInterestRequestsFunction:

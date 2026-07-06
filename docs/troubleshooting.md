@@ -124,6 +124,7 @@ What to check:
 - the organisation exists in `SkwshOrgSettings`
 - the signed-in user belongs to that organisation
 - `SkwshOrgUsers.first_name` and `SkwshOrgUsers.surname` contain the expected values when user names look blank in settings or lookup flows
+- pending club users can now also be approved from the root-admin club page, so if email approval was skipped manually, check `SkwshOrgUsers.approval_status` and `approved_at` first before debugging the invitation link itself
 - whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
 - whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
@@ -234,6 +235,7 @@ What to check:
   - `INTEREST_FROM_EMAIL`
   - `FEEDBACK_TO_EMAIL`
   - `FEEDBACK_FROM_EMAIL`
+- for club-user invitation links, `USER_APPROVAL_BASE_URL` controls the public approval-link host/path and `USER_APPROVAL_LOGIN_URL` controls where the success page redirects after showing the confirmation message for three seconds
   - `USER_INVITATION_FROM_EMAIL`
   - `PASSWORD_RESET_FROM_EMAIL`
 - base URLs are configured correctly for invitation or reset links
