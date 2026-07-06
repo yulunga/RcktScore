@@ -58,7 +58,6 @@ struct SettingsScreen {
 
     func verifyLoaded(timeout: TimeInterval = 5) {
         XCTAssertTrue(profileMenu.waitForExistence(timeout: timeout))
-        XCTAssertTrue(signOutButton.exists)
     }
 
     func openProfile() {
@@ -86,6 +85,29 @@ struct SettingsScreen {
     }
 
     func logout() {
+        scrollToSignOutButton()
         signOutButton.tap()
+    }
+
+    private func scrollToSignOutButton(maxScrollAttempts: Int = 8) {
+        if signOutButton.isHittable {
+            return
+        }
+
+        let scrollView = app.scrollViews.firstMatch
+
+        for _ in 0..<maxScrollAttempts {
+            if signOutButton.isHittable {
+                return
+            }
+
+            if scrollView.exists {
+                scrollView.swipeUp()
+            } else {
+                app.swipeUp()
+            }
+        }
+
+        XCTAssertTrue(signOutButton.waitForExistence(timeout: 2))
     }
 }
