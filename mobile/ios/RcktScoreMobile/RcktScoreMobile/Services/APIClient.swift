@@ -334,9 +334,13 @@ final class APIClient {
         let _: APIEnvelope<AcceptedResponseData> = try await send(request)
     }
 
-    func logout() async {
+    func logout(sessionTokenOverride: String? = nil) async {
         do {
-            let request = try makeRequest(path: "/logout", method: "POST")
+            let request = try makeRequest(
+                path: "/logout",
+                method: "POST",
+                authTokenOverride: sessionTokenOverride
+            )
             let _: APIEnvelope<AcceptedResponseData> = try await send(request)
         } catch {
             // Best-effort logout; local session state is cleared by the caller.
@@ -863,19 +867,25 @@ final class APIClient {
         return try await unwrapMatchResponse(request)
     }
 
-    private func makeRequest(path: String, method: String) throws -> URLRequest {
+    private func makeRequest(path: String, method: String, authTokenOverride: String? = nil) throws -> URLRequest {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let endpoint = apiBaseURL.appendingPathComponent(normalizedPath)
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let authToken, !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        let resolvedAuthToken = authTokenOverride ?? authToken
+        if let resolvedAuthToken, !resolvedAuthToken.isEmpty {
+            request.setValue("Bearer \(resolvedAuthToken)", forHTTPHeaderField: "Authorization")
         }
         return request
     }
 
-    private func makeRequest(path: String, method: String, queryItems: [URLQueryItem]) throws -> URLRequest {
+    private func makeRequest(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem],
+        authTokenOverride: String? = nil
+    ) throws -> URLRequest {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let endpoint = apiBaseURL.appendingPathComponent(normalizedPath)
         guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
@@ -891,8 +901,9 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let authToken, !authToken.isEmpty {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        let resolvedAuthToken = authTokenOverride ?? authToken
+        if let resolvedAuthToken, !resolvedAuthToken.isEmpty {
+            request.setValue("Bearer \(resolvedAuthToken)", forHTTPHeaderField: "Authorization")
         }
         return request
     }

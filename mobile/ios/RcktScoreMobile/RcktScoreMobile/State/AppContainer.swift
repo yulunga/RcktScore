@@ -45,7 +45,8 @@ final class AppContainer: ObservableObject {
     }
 
     func logout() async {
-        await apiClient.logout()
+        let sessionToken = sessionStore.sessionToken
         sessionStore.clear()
+        await apiClient.logout(sessionTokenOverride: sessionToken)
     }
 }
