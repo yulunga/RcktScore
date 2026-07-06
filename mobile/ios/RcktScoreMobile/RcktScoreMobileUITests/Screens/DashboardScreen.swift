@@ -33,8 +33,14 @@ struct DashboardScreen {
     }
 
     func verifyLoaded(timeout: TimeInterval = 8) {
+        XCTAssertTrue(settingsTab.waitForExistence(timeout: timeout))
+        XCTAssertTrue(homeTab.exists)
+
+        if !startNewMatchButton.exists {
+            homeTab.tap()
+        }
+
         XCTAssertTrue(startNewMatchButton.waitForExistence(timeout: timeout))
-        XCTAssertTrue(settingsTab.exists)
     }
 
     func openSettings() {
