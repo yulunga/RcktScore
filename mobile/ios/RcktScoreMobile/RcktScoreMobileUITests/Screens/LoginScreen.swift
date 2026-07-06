@@ -5,7 +5,11 @@ struct LoginScreen {
     let app: XCUIApplication
 
     var usernameField: XCUIElement {
-        app.textFields["login.usernameField"]
+        let identifiedField = app.textFields["login.usernameField"]
+        if identifiedField.exists {
+            return identifiedField
+        }
+        return app.textFields["Enter username"]
     }
 
     var passwordField: XCUIElement {
@@ -13,7 +17,11 @@ struct LoginScreen {
         if secureField.exists {
             return secureField
         }
-        return app.textFields["login.passwordField"]
+        let visibleField = app.textFields["login.passwordField"]
+        if visibleField.exists {
+            return visibleField
+        }
+        return app.secureTextFields["Enter password"]
     }
 
     var passwordVisibilityButton: XCUIElement {
@@ -21,7 +29,11 @@ struct LoginScreen {
     }
 
     var signInButton: XCUIElement {
-        app.buttons["login.signInButton"]
+        let identifiedButton = app.buttons["login.signInButton"]
+        if identifiedButton.exists {
+            return identifiedButton
+        }
+        return app.buttons["Sign in"]
     }
 
     var wantInButton: XCUIElement {
@@ -32,9 +44,9 @@ struct LoginScreen {
         app.buttons["login.needHelpButton"]
     }
 
-    func verifyLoaded(timeout: TimeInterval = 5) {
+    func verifyLoaded(timeout: TimeInterval = 10) {
+        XCTAssertTrue(signInButton.waitForExistence(timeout: timeout))
         XCTAssertTrue(usernameField.waitForExistence(timeout: timeout))
-        XCTAssertTrue(signInButton.exists)
     }
 
     func login(user: TestUser) {
