@@ -20,11 +20,11 @@
 #endif
 
 #ifndef APP_WIFI_SSID
-#define APP_WIFI_SSID ""
+#define APP_WIFI_SSID "MILLFI"
 #endif
 
 #ifndef APP_WIFI_PASSWORD
-#define APP_WIFI_PASSWORD ""
+#define APP_WIFI_PASSWORD "ba48eab983"
 #endif
 
 #define APP_WIFI_HOSTNAME "esp-small-extlcd"

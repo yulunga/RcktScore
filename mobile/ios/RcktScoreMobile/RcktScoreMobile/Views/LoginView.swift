@@ -235,19 +235,6 @@ struct LoginView: View {
         HStack(spacing: 10) {
             Spacer()
 
-            Button("Need Help") {
-                openNeedHelp()
-            }
-            .buttonStyle(.plain)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Color.loginBrandPink)
-            .accessibilityIdentifier("login.needHelpButton")
-
-            Text("|")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
             Button("Want In") {
                 openRegisterInterest()
             }
@@ -256,8 +243,22 @@ struct LoginView: View {
             .foregroundStyle(Color.loginAction)
             .accessibilityIdentifier("login.wantInButton")
 
+            Text("|")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Button("Need Help") {
+                openNeedHelp()
+            }
+            .buttonStyle(.plain)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.loginBrandPink)
+            .accessibilityIdentifier("login.needHelpButton")
+
             Spacer()
         }
+        .padding(.top, 14)
     }
 
     @ViewBuilder
