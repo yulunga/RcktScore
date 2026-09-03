@@ -417,6 +417,10 @@ Current behavior:
 Current behavior:
 
 - register-interest writes to `HitnScoreInterestRequests`
+- `use_type = personal` automatically approves the request, creates or refreshes a hidden `personal_free` organisation, owner membership, and personal court, then emails a time-limited password-setup link
+- personal signup returns `201` with `account_created = true` and does not require root-admin approval
+- `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
+- personal signup requires `PASSWORD_RESET_BASE_URL` to be configured; the request origin is not used as a fallback
 - honeypot field is `company`
 - SES delivery must be configured correctly
 - feedback sends email but does not persist to a database table

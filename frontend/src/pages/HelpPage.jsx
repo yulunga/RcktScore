@@ -461,29 +461,6 @@ export default function HelpPage() {
                 We may use automated or manual methods to monitor and review content to maintain a safe and
                 appropriate environment for all users.
               </p>
-              <h3>20. Beta and Early Access</h3>
-              <p>
-                HitnScore may offer certain features or access to the App as part of a beta or early access
-                programme.
-              </p>
-              <p>By participating in beta access, you acknowledge that:</p>
-              <ul>
-                <li>The App or certain features may be incomplete, unstable, or subject to change</li>
-                <li>You may encounter bugs, errors, or interruptions in service</li>
-                <li>Features may be added, modified, or removed without notice</li>
-              </ul>
-              <p>Beta access is provided for testing and feedback purposes only.</p>
-              <p>We do not guarantee:</p>
-              <ul>
-                <li>Availability of beta features</li>
-                <li>Continuity of data generated during beta phases</li>
-                <li>That beta features will be included in the final product</li>
-              </ul>
-              <p>We reserve the right to:</p>
-              <ul>
-                <li>Limit, suspend, or revoke beta access at any time</li>
-                <li>Use feedback provided to improve the App without obligation or compensation</li>
-              </ul>
             </section>
           ) : null}
 

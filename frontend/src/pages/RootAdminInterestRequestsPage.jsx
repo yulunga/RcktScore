@@ -113,7 +113,7 @@ export default function RootAdminInterestRequestsPage() {
           <div>
             <h1>Interested Users</h1>
             <p className="helper-text">
-              Review early access requests and keep their status clear for follow-up.
+              Review account enquiries and keep their status clear for follow-up.
             </p>
           </div>
           <div className="button-row root-admin-actions">

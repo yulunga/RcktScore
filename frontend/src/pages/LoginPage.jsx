@@ -149,6 +149,7 @@ export default function LoginPage() {
 
   async function handleInterestSubmit(event) {
     event.preventDefault();
+    const requestedUseType = interestUseType;
 
     if (!interestFirstName.trim()) {
       setInterestError("Name is required.");
@@ -165,7 +166,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (interestUseType === "club" && !interestClubName.trim()) {
+    if (requestedUseType === "club" && !interestClubName.trim()) {
       setInterestError("Club name is required for club use.");
       return;
     }
@@ -186,13 +187,17 @@ export default function LoginPage() {
         first_name: interestFirstName.trim(),
         surname: interestSurname.trim(),
         email: interestEmail.trim(),
-        use_type: interestUseType,
-        club_name: interestUseType === "club" ? interestClubName.trim() : "",
+        use_type: requestedUseType,
+        club_name: requestedUseType === "club" ? interestClubName.trim() : "",
         company: interestHoneypot,
         page_url: typeof window !== "undefined" ? window.location.href : "",
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
       });
-      setInterestMessage("Thanks. We have recorded your interest and will be in touch.");
+      setInterestMessage(
+        requestedUseType === "personal"
+          ? "Your personal account has been created. Check your email to verify your address and choose your password."
+          : "Thanks. We have received your club enquiry and will be in touch.",
+      );
       setInterestFirstName("");
       setInterestSurname("");
       setInterestEmail("");
@@ -207,7 +212,12 @@ export default function LoginPage() {
         setInterestError("");
       }, 5000);
     } catch (requestError) {
-      setInterestError(requestError.message || "Unable to submit your interest right now.");
+      setInterestError(
+        requestError.message
+          || (requestedUseType === "personal"
+            ? "Unable to create your personal account right now."
+            : "Unable to submit your club enquiry right now."),
+      );
     } finally {
       setInterestLoading(false);
     }
@@ -217,7 +227,6 @@ export default function LoginPage() {
     <main className="page-shell login-shell">
       <div className="login-shell__content">
         <div className="login-panel-wrap">
-          <span className="beta-badge page-beta-badge">Beta</span>
           <section className="login-panel stack">
             <div className="login-panel__top">
               <div className="login-branding">
@@ -332,12 +341,17 @@ export default function LoginPage() {
             <div className="stack compact">
               {showInterestForm ? (
                 <form ref={interestPanelRef} className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
-                  <h2 className="interest-panel__heading">Let me in</h2>
+                  <h2 className="interest-panel__heading">Join Hit n Score</h2>
                   <p className="helper-text interest-copy">
-                    We are currently in a beta phase. Request early access by submitting your details.
+                    Welcome to Hit n Score — the racket-sport scoring app.
                     <br />
                     <br />
-                    Approved users will be granted access to the platform.
+                    Create a free personal account to start scoring matches. Registered users can access additional
+                    features, with the option to upgrade for more advanced tools.
+                    <br />
+                    <br />
+                    Looking for a multi-user account for a racket club? Club accounts are currently set up with our
+                    team. Register your interest and we’ll be in touch.
                   </p>
 
                   <div className="field-grid">
@@ -463,7 +477,9 @@ export default function LoginPage() {
 
                   <div className="button-row">
                     <button disabled={interestLoading} type="submit">
-                      {interestLoading ? "Sending..." : "Send Register Interest"}
+                      {interestLoading
+                        ? "Sending..."
+                        : (interestUseType === "personal" ? "Create Personal Account" : "Register Club Interest")}
                     </button>
                   </div>
                 </form>

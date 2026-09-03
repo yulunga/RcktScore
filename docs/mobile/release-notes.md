@@ -47,6 +47,7 @@ Current unreleased iOS build state:
 - native help flows support in-app feedback and password reset requests
 - native login now supports organisation selection when the same email belongs
   to multiple approved clubs/accounts
+- the login landing page now places `Need Help | Want In` on one line; Personal registration creates an account immediately and emails password setup, while Club remains a managed enquiry
 - the shared native bottom navigation now compacts itself for larger Dynamic
   Type sizes on smaller iPhones
 - tennis setup now supports singles/doubles switching, and tennis live scoring

@@ -21,7 +21,7 @@ Already in place:
 - active-session conflict handling with force-logout retry
 - multi-organisation membership selection at login and association switching
 - optional local Face ID / Touch ID unlock for a saved session
-- register-interest and help flows on login
+- self-service personal-account signup, controlled club enquiries, and help flows on login
 - dashboard shell with `Home`, `Matches`, `History`, `Settings`, and `Need Help`
 - active, scheduled, and recent match loading
 - native start-new-match flow with sport picker

@@ -232,32 +232,31 @@ struct LoginView: View {
     }
 
     private var loginLinks: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Spacer()
+        HStack(spacing: 10) {
+            Spacer()
 
-                Button("Want in") {
-                    openRegisterInterest()
-                }
-                .buttonStyle(.plain)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.loginAction)
-                .accessibilityIdentifier("login.wantInButton")
+            Button("Need Help") {
+                openNeedHelp()
             }
+            .buttonStyle(.plain)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.loginBrandPink)
+            .accessibilityIdentifier("login.needHelpButton")
 
-            HStack {
-                Spacer()
+            Text("|")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
 
-                Button("Need help ?") {
-                    openNeedHelp()
-                }
-                .buttonStyle(.plain)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color.loginBrandPink)
-                .accessibilityIdentifier("login.needHelpButton")
-
-                Spacer()
+            Button("Want In") {
+                openRegisterInterest()
             }
+            .buttonStyle(.plain)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.loginAction)
+            .accessibilityIdentifier("login.wantInButton")
+
+            Spacer()
         }
     }
 
@@ -316,9 +315,9 @@ struct LoginView: View {
 
     private var registerInterestCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            overlayHeader("Want in")
+            overlayHeader("Join Hit n Score")
 
-            Text("We are currently in a beta phase. Request early access by submitting your details.\n\nApproved users will be granted access to the platform.")
+            Text("Welcome to Hit n Score — the racket-sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional features, with the option to upgrade for more advanced tools.\n\nLooking for a multi-user account for a racket club? Club accounts are currently set up with our team. Register your interest and we’ll be in touch.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -389,7 +388,9 @@ struct LoginView: View {
                 .disabled(isSubmittingInterest)
 
                 overlayPrimaryButton(
-                    title: isSubmittingInterest ? "Sending..." : "Send Interest",
+                    title: isSubmittingInterest
+                        ? "Sending..."
+                        : (interestUseType == "personal" ? "Create Personal Account" : "Register Club Interest"),
                     showProgress: isSubmittingInterest
                 ) {
                     submitRegisterInterest()
@@ -859,6 +860,7 @@ struct LoginView: View {
         let firstName = interestFirstName.trimmingCharacters(in: .whitespacesAndNewlines)
         let surname = interestSurname.trimmingCharacters(in: .whitespacesAndNewlines)
         let clubName = interestClubName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestedUseType = interestUseType
 
         guard !firstName.isEmpty else {
             interestErrorMessage = "Name is required."
@@ -878,7 +880,7 @@ struct LoginView: View {
             return
         }
 
-        if interestUseType == "club" && clubName.isEmpty {
+        if requestedUseType == "club" && clubName.isEmpty {
             interestErrorMessage = "Club name is required for club use."
             interestMessage = nil
             return
@@ -902,17 +904,22 @@ struct LoginView: View {
                     firstName: firstName,
                     surname: surname,
                     email: email,
-                    useType: interestUseType,
+                    useType: requestedUseType,
                     clubName: clubName
                 )
                 await MainActor.run {
-                    interestMessage = "Thanks. We have recorded your interest and will be in touch."
+                    interestMessage = requestedUseType == "personal"
+                        ? "Your personal account has been created. Check your email to verify your address and choose your password."
+                        : "Thanks. We have received your club enquiry and will be in touch."
                     interestErrorMessage = nil
                     isSubmittingInterest = false
                 }
             } catch {
                 await MainActor.run {
-                    interestErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to submit your interest right now."
+                    interestErrorMessage = (error as? APIErrorResponse)?.message
+                        ?? (requestedUseType == "personal"
+                            ? "Unable to create your personal account right now."
+                            : "Unable to submit your club enquiry right now.")
                     interestMessage = nil
                     isSubmittingInterest = false
                 }
@@ -1033,9 +1040,6 @@ private extension Color {
     static let loginAction = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let loginBrandBlue = Color(red: 11 / 255, green: 95 / 255, blue: 179 / 255)
     static let loginBrandPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
-    static let loginBetaBackground = Color(red: 1, green: 243 / 255, blue: 196 / 255)
-    static let loginBetaText = Color(red: 138 / 255, green: 91 / 255, blue: 0)
-    static let loginBetaBorder = Color(red: 153 / 255, green: 102 / 255, blue: 0).opacity(0.18)
     static let loginBackgroundStart = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

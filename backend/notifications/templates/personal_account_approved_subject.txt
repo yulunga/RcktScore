@@ -1,1 +1,1 @@
-$app_name early access approved
+$app_name personal account setup

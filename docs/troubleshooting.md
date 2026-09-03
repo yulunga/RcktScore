@@ -253,6 +253,7 @@ What to check:
 - the correct environment variable is present:
   - `INTEREST_TO_EMAIL`
   - `INTEREST_FROM_EMAIL`
+  - `PASSWORD_RESET_BASE_URL` for automatic personal-account password setup
   - `FEEDBACK_TO_EMAIL`
   - `FEEDBACK_FROM_EMAIL`
 - for club-user invitation links, `USER_APPROVAL_BASE_URL` controls the public approval-link host/path and `USER_APPROVAL_LOGIN_URL` controls where the success page redirects after showing the confirmation message for three seconds
@@ -263,6 +264,9 @@ What to check:
 Common symptoms:
 
 - request stored but email not sent
+- personal signup returns `PERSONAL_SIGNUP_CONFIGURATION_ERROR` when the password-setup URL is not configured
+- personal signup creates a pending owner membership until the emailed password is chosen; this is email verification, not manual root approval
+- club requests remain pending enquiries and do not create accounts automatically
 - password reset link points to the wrong host
 - organisation invite exists but user remains pending forever
 

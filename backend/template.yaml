@@ -46,7 +46,7 @@ Parameters:
     Default: rcktinterest@ucingo.com
   PasswordResetBaseUrl:
     Type: String
-    Default: ""
+    Default: "https://app.hitnscore.com"
   RootAdminSessionTtlHours:
     Type: Number
     Default: 8
@@ -440,6 +440,7 @@ Resources:
         Variables:
           INTEREST_TO_EMAIL: !Ref InterestToEmail
           INTEREST_FROM_EMAIL: !Ref InterestFromEmail
+          PASSWORD_RESET_BASE_URL: !Ref PasswordResetBaseUrl
       Policies:
         - Statement:
             - Effect: Allow

@@ -61,7 +61,6 @@ export default function RootAdminLoginPage() {
       <section className="login-panel stack">
         <div className="login-panel__top">
           <h1 className="login-title">RcktScore Root Admin</h1>
-          <span className="beta-badge">Beta</span>
         </div>
         <p className="helper-text root-admin-login-note">
           Root administration access for tenant and user management. IP restrictions can be added later.

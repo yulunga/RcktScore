@@ -98,7 +98,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
 
   return (
     <>
-      <span className="beta-badge page-beta-badge">Beta</span>
       <section className={`hero-card club-page-header ${className}`.trim()}>
         <div className="club-page-header__top">
           <div className="club-page-header__branding">

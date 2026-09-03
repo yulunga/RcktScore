@@ -1,4 +1,4 @@
-A new HitnScore early access request has been submitted.
+A new Hit n Score club account enquiry has been submitted.
 
 Name: $first_name $surname
 Email: $email

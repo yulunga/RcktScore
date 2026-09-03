@@ -98,7 +98,7 @@ Error:
 7. Each root-admin handler validates the token, expiry, revocation state, and current `SkRootAdmin` identity before doing any privileged work.
 8. Logout calls `POST /root_admin/logout`, which revokes the current token.
 
-## 3. Register-Interest Flow
+## 3. Personal Signup and Club-Enquiry Flow
 
 ### Frontend entry
 
@@ -106,19 +106,23 @@ Error:
 
 ### Current path
 
-1. A visitor opens the interest form on the login page.
+1. A visitor opens the `Want In` form on the login page.
 2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
 3. The honeypot field is `company`.
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
-   - sends confirmation/admin emails through SES
-5. The API returns `202` with `data.accepted = true`.
+   - for Personal, automatically creates or refreshes the `personal_free` organisation, owner membership, and personal court, then sends a password-setup email
+   - for Club, keeps the request pending and sends confirmation/admin enquiry emails
+5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
+6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
 
 ### Troubleshooting cues
 
 - missing interest-request table returns `INTEREST_REQUESTS_TABLE_MISSING`
-- SES issues return `INTEREST_EMAIL_FAILED`
+- missing `PASSWORD_RESET_BASE_URL` returns `PERSONAL_SIGNUP_CONFIGURATION_ERROR`
+- personal setup email issues return `PERSONAL_SIGNUP_EMAIL_FAILED`
+- club enquiry email issues return `INTEREST_EMAIL_FAILED`
 
 ## 4. Password Reset Flow
 

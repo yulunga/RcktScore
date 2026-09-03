@@ -20,7 +20,7 @@ The codebase currently supports:
 - match creation, scheduled matches, live scoring, undo, and manual match end
 - public display screen for a single match
 - root-admin screens for clubs, interest requests, and personal accounts
-- password reset, register-interest, and feedback email flows
+- self-service personal-account signup, controlled club enquiries, password reset, and feedback email flows
 
 Important current gaps:
 

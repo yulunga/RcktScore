@@ -278,23 +278,6 @@ textarea {
   color: #ec5ea8;
 }
 
-.beta-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 72px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #fff3c4;
-  border: 1px solid rgba(153, 102, 0, 0.18);
-  color: #8a5b00;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .dashboard-status-group {
   display: inline-flex;
   align-items: center;
@@ -305,18 +288,6 @@ textarea {
 .status-pill.warning {
   background: #fff3c4;
   color: #8a5b00;
-}
-
-.page-beta-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 3;
-}
-
-.login-panel-wrap .page-beta-badge {
-  top: -10px;
-  right: -12px;
 }
 
 .interest-panel {
@@ -3615,8 +3586,7 @@ textarea {
   .club-page-header__divider,
   .club-page-header__organization-name,
   .club-page-header__page-title,
-  .club-page-header__copy,
-  .page-beta-badge {
+  .club-page-header__copy {
     display: none;
   }
 

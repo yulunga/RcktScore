@@ -8,6 +8,7 @@ from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
+from common.root_admin_logic import update_root_admin_interest_request_status
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -167,6 +168,7 @@ def lambda_handler(event, context):
 
     destination_email = os.getenv("INTEREST_TO_EMAIL", "rcktinterest@ucingo.com")
     source_email = os.getenv("INTEREST_FROM_EMAIL", destination_email)
+    password_setup_base_url = (os.getenv("PASSWORD_RESET_BASE_URL") or "").strip()
     page_url = (payload.get("page_url") or "").strip()
     user_agent = (
         payload.get("user_agent")
@@ -187,7 +189,20 @@ def lambda_handler(event, context):
     try:
         with get_db_connection() as connection:
             interest_row = _upsert_interest_request(connection, request_payload)
-            connection.commit()
+            personal_signup = None
+            if use_type == "personal":
+                if not password_setup_base_url:
+                    raise ValueError("PASSWORD_RESET_BASE_URL must be configured for personal account signup")
+                personal_signup = update_root_admin_interest_request_status(
+                    connection,
+                    interest_row["id"],
+                    "approved",
+                    updated_by="self-service signup",
+                    source_email=source_email,
+                    reset_base_url=password_setup_base_url,
+                )
+            else:
+                connection.commit()
     except UndefinedTable:
         logger.exception("Interest request table is missing")
         return error_response(
@@ -195,12 +210,42 @@ def lambda_handler(event, context):
             "INTEREST_REQUESTS_TABLE_MISSING",
             "Interest request storage is not ready. Please run the interest requests database migration.",
         )
-    except Exception:
-        logger.exception("Interest request database write failed")
+    except ValueError as request_error:
+        logger.exception("Personal signup configuration or validation failed")
         return error_response(
             500,
-            "INTEREST_REQUEST_FAILED",
-            "Unable to register interest right now.",
+            "PERSONAL_SIGNUP_CONFIGURATION_ERROR",
+            str(request_error),
+        )
+    except (BotoCoreError, ClientError):
+        logger.exception("Personal account setup email failed")
+        return error_response(
+            500,
+            "PERSONAL_SIGNUP_EMAIL_FAILED",
+            "Unable to send the personal account setup email. Please try again later.",
+        )
+    except Exception:
+        logger.exception("Registration database write failed")
+        return error_response(
+            500,
+            "REGISTRATION_FAILED",
+            "Unable to complete registration right now.",
+        )
+
+    if use_type == "personal":
+        logger.info(
+            "Personal account signup accepted id=%s email=%s",
+            interest_row.get("id"),
+            email,
+        )
+        return success_response(
+            201,
+            {
+                "accepted": True,
+                "account_created": True,
+                "requires_password_setup": True,
+                "personal_account": personal_signup.get("personal_account") if personal_signup else None,
+            },
         )
 
     try:
@@ -225,10 +270,10 @@ def lambda_handler(event, context):
         )
 
     logger.info(
-        "Interest request accepted id=%s email=%s use_type=%s",
+        "Club account enquiry accepted id=%s email=%s use_type=%s",
         interest_row.get("id"),
         email,
         use_type,
     )
 
-    return success_response(202, {"accepted": True})
+    return success_response(202, {"accepted": True, "account_created": False})
