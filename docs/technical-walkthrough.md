@@ -92,13 +92,11 @@ Error:
 1. The root admin submits username and password plus the client-side human-check.
 2. The frontend calls `POST /root_admin/login`.
 3. [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py) verifies credentials against `SkRootAdmin`.
-4. The API returns `data.rootAdminSession`.
-5. The frontend stores that object in `sessionStorage`.
-
-### Important current limitation
-
-This is not backed by a proper backend root-admin session/token model yet.
-Some root-admin routes still have no real server-side authorization layer.
+4. The backend revokes older sessions for the same root-admin account and creates an eight-hour session in `root_admin_sessions`.
+5. The API returns `data.rootAdminSession` with the opaque bearer token and `expires_at`; only its SHA-256 hash is stored in the database.
+6. The frontend stores the session in `sessionStorage` and sends the bearer token on every root-admin request.
+7. Each root-admin handler validates the token, expiry, revocation state, and current `SkRootAdmin` identity before doing any privileged work.
+8. Logout calls `POST /root_admin/logout`, which revokes the current token.
 
 ## 3. Register-Interest Flow
 
@@ -270,7 +268,7 @@ The organisation-level handicap setting and social-profile fields are still UI s
 
 ### Root-admin note
 
-The root-admin club page performs some of these mutations using `rootAdminRequest: true`, which becomes `x-root-admin-request: true` in the client.
+The root-admin club page marks these shared calls as root-admin requests in the API client. The client sends the stored root-admin bearer token, and the backend validates it before permitting access. No caller-controlled trust header is used.
 
 ## 10. Match Setup Lookup Flow
 
@@ -386,15 +384,15 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 ### Current path
 
 1. The root-admin UI loads dashboard, club, interest, and personal-account data from root-admin routes.
-2. Some routes call backend functions with no full server-side root-admin session validation.
-3. Some club-detail routes call normal organisation endpoints with `x-root-admin-request: true`.
+2. Every root-admin route validates the bearer token against `root_admin_sessions`.
+3. Club-detail calls to shared organisation endpoints accept root access only after the same session validation succeeds.
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
 6. The platform dashboard now also links to a root-admin `RacketSports` page that calls `GET /root_admin/platform_sports` and `PUT /root_admin/platform_sports` to set the globally allowed sport list and push that same list to all clubs and personal accounts.
 
-### Important current limitation
+### Remaining hardening
 
-The root-admin frontend experience exists, but the backend trust model is not yet at launch quality.
+The root-admin trust boundary is now enforced. Rate limiting, richer security audit events, and operational session-management tooling remain launch-hardening work.
 
 ## 15. Native iOS Flow
 
@@ -423,11 +421,15 @@ The root-admin frontend experience exists, but the backend trust model is not ye
 
 ## 16. Current Cross-Cutting Gaps
 
-- root-admin backend authorization is incomplete
+- public-route rate limiting and wider security audit coverage are incomplete
 - WebSocket infrastructure is incomplete
 - organisation game settings persistence is incomplete
 - social profile persistence is incomplete
-- a lightweight native iOS UI test bundle now exists in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`, including smoke-test launch helpers that can force light or dark mode and reset local app state at launch; there is still no automated backend or web frontend suite
+- backend pytest logic tests and Playwright public-route smoke tests now exist
+  under `testing/automated/`; a lightweight native iOS UI test bundle also
+  exists in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`, including
+  launch helpers that can force light or dark mode and reset local app state;
+  these are early baselines and are not yet part of a documented CI pipeline
 
 ## Maintenance Rule
 

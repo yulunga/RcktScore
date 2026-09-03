@@ -30,6 +30,24 @@ npm run build -- --outDir /tmp/rcktscore-frontend-dist
 Use the scratch `outDir` because local builds may fail if Vite tries to clean
 the checked-in `frontend/dist/` directory.
 
+### Backend unit tests
+
+After installing `testing/automated/backend/requirements-test.txt`:
+
+```bash
+pytest -c testing/automated/backend/pytest.ini testing/automated/backend
+```
+
+### Web public-route smoke tests
+
+After installing Playwright and its browsers as described in
+`testing/automated/web/README.md`, start the frontend and run:
+
+```bash
+cd frontend
+npm run test:e2e:smoke
+```
+
 ### iOS project inventory
 
 ```bash
@@ -149,17 +167,19 @@ Relevant files:
 
 Current risk areas:
 
-- root-admin login is credential-checked, but backend session enforcement is incomplete
-- some club admin actions rely on `x-root-admin-request`
+- root-admin requests require an unexpired bearer token backed by `root_admin_sessions`
+- only one active root-admin session per root-admin account is retained; a newer login revokes the previous session
 
 If a root-admin issue appears:
 
 - verify whether the failing route is a true root-admin route or a reused organisation route
-- verify whether the request is depending on `rootAdminRequest: true`
+- check for `ROOT_ADMIN_SESSION_REQUIRED`, `ROOT_ADMIN_SESSION_INVALID`, `ROOT_ADMIN_SESSION_REPLACED`, or `ROOT_ADMIN_SESSION_EXPIRED`
+- verify migration `018_root_admin_sessions.sql` has been applied before testing login
+- confirm the frontend is sending `Authorization: Bearer <token>` and is not relying on the removed `x-root-admin-request` header
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every club and personal account at once, check the root-admin `platform_sports` setting and whether the bulk apply path updated `SkwshOrgSettings.enabled_sports`
-- do not assume root-admin failures will look like org-user session failures
+- logout is idempotent and revokes the token through `POST /root_admin/logout`
 
 ## 4. Match Creation and Scoring Issues
 
@@ -259,6 +279,7 @@ Most relevant current tables:
 - `SkwshCourts`
 - `SkRootAdmin`
 - `org_user_sessions`
+- `root_admin_sessions`
 - `matches`
 - `match_events`
 - `HitnScoreInterestRequests`
@@ -341,12 +362,13 @@ Important current truths:
 
 These are current product limitations, not accidental breakage:
 
-- root-admin backend auth is incomplete
 - organisation handicap toggle in settings is scaffold-only
 - reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
 - there is no native notification-center flow behind the dashboard bell yet
-- there is still no automated backend or web frontend suite in the repo, but there is now a lightweight native iOS UI test bundle and smoke-test scaffolding in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`
+- backend pytest logic tests, Playwright public-route smoke tests, and native
+  iOS UI smoke scaffolding are checked in, but their coverage is still limited
+  and they are not wired into a documented CI pipeline
 
 ## Maintenance Rule
 

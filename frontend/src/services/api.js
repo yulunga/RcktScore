@@ -1,7 +1,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_KEY = import.meta.env.VITE_API_KEY;
 const SESSION_KEY = "rcktscore.auth";
+const ROOT_ADMIN_SESSION_KEY = "rcktscore.root_admin";
 const SESSION_INVALIDATION_CODES = new Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED"]);
+const ROOT_ADMIN_SESSION_INVALIDATION_CODES = new Set([
+  "ROOT_ADMIN_SESSION_REQUIRED",
+  "ROOT_ADMIN_SESSION_INVALID",
+  "ROOT_ADMIN_SESSION_REPLACED",
+  "ROOT_ADMIN_SESSION_EXPIRED",
+]);
 
 function readStoredSessionToken() {
   if (typeof window === "undefined") {
@@ -21,13 +28,31 @@ function readStoredSessionToken() {
   }
 }
 
-function notifySessionInvalidated(code) {
+function readStoredRootAdminSessionToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(ROOT_ADMIN_SESSION_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue?.session_token || parsedValue?.sessionToken || null;
+  } catch {
+    return null;
+  }
+}
+
+function notifySessionInvalidated(code, rootAdmin = false) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.dispatchEvent(
-    new CustomEvent("rcktscore:session-invalidated", {
+    new CustomEvent(rootAdmin ? "rcktscore:root-admin-session-invalidated" : "rcktscore:session-invalidated", {
       detail: {
         code,
       },
@@ -36,13 +61,15 @@ function notifySessionInvalidated(code) {
 }
 
 async function apiRequest(path, options = {}) {
-  const sessionToken = options.sessionToken === undefined ? readStoredSessionToken() : options.sessionToken;
   const rootAdminRequest = Boolean(options.rootAdminRequest);
+  const rootAdminPath = path.startsWith("/root_admin/") && path !== "/root_admin/login";
+  const usesRootAdminSession = rootAdminRequest || rootAdminPath;
+  const defaultSessionToken = usesRootAdminSession ? readStoredRootAdminSessionToken() : readStoredSessionToken();
+  const sessionToken = options.sessionToken === undefined ? defaultSessionToken : options.sessionToken;
   const headers = {
     "Content-Type": "application/json",
     ...(API_KEY ? { "x-api-key": API_KEY } : {}),
     ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-    ...(rootAdminRequest ? { "x-root-admin-request": "true" } : {}),
     ...(options.headers || {}),
   };
 
@@ -71,6 +98,9 @@ async function apiRequest(path, options = {}) {
     error.details = payload?.error?.details;
     if (SESSION_INVALIDATION_CODES.has(error.code)) {
       notifySessionInvalidated(error.code);
+    }
+    if (ROOT_ADMIN_SESSION_INVALIDATION_CODES.has(error.code)) {
+      notifySessionInvalidated(error.code, true);
     }
     throw error;
   }
@@ -114,6 +144,13 @@ export function rootAdminLogin(payload) {
   return apiRequest("/root_admin/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function rootAdminLogout(sessionToken) {
+  return apiRequest("/root_admin/logout", {
+    method: "POST",
+    sessionToken,
   });
 }
 

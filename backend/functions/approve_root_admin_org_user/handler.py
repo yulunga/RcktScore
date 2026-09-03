@@ -1,4 +1,6 @@
 from common.root_admin_logic import approve_root_admin_org_user
+from common.root_admin_session_logic import require_root_admin_session
+from common.session_logic import SessionAuthError, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, path_parameter, require_fields, success_response
 
@@ -15,11 +17,14 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
+            require_root_admin_session(connection, event)
             user = approve_root_admin_org_user(
                 connection,
                 payload["organization_id"],
                 user_id,
             )
+    except SessionAuthError as auth_error:
+        return session_error_response(auth_error)
     except ValueError as request_error:
         return error_response(400, "INVALID_INPUT", str(request_error))
 

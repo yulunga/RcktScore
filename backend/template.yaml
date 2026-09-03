@@ -11,6 +11,7 @@ Globals:
     Environment:
       Variables:
         SUPABASE_DB_URL: !Ref SupabaseDbUrl
+        ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
 
 Parameters:
   SupabaseDbUrl:
@@ -46,6 +47,11 @@ Parameters:
   PasswordResetBaseUrl:
     Type: String
     Default: ""
+  RootAdminSessionTtlHours:
+    Type: Number
+    Default: 8
+    MinValue: 1
+    MaxValue: 24
 
 Resources:
   RcktScoreHttpApi:
@@ -59,7 +65,6 @@ Resources:
           - Content-Type
           - x-api-key
           - Authorization
-          - x-root-admin-request
         AllowMethods:
           - GET
           - POST
@@ -175,6 +180,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/login
+            Method: POST
+
+  RootAdminLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/root_admin_logout/handler.lambda_handler
+      Events:
+        RootAdminLogout:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/logout
             Method: POST
 
   GetRootAdminDashboardFunction:

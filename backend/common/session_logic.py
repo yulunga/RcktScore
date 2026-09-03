@@ -35,12 +35,6 @@ def _request_headers(event):
     }
 
 
-def is_root_admin_request(event):
-    headers = _request_headers(event)
-    value = (headers.get("x-root-admin-request") or "").strip().lower()
-    return value in {"1", "true", "yes"}
-
-
 def session_token_from_event(event):
     headers = _request_headers(event)
     authorization = (headers.get("authorization") or "").strip()
@@ -292,7 +286,17 @@ def _get_membership_row(connection, username, organization_id):
         return cursor.fetchone()
 
 
-def authorize_organization_session(connection, event, organization_id, require_admin=False):
+def authorize_organization_session(connection, event, organization_id, require_admin=False, allow_root_admin=False):
+    if allow_root_admin:
+        from common.root_admin_session_logic import find_root_admin_session
+
+        root_admin_session = find_root_admin_session(connection, event)
+        if root_admin_session:
+            return {
+                "root_admin_session": root_admin_session,
+                "membership": None,
+            }
+
     session = require_org_user_session(connection, event)
     membership_row = _get_membership_row(connection, session["username"], organization_id)
 

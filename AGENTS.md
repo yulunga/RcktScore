@@ -53,11 +53,10 @@ What is real and implemented:
 - register-interest, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
+- expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 
 What is still partial or risky:
 
-- root-admin backend authorization is not fully implemented
-- some root-admin organisation actions use `x-root-admin-request` header bypass logic
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting/stats views
@@ -65,7 +64,9 @@ What is still partial or risky:
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable
 - there is no documented iOS CI/archive/release pipeline in the repo yet
-- a lightweight native iOS UI test bundle is now checked into `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`, but there is still no automated backend or web frontend test suite and the iOS smoke coverage is only a first pass
+- lightweight automated baselines are checked in for backend pytest logic tests,
+  Playwright public-route smoke tests, and native iOS UI smoke tests; coverage is
+  still a first pass and there is no documented CI pipeline running them
 
 ## Repository Layout
 
@@ -102,9 +103,12 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/matches`
 - `/history`
 - `/settings`
+- `/settings/users/:userId`
 - `/ping`
 - `/match/new`
+- `/match/new/setup`
 - `/match/:matchId`
+- `/scoreboard`
 - `/display`
 - `/rckscoreAdmin`
 - `/rckscoreAdmin/dashboard`
@@ -134,8 +138,9 @@ See the backend/API reference for the exact route list.
 - org-user session enforcement is real in `backend/common/session_logic.py`
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is now enforced through organisation-level `enabled_sports` settings before match creation
-- root-admin login is real, but root-admin session/token enforcement is not yet implemented as a backend-wide control
-- do not describe the current root-admin surface as fully secured
+- root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
+- the former `x-root-admin-request` trust-header bypass has been removed
+- root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain
 - do not describe WebSocket live display as production-complete
 
 ## Troubleshooting Entry Points
@@ -151,4 +156,11 @@ Fast local verification commands:
 ```bash
 PYTHONPYCACHEPREFIX=/tmp/rcktscore-pyc python3 -m py_compile $(find backend/common backend/functions -name '*.py' | sort)
 cd frontend && npm run build -- --outDir /tmp/rcktscore-frontend-dist
+```
+
+Additional checked-in test commands:
+
+```bash
+pytest -c testing/automated/backend/pytest.ini testing/automated/backend
+cd frontend && npm run test:e2e:smoke
 ```

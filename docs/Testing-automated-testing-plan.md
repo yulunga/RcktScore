@@ -22,6 +22,23 @@ This document therefore covers both:
 - the automated testing roadmap
 - the release-gate checks needed to ship the iOS app safely
 
+## Current Checked-In Baseline
+
+The repository has moved beyond a plan-only state:
+
+- `testing/automated/backend/` contains pytest tests for selected match and
+  session helpers
+- `testing/automated/web/` contains a Playwright configuration and public-route
+  smoke tests across phone, tablet, and desktop projects
+- `frontend/package.json` exposes `test:e2e`, `test:e2e:smoke`, and
+  `test:e2e:headed`
+- `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests/` contains the first native
+  UI smoke-test bundle
+
+These are starter suites, not the completed coverage or CI rollout described
+below. Playwright is not currently declared in `frontend/package.json`, so use
+the installation step in the web automation README before running it.
+
 ---
 
 ## 1) Recommended Testing Stack
@@ -179,6 +196,12 @@ Best practice:
 - Keep credentials in environment variables (never in git)
 - Seed deterministic test data before each run (or nightly reset)
 
+The native UI-test bundle reads its three accounts from these environment variables:
+
+- `RCKTSCORE_UI_TEST_CLUB_USERNAME` / `RCKTSCORE_UI_TEST_CLUB_PASSWORD`
+- `RCKTSCORE_UI_TEST_PERSONAL_USERNAME` / `RCKTSCORE_UI_TEST_PERSONAL_PASSWORD`
+- `RCKTSCORE_UI_TEST_PERSONAL_PLUS_USERNAME` / `RCKTSCORE_UI_TEST_PERSONAL_PLUS_PASSWORD`
+
 ---
 
 ## 6) Example E2E Scenarios to Implement
@@ -216,10 +239,10 @@ Best practice:
 
 ## 7) Add API Tests (Pytest)
 
-Create:
+The current starter suite lives in:
 
 ```bash
-backend/tests/
+testing/automated/backend/
 ```
 
 Add tests for:
@@ -232,11 +255,10 @@ Add tests for:
 - Scheduled match start/edit paths
 - Match settings update behavior if enabled for launch
 
-Run:
+Run from the repository root:
 
 ```bash
-cd backend
-pytest -q
+pytest -c testing/automated/backend/pytest.ini testing/automated/backend
 ```
 
 ---
@@ -260,19 +282,15 @@ pytest -q
 
 ---
 
-## 9) Suggested npm Scripts
+## 9) Current npm Scripts
 
 In `frontend/package.json`:
 
-```json
-{
-  "scripts": {
-    "test:e2e": "playwright test",
-    "test:e2e:smoke": "playwright test --grep @smoke",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
-  }
-}
+```bash
+cd frontend
+npm run test:e2e
+npm run test:e2e:smoke
+npm run test:e2e:headed
 ```
 
 ---

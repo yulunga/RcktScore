@@ -3,6 +3,8 @@ import os
 from aws_lambda_powertools import Logger
 
 from common.root_admin_logic import update_root_admin_interest_request_status
+from common.root_admin_session_logic import require_root_admin_session
+from common.session_logic import SessionAuthError, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, path_parameter, success_response
 
@@ -44,14 +46,17 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
+            root_admin_session = require_root_admin_session(connection, event)
             interest_request = update_root_admin_interest_request_status(
                 connection,
                 numeric_request_id,
                 payload.get("approval_status"),
-                updated_by=payload.get("updated_by"),
+                updated_by=root_admin_session["username"],
                 source_email=(os.getenv("INTEREST_FROM_EMAIL") or "").strip(),
                 reset_base_url=_reset_base_url(event),
             )
+    except SessionAuthError as auth_error:
+        return session_error_response(auth_error)
     except ValueError as request_error:
         return error_response(400, "INVALID_INPUT", str(request_error))
     except LookupError as request_error:

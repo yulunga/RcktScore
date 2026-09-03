@@ -19,6 +19,8 @@ Already in place:
 - organisation login for `mobile_app` sessions
 - persisted session
 - active-session conflict handling with force-logout retry
+- multi-organisation membership selection at login and association switching
+- optional local Face ID / Touch ID unlock for a saved session
 - register-interest and help flows on login
 - dashboard shell with `Home`, `Matches`, `History`, `Settings`, and `Need Help`
 - active, scheduled, and recent match loading
@@ -48,8 +50,6 @@ Already in place:
 
 These are the main gaps still visible in the current iOS build:
 
-- iOS login does not yet expose the backend `organizationSelection` branch for
-  multi-membership users
 - the live scoring screen is much better than the earlier layout, but still
   needs final small-screen polish and confidence-building QA
 - the native tennis flow is first-pass and still needs broader regression
@@ -116,7 +116,7 @@ Required work:
 2. iPad portrait and landscape pass
 3. session-expiry and session-replacement handling verification
 4. docs, release notes, and signoff checklist refresh
-5. decision on how multi-organisation membership selection should work in iOS
+5. regression coverage for multi-organisation selection and association switching
 6. decision on whether placeholder settings sections ship or are hidden
 
 Definition of done:
@@ -133,7 +133,8 @@ Do not proceed to release if:
 2. the redesigned scorer hides or slows common operator actions
 3. scheduled matches cannot be started reliably from iPhone
 4. session bugs sign users out unexpectedly
-5. the app still lacks a clear decision for multi-membership login behavior
+5. multi-membership login or association switching fails to preserve the
+   selected organisation correctly
 6. the launch build still contains visible placeholder/dead-end flows that confuse users
 
 ## Deferred For Later

@@ -11,10 +11,14 @@ Current workspace:
 Current app coverage:
 
 - organisation-user login and persisted session
+- multi-organisation membership selection and association switching
+- optional Face ID / Touch ID unlock for a saved local session
 - dashboard, matches, history, settings, and help tabs
 - native match setup and scheduled-match start
-- live scoring and historic-match views
+- squash, racketball, and tennis live scoring plus historic-match views
 - club organisation/user/court management
+- racket-sport visibility controls
+- lightweight UI smoke-test target in `RcktScoreMobileUITests/`
 
 Useful app entry points:
 
@@ -37,5 +41,5 @@ Supporting repo docs:
 
 Current priority:
 
-- redesign the iPhone scoring experience without changing the shared backend
-  scoring contracts
+- finish iPhone/iPad UX hardening, regression signoff, and release-pipeline
+  documentation without changing the shared backend scoring contracts

@@ -18,7 +18,7 @@
 
 /* Begin PBXFileReference section */
 		343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RcktScoreMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		347077DC2F756CF40099CAFA /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = RcktScoreMobile.app; path = "/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/build/Debug-iphoneos/RcktScoreMobile.app"; sourceTree = "<absolute>"; };
+		347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -58,6 +58,7 @@
 				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
 				343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */,
+				347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -106,7 +107,7 @@
 			packageProductDependencies = (
 			);
 			productName = RcktScoreMobile;
-			productReference = 347077DC2F756CF40099CAFA /* RcktScoreMobile.app */;
+			productReference = 347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */

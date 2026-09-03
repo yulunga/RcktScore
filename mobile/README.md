@@ -15,6 +15,7 @@ The iOS app is no longer just a placeholder folder.
 Current implementation includes:
 
 - organisation-user login against the shared v2 backend
+- multi-organisation membership selection and switching
 - persisted session state and active-session conflict handling
 - dashboard tabs for home, matches, history, settings, and help
 - active, scheduled, and recent match access
@@ -23,8 +24,8 @@ Current implementation includes:
 
 Current limitations:
 
-- multi-organisation membership selection is not yet exposed in the iOS login flow
-- the current iPhone scoring layout is functional but due for redesign
+- the improved iPhone scoring layout still needs final small-screen and
+  accessibility hardening
 - no documented mobile CI/archive/release pipeline yet
 - no completed mobile realtime/WebSocket path yet
 

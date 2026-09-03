@@ -1,5 +1,4 @@
 from common.session_logic import (
-    is_root_admin_request,
     login_source_label,
     normalize_login_source,
     session_token_from_event,
@@ -42,11 +41,3 @@ def test_session_token_falls_back_to_custom_header():
     }
 
     assert session_token_from_event(event) == "custom-token"
-
-
-def test_root_admin_request_detects_true_values():
-    assert is_root_admin_request({"headers": {"x-root-admin-request": "true"}}) is True
-    assert is_root_admin_request({"headers": {"x-root-admin-request": "1"}}) is True
-    assert is_root_admin_request({"headers": {"x-root-admin-request": "yes"}}) is True
-    assert is_root_admin_request({"headers": {"x-root-admin-request": "false"}}) is False
-

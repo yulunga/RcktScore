@@ -19,3 +19,7 @@ samconfig.toml
 design/
 DerivedData/
 *.xcuserstate
+
+# Local credentials and secret build configuration
+screens/ESP-Small-ExtLCD/include/app_config.local.h
+mobile/ios/**/*.secrets.xcconfig

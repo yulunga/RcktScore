@@ -5,7 +5,6 @@ from common.scoreboard_logic import issue_court_display_code
 from common.session_logic import (
     SessionAuthError,
     authorize_organization_session,
-    is_root_admin_request,
     session_error_response,
 )
 from common.supabase_client import get_db_connection
@@ -28,8 +27,13 @@ def lambda_handler(event, context):
     include_display_codes = True
     try:
         with get_db_connection() as connection:
-            if not is_root_admin_request(event):
-                authorize_organization_session(connection, event, organization_id, require_admin=True)
+            authorize_organization_session(
+                connection,
+                event,
+                organization_id,
+                require_admin=True,
+                allow_root_admin=True,
+            )
             court = issue_court_display_code(connection, organization_id, court_id)
             settings = get_organization_settings(
                 connection,

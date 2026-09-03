@@ -1,4 +1,4 @@
-from common.match_logic import (
+from common.squash_match_logic import (
     _best_of_value,
     _games_to_win,
     _is_game_complete,
@@ -35,4 +35,3 @@ def test_game_completion_requires_target_and_two_point_margin():
     assert _is_game_complete(15, 12, 15) is True
     assert _is_game_complete(15, 14, 15) is False
     assert _is_game_complete(17, 15, 15) is True
-

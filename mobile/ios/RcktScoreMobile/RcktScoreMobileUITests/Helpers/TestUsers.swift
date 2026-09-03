@@ -1,31 +1,40 @@
 import Foundation
 
 struct TestUser {
-
-    let username: String
-    let password: String
+    let usernameEnvironmentKey: String
+    let passwordEnvironmentKey: String
     let tier: String
 
+    var username: String {
+        requiredEnvironmentValue(for: usernameEnvironmentKey)
+    }
+
+    var password: String {
+        requiredEnvironmentValue(for: passwordEnvironmentKey)
+    }
+
+    private func requiredEnvironmentValue(for key: String) -> String {
+        guard let value = ProcessInfo.processInfo.environment[key], !value.isEmpty else {
+            fatalError("Missing required UI-test environment variable: \(key)")
+        }
+        return value
+    }
 }
 
 let testUsers: [TestUser] = [
-
     TestUser(
-        username: "testclubess@hitnscore.com",
-        password: "P4ssw0rd901!!",
+        usernameEnvironmentKey: "RCKTSCORE_UI_TEST_CLUB_USERNAME",
+        passwordEnvironmentKey: "RCKTSCORE_UI_TEST_CLUB_PASSWORD",
         tier: "Club Essentials"
     ),
-
     TestUser(
-        username: "testpersonal@hitnscore.com",
-        password: "TestPassword123",
+        usernameEnvironmentKey: "RCKTSCORE_UI_TEST_PERSONAL_USERNAME",
+        passwordEnvironmentKey: "RCKTSCORE_UI_TEST_PERSONAL_PASSWORD",
         tier: "Personal"
     ),
-
     TestUser(
-        username: "testpersonalplus@hitnscore.com",
-        password: "TestPassword123",
+        usernameEnvironmentKey: "RCKTSCORE_UI_TEST_PERSONAL_PLUS_USERNAME",
+        passwordEnvironmentKey: "RCKTSCORE_UI_TEST_PERSONAL_PLUS_PASSWORD",
         tier: "Personal+"
     )
-
 ]

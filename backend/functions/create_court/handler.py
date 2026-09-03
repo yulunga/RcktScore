@@ -4,7 +4,6 @@ from common.organization_logic import create_court
 from common.session_logic import (
     SessionAuthError,
     authorize_organization_session,
-    is_root_admin_request,
     session_error_response,
 )
 from common.supabase_client import get_db_connection
@@ -22,8 +21,13 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            if not is_root_admin_request(event):
-                authorize_organization_session(connection, event, payload["organization_id"], require_admin=True)
+            authorize_organization_session(
+                connection,
+                event,
+                payload["organization_id"],
+                require_admin=True,
+                allow_root_admin=True,
+            )
             court = create_court(
                 connection,
                 payload["organization_id"],

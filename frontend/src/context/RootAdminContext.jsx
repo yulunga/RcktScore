@@ -1,6 +1,9 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { rootAdminLogin as rootAdminLoginRequest } from "../services/api";
+import {
+  rootAdminLogin as rootAdminLoginRequest,
+  rootAdminLogout as rootAdminLogoutRequest,
+} from "../services/api";
 
 const ROOT_ADMIN_SESSION_KEY = "rcktscore.root_admin";
 
@@ -18,7 +21,12 @@ function readStoredSession() {
     }
 
     const parsedValue = JSON.parse(rawValue);
-    if (!parsedValue?.username) {
+    if (!parsedValue?.username || !parsedValue?.session_token) {
+      return null;
+    }
+
+    if (parsedValue.expires_at && new Date(parsedValue.expires_at).getTime() <= Date.now()) {
+      window.sessionStorage.removeItem(ROOT_ADMIN_SESSION_KEY);
       return null;
     }
 
@@ -44,6 +52,21 @@ export function RootAdminProvider({ children }) {
 
     window.sessionStorage.setItem(ROOT_ADMIN_SESSION_KEY, JSON.stringify(session));
   }, [session]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleSessionInvalidated = () => {
+      setSession(null);
+    };
+
+    window.addEventListener("rcktscore:root-admin-session-invalidated", handleSessionInvalidated);
+    return () => {
+      window.removeEventListener("rcktscore:root-admin-session-invalidated", handleSessionInvalidated);
+    };
+  }, []);
 
   const login = useCallback(async (username, password) => {
     const trimmedUsername = username.trim();
@@ -79,8 +102,12 @@ export function RootAdminProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    const token = session?.session_token || null;
+    if (token) {
+      rootAdminLogoutRequest(token).catch(() => {});
+    }
     setSession(null);
-  }, []);
+  }, [session]);
 
   const contextValue = useMemo(
     () => ({

@@ -1,4 +1,6 @@
 from common.root_admin_logic import archive_root_admin_match
+from common.root_admin_session_logic import require_root_admin_session
+from common.session_logic import SessionAuthError, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, path_parameter, success_response
 
@@ -10,7 +12,10 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
+            require_root_admin_session(connection, event)
             match = archive_root_admin_match(connection, match_id)
+    except SessionAuthError as auth_error:
+        return session_error_response(auth_error)
     except LookupError as request_error:
         return error_response(404, "NOT_FOUND", str(request_error))
 

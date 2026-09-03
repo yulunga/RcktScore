@@ -65,7 +65,7 @@ Root-admin functionality currently supports:
 
 Important qualification:
 
-- root-admin security is not fully production-ready yet
+- root-admin session authorization is implemented; rate limiting, richer audit logging, and operational hardening still remain
 
 ### Display and realtime
 
@@ -133,7 +133,7 @@ These are safe to describe as implemented today:
 
 ## Not Yet Safe To Promise As Fully Implemented
 
-- enterprise-grade root-admin security
+- enterprise-grade root-admin monitoring, rate limiting, and audit controls
 - guaranteed realtime display
 - persisted organisation-level game settings
 - persisted social profiles or association/federation profile links
@@ -173,7 +173,7 @@ The repo does not yet contain strong club-pro enforcement logic.
 ## Recommended Commercial Cautions
 
 - talk about the display route, but avoid a hard realtime promise
-- talk about root-admin tooling carefully until backend auth is completed
+- describe root-admin authorization as implemented, while keeping broader operational security claims conservative
 - do not market scaffold-only settings as launch-ready features
 - if pricing copy references personal-plus history depth, use the current code-backed limit, not older planning numbers
 
@@ -187,5 +187,5 @@ The repo does not yet contain strong club-pro enforcement logic.
    - scheduled matches
 2. Implement those limits server-side.
 3. Decide whether player management remains lookup/history-based or becomes a real CRUD module.
-4. Complete root-admin backend auth before positioning the admin surface as production-grade.
+4. Add root-admin rate limiting, audit reporting, and operational session controls before positioning the admin surface as enterprise-grade.
 5. Complete WebSocket infrastructure before selling realtime display as a premium reliability feature.

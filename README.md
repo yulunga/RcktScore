@@ -25,11 +25,12 @@ The codebase currently supports:
 Important current gaps:
 
 - org-user session enforcement exists in the backend
-- root-admin backend authorization is not fully implemented yet
-- some root-admin organisation actions still rely on the `x-root-admin-request` header as a bypass
+- root-admin routes now enforce expiring backend session tokens; broader rate limiting and audit hardening still remain before launch
 - WebSocket infrastructure is only partially implemented
 - some settings UI remains scaffold-only
-- there is no automated backend/frontend test suite checked into this repository yet
+- backend pytest unit tests and a Playwright public-route smoke suite are checked
+  in under `testing/automated/`, but coverage is still an early baseline and is
+  not wired into a documented CI pipeline
 
 ## Documentation Map
 
@@ -60,3 +61,18 @@ npm run build -- --outDir /tmp/rcktscore-frontend-dist
 ```
 
 The scratch `outDir` is recommended because the existing `frontend/dist/` folder may not always be removable in local environments.
+
+3. Backend unit tests (after installing
+   `testing/automated/backend/requirements-test.txt`):
+
+```bash
+pytest -c testing/automated/backend/pytest.ini testing/automated/backend
+```
+
+4. Web public-route smoke tests (after installing Playwright and its browsers as
+   described in `testing/automated/web/README.md`):
+
+```bash
+cd frontend
+npm run test:e2e:smoke
+```

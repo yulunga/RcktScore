@@ -132,17 +132,19 @@ Duplicate login behavior:
 
 ### Root-admin users
 
-Root-admin credential checking is real, but backend session enforcement is not complete.
+Root-admin credential checking and backend session enforcement are implemented.
 
 Current behavior:
 
 - `POST /root_admin/login` verifies credentials against `SkRootAdmin`
-- the frontend stores the returned identity in `sessionStorage`
-- there is no backend-wide root-admin session token model equivalent to `org_user_sessions`
-- some root-admin routes are currently callable without server-side auth checks
-- some organisation admin routes allow a root-admin bypass by trusting `x-root-admin-request: true`
-
-Do not describe the current root-admin surface as production-grade authenticated administration.
+- successful login returns a 384-bit opaque session token and expiry timestamp
+- only the token hash is stored in `root_admin_sessions`
+- root-admin sessions expire after eight hours by default, configurable from one to 24 hours with `RootAdminSessionTtlHours`
+- a new login revokes prior active sessions for that root-admin account
+- every root-admin route validates the bearer token server-side
+- reused organisation-management routes validate either a qualifying org-user session or a valid root-admin session
+- `POST /root_admin/logout` revokes the presented root-admin session
+- the former `x-root-admin-request` bypass is no longer accepted
 
 ## Current Route Inventory
 
@@ -156,6 +158,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /password_reset/confirm`
 - `GET /organization_users/approve`
 - `POST /root_admin/login`
+- `POST /root_admin/logout`
 - `POST /register_interest`
 - `POST /feedback`
 
@@ -305,7 +308,7 @@ Current behavior:
 [functions/get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py)
 
 - org-user sessions are authorized server-side
-- root-admin requests currently bypass org-user checks when `x-root-admin-request` is set
+- valid root-admin sessions may access this route, but the bearer token is checked against `root_admin_sessions` before data is returned
 - response includes:
   - `organization`
   - `users`
@@ -359,7 +362,7 @@ Current behavior:
 Current behavior:
 
 - org-user admin access is enforced for normal club operations
-- root-admin club page uses the header-based bypass path
+- root-admin club requests use the root-admin bearer token and are validated server-side
 
 ### Match setup lookup
 
@@ -468,6 +471,7 @@ The backend uses one shared JSON envelope.
 - `SkwshCourts`
 - `SkRootAdmin`
 - `org_user_sessions`
+- `root_admin_sessions`
 - `matches`
 - `match_events`
 - `HitnScoreInterestRequests`
@@ -499,19 +503,20 @@ What is protected today:
 - org-user session tokens are real
 - dashboard, settings, personal-profile, lookup, and scoring routes enforce org-user session authorization
 - match routes are tenant-aware through backend authorization
+- root-admin routes and reused organisation-management routes enforce expiring root-admin sessions
 
 What is not fully protected today:
 
-- root-admin routes do not yet have a full backend session/token model
-- some root-admin flows rely on `x-root-admin-request` as a bypass header
+- public authentication and form routes still need production rate limiting and broader audit controls
 - WebSocket infrastructure is not complete enough to describe as production-ready live transport
 
 ## Current Known Gaps
 
-- there is still no automated backend or web frontend test suite in the repo, but a lightweight native iOS UI test bundle now exists in `mobile/ios/RcktScoreMobile/RcktScoreMobileUITests`
+- backend pytest logic tests, Playwright public-route smoke tests, and a
+  lightweight native iOS UI test bundle are checked in; all three remain
+  early baselines and are not wired into a documented CI pipeline
 - social profile settings are UI-only scaffolds right now
 - organisation-level handicap settings are UI scaffolds and are not persisted/enforced
-- root-admin security needs a proper backend auth layer
 - WebSocket subscription persistence is not implemented
 - local frontend builds may fail if the checked-in `frontend/dist/` directory cannot be cleaned
 

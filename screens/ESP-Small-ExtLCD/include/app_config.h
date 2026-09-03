@@ -14,7 +14,17 @@
 
 #define APP_TITLE "ESP Small LCD"
 
-// Fill these in to connect the ESP32 to Wi-Fi.
-#define APP_WIFI_SSID "MILLFI"
-#define APP_WIFI_PASSWORD "ba48eab983"
+// Keep local credentials in app_config.local.h. That file is ignored by Git.
+#if __has_include("app_config.local.h")
+#include "app_config.local.h"
+#endif
+
+#ifndef APP_WIFI_SSID
+#define APP_WIFI_SSID ""
+#endif
+
+#ifndef APP_WIFI_PASSWORD
+#define APP_WIFI_PASSWORD ""
+#endif
+
 #define APP_WIFI_HOSTNAME "esp-small-extlcd"
