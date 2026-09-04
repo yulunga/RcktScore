@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import LocalAuthentication
 
 private enum LoginOverlayMode: Equatable {
     case registerInterest
