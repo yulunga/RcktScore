@@ -14,6 +14,7 @@ final class SessionStore: ObservableObject {
     private let key = "rcktscore.mobile.session"
     private let biometricPreferenceKey = "rcktscore.mobile.biometricUnlockEnabled"
     private let uiTestLaunchOptions: UITestLaunchOptions
+    private var isAuthenticatingWithBiometrics = false
 
     init(uiTestLaunchOptions: UITestLaunchOptions? = nil) {
         let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
@@ -131,7 +132,10 @@ final class SessionStore: ObservableObject {
     }
 
     func lockForBackgroundIfNeeded() {
-        guard biometricUnlockEnabled, session != nil, biometricType != .none else {
+        guard !isAuthenticatingWithBiometrics,
+              biometricUnlockEnabled,
+              session != nil,
+              biometricType != .none else {
             return
         }
 
@@ -141,6 +145,9 @@ final class SessionStore: ObservableObject {
     @discardableResult
     func unlockWithBiometrics() async -> Bool {
         refreshBiometricAvailability()
+        guard !isAuthenticatingWithBiometrics else {
+            return false
+        }
         guard biometricUnlockEnabled, session != nil, biometricType != .none else {
             requiresBiometricUnlock = false
             biometricErrorMessage = nil
@@ -171,6 +178,13 @@ final class SessionStore: ObservableObject {
     }
 
     private func authenticateWithBiometrics(reason: String) async throws -> Bool {
+        guard !isAuthenticatingWithBiometrics else {
+            throw BiometricAuthError.authenticationInProgress
+        }
+
+        isAuthenticatingWithBiometrics = true
+        defer { isAuthenticatingWithBiometrics = false }
+
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
         context.localizedFallbackTitle = ""
@@ -216,11 +230,14 @@ final class SessionStore: ObservableObject {
 
 private enum BiometricAuthError: LocalizedError {
     case notAvailable
+    case authenticationInProgress
 
     var errorDescription: String? {
         switch self {
         case .notAvailable:
             return "Biometric authentication is not available on this device."
+        case .authenticationInProgress:
+            return "Biometric authentication is already in progress."
         }
     }
 }
