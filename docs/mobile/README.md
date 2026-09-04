@@ -19,7 +19,7 @@ real app target and scheme.
 What the current app does:
 
 - organisation-user login against the shared v2 backend
-- persisted session state with `mobile_app` client-type sessions
+- persisted, expiring session state with `mobile_app` client-type sessions
 - active-session conflict handling with force-logout retry
 - TestFlight-style device builds have already been used for live app testing
 - dashboard tabs for `Home`, `Matches`, `History`, `Settings`, and `Need Help`
@@ -40,7 +40,7 @@ What the current app does:
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
 - dashboard offline handling now suppresses the old persistent fetch-error
-  banner when the device is offline
+  banner and replaces the bell with an offline indicator
 - native login now presents an organisation chooser when the same email belongs
   to multiple approved clubs/accounts
 - native login now includes a show/hide password control, and the shared bottom
@@ -49,6 +49,8 @@ What the current app does:
   squash/racketball handicap setup
 - tennis match setup now supports singles/doubles switching, and the live tennis
   scorer now runs a 5-minute warm-up before opening serve/receive selection
+- one previously opened active match can continue offline; local squash/racketball and tennis actions persist across restarts and replay in order after reconnection
+- each queued action uses a stable UUID backed by `match_action_receipts`, preventing duplicate scoring during retries
 
 What it does not yet match perfectly:
 
@@ -57,7 +59,7 @@ What it does not yet match perfectly:
 - full implementation behind the native settings `Game Settings`, `Reporting`,
   `Stats`, and deeper federation-style association pages
 - central/shared profile-photo storage across devices and users
-- offline history and offline scoring sync
+- offline history, match creation, scheduled activation, settings changes, and multi-match caching
 - documented CI/archive/release pipeline
 - completed realtime/WebSocket sync
 - release-grade automated or manual signoff coverage

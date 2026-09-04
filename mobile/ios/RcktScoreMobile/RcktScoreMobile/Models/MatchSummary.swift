@@ -54,7 +54,7 @@ struct MatchSummary: Decodable, Identifiable {
     }
 }
 
-struct MatchDetail: Decodable, Identifiable {
+struct MatchDetail: Codable, Identifiable {
     let id: String
     let courtName: String?
     let courtAlias: String?
@@ -118,7 +118,7 @@ struct MatchDetail: Decodable, Identifiable {
     }
 }
 
-struct MatchState: Decodable {
+struct MatchState: Codable {
     let player1Score: Int
     let player2Score: Int
     let player1GamesWon: Int
@@ -143,8 +143,11 @@ struct MatchState: Decodable {
     let currentReceiver: String?
     let currentReceiverSide: String?
     let currentReceiverParticipantID: String?
+    let teamServiceOrder: [String: [String]]?
     let serveOrder: [String]?
     let receiverDeuceOrder: [String: String]?
+    let tieBreakFirstServerSide: String?
+    let tieBreakFirstServerParticipantID: String?
     let handicap: MatchHandicap?
     let matchDurationSeconds: Int
     let gameHistory: [GameHistoryEntry]
@@ -177,14 +180,91 @@ struct MatchState: Decodable {
         case currentReceiver = "current_receiver"
         case currentReceiverSide = "current_receiver_side"
         case currentReceiverParticipantID = "current_receiver_participant_id"
+        case teamServiceOrder = "team_service_order"
         case serveOrder = "serve_order"
         case receiverDeuceOrder = "receiver_deuce_order"
+        case tieBreakFirstServerSide = "tiebreak_first_server_side"
+        case tieBreakFirstServerParticipantID = "tiebreak_first_server_participant_id"
         case handicap
         case matchDurationSeconds = "match_duration_seconds"
         case gameHistory = "game_history"
         case matchComplete = "match_complete"
         case winnerName = "winner_name"
         case events
+    }
+
+    init(
+        player1Score: Int,
+        player2Score: Int,
+        player1GamesWon: Int,
+        player2GamesWon: Int,
+        player1SetGames: Int,
+        player2SetGames: Int,
+        currentGameNumber: Int,
+        bestOf: Int,
+        scoreType: Int,
+        currentServer: String?,
+        currentServerSide: String?,
+        serviceSide: String?,
+        player1ShirtColor: String?,
+        player2ShirtColor: String?,
+        scoreDisplayMode: String?,
+        player1ScoreLabel: String?,
+        player2ScoreLabel: String?,
+        isTieBreak: Bool,
+        teamFormat: String?,
+        tennisTeams: [String: [TennisParticipant]]?,
+        currentServerParticipantID: String?,
+        currentReceiver: String?,
+        currentReceiverSide: String?,
+        currentReceiverParticipantID: String?,
+        teamServiceOrder: [String: [String]]?,
+        serveOrder: [String]?,
+        receiverDeuceOrder: [String: String]?,
+        tieBreakFirstServerSide: String?,
+        tieBreakFirstServerParticipantID: String?,
+        handicap: MatchHandicap?,
+        matchDurationSeconds: Int,
+        gameHistory: [GameHistoryEntry],
+        matchComplete: Bool,
+        winnerName: String?,
+        events: [MatchEvent]
+    ) {
+        self.player1Score = player1Score
+        self.player2Score = player2Score
+        self.player1GamesWon = player1GamesWon
+        self.player2GamesWon = player2GamesWon
+        self.player1SetGames = player1SetGames
+        self.player2SetGames = player2SetGames
+        self.currentGameNumber = currentGameNumber
+        self.bestOf = bestOf
+        self.scoreType = scoreType
+        self.currentServer = currentServer
+        self.currentServerSide = currentServerSide
+        self.serviceSide = serviceSide
+        self.player1ShirtColor = player1ShirtColor
+        self.player2ShirtColor = player2ShirtColor
+        self.scoreDisplayMode = scoreDisplayMode
+        self.player1ScoreLabel = player1ScoreLabel
+        self.player2ScoreLabel = player2ScoreLabel
+        self.isTieBreak = isTieBreak
+        self.teamFormat = teamFormat
+        self.tennisTeams = tennisTeams
+        self.currentServerParticipantID = currentServerParticipantID
+        self.currentReceiver = currentReceiver
+        self.currentReceiverSide = currentReceiverSide
+        self.currentReceiverParticipantID = currentReceiverParticipantID
+        self.teamServiceOrder = teamServiceOrder
+        self.serveOrder = serveOrder
+        self.receiverDeuceOrder = receiverDeuceOrder
+        self.tieBreakFirstServerSide = tieBreakFirstServerSide
+        self.tieBreakFirstServerParticipantID = tieBreakFirstServerParticipantID
+        self.handicap = handicap
+        self.matchDurationSeconds = matchDurationSeconds
+        self.gameHistory = gameHistory
+        self.matchComplete = matchComplete
+        self.winnerName = winnerName
+        self.events = events
     }
 
     init(from decoder: Decoder) throws {
@@ -213,8 +293,11 @@ struct MatchState: Decodable {
         currentReceiver = try container.decodeIfPresent(String.self, forKey: .currentReceiver)
         currentReceiverSide = try container.decodeIfPresent(String.self, forKey: .currentReceiverSide)
         currentReceiverParticipantID = try container.decodeIfPresent(String.self, forKey: .currentReceiverParticipantID)
+        teamServiceOrder = try container.decodeIfPresent([String: [String]].self, forKey: .teamServiceOrder)
         serveOrder = try container.decodeIfPresent([String].self, forKey: .serveOrder)
         receiverDeuceOrder = try container.decodeIfPresent([String: String].self, forKey: .receiverDeuceOrder)
+        tieBreakFirstServerSide = try container.decodeIfPresent(String.self, forKey: .tieBreakFirstServerSide)
+        tieBreakFirstServerParticipantID = try container.decodeIfPresent(String.self, forKey: .tieBreakFirstServerParticipantID)
         handicap = try container.decodeIfPresent(MatchHandicap.self, forKey: .handicap)
         matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds) ?? 0
         gameHistory = try container.decodeIfPresent([GameHistoryEntry].self, forKey: .gameHistory) ?? []
@@ -224,7 +307,7 @@ struct MatchState: Decodable {
     }
 }
 
-struct TennisParticipant: Decodable, Hashable {
+struct TennisParticipant: Codable, Hashable {
     let id: String
     let firstName: String
     let surname: String?
@@ -238,7 +321,7 @@ struct TennisParticipant: Decodable, Hashable {
     }
 }
 
-struct MatchHandicap: Decodable {
+struct MatchHandicap: Codable {
     let enabled: Bool
     let player1Band: String?
     let player2Band: String?
@@ -263,7 +346,7 @@ struct MatchHandicap: Decodable {
     }
 }
 
-struct GameHistoryEntry: Decodable, Identifiable {
+struct GameHistoryEntry: Codable, Identifiable {
     let gameNumber: Int
     let player1Score: Int
     let player2Score: Int
@@ -279,7 +362,7 @@ struct GameHistoryEntry: Decodable, Identifiable {
     }
 }
 
-struct MatchEvent: Decodable, Identifiable {
+struct MatchEvent: Codable, Identifiable {
     let id: String
     let eventType: String
     let payload: MatchEventPayload?
@@ -295,7 +378,7 @@ struct MatchEvent: Decodable, Identifiable {
     }
 }
 
-struct MatchEventPayload: Decodable {
+struct MatchEventPayload: Codable {
     let scorer: String?
     let playerSide: String?
     let currentServerSide: String?
@@ -307,9 +390,13 @@ struct MatchEventPayload: Decodable {
     let player1GamesWon: Int?
     let player2GamesWon: Int?
     let gameNumber: Int?
+    let currentGameNumber: Int?
+    let player1SetGames: Int?
+    let player2SetGames: Int?
     let note: String?
     let side: String?
     let winnerName: String?
+    let winnerSide: String?
     let gameResult: GameHistoryEntry?
     let scoreType: Int?
     let bestOf: Int?
@@ -321,6 +408,9 @@ struct MatchEventPayload: Decodable {
     let currentReceiverParticipantID: String?
     let serveOrder: [String]?
     let receiverDeuceOrder: [String: String]?
+    let isTieBreak: Bool?
+    let player1ScoreLabel: String?
+    let player2ScoreLabel: String?
 
     enum CodingKeys: String, CodingKey {
         case scorer
@@ -334,9 +424,13 @@ struct MatchEventPayload: Decodable {
         case player1GamesWon = "player1_games_won"
         case player2GamesWon = "player2_games_won"
         case gameNumber = "game_number"
+        case currentGameNumber = "current_game_number"
+        case player1SetGames = "player1_set_games"
+        case player2SetGames = "player2_set_games"
         case note
         case side
         case winnerName = "winner_name"
+        case winnerSide = "winner_side"
         case gameResult = "game_result"
         case scoreType = "score_type"
         case bestOf = "best_of"
@@ -348,6 +442,77 @@ struct MatchEventPayload: Decodable {
         case currentReceiverParticipantID = "current_receiver_participant_id"
         case serveOrder = "serve_order"
         case receiverDeuceOrder = "receiver_deuce_order"
+        case isTieBreak = "is_tie_break"
+        case player1ScoreLabel = "player1_score_label"
+        case player2ScoreLabel = "player2_score_label"
+    }
+
+    init(
+        scorer: String? = nil,
+        playerSide: String? = nil,
+        currentServerSide: String? = nil,
+        serviceSide: String? = nil,
+        gameCompleted: Bool? = nil,
+        matchCompleted: Bool? = nil,
+        player1Score: Int? = nil,
+        player2Score: Int? = nil,
+        player1GamesWon: Int? = nil,
+        player2GamesWon: Int? = nil,
+        gameNumber: Int? = nil,
+        currentGameNumber: Int? = nil,
+        player1SetGames: Int? = nil,
+        player2SetGames: Int? = nil,
+        note: String? = nil,
+        side: String? = nil,
+        winnerName: String? = nil,
+        winnerSide: String? = nil,
+        gameResult: GameHistoryEntry? = nil,
+        scoreType: Int? = nil,
+        bestOf: Int? = nil,
+        player1ShirtColor: String? = nil,
+        player2ShirtColor: String? = nil,
+        currentServerParticipantID: String? = nil,
+        currentReceiver: String? = nil,
+        currentReceiverSide: String? = nil,
+        currentReceiverParticipantID: String? = nil,
+        serveOrder: [String]? = nil,
+        receiverDeuceOrder: [String: String]? = nil,
+        isTieBreak: Bool? = nil,
+        player1ScoreLabel: String? = nil,
+        player2ScoreLabel: String? = nil
+    ) {
+        self.scorer = scorer
+        self.playerSide = playerSide
+        self.currentServerSide = currentServerSide
+        self.serviceSide = serviceSide
+        self.gameCompleted = gameCompleted
+        self.matchCompleted = matchCompleted
+        self.player1Score = player1Score
+        self.player2Score = player2Score
+        self.player1GamesWon = player1GamesWon
+        self.player2GamesWon = player2GamesWon
+        self.gameNumber = gameNumber
+        self.currentGameNumber = currentGameNumber
+        self.player1SetGames = player1SetGames
+        self.player2SetGames = player2SetGames
+        self.note = note
+        self.side = side
+        self.winnerName = winnerName
+        self.winnerSide = winnerSide
+        self.gameResult = gameResult
+        self.scoreType = scoreType
+        self.bestOf = bestOf
+        self.player1ShirtColor = player1ShirtColor
+        self.player2ShirtColor = player2ShirtColor
+        self.currentServerParticipantID = currentServerParticipantID
+        self.currentReceiver = currentReceiver
+        self.currentReceiverSide = currentReceiverSide
+        self.currentReceiverParticipantID = currentReceiverParticipantID
+        self.serveOrder = serveOrder
+        self.receiverDeuceOrder = receiverDeuceOrder
+        self.isTieBreak = isTieBreak
+        self.player1ScoreLabel = player1ScoreLabel
+        self.player2ScoreLabel = player2ScoreLabel
     }
 }
 

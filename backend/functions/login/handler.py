@@ -57,12 +57,13 @@ def lambda_handler(event, context):
                 },
             )
 
-        session_token = create_org_user_session(connection, username, login_source=client_type)
+        created_session = create_org_user_session(connection, username, login_source=client_type)
 
     if len(memberships) == 1:
         user = {
             **memberships[0],
-            "session_token": session_token,
+            "session_token": created_session["token"],
+            "session_expires_at": created_session["expires_at"].isoformat(),
         }
         logger.info("Authenticated org user id=%s organization_id=%s", user["id"], user["organization_id"])
         return success_response(200, {"session": user})
@@ -74,7 +75,8 @@ def lambda_handler(event, context):
             "organizationSelection": {
                 "username": username,
                 "memberships": memberships,
-                "session_token": session_token,
+                "session_token": created_session["token"],
+                "session_expires_at": created_session["expires_at"].isoformat(),
             },
         },
     )

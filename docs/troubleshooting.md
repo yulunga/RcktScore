@@ -111,6 +111,7 @@ Common outcomes:
 - `401 SESSION_REQUIRED`
 - `401 SESSION_INVALID`
 - `401 SESSION_REPLACED`
+- `401 SESSION_EXPIRED`
 
 What to check:
 
@@ -118,6 +119,7 @@ What to check:
 - `password_hash` is present and valid
 - `approval_status` is approved when login should succeed
 - `org_user_sessions` contains the expected current or revoked rows
+- `org_user_sessions.expires_at` is in the future; the default lifetime is 30 days and the iOS app will discard an expired cached session
 - the browser is actually sending `Authorization: Bearer <token>`
 - the returned session or membership payload contains the expected `enabled_sports` list for that club or personal account
 
@@ -200,6 +202,7 @@ Common symptoms:
 - shirt-colour changes do not apply for a personal-free account
 - tennis appears in setup but cannot be created
 - tennis score labels or server rotation look wrong during tie-breaks
+- a queued offline point appears to be applied twice after reconnection
 
 What to check:
 
@@ -207,6 +210,7 @@ What to check:
 - `matches.sport` and the tenant `enabled_sports` list
 - court conflict behavior
 - latest `match_events` entries
+- the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
 - whether the action used `score_point` or `event_action`
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
@@ -284,6 +288,7 @@ Most relevant current tables:
 - `SkRootAdmin`
 - `org_user_sessions`
 - `root_admin_sessions`
+- `match_action_receipts`
 - `matches`
 - `match_events`
 - `HitnScoreInterestRequests`
@@ -291,6 +296,7 @@ Most relevant current tables:
 If behavior seems impossible:
 
 - confirm the expected migration actually exists in the target database
+- for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
@@ -329,6 +335,8 @@ Common symptoms:
 - login works on web but fails on iOS for a user with multiple memberships
 - iOS scorer loads, but court display code is missing
 - completed matches do not appear while offline
+- an active match cannot be reopened while offline
+- offline actions remain queued after connectivity returns
 - iPhone scorer feels visually crowded even when the backend state is correct
 - club-admin sport visibility changes save in iOS settings but do not affect native match setup
 - a personal-account profile photo disappears after reinstalling or signing in on another device
@@ -343,6 +351,9 @@ What to check:
 - whether the match has a court display code and `GET /match_display_access/{match_id}` is succeeding
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
 - whether `NetworkMonitor.swift` has marked the device offline
+- whether `OfflineMatchStore.swift` contains a cached match for the same username and organisation membership
+- whether the cached match had been opened online on this device before connectivity was lost
+- whether queued UUIDs exist in `match_action_receipts` after reconnection, and whether the saved session expired before synchronisation
 - whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
@@ -353,9 +364,11 @@ Important current truths:
 
 - the iOS app now presents a native organisation-selection chooser when `/login` returns `data.organizationSelection`
 - the iOS login form now exposes a show/hide password control locally, but it still posts the same backend login request and does not change session behavior on its own
-- historic matches are online-only in the native app
-- the dashboard now stays quiet when the device is offline instead of showing a persistent fetch-failure banner
-- the dashboard bell no longer shows a placeholder message, but there is still no real notification-center implementation behind it
+- historic matches, new match creation, scheduled-match activation, and settings changes are online-only in the native app
+- one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns
+- offline undo can remove actions still queued on that device; undoing an older server-synchronised action requires connectivity
+- the dashboard stays quiet when offline and replaces the bell with an offline icon; the bell returns online, but there is still no notification-center implementation behind it
+- each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
 - native tennis scoring now expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
 - the current scorer is functionally ahead of the docs that used to describe it,

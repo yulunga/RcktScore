@@ -92,7 +92,10 @@ struct MatchScoringView: View {
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    private var live: MatchState? { match?.state }
+    private var live: MatchState? {
+        container.offlineMatchStore.projectedState(matchID: matchID) ?? match?.state
+    }
+    private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isTennisMatch: Bool {
         (match?.sport ?? "").lowercased() == "tennis" || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
     }
@@ -485,6 +488,21 @@ struct MatchScoringView: View {
                 }
 
                 if let match {
+                    if !isOnline || container.offlineMatchStore.pendingActionCount > 0 {
+                        HStack(spacing: 8) {
+                            Image(systemName: isOnline ? "arrow.triangle.2.circlepath" : "wifi.slash")
+                            Text(
+                                isOnline
+                                    ? "Synchronising \(container.offlineMatchStore.pendingActionCount) saved action(s)…"
+                                    : "Offline — scoring is saved on this device and will sync automatically."
+                            )
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(isOnline ? Color.rcktBlue : Color.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("scoring.offlineStatus")
+                    }
+
                     if isTabletLandscape {
                         landscapeScoringLayout(match)
                     } else {
@@ -577,6 +595,21 @@ struct MatchScoringView: View {
         }
         .onChange(of: matchDurationSeconds) {
             persistTimerState()
+        }
+        .onChange(of: isOnline) { _, online in
+            guard online else { return }
+            Task {
+                await container.offlineMatchStore.sync(
+                    using: container.apiClient,
+                    session: container.sessionStore.session
+                )
+                if let cached = container.offlineMatchStore.cachedMatch(
+                    matchID: matchID,
+                    session: container.sessionStore.session
+                ) {
+                    match = cached
+                }
+            }
         }
         .onReceive(timerTicker) { _ in
             advanceTimerTick()
@@ -1853,10 +1886,31 @@ struct MatchScoringView: View {
             errorMessage = nil
         }
 
+        if !isOnline {
+            let cached = container.offlineMatchStore.cachedMatch(
+                matchID: matchID,
+                session: container.sessionStore.session
+            )
+            await MainActor.run {
+                match = cached
+                errorMessage = cached == nil ? "This match has not been saved on this device and cannot be opened offline." : nil
+                isLoading = false
+            }
+            return
+        }
+
+        await container.offlineMatchStore.sync(
+            using: container.apiClient,
+            session: container.sessionStore.session
+        )
+
         do {
             let fetched = try await container.apiClient.getMatch(matchID: matchID)
             await MainActor.run {
                 match = fetched
+                if let session = container.sessionStore.session {
+                    container.offlineMatchStore.cache(fetched, session: session)
+                }
                 isLoading = false
             }
         } catch {
@@ -1868,7 +1922,7 @@ struct MatchScoringView: View {
     }
 
     private func loadDisplayAccessIfNeeded() async {
-        guard !isPersonalAccount else {
+        guard isOnline, !isPersonalAccount else {
             await MainActor.run {
                 displayAccess = nil
             }
@@ -1913,8 +1967,9 @@ struct MatchScoringView: View {
     }
 
     private func saveGameSettings() async {
-        await performMutation {
-            try await container.apiClient.updateMatchSettings(
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .matchSettings,
                 matchID: matchID,
                 scoreType: gameSettingsForm.scoreType,
                 bestOf: gameSettingsForm.bestOf,
@@ -1932,6 +1987,11 @@ struct MatchScoringView: View {
 
     private func startScheduledMatchFromScorer() async {
         guard match?.status.lowercased() == "scheduled" else {
+            return
+        }
+
+        guard isOnline else {
+            errorMessage = "Connect to the internet to start a scheduled match."
             return
         }
 
@@ -2153,8 +2213,9 @@ struct MatchScoringView: View {
         let receiverHandedness = playerSide == "player2" ? match.player1Handedness : match.player2Handedness
         let serviceSide = receiverHandedness?.lowercased() == "left" ? "Left" : "Right"
 
-        await performMutation {
-            try await container.apiClient.selectFirstServer(
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .server,
                 matchID: matchID,
                 currentServer: selectedPlayerName,
                 currentServerSide: playerSide,
@@ -2196,8 +2257,9 @@ struct MatchScoringView: View {
             receiverParticipantID: receiverParticipantID
         )
 
-        await performMutation {
-            try await container.apiClient.selectFirstServer(
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .server,
                 matchID: matchID,
                 currentServer: currentServer,
                 currentServerSide: serverSide,
@@ -2234,22 +2296,23 @@ struct MatchScoringView: View {
 
     private func addPoint(for side: String) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
-        await performMutation {
-            try await container.apiClient.scorePoint(matchID: matchID, scorer: side)
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(kind: .scorePoint, matchID: matchID, scorer: side)
         }
     }
 
     private func awardStroke(to side: String) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
-        await performMutation {
-            try await container.apiClient.awardStroke(matchID: matchID, playerSide: side)
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(kind: .stroke, matchID: matchID, playerSide: side)
         }
     }
 
     private func callLet(awardedTo side: String? = nil) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
-        await performMutation {
-            try await container.apiClient.callLet(
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .letCall,
                 matchID: matchID,
                 playerSide: side,
                 note: side.map { "Let awarded to \($0)" } ?? "General let"
@@ -2276,15 +2339,25 @@ struct MatchScoringView: View {
     private func toggleServeSide(current: String) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
         let nextSide = current.lowercased() == "left" ? "Right" : "Left"
-        await performMutation {
-            try await container.apiClient.setServeSide(matchID: matchID, side: nextSide)
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(kind: .serveSide, matchID: matchID, side: nextSide)
         }
     }
 
     private func undoLastAction() async {
         guard !isMutating, !undoLocked else { return }
-        await performMutation {
-            try await container.apiClient.undoAction(matchID: matchID)
+        if container.offlineMatchStore.undoLastQueuedAction(matchID: matchID) {
+            errorMessage = nil
+            return
+        }
+
+        guard isOnline else {
+            errorMessage = "Only actions scored on this device while offline can be undone until you reconnect."
+            return
+        }
+
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(kind: .undo, matchID: matchID)
         }
     }
 
@@ -2296,17 +2369,23 @@ struct MatchScoringView: View {
         timerSeconds = finalDuration
         matchDurationSeconds = finalDuration
 
-        await performMutation {
-            try await container.apiClient.endMatchEarly(
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .endMatch,
                 matchID: matchID,
+                note: "Ended by operator",
                 matchDurationSeconds: finalDuration
             )
         }
     }
 
     private func recordMatchDuration(_ durationSeconds: Int) async {
-        await performMutation {
-            try await container.apiClient.recordMatchDuration(matchID: matchID, durationSeconds: durationSeconds)
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .timer,
+                matchID: matchID,
+                matchDurationSeconds: durationSeconds
+            )
         }
     }
 
@@ -2325,6 +2404,36 @@ struct MatchScoringView: View {
         bootstrapTimerIfNeeded(for: match)
     }
 
+    private func performQueuedMutation(_ enqueue: () -> Bool) async {
+        isMutating = true
+        errorMessage = nil
+
+        guard enqueue() else {
+            errorMessage = "This match is not available for offline scoring on this device."
+            isMutating = false
+            return
+        }
+
+        if isOnline {
+            await container.offlineMatchStore.sync(
+                using: container.apiClient,
+                session: container.sessionStore.session
+            )
+        }
+
+        if let cached = container.offlineMatchStore.cachedMatch(
+            matchID: matchID,
+            session: container.sessionStore.session
+        ) {
+            match = cached
+        }
+
+        if isOnline, container.offlineMatchStore.pendingActionCount > 0 {
+            errorMessage = container.offlineMatchStore.syncMessage
+        }
+        isMutating = false
+    }
+
     private func performMutation(_ operation: @escaping () async throws -> MatchDetail) async {
         await MainActor.run {
             isMutating = true
@@ -2335,6 +2444,9 @@ struct MatchScoringView: View {
             let updatedMatch = try await operation()
             await MainActor.run {
                 match = updatedMatch
+                if let session = container.sessionStore.session {
+                    container.offlineMatchStore.cache(updatedMatch, session: session)
+                }
                 isMutating = false
             }
         } catch {

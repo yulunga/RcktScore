@@ -1,6 +1,7 @@
 from aws_lambda_powertools import Logger
 
-from common.match_logic import score_point, websocket_payload
+from common.match_logic import get_match, score_point, websocket_payload
+from common.offline_action_logic import claim_match_action
 from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
@@ -19,7 +20,17 @@ def lambda_handler(event, context):
         with get_db_connection() as connection:
             authorize_match_session(connection, event, payload["match_id"])
             try:
-                match = score_point(connection, payload["match_id"], payload["scorer"], source=payload.get("source", "lambda"))
+                claimed = claim_match_action(
+                    connection,
+                    payload["match_id"],
+                    "score_point",
+                    payload.get("client_action_id"),
+                )
+                match = (
+                    score_point(connection, payload["match_id"], payload["scorer"], source=payload.get("source", "lambda"))
+                    if claimed
+                    else get_match(connection, payload["match_id"])
+                )
             except ValueError as exc:
                 return error_response(400, "INVALID_INPUT", str(exc))
     except SessionAuthError as auth_error:

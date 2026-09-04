@@ -70,6 +70,10 @@ struct LoginView: View {
         isSubmittingInterest || isSubmittingFeedback || isRequestingPasswordReset
     }
 
+    private var isOnline: Bool {
+        container.networkMonitor.isOnline
+    }
+
     var body: some View {
         ZStack {
             backgroundGradient
@@ -129,6 +133,24 @@ struct LoginView: View {
             }
 
             signInButton
+
+            if !isOnline {
+                Label(
+                    "You are offline. Connect to the internet to sign in. Previously saved sessions can be reopened with Face ID or Touch ID until they expire.",
+                    systemImage: "wifi.slash"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("login.offlineMessage")
+            } else if let sessionExpiryMessage = container.sessionStore.sessionExpiryMessage {
+                Text(sessionExpiryMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("login.sessionExpiryMessage")
+            }
+
             loginLinks
         }
         .padding(24)
@@ -226,8 +248,8 @@ struct LoginView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(isLoading || username.isEmpty || password.isEmpty)
-        .opacity(isLoading || username.isEmpty || password.isEmpty ? 0.72 : 1)
+        .disabled(isLoading || username.isEmpty || password.isEmpty || !isOnline)
+        .opacity(isLoading || username.isEmpty || password.isEmpty || !isOnline ? 0.72 : 1)
         .accessibilityIdentifier("login.signInButton")
     }
 
@@ -754,6 +776,10 @@ struct LoginView: View {
     }
 
     private func submit(forceLogoutOther: Bool = false) {
+        guard isOnline else {
+            errorMessage = "Connect to the internet to sign in."
+            return
+        }
         isLoading = true
         errorMessage = nil
 
@@ -800,6 +826,7 @@ struct LoginView: View {
             username: membership.username,
             role: membership.role,
             sessionToken: selection.sessionToken,
+            sessionExpiresAt: selection.sessionExpiresAt,
             organizationID: membership.organizationID,
             organizationName: membership.organizationName,
             organizationType: membership.organizationType,

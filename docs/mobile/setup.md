@@ -24,7 +24,7 @@ client in the `RcktScore` repository.
 Current implemented native scope:
 
 1. organisation login
-2. persisted session
+2. persisted, expiring session with optional Face ID / Touch ID unlock
 3. mobile dashboard with active, scheduled, and recent matches
 4. native start-new-match flow with sport picker, lookup suggestions, court selection, and scheduled fallback
 5. live scoring match screen for squash, racketball, and tennis
@@ -32,6 +32,7 @@ Current implemented native scope:
 7. native settings and help flows
 8. multi-organisation login selection and association switching
 9. optional local Face ID / Touch ID unlock for the saved session
+10. one cached active match with offline squash/racketball and tennis scoring plus ordered reconnect synchronisation
 
 Current remaining v1 scope:
 
@@ -42,7 +43,7 @@ Current remaining v1 scope:
 Still out of scope for the first native release:
 
 1. root admin portal
-2. full offline scoring sync
+2. offline history, offline match creation, and multi-match caching
 3. deep notification-center flows
 4. live padel, table tennis, badminton, and pickleball scoring
 

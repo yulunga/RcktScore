@@ -66,12 +66,13 @@ Error:
 4. The handler calls [authenticate_org_user_memberships(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
 5. Matching approved memberships are loaded from `SkwshOrgUsers` joined with `SkwshOrgSettings`.
 6. The handler checks for an already-active session for the same client type.
-7. The handler creates a session token in `org_user_sessions`.
+7. The handler creates an expiring session token in `org_user_sessions`; the default lifetime is 30 days.
 8. The API returns one of:
    - `data.session`
    - `data.organizationSelection`
    - `PENDING_APPROVAL`
    - `ACTIVE_SESSION_EXISTS`
+   Successful session and organisation-selection responses also include `session_expires_at`.
 9. The frontend stores the result in `sessionStorage`.
 
 ### Troubleshooting cues
@@ -335,8 +336,9 @@ The root-admin club page marks these shared calls as root-admin requests in the 
    - `POST /event_action`
    - `POST /undo_action`
    - `POST /end_match`
-6. Shared logic updates event history and match summary columns using the active sport engine.
-7. The frontend updates local match state from the returned `data.match`.
+6. Native iOS supplies a stable `client_action_id` UUID for each queued mutation. `match_action_receipts` claims that UUID before the mutation so reconnect retries cannot duplicate a point or other action.
+7. Shared logic updates event history and match summary columns using the active sport engine.
+8. The web frontend updates local match state from the returned `data.match`. Native iOS caches the last server match, applies queued actions locally, and replaces its cached base state with each ordered server response during synchronisation.
 
 Current live sport engines:
 
@@ -402,25 +404,25 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 
 ### Current path
 
-1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`.
-2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, exposes a local show/hide password control for the password field, and now branches between `data.session` and `data.organizationSelection`. For multi-membership users it presents a native account picker and persists the selected membership plus the available membership list in `UserDefaults`.
-3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`.
+1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`, but clears the saved session and requires fresh credentials once `session_expires_at` is reached.
+2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, exposes a local show/hide password control, and branches between `data.session` and `data.organizationSelection`. Multi-membership users receive a native account picker. First-time sign-in requires connectivity, and the login card displays an offline explanation when no network is available.
+3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`. The header bell becomes an offline indicator while disconnected, and a cached active match can be reopened from the active-match section.
 4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. Personal accounts see subscription, profile, association, racket-sport, game-settings, About, and help sections with a device-local profile photo picker and a bottom sign-out row. Personal+ additionally exposes reporting and stats menu entries, but those are still placeholder views today. Each native settings row now pushes to its own detail page rather than expanding inline on the main settings screen. Club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
 5. The native profile page now edits first name, surname, email/username, telephone, and country through `PUT /personal_profile/{organization_id}`, and still uses the shared password-reset request route rather than a dedicated in-app password change endpoint. Profile photos remain local to the device and are not stored in a central shared profile service yet.
-6. [SessionStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/SessionStore.swift) now tracks whether local biometric unlock is available and enabled on the device. When users opt in from the native profile/settings flow, the app uses Face ID or Touch ID to unlock the already-saved session after backgrounding rather than introducing a second backend login route.
+6. [SessionStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/SessionStore.swift) tracks session expiry and whether local biometric unlock is available and enabled. Face ID or Touch ID unlocks only an unexpired session already saved on that device; it is not a second backend login method.
 7. The native About page reads the installed app version and build directly from the iOS bundle metadata on device; it does not rely on a backend route.
 8. The native association page now uses the locally persisted membership list from login to let multi-club users switch the active organisation without signing out. That switch refreshes dashboard and settings data against the selected membership.
 9. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. The picker only shows sports that are both enabled for the tenant and implemented in the iOS client today. The flow now uses the same dark/light adaptive palette as the dashboard, personal-tier squash/racketball users can enable handicap setup there, and tennis setup can now switch between singles and doubles with lineup metadata sent in the create-match payload.
-10. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads `GET /get_score/{match_id}`, optionally loads `GET /match_display_access/{match_id}`, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end. The current native scorer supports squash/racketball plus expanded tennis presentation, including a 5-minute tennis warm-up flow and opening serve/receive selection before live scoring starts. The shared native bottom navigation and scoring controls now compact themselves under larger Dynamic Type sizes to better fit smaller iPhones.
+10. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) loads and caches `GET /get_score/{match_id}`, optionally loads display access, and uses the shared scoring routes for score, event actions, undo, scheduled start, and early end. [OfflineMatchStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/OfflineMatchStore.swift) retains one active match and its ordered action queue in device storage. Squash/racketball and tennis—including tennis sets, tie-breaks, singles/doubles server order, receiver order, and local event state—continue locally without connectivity. Reconnection replays UUID-tagged actions in order and adopts each authoritative server response.
 11. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
-12. The dashboard now suppresses the old persistent offline fetch-error banner when the device is offline, but the native app is still not a full offline-first client.
+12. Offline scope is deliberately limited to a match previously opened on that device. Creating matches, activating scheduled matches, loading history, changing settings, and opening uncached matches still require connectivity.
 
 ### Current native gap
 
 - the current iPhone scoring layout is much improved but still needs final polish
 - the native notification bell does not have a live notification center behind it yet
 - reporting, stats, game-settings presets, and deeper federation-style association integrations in native settings are not fully implemented
-- offline history and offline scoring sync are still incomplete
+- offline history, offline match creation, and multi-match caching are not implemented; offline scoring is limited to one previously opened active match
 - release pipeline, realtime sync, and final signoff coverage are still partial
 
 ## 16. Current Cross-Cutting Gaps

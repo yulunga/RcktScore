@@ -18,6 +18,7 @@ struct ContentView: View {
             }
         }
         .task {
+            container.sessionStore.validateExpiry()
             if container.sessionStore.requiresBiometricUnlock {
                 _ = await container.sessionStore.unlockWithBiometrics()
             }
@@ -25,6 +26,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                container.sessionStore.validateExpiry()
                 if container.sessionStore.requiresBiometricUnlock {
                     Task {
                         _ = await container.sessionStore.unlockWithBiometrics()

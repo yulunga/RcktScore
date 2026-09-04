@@ -39,6 +39,7 @@ struct UserSession: Codable {
     let username: String
     let role: String
     let sessionToken: String?
+    let sessionExpiresAt: String?
     let organizationID: Int
     let organizationName: String
     let organizationType: String?
@@ -57,6 +58,7 @@ struct UserSession: Codable {
         case username
         case role
         case sessionToken = "session_token"
+        case sessionExpiresAt = "session_expires_at"
         case organizationID = "organization_id"
         case organizationName = "organization_name"
         case organizationType = "organization_type"
@@ -116,6 +118,7 @@ extension UserSession {
             username: membership.username,
             role: membership.role,
             sessionToken: sessionToken,
+            sessionExpiresAt: sessionExpiresAt,
             organizationID: membership.organizationID,
             organizationName: membership.organizationName,
             organizationType: membership.organizationType,
@@ -129,5 +132,18 @@ extension UserSession {
             telephone: membership.telephone,
             availableMemberships: availableMemberships
         )
+    }
+
+    var isExpired: Bool {
+        guard let sessionExpiresAt else {
+            return true
+        }
+
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expiry = fractionalFormatter.date(from: sessionExpiresAt)
+            ?? ISO8601DateFormatter().date(from: sessionExpiresAt)
+        guard let expiry else { return true }
+        return expiry <= Date()
     }
 }

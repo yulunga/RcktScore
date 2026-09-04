@@ -12,10 +12,11 @@ Current app coverage:
 
 - organisation-user login and persisted session
 - multi-organisation membership selection and association switching
-- optional Face ID / Touch ID unlock for a saved local session
+- optional Face ID / Touch ID unlock for an unexpired saved local session
 - dashboard, matches, history, settings, and help tabs
 - native match setup and scheduled-match start
 - squash, racketball, and tennis live scoring plus historic-match views
+- one-match offline scoring cache with ordered reconnect synchronisation and duplicate-action protection
 - club organisation/user/court management
 - racket-sport visibility controls
 - lightweight UI smoke-test target in `RcktScoreMobileUITests/`
@@ -24,6 +25,7 @@ Useful app entry points:
 
 - `RcktScoreMobile/ContentView.swift`
 - `RcktScoreMobile/State/AppContainer.swift`
+- `RcktScoreMobile/State/OfflineMatchStore.swift`
 - `RcktScoreMobile/Services/APIClient.swift`
 - `RcktScoreMobile/Views/LoginView.swift`
 - `RcktScoreMobile/Views/DashboardView.swift`

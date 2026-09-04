@@ -99,6 +99,9 @@ struct DashboardView: View {
     private var homeActiveMatches: [MatchSummary] { Array(activeMatches.prefix(3)) }
     private var homeScheduledMatches: [MatchSummary] { Array(scheduledMatches.prefix(3)) }
     private var homeRecentMatches: [MatchSummary] { Array(recentMatches.prefix(3)) }
+    private var offlineActiveMatch: MatchDetail? {
+        container.offlineMatchStore.cachedActiveMatch(session: session)
+    }
     private var filteredRecentMatches: [MatchSummary] {
         let query = historySearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else {
@@ -333,12 +336,14 @@ struct DashboardView: View {
                 VStack(alignment: .trailing, spacing: 12) {
                     Button {
                     } label: {
-                        Image(systemName: "bell")
+                        Image(systemName: isOnline ? "bell" : "wifi.slash")
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(Color.dashboardInk)
+                            .foregroundStyle(isOnline ? Color.dashboardInk : Color.orange)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("dashboard.notificationButton")
+                    .accessibilityLabel(isOnline ? "Notifications" : "Offline")
+                    .accessibilityIdentifier(isOnline ? "dashboard.notificationButton" : "dashboard.offlineIndicator")
+                    .disabled(!isOnline)
                 }
                 .padding(.top, 8)
             }
@@ -1649,7 +1654,44 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func activeMatchesContent(matches: [MatchSummary]) -> some View {
-        if isLoading && matches.isEmpty {
+        if !isOnline, let offlineActiveMatch {
+            Button {
+                navigationTarget = MatchRoute(id: offlineActiveMatch.id)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.orange)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Continue Offline")
+                            .font(.headline)
+                            .foregroundStyle(Color.dashboardInk)
+                        Text("\(offlineActiveMatch.player1Name) vs \(offlineActiveMatch.player2Name)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        if container.offlineMatchStore.pendingActionCount > 0 {
+                            Text("\(container.offlineMatchStore.pendingActionCount) change(s) waiting to sync")
+                                .font(.caption)
+                                .foregroundStyle(Color.orange)
+                        }
+                    }
+
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .background(Color.dashboardCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("dashboard.continueOfflineMatch")
+        } else if isLoading && matches.isEmpty {
             HStack {
                 ProgressView()
                 Spacer()
@@ -3360,6 +3402,7 @@ struct DashboardView: View {
             username: currentSession.username,
             role: currentSession.role,
             sessionToken: currentSession.sessionToken,
+            sessionExpiresAt: currentSession.sessionExpiresAt,
             organizationID: currentSession.organizationID,
             organizationName: currentSession.organizationName,
             organizationType: currentSession.organizationType,
@@ -3412,6 +3455,7 @@ struct DashboardView: View {
             username: email,
             role: currentSession.role,
             sessionToken: currentSession.sessionToken,
+            sessionExpiresAt: currentSession.sessionExpiresAt,
             organizationID: currentSession.organizationID,
             organizationName: currentSession.organizationName,
             organizationType: currentSession.organizationType,

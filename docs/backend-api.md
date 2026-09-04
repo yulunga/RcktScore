@@ -109,12 +109,15 @@ Current behavior:
 - `POST /login` verifies credentials against `SkwshOrgUsers`
 - users may belong to multiple organisations
 - a successful login creates a session token in `org_user_sessions`
+- organisation-user sessions expire after 30 days by default; `OrgUserSessionTtlDays` can configure a value from one to 90 days
+- successful login and multi-membership selection payloads include `session_expires_at`
 - session tokens are sent in `Authorization: Bearer <token>`
 - most protected organisation and match routes validate that token server-side
 - session invalidation codes currently include:
   - `SESSION_REQUIRED`
   - `SESSION_INVALID`
   - `SESSION_REPLACED`
+  - `SESSION_EXPIRED`
   - `SESSION_FORBIDDEN`
   - `SESSION_ADMIN_REQUIRED`
 
@@ -129,6 +132,7 @@ Duplicate login behavior:
   selection payloads
 - session and membership payloads now include `enabled_sports`, which is the
   racket-sport visibility list for that organisation membership
+- migration `019_offline_scoring_support.sql` adds `org_user_sessions.expires_at` and the reconnect-idempotency receipt table
 
 ### Root-admin users
 
@@ -257,6 +261,7 @@ Current organisation-settings behavior:
 - returns `data.organizationSelection` when the same email belongs to multiple approved organisations
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
 - successful session payloads include `enabled_sports`
+- successful session payloads include `session_expires_at`; clients must require a fresh login after that timestamp
 - session and membership payloads now also include `country` and `telephone` when those profile fields are populated
 
 ### Logout
@@ -387,6 +392,9 @@ Current behavior:
 Current behavior:
 
 - these routes are backend-authorized against the match tenant through `authorize_match_session(...)`
+- `POST /score_point`, `POST /event_action`, `POST /undo_action`, and `POST /end_match` accept an optional `client_action_id` UUID
+- when a `client_action_id` is supplied, the backend records it in `match_action_receipts`; replaying the same UUID for the same match action returns current match state without applying the action again
+- reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
 - personal accounts can only have one active match at a time
 - clubs can auto-schedule a match if the chosen court already has an active match
 - live sport engines today:

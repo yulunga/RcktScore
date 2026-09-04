@@ -12,6 +12,7 @@ Globals:
       Variables:
         SUPABASE_DB_URL: !Ref SupabaseDbUrl
         ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
+        ORG_USER_SESSION_TTL_DAYS: !Ref OrgUserSessionTtlDays
 
 Parameters:
   SupabaseDbUrl:
@@ -52,6 +53,11 @@ Parameters:
     Default: 8
     MinValue: 1
     MaxValue: 24
+  OrgUserSessionTtlDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 90
 
 Resources:
   RcktScoreHttpApi:

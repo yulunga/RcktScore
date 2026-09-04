@@ -9,6 +9,7 @@ final class SessionStore: ObservableObject {
     @Published private(set) var requiresBiometricUnlock = false
     @Published private(set) var biometricType: LABiometryType = .none
     @Published private(set) var biometricErrorMessage: String?
+    @Published private(set) var sessionExpiryMessage: String?
 
     private let key = "rcktscore.mobile.session"
     private let biometricPreferenceKey = "rcktscore.mobile.biometricUnlockEnabled"
@@ -26,7 +27,7 @@ final class SessionStore: ObservableObject {
     }
 
     var isAuthenticated: Bool {
-        session != nil
+        session != nil && session?.isExpired == false
     }
 
     var sessionToken: String? {
@@ -49,7 +50,12 @@ final class SessionStore: ObservableObject {
     }
 
     func save(_ newSession: UserSession) {
+        guard !newSession.isExpired else {
+            clear(expired: true)
+            return
+        }
         session = newSession
+        sessionExpiryMessage = nil
         if let encoded = try? JSONEncoder().encode(newSession) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
@@ -66,11 +72,19 @@ final class SessionStore: ObservableObject {
         save(currentSession.switchingMembership(to: membership))
     }
 
-    func clear() {
+    func clear(expired: Bool = false) {
         session = nil
         requiresBiometricUnlock = false
         biometricErrorMessage = nil
         UserDefaults.standard.removeObject(forKey: key)
+        sessionExpiryMessage = expired ? "Your saved session has expired. Please sign in again." : nil
+    }
+
+    func validateExpiry() {
+        guard session?.isExpired == true else {
+            return
+        }
+        clear(expired: true)
     }
 
     func refreshBiometricAvailability() {
@@ -147,6 +161,10 @@ final class SessionStore: ObservableObject {
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key),
               let stored = try? JSONDecoder().decode(UserSession.self, from: data) else {
+            return
+        }
+        guard !stored.isExpired else {
+            clear(expired: true)
             return
         }
         session = stored

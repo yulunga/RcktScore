@@ -78,11 +78,13 @@ struct OrganizationSelectionPayload: Decodable {
     let username: String
     let memberships: [UserMembership]
     let sessionToken: String
+    let sessionExpiresAt: String
 
     enum CodingKeys: String, CodingKey {
         case username
         case memberships
         case sessionToken = "session_token"
+        case sessionExpiresAt = "session_expires_at"
     }
 }
 
@@ -137,10 +139,12 @@ struct MatchDisplayAccessResponseData: Decodable {
 struct ScorePointRequest: Encodable {
     let matchID: String
     let scorer: String
+    let clientActionID: String
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
         case scorer
+        case clientActionID = "client_action_id"
     }
 }
 
@@ -160,6 +164,7 @@ struct EventActionRequest: Encodable {
     let currentReceiverParticipantID: String?
     let serveOrder: [String]?
     let receiverDeuceOrder: [String: String]?
+    let clientActionID: String
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -177,14 +182,22 @@ struct EventActionRequest: Encodable {
         case currentReceiverParticipantID = "current_receiver_participant_id"
         case serveOrder = "serve_order"
         case receiverDeuceOrder = "receiver_deuce_order"
+        case clientActionID = "client_action_id"
     }
 }
 
 struct MatchIDRequest: Encodable {
     let matchID: String
+    let clientActionID: String?
+
+    init(matchID: String, clientActionID: String? = nil) {
+        self.matchID = matchID
+        self.clientActionID = clientActionID
+    }
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
+        case clientActionID = "client_action_id"
     }
 }
 
@@ -255,12 +268,14 @@ struct EndMatchRequest: Encodable {
     let endedEarly: Bool
     let reason: String?
     let matchDurationSeconds: Int?
+    let clientActionID: String
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
         case endedEarly = "ended_early"
         case reason
         case matchDurationSeconds = "match_duration_seconds"
+        case clientActionID = "client_action_id"
     }
 }
 
@@ -271,6 +286,7 @@ struct MatchSettingsRequest: Encodable {
     let bestOf: Int
     let player1ShirtColor: String?
     let player2ShirtColor: String?
+    let clientActionID: String
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -279,6 +295,7 @@ struct MatchSettingsRequest: Encodable {
         case bestOf = "best_of"
         case player1ShirtColor = "player1_shirt_color"
         case player2ShirtColor = "player2_shirt_color"
+        case clientActionID = "client_action_id"
     }
 }
 
@@ -290,7 +307,7 @@ final class APIClient {
     private let defaultBuildID: String
     private var authToken: String?
     var onSessionInvalidated: ((String) -> Void)?
-    private let sessionInvalidationCodes = Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED"])
+    private let sessionInvalidationCodes = Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED", "SESSION_EXPIRED"])
 
     init(session: URLSession = .shared) {
         self.session = session
@@ -668,16 +685,16 @@ final class APIClient {
         return displayAccess
     }
 
-    func scorePoint(matchID: String, scorer: String) async throws -> MatchDetail {
+    func scorePoint(matchID: String, scorer: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/score_point",
             method: "POST",
-            body: ScorePointRequest(matchID: matchID, scorer: scorer)
+            body: ScorePointRequest(matchID: matchID, scorer: scorer, clientActionID: clientActionID)
         )
         return try await unwrapMatchResponse(request)
     }
 
-    func awardStroke(matchID: String, playerSide: String) async throws -> MatchDetail {
+    func awardStroke(matchID: String, playerSide: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
@@ -696,13 +713,14 @@ final class APIClient {
                 currentReceiverSide: nil,
                 currentReceiverParticipantID: nil,
                 serveOrder: nil,
-                receiverDeuceOrder: nil
+                receiverDeuceOrder: nil,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
     }
 
-    func callLet(matchID: String, playerSide: String? = nil, note: String = "General let") async throws -> MatchDetail {
+    func callLet(matchID: String, playerSide: String? = nil, note: String = "General let", clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
@@ -721,13 +739,14 @@ final class APIClient {
                 currentReceiverSide: nil,
                 currentReceiverParticipantID: nil,
                 serveOrder: nil,
-                receiverDeuceOrder: nil
+                receiverDeuceOrder: nil,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
     }
 
-    func setServeSide(matchID: String, side: String) async throws -> MatchDetail {
+    func setServeSide(matchID: String, side: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
@@ -746,7 +765,8 @@ final class APIClient {
                 currentReceiverSide: nil,
                 currentReceiverParticipantID: nil,
                 serveOrder: nil,
-                receiverDeuceOrder: nil
+                receiverDeuceOrder: nil,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
@@ -762,7 +782,8 @@ final class APIClient {
         currentReceiverSide: String? = nil,
         currentReceiverParticipantID: String? = nil,
         serveOrder: [String]? = nil,
-        receiverDeuceOrder: [String: String]? = nil
+        receiverDeuceOrder: [String: String]? = nil,
+        clientActionID: String = UUID().uuidString
     ) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
@@ -782,13 +803,14 @@ final class APIClient {
                 currentReceiverSide: currentReceiverSide,
                 currentReceiverParticipantID: currentReceiverParticipantID,
                 serveOrder: serveOrder,
-                receiverDeuceOrder: receiverDeuceOrder
+                receiverDeuceOrder: receiverDeuceOrder,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
     }
 
-    func recordMatchDuration(matchID: String, durationSeconds: Int) async throws -> MatchDetail {
+    func recordMatchDuration(matchID: String, durationSeconds: Int, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
             method: "POST",
@@ -807,21 +829,23 @@ final class APIClient {
                 currentReceiverSide: nil,
                 currentReceiverParticipantID: nil,
                 serveOrder: nil,
-                receiverDeuceOrder: nil
+                receiverDeuceOrder: nil,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
     }
 
-    func undoAction(matchID: String) async throws -> MatchDetail {
-        let request = try makeRequest(path: "/undo_action", method: "POST", body: MatchIDRequest(matchID: matchID))
+    func undoAction(matchID: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
+        let request = try makeRequest(path: "/undo_action", method: "POST", body: MatchIDRequest(matchID: matchID, clientActionID: clientActionID))
         return try await unwrapMatchResponse(request)
     }
 
     func endMatchEarly(
         matchID: String,
         reason: String = "Ended by operator",
-        matchDurationSeconds: Int? = nil
+        matchDurationSeconds: Int? = nil,
+        clientActionID: String = UUID().uuidString
     ) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/end_match",
@@ -830,7 +854,8 @@ final class APIClient {
                 matchID: matchID,
                 endedEarly: true,
                 reason: reason,
-                matchDurationSeconds: matchDurationSeconds
+                matchDurationSeconds: matchDurationSeconds,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)
@@ -850,7 +875,8 @@ final class APIClient {
         scoreType: Int,
         bestOf: Int,
         player1ShirtColor: String?,
-        player2ShirtColor: String?
+        player2ShirtColor: String?,
+        clientActionID: String = UUID().uuidString
     ) async throws -> MatchDetail {
         let request = try makeRequest(
             path: "/event_action",
@@ -861,7 +887,8 @@ final class APIClient {
                 scoreType: scoreType,
                 bestOf: bestOf,
                 player1ShirtColor: player1ShirtColor,
-                player2ShirtColor: player2ShirtColor
+                player2ShirtColor: player2ShirtColor,
+                clientActionID: clientActionID
             )
         )
         return try await unwrapMatchResponse(request)

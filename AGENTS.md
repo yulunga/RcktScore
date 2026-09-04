@@ -50,6 +50,10 @@ What is real and implemented:
 - native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
+- native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
+- mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice
+- organisation-user sessions now carry a server expiry timestamp; the native app discards expired cached sessions and supports Face ID or Touch ID for an unexpired session saved on that device
+- the native dashboard replaces its notification bell with an offline indicator while disconnected, and the login card explains that first-time sign-in requires connectivity
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
@@ -62,7 +66,7 @@ What is still partial or risky:
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting/stats views
 - the native notification center behind the dashboard bell is not implemented yet
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
-- offline behavior is still partial in the native app: the dashboard now stays quiet when offline, but historic data and scoring are not fully offline-capable
+- offline behavior remains intentionally scoped: new match creation, scheduled-match activation, historic data, settings changes, and matches not previously opened on that device still require connectivity
 - there is no documented iOS CI/archive/release pipeline in the repo yet
 - lightweight automated baselines are checked in for backend pytest logic tests,
   Playwright public-route smoke tests, and native iOS UI smoke tests; coverage is
@@ -86,6 +90,7 @@ What is still partial or risky:
 - `mobile/`
   - iOS project in `ios/RcktScoreMobile/`
   - mobile-facing shared references in `shared/`
+  - offline active-match state and action queue in `ios/RcktScoreMobile/RcktScoreMobile/State/OfflineMatchStore.swift`
 - `docs/`
   - backend/API reference
   - lifecycle walkthrough
@@ -136,6 +141,8 @@ See the backend/API reference for the exact route list.
 ## Security Notes
 
 - org-user session enforcement is real in `backend/common/session_logic.py`
+- org-user sessions expire after 30 days by default, configurable from one to 90 days, and cached native sessions cannot be reopened after their server-provided expiry
+- reconnect-safe scoring action UUIDs are recorded in `match_action_receipts`; duplicate retries return current match state without repeating the mutation
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is now enforced through organisation-level `enabled_sports` settings before match creation
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side

@@ -21,6 +21,7 @@ Already in place:
 - active-session conflict handling with force-logout retry
 - multi-organisation membership selection at login and association switching
 - optional local Face ID / Touch ID unlock for a saved session
+- server-provided session expiry with mandatory fresh login after expiry
 - self-service personal-account signup, controlled club enquiries, and help flows on login
 - dashboard shell with `Home`, `Matches`, `History`, `Settings`, and `Need Help`
 - active, scheduled, and recent match loading
@@ -45,6 +46,7 @@ Already in place:
 - in-app feedback and password-reset request flow
 - quieter offline dashboard behavior that no longer leaves a persistent fetch
   error visible when the device is offline
+- a device-persisted cache for one previously opened active match, local squash/racketball and tennis scoring, ordered reconnect replay, and UUID duplicate-action protection
 
 ## Current Gaps
 
@@ -52,12 +54,12 @@ These are the main gaps still visible in the current iOS build:
 
 - the live scoring screen is much better than the earlier layout, but still
   needs final small-screen polish and confidence-building QA
-- the native tennis flow is first-pass and still needs broader regression
-  coverage before release confidence is high
+- native tennis now covers online and offline game/set/tie-break transitions plus singles/doubles service and receiver order, but still needs broader device regression coverage
 - the dashboard bell has no real notification-center flow yet
 - settings areas for association links, account-level game-settings presets,
   reporting, and stats are still placeholder surfaces
-- offline history and offline scoring sync are not complete
+- offline history, offline match creation, scheduled activation, settings changes, and multi-match caching remain outside the current offline scope
+- offline scoring still needs physical-device Airplane Mode, app-termination, long-queue, session-expiry, and reconnect signoff
 - there is no documented mobile CI/archive/release pipeline yet
 - there is no completed realtime/WebSocket sync path yet
 - release-grade automated and manual signoff coverage is still missing
@@ -118,6 +120,8 @@ Required work:
 4. docs, release notes, and signoff checklist refresh
 5. regression coverage for multi-organisation selection and association switching
 6. decision on whether placeholder settings sections ship or are hidden
+7. add and validate account-deletion initiation for self-service personal accounts
+8. add the required privacy manifest where the final archive uses required-reason APIs, and complete App Store privacy disclosures
 
 Definition of done:
 
@@ -145,6 +149,6 @@ blocking:
 1. root admin tools
 2. full spectator-display configuration
 3. WebSocket/live sync parity beyond the current refresh model
-4. full offline scoring sync
+4. offline history, offline match creation, and multi-match caching
 5. deep notification center flows behind the dashboard bell
 6. Android/native cross-platform work

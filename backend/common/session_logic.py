@@ -1,6 +1,7 @@
 import hashlib
+import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from common.auth_logic import _serialize_org_user
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
@@ -9,6 +10,19 @@ from common.utils import error_response
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+DEFAULT_ORG_USER_SESSION_TTL_DAYS = 30
+MAX_ORG_USER_SESSION_TTL_DAYS = 90
+
+
+def _session_ttl_days():
+    configured_value = (os.getenv("ORG_USER_SESSION_TTL_DAYS") or "").strip()
+    try:
+        days = int(configured_value or DEFAULT_ORG_USER_SESSION_TTL_DAYS)
+    except ValueError:
+        days = DEFAULT_ORG_USER_SESSION_TTL_DAYS
+    return max(1, min(days, MAX_ORG_USER_SESSION_TTL_DAYS))
 
 
 class SessionAuthError(Exception):
@@ -97,6 +111,7 @@ def create_org_user_session(connection, username, login_source="login"):
     normalized_source = normalize_login_source(login_source)
     token = secrets.token_urlsafe(48)
     now = _utcnow()
+    expires_at = now + timedelta(days=_session_ttl_days())
     revoke_active_sessions_for_username(
         connection,
         normalized_username,
@@ -112,14 +127,16 @@ def create_org_user_session(connection, username, login_source="login"):
                 token_hash,
                 login_source,
                 created_at,
-                last_seen_at
+                last_seen_at,
+                expires_at
             )
             VALUES (
                 %(username)s,
                 %(token_hash)s,
                 %(login_source)s,
                 %(created_at)s,
-                %(last_seen_at)s
+                %(last_seen_at)s,
+                %(expires_at)s
             )
             """,
             {
@@ -128,11 +145,12 @@ def create_org_user_session(connection, username, login_source="login"):
                 "login_source": normalized_source,
                 "created_at": now,
                 "last_seen_at": now,
+                "expires_at": expires_at,
             },
         )
 
     connection.commit()
-    return token
+    return {"token": token, "expires_at": expires_at}
 
 
 def get_active_session_for_username(connection, username, login_source):
@@ -149,17 +167,20 @@ def get_active_session_for_username(connection, username, login_source):
                 username,
                 login_source,
                 created_at,
-                last_seen_at
+                last_seen_at,
+                expires_at
             FROM org_user_sessions
             WHERE LOWER(username) = LOWER(%(username)s)
               AND login_source = %(login_source)s
               AND revoked_at IS NULL
+              AND expires_at > %(now)s
             ORDER BY id DESC
             LIMIT 1
             """,
             {
                 "username": normalized_username,
                 "login_source": normalized_source,
+                "now": _utcnow(),
             },
         )
         return cursor.fetchone()
@@ -205,6 +226,7 @@ def _get_session_row(connection, token, *, include_revoked=False):
                 username,
                 created_at,
                 last_seen_at,
+                expires_at,
                 revoked_at,
                 revoked_reason
             FROM org_user_sessions
@@ -234,6 +256,20 @@ def require_org_user_session(connection, event):
             )
 
         raise SessionAuthError(401, "SESSION_INVALID", "Your session is no longer valid. Please sign in again.")
+
+    if session_row["expires_at"] <= _utcnow():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE org_user_sessions
+                SET revoked_at = COALESCE(revoked_at, %(revoked_at)s),
+                    revoked_reason = COALESCE(revoked_reason, 'expired')
+                WHERE id = %(session_id)s
+                """,
+                {"session_id": session_row["id"], "revoked_at": _utcnow()},
+            )
+        connection.commit()
+        raise SessionAuthError(401, "SESSION_EXPIRED", "Your session has expired. Please sign in again.")
 
     with connection.cursor() as cursor:
         cursor.execute(
