@@ -27,13 +27,16 @@ struct ContentView: View {
             switch phase {
             case .active:
                 container.sessionStore.validateExpiry()
+                container.sessionStore.appDidBecomeActive()
                 if container.sessionStore.requiresBiometricUnlock {
                     Task {
                         _ = await container.sessionStore.unlockWithBiometrics()
                     }
                 }
-            case .inactive, .background:
-                container.sessionStore.lockForBackgroundIfNeeded()
+            case .background:
+                container.sessionStore.appDidEnterBackground()
+            case .inactive:
+                break
             @unknown default:
                 break
             }

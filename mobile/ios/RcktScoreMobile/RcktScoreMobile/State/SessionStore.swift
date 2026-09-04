@@ -19,9 +19,12 @@ final class SessionStore: ObservableObject {
     private let biometricTypeKey = "rcktscore.mobile.biometricType"
     private let biometricKeychainService = "rcktScore.RcktScoreMobile.biometric-session"
     private let biometricKeychainAccount = "saved-session"
+    private let biometricBackgroundGracePeriod: TimeInterval = 5 * 60
     private let uiTestLaunchOptions: UITestLaunchOptions
     private var isAuthenticatingWithBiometrics = false
     private var allowsAutomaticBiometricSignIn = true
+    private var backgroundedAt: Date?
+    private var lastSuccessfulBiometricAuthenticationAt: Date?
 
     init(uiTestLaunchOptions: UITestLaunchOptions? = nil) {
         let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
@@ -190,13 +193,30 @@ final class SessionStore: ObservableObject {
         removeSavedBiometricSession()
     }
 
-    func lockForBackgroundIfNeeded() {
+    func appDidEnterBackground() {
+        guard biometricUnlockEnabled, session != nil else {
+            return
+        }
+        backgroundedAt = Date()
+    }
+
+    func appDidBecomeActive() {
+        guard let backgroundedAt else {
+            return
+        }
+        self.backgroundedAt = nil
+
         guard !isAuthenticatingWithBiometrics,
               biometricUnlockEnabled,
-              session != nil else {
+              session != nil,
+              Date().timeIntervalSince(backgroundedAt) >= biometricBackgroundGracePeriod else {
             return
         }
 
+        if let lastSuccessfulBiometricAuthenticationAt,
+           lastSuccessfulBiometricAuthenticationAt >= backgroundedAt {
+            return
+        }
         requiresBiometricUnlock = true
     }
 
@@ -280,7 +300,7 @@ final class SessionStore: ObservableObject {
         context.localizedCancelTitle = "Cancel"
         context.localizedFallbackTitle = ""
 
-        return try await withCheckedThrowingContinuation { continuation in
+        let authenticatedContext: LAContext = try await withCheckedThrowingContinuation { continuation in
             var authError: NSError?
             guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError) else {
                 continuation.resume(throwing: authError ?? BiometricAuthError.notAvailable)
@@ -297,6 +317,8 @@ final class SessionStore: ObservableObject {
                 }
             }
         }
+        lastSuccessfulBiometricAuthenticationAt = Date()
+        return authenticatedContext
     }
 
     private func storeBiometricSession(_ session: UserSession) throws {
