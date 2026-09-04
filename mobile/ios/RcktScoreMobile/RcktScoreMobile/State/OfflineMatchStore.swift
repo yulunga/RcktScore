@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 enum OfflineMatchActionKind: String, Codable {
     case scorePoint = "score_point"
