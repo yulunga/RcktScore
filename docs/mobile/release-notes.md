@@ -42,7 +42,7 @@ Current unreleased iOS build state:
   switching, an About page for app version/build visibility, organisation details, user management, court management,
   racket-sport visibility, and display-code regeneration for club accounts
 - native login now supports password visibility toggling, and native settings
-  can enable local Face ID / Touch ID session unlock for a saved session
+  can enable Face ID / Touch ID restoration of an unexpired, device-bound Keychain session at cold launch or from the login screen after local sign-out
 - each settings menu row now opens its own dedicated page rather than expanding inline
 - native help flows support in-app feedback and password reset requests
 - native login now supports organisation selection when the same email belongs

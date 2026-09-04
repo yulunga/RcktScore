@@ -229,7 +229,7 @@ Current organisation-settings behavior:
 - the native iOS settings profile page uses `PUT /personal_profile/{organization_id}` for first name, surname, email/username, telephone, and country updates, and still uses `POST /password_reset/request` for password-reset emails
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
-- the native iOS Face ID / Touch ID setting is device-local session unlock only; it does not add a backend route or store a second server-side login method
+- the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
 - native tennis match creation can now include optional team-format and lineup metadata for doubles, and the tennis `server` event path accepts opening serve/receive order metadata in the event payload
 
 ### Match and scoring routes

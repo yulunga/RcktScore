@@ -34,6 +34,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showsPassword = false
     @State private var isLoading = false
+    @State private var isBiometricLoading = false
     @State private var errorMessage: String?
     @State private var overlayMode: LoginOverlayMode?
     @State private var sessionConflictMessage = ""
@@ -106,6 +107,12 @@ struct LoginView: View {
         .onChange(of: interestUseType) { trackInterestActivity() }
         .onChange(of: interestClubName) { trackInterestActivity() }
         .onChange(of: interestHumanAnswer) { trackInterestActivity() }
+        .task {
+            guard container.sessionStore.takeAutomaticBiometricSignInRequest() else {
+                return
+            }
+            await biometricSignIn()
+        }
     }
 
     private var backgroundGradient: some View {
@@ -133,6 +140,18 @@ struct LoginView: View {
             }
 
             signInButton
+
+            if container.sessionStore.canRestoreBiometricSession {
+                biometricSignInButton
+            }
+
+            if let biometricError = container.sessionStore.biometricErrorMessage {
+                Text(biometricError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("login.biometricErrorMessage")
+            }
 
             if !isOnline {
                 Label(
@@ -251,6 +270,45 @@ struct LoginView: View {
         .disabled(isLoading || username.isEmpty || password.isEmpty || !isOnline)
         .opacity(isLoading || username.isEmpty || password.isEmpty || !isOnline ? 0.72 : 1)
         .accessibilityIdentifier("login.signInButton")
+    }
+
+    private var biometricSignInButton: some View {
+        Button {
+            Task {
+                await biometricSignIn()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                if isBiometricLoading {
+                    ProgressView()
+                        .tint(Color.loginAction)
+                } else {
+                    Image(systemName: container.sessionStore.biometricType == .faceID ? "faceid" : "touchid")
+                }
+                Text("Sign in with \(container.sessionStore.biometricDisplayName)")
+                    .font(.headline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .foregroundStyle(Color.loginAction)
+            .background(Color.loginAction.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.loginAction.opacity(0.45), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isBiometricLoading)
+        .accessibilityIdentifier("login.biometricSignInButton")
+    }
+
+    @MainActor
+    private func biometricSignIn() async {
+        guard !isBiometricLoading else { return }
+        isBiometricLoading = true
+        _ = await container.sessionStore.restoreSavedSessionWithBiometrics()
+        isBiometricLoading = false
     }
 
     private var loginLinks: some View {

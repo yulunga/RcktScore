@@ -1,6 +1,7 @@
 import Foundation
 import Combine
-import LocalAuthentication
+@preconcurrency import LocalAuthentication
+import Security
 
 @MainActor
 final class SessionStore: ObservableObject {
@@ -10,19 +11,32 @@ final class SessionStore: ObservableObject {
     @Published private(set) var biometricType: LABiometryType = .none
     @Published private(set) var biometricErrorMessage: String?
     @Published private(set) var sessionExpiryMessage: String?
+    @Published private(set) var hasSavedBiometricSession = false
 
     private let key = "rcktscore.mobile.session"
     private let biometricPreferenceKey = "rcktscore.mobile.biometricUnlockEnabled"
+    private let biometricSessionAvailableKey = "rcktscore.mobile.biometricSessionAvailable"
+    private let biometricTypeKey = "rcktscore.mobile.biometricType"
+    private let biometricKeychainService = "rcktScore.RcktScoreMobile.biometric-session"
+    private let biometricKeychainAccount = "saved-session"
     private let uiTestLaunchOptions: UITestLaunchOptions
     private var isAuthenticatingWithBiometrics = false
+    private var allowsAutomaticBiometricSignIn = true
 
     init(uiTestLaunchOptions: UITestLaunchOptions? = nil) {
         let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
         self.uiTestLaunchOptions = resolvedLaunchOptions
         biometricUnlockEnabled = UserDefaults.standard.bool(forKey: biometricPreferenceKey)
+        hasSavedBiometricSession = UserDefaults.standard.bool(forKey: biometricSessionAvailableKey)
         refreshBiometricAvailability()
         load()
-        if session != nil, biometricUnlockEnabled, biometricType != .none {
+        if let session, biometricUnlockEnabled {
+            // Migrate an opted-in session from builds that predate Keychain storage,
+            // without replacing the protected item on every cold launch.
+            if !hasSavedBiometricSession,
+               (try? storeBiometricSession(session)) != nil {
+                setBiometricSessionAvailable(true)
+            }
             requiresBiometricUnlock = true
         }
     }
@@ -37,6 +51,10 @@ final class SessionStore: ObservableObject {
 
     var canUseBiometricUnlock: Bool {
         biometricType != .none
+    }
+
+    var canRestoreBiometricSession: Bool {
+        biometricUnlockEnabled && hasSavedBiometricSession && biometricType != .none
     }
 
     var biometricDisplayName: String {
@@ -60,7 +78,10 @@ final class SessionStore: ObservableObject {
         if let encoded = try? JSONEncoder().encode(newSession) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
-        if biometricUnlockEnabled, biometricType != .none {
+        if biometricUnlockEnabled {
+            if (try? storeBiometricSession(newSession)) != nil {
+                setBiometricSessionAvailable(true)
+            }
             requiresBiometricUnlock = false
         }
     }
@@ -78,7 +99,35 @@ final class SessionStore: ObservableObject {
         requiresBiometricUnlock = false
         biometricErrorMessage = nil
         UserDefaults.standard.removeObject(forKey: key)
+        removeSavedBiometricSession()
         sessionExpiryMessage = expired ? "Your saved session has expired. Please sign in again." : nil
+    }
+
+    /// Signs out of the visible app while retaining an opted-in, biometric-protected
+    /// session. The backend token remains live until its normal expiry so the user can
+    /// restore it with Face ID or Touch ID, including while offline.
+    func signOutKeepingBiometricLogin() -> Bool {
+        guard biometricUnlockEnabled,
+              hasSavedBiometricSession,
+              session?.isExpired == false else {
+            return false
+        }
+
+        session = nil
+        requiresBiometricUnlock = false
+        biometricErrorMessage = nil
+        sessionExpiryMessage = nil
+        allowsAutomaticBiometricSignIn = false
+        UserDefaults.standard.removeObject(forKey: key)
+        return true
+    }
+
+    func takeAutomaticBiometricSignInRequest() -> Bool {
+        guard allowsAutomaticBiometricSignIn, canRestoreBiometricSession else {
+            return false
+        }
+        allowsAutomaticBiometricSignIn = false
+        return true
     }
 
     func validateExpiry() {
@@ -101,14 +150,17 @@ final class SessionStore: ObservableObject {
         let context = LAContext()
         var error: NSError?
 
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error),
+           context.biometryType != .none {
             biometricType = context.biometryType
+            UserDefaults.standard.set(context.biometryType.rawValue, forKey: biometricTypeKey)
         } else {
-            biometricType = .none
-            if biometricUnlockEnabled {
-                biometricUnlockEnabled = false
-                UserDefaults.standard.set(false, forKey: biometricPreferenceKey)
-            }
+            // Lockout and transient system states must not silently disable an
+            // already configured biometric login. Keep the last detected type so
+            // the user can retry after unlocking the device.
+            biometricType = LABiometryType(
+                rawValue: UserDefaults.standard.integer(forKey: biometricTypeKey)
+            ) ?? .none
         }
     }
 
@@ -118,8 +170,14 @@ final class SessionStore: ObservableObject {
             throw BiometricAuthError.notAvailable
         }
 
+        guard let session else {
+            throw BiometricAuthError.noSavedSession
+        }
+
         _ = try await authenticateWithBiometrics(reason: "Enable \(biometricDisplayName) for app unlock.")
+        try storeBiometricSession(session)
         biometricUnlockEnabled = true
+        setBiometricSessionAvailable(true)
         biometricErrorMessage = nil
         UserDefaults.standard.set(true, forKey: biometricPreferenceKey)
     }
@@ -129,13 +187,13 @@ final class SessionStore: ObservableObject {
         requiresBiometricUnlock = false
         biometricErrorMessage = nil
         UserDefaults.standard.set(false, forKey: biometricPreferenceKey)
+        removeSavedBiometricSession()
     }
 
     func lockForBackgroundIfNeeded() {
         guard !isAuthenticatingWithBiometrics,
               biometricUnlockEnabled,
-              session != nil,
-              biometricType != .none else {
+              session != nil else {
             return
         }
 
@@ -148,16 +206,49 @@ final class SessionStore: ObservableObject {
         guard !isAuthenticatingWithBiometrics else {
             return false
         }
-        guard biometricUnlockEnabled, session != nil, biometricType != .none else {
-            requiresBiometricUnlock = false
-            biometricErrorMessage = nil
-            return true
+        guard biometricUnlockEnabled, session != nil else {
+            return false
+        }
+        guard biometricType != .none else {
+            biometricErrorMessage = "Biometric authentication is not available right now. Unlock your device and try again."
+            return false
         }
 
         do {
             _ = try await authenticateWithBiometrics(reason: "Unlock Hit n Score.")
             requiresBiometricUnlock = false
             biometricErrorMessage = nil
+            return true
+        } catch {
+            biometricErrorMessage = readableBiometricError(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func restoreSavedSessionWithBiometrics() async -> Bool {
+        refreshBiometricAvailability()
+        guard !isAuthenticatingWithBiometrics, canRestoreBiometricSession else {
+            return false
+        }
+
+        do {
+            let context = try await authenticateWithBiometrics(
+                reason: "Sign in to Hit n Score with \(biometricDisplayName)."
+            )
+            let restoredSession = try loadBiometricSession(using: context)
+            guard !restoredSession.isExpired else {
+                clear(expired: true)
+                return false
+            }
+
+            session = restoredSession
+            requiresBiometricUnlock = false
+            biometricErrorMessage = nil
+            sessionExpiryMessage = nil
+            if let encoded = try? JSONEncoder().encode(restoredSession) {
+                UserDefaults.standard.set(encoded, forKey: key)
+            }
             return true
         } catch {
             biometricErrorMessage = readableBiometricError(error)
@@ -177,7 +268,7 @@ final class SessionStore: ObservableObject {
         session = stored
     }
 
-    private func authenticateWithBiometrics(reason: String) async throws -> Bool {
+    private func authenticateWithBiometrics(reason: String) async throws -> LAContext {
         guard !isAuthenticatingWithBiometrics else {
             throw BiometricAuthError.authenticationInProgress
         }
@@ -197,19 +288,82 @@ final class SessionStore: ObservableObject {
             }
 
             context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
-                if let error {
+                if success {
+                    continuation.resume(returning: context)
+                } else if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: success)
+                    continuation.resume(throwing: BiometricAuthError.authenticationFailed)
                 }
             }
         }
+    }
+
+    private func storeBiometricSession(_ session: UserSession) throws {
+        let encoded = try JSONEncoder().encode(session)
+        var accessError: Unmanaged<CFError>?
+        guard let accessControl = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .biometryCurrentSet,
+            &accessError
+        ) else {
+            throw accessError?.takeRetainedValue() ?? BiometricAuthError.keychainUnavailable
+        }
+
+        SecItemDelete(biometricKeychainBaseQuery as CFDictionary)
+        var query = biometricKeychainBaseQuery
+        query[kSecValueData as String] = encoded
+        query[kSecAttrAccessControl as String] = accessControl
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw KeychainStatusError(status: status)
+        }
+    }
+
+    private func loadBiometricSession(using context: LAContext) throws -> UserSession {
+        var query = biometricKeychainBaseQuery
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        query[kSecUseAuthenticationContext as String] = context
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else {
+            if status == errSecItemNotFound {
+                setBiometricSessionAvailable(false)
+            }
+            throw KeychainStatusError(status: status)
+        }
+        return try JSONDecoder().decode(UserSession.self, from: data)
+    }
+
+    private var biometricKeychainBaseQuery: [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: biometricKeychainService,
+            kSecAttrAccount as String: biometricKeychainAccount
+        ]
+    }
+
+    private func removeSavedBiometricSession() {
+        SecItemDelete(biometricKeychainBaseQuery as CFDictionary)
+        setBiometricSessionAvailable(false)
+    }
+
+    private func setBiometricSessionAvailable(_ isAvailable: Bool) {
+        hasSavedBiometricSession = isAvailable
+        UserDefaults.standard.set(isAvailable, forKey: biometricSessionAvailableKey)
     }
 
     private func readableBiometricError(_ error: Error) -> String {
         let nsError = error as NSError
         guard nsError.domain == LAError.errorDomain,
               let code = LAError.Code(rawValue: nsError.code) else {
+            if let localizedError = error as? LocalizedError,
+               let description = localizedError.errorDescription {
+                return description
+            }
             return "Unable to verify biometrics right now."
         }
 
@@ -231,6 +385,9 @@ final class SessionStore: ObservableObject {
 private enum BiometricAuthError: LocalizedError {
     case notAvailable
     case authenticationInProgress
+    case authenticationFailed
+    case noSavedSession
+    case keychainUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -238,6 +395,23 @@ private enum BiometricAuthError: LocalizedError {
             return "Biometric authentication is not available on this device."
         case .authenticationInProgress:
             return "Biometric authentication is already in progress."
+        case .authenticationFailed:
+            return "Biometric authentication was not successful."
+        case .noSavedSession:
+            return "Sign in normally before enabling biometric login."
+        case .keychainUnavailable:
+            return "The secure saved session could not be created on this device."
         }
+    }
+}
+
+private struct KeychainStatusError: LocalizedError {
+    let status: OSStatus
+
+    var errorDescription: String? {
+        if let message = SecCopyErrorMessageString(status, nil) as String? {
+            return "The secure saved session could not be accessed: \(message)"
+        }
+        return "The secure saved session could not be accessed."
     }
 }

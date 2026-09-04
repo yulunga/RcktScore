@@ -77,6 +77,10 @@ final class AppContainer: ObservableObject {
     }
 
     func logout() {
+        if sessionStore.signOutKeepingBiometricLogin() {
+            return
+        }
+
         let sessionToken = sessionStore.sessionToken
         sessionStore.clear()
         Task {
