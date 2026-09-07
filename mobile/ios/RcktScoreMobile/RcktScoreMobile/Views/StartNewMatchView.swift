@@ -842,7 +842,7 @@ struct StartNewMatchView: View {
                     shirtColorPicker(selection: shirtColor)
                 }
 
-                countryField(title: "Country", text: country, focus: countryFocus)
+                countryField(text: country, focus: countryFocus)
 
                 if !suggestions.isEmpty {
                     suggestionList(suggestions, id: \.id) { suggestion in
@@ -953,16 +953,8 @@ struct StartNewMatchView: View {
         }
     }
 
-    private func countryField(
-        title: String,
-        text: Binding<String>,
-        focus: MatchSetupFocusField
-    ) -> some View {
+    private func countryField(text: Binding<String>, focus: MatchSetupFocusField) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
             TextField("Search country", text: text)
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
@@ -971,6 +963,7 @@ struct StartNewMatchView: View {
                 .background(Color.dashboardInnerCardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .focused($focusedField, equals: focus)
+                .accessibilityLabel("Country")
                 .accessibilityIdentifier(accessibilityIdentifier(for: focus))
 
             if focusedField == focus && !filteredCountries(for: text.wrappedValue).isEmpty {
@@ -1031,70 +1024,72 @@ struct StartNewMatchView: View {
     }
 
     private func handednessToggle(isLeftHanded: Binding<Bool>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Hand")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Toggle("Lefty", isOn: isLeftHanded)
-                .font(.subheadline.weight(.semibold))
-                .tint(Color.dashboardBrand)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(Color.dashboardInnerCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
+        Toggle("Lefty", isOn: isLeftHanded)
+            .font(.subheadline.weight(.semibold))
+            .tint(Color.dashboardBrand)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func shirtColorPicker(selection: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Shirt")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Menu {
-                ForEach(shirtColorOptions) { option in
-                    Button {
-                        selection.wrappedValue = option.id
-                    } label: {
-                        if selection.wrappedValue == option.id {
-                            Label(option.label, systemImage: "checkmark")
-                        } else {
-                            Text(option.label)
-                        }
+        Menu {
+            ForEach(shirtColorOptions) { option in
+                Button {
+                    selection.wrappedValue = option.id
+                } label: {
+                    Label {
+                        Text(option.label + (selection.wrappedValue == option.id ? "  ✓" : ""))
+                    } icon: {
+                        shirtColorMenuIcon(for: option)
                     }
-                    .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
                 }
-            } label: {
-                HStack(spacing: 9) {
-                    let selectedOption = shirtColorOptions.first(where: { $0.id == selection.wrappedValue }) ?? shirtColorOptions[0]
-
-                    Circle()
-                        .fill(selectedOption.swatch)
-                        .frame(width: 18, height: 18)
-                        .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
-
-                    Text(selectedOption.label)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Spacer(minLength: 4)
-
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(Color.dashboardInnerCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
             }
-            .accessibilityLabel("Shirt")
-            .accessibilityValue(shirtColorOptions.first(where: { $0.id == selection.wrappedValue })?.label ?? "Navy")
-            .accessibilityIdentifier("startMatch.shirtColorPicker")
+        } label: {
+            HStack(spacing: 9) {
+                let selectedOption = shirtColorOptions.first(where: { $0.id == selection.wrappedValue }) ?? shirtColorOptions[0]
+
+                Circle()
+                    .fill(selectedOption.swatch)
+                    .frame(width: 18, height: 18)
+                    .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
+
+                Text(selectedOption.label)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .accessibilityLabel("Shirt")
+        .accessibilityValue(shirtColorOptions.first(where: { $0.id == selection.wrappedValue })?.label ?? "Navy")
+        .accessibilityIdentifier("startMatch.shirtColorPicker")
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func shirtColorMenuIcon(for option: ShirtColorOption) -> Image {
+        let size = CGSize(width: 18, height: 18)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            let circleRect = CGRect(x: 1, y: 1, width: 16, height: 16)
+            UIColor(option.swatch).setFill()
+            context.cgContext.fillEllipse(in: circleRect)
+            UIColor(option.border).setStroke()
+            context.cgContext.setLineWidth(1)
+            context.cgContext.strokeEllipse(in: circleRect)
+        }
+
+        return Image(uiImage: image).renderingMode(.original)
     }
 
     private func selectionCard(
