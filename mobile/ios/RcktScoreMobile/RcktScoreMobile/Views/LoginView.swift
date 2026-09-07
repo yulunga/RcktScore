@@ -415,9 +415,14 @@ struct LoginView: View {
                     closeRegisterInterestOverlay()
                 }
             } else {
-                Text("Welcome to Hit n Score — the racket-sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional features, with the option to upgrade for more advanced tools.\n\nLooking for a multi-user account for a racket club? Club accounts are currently set up with our team. Register your interest and we’ll be in touch.")
+                Text("Welcome to Hit n Score — the racket sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional app features, with the option to upgrade for more advanced functionality.\n\nLooking for a multi-user option for your racket sports club? Club accounts let you manage multiple games, associate courts with matches, schedule games, and display live scores on screens. Register your interest and we’ll be in touch.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+
+                Link("Find out more on our website", destination: URL(string: "https://www.hitnscore.com")!)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.loginAction)
+                    .accessibilityIdentifier("login.registerInterest.websiteLink")
 
                 styledField(title: "Name") {
                     TextField("First name", text: $interestFirstName)

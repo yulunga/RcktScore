@@ -108,6 +108,7 @@ Error:
 ### Current path
 
 1. A visitor opens the `Want In` form on the login page.
+   - the native form introduces personal and multi-user club accounts and links to `https://www.hitnscore.com` for further product information
 2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
 3. The honeypot field is `company`.
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
