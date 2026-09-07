@@ -57,7 +57,7 @@ What is real and implemented:
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
-- root-admin User Accounts directory across personal and club memberships, with account-type filters, user search, activity summaries, personal plan/sport controls, and club association add/remove controls
+- root-admin User Accounts directory across personal and club memberships, with account-type filters, user search, and tabbed user profiles for registered details/last activity, subscriptions, club associations, scoring activity, and enabled sports
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes

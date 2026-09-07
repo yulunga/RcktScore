@@ -2544,6 +2544,65 @@ textarea {
   align-self: end;
 }
 
+.root-admin-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.root-admin-profile-header .helper-text {
+  margin: 0;
+}
+
+.root-admin-profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.root-admin-profile-detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.root-admin-profile-detail-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid #d9e2ec;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.root-admin-profile-detail-grid strong {
+  color: #486581;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.root-admin-profile-detail-grid span {
+  min-width: 0;
+  color: #102a43;
+  font-size: 1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.root-admin-profile-activity-grid .meta-item {
+  min-height: 96px;
+}
+
+.root-admin-profile-sports-group + .root-admin-profile-sports-group {
+  padding-top: 20px;
+  border-top: 1px solid #d9e2ec;
+}
+
 .root-admin-interest-list {
   display: grid;
   gap: 12px;
@@ -3476,6 +3535,16 @@ textarea {
   .root-admin-user-directory-fields {
     grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .root-admin-profile-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .root-admin-profile-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
   }
 
   .root-admin-club-row {

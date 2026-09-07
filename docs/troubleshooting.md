@@ -181,6 +181,7 @@ If a root-admin issue appears:
 - confirm the frontend is sending `Authorization: Bearer <token>` and is not relying on the removed `x-root-admin-request` header
 - if User Accounts totals look higher than the visible list, remember the summary cards count distinct usernames by account category and a user with both personal and club memberships can appear in more than one category
 - club match activity on a user profile is attributed from `matches.referee_name`; personal-account activity is attributed from the user's personal organisation
+- user-profile Last Activity is the latest `org_user_sessions.last_seen_at` value for that username; `Not recorded` means no retained session activity exists
 - adding a club association intentionally creates a pending membership and invitation; personal registration remains immediate
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it

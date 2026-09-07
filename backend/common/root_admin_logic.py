@@ -1328,6 +1328,16 @@ def get_root_admin_user_profile(connection, user_id):
         )
         available_clubs = cursor.fetchall()
 
+        cursor.execute(
+            """
+            SELECT MAX(last_seen_at) AS last_activity_at
+            FROM org_user_sessions
+            WHERE LOWER(username) = LOWER(%(username)s)
+            """,
+            {"username": username},
+        )
+        session_activity = cursor.fetchone() or {}
+
     summary = _serialize_root_admin_user_summary(username.lower(), membership_rows)
     memberships = []
     for row in membership_rows:
@@ -1366,9 +1376,15 @@ def get_root_admin_user_profile(connection, user_id):
 
     summary.update(
         {
+            "email": username.lower(),
             "country": _first_present(membership_rows, "country"),
             "telephone": _first_present(membership_rows, "telephone"),
             "city_location": _first_present(membership_rows, "city_location"),
+            "last_activity_at": (
+                session_activity["last_activity_at"].isoformat()
+                if session_activity.get("last_activity_at")
+                else None
+            ),
         }
     )
     game_types = [
