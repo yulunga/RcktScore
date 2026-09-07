@@ -166,7 +166,7 @@ def lambda_handler(event, context):
         logger.warning("Interest honeypot triggered for email=%s", email)
         return success_response(202, {"accepted": True})
 
-    destination_email = os.getenv("INTEREST_TO_EMAIL", "rcktinterest@ucingo.com")
+    destination_email = os.getenv("INTEREST_TO_EMAIL", "hello@hitnscore.com")
     source_email = os.getenv("INTEREST_FROM_EMAIL", destination_email)
     password_setup_base_url = (os.getenv("PASSWORD_RESET_BASE_URL") or "").strip()
     page_url = (payload.get("page_url") or "").strip()

@@ -113,7 +113,7 @@ Error:
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
-   - for Personal, records a completed self-service registration, creates or refreshes the `personal_free` organisation, owner membership, and personal court, then sends a password-setup email without entering an admin approval queue
+   - for Personal, records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a password-setup email without entering an admin approval queue; completing that link validates the email and activates login
    - for Club, keeps the request pending and sends confirmation/admin enquiry emails
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
 6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
@@ -146,6 +146,8 @@ Error:
 
 - if reset emails are not arriving, check SES sender configuration and `PASSWORD_RESET_FROM_EMAIL`
 - if links point to the wrong frontend host, check `PASSWORD_RESET_BASE_URL` and request `Origin`
+
+The native login `Ping Us` form posts name, email, category, message, app version/build, page identifier, and user agent to `POST /feedback`. The feedback Lambda validates the request, sends it through SES with the submitter as the reply-to address, and returns `202` when SES accepts it. SES delivery failures are mapped to `503 FEEDBACK_DELIVERY_FAILED`; the configured sender and recipient must be verified or otherwise permitted in the deployed SES account.
 
 ## 5. Dashboard Flow
 
@@ -396,7 +398,7 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
 6. The platform dashboard now also links to a root-admin `RacketSports` page that calls `GET /root_admin/platform_sports` and `PUT /root_admin/platform_sports` to set the globally allowed sport list and push that same list to all clubs and personal accounts.
-7. `GET /root_admin/users` groups membership rows by username and supports Personal Free, Personal Plus, and club filters plus username/name search.
+7. `GET /root_admin/users` groups membership rows by username and supports Personal Free, Personal Plus, and club filters plus username/name search. It also reports email-verification state so pending users are highlighted in the directory.
 8. `GET /root_admin/users/{user_id}` returns registration details, last session activity, personal and club associations, enabled sports, and attributable scoring activity. The web profile separates these into Profile, Subscription, Club Association, Scoring Activity, and Settings tabs. Root admin can change the user's password, switch a personal subscription between Personal and Personal Plus, add a pending club invitation, or remove an existing club association.
 9. Personal registrations do not appear in `GET /root_admin/interest_requests`; that queue now contains club enquiries only.
 

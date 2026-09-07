@@ -372,25 +372,31 @@ struct LoginView: View {
                     }
                 }
 
-            ScrollView(showsIndicators: false) {
-                VStack {
-                    switch mode {
-                    case .registerInterest:
-                        registerInterestCard
-                    case .helpOptions:
-                        helpOptionsCard
-                    case .pingUs:
-                        pingUsCard
-                    case .passwordReset:
-                        passwordResetCard
-                    case .sessionConflict:
-                        sessionConflictCard
-                    case .organizationSelection:
-                        organizationSelectionCard
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    VStack {
+                        switch mode {
+                        case .registerInterest:
+                            registerInterestCard
+                        case .helpOptions:
+                            helpOptionsCard
+                        case .pingUs:
+                            pingUsCard
+                        case .passwordReset:
+                            passwordResetCard
+                        case .sessionConflict:
+                            sessionConflictCard
+                        case .organizationSelection:
+                            organizationSelectionCard
+                        }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 40)
+                    .frame(
+                        minHeight: geometry.size.height,
+                        alignment: mode == .helpOptions ? .center : .top
+                    )
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 40)
             }
         }
     }
@@ -775,12 +781,21 @@ struct LoginView: View {
                 overlayMode = nil
             }
         } label: {
-            Text("×")
-                .font(.title3.weight(.bold))
+            Image(systemName: "xmark")
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(Color.loginAction)
-                .frame(width: 32, height: 32)
+                .frame(width: 44, height: 44)
+                .background(Color.loginAction.opacity(0.12))
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.loginAction.opacity(0.25), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
+        .contentShape(Circle())
+        .accessibilityLabel("Close")
+        .accessibilityIdentifier("login.overlayCloseButton")
     }
 
     private func overlayPrimaryButton(title: String, showProgress: Bool = false, action: @escaping () -> Void) -> some View {

@@ -627,9 +627,32 @@ def create_self_service_personal_account(
         interest_row,
         updated_by="self-service signup",
         reset_base_url=reset_base_url,
+    )
+    # Persist the pending account and verification token before attempting
+    # delivery. If SES is temporarily unavailable, a retry can refresh and
+    # resend the link without losing the registration record.
+    connection.commit()
+
+    _send_personal_account_approved_email(
+        account=personal_account,
+        set_password_url=personal_account.pop("_set_password_url"),
         source_email=source_email,
     )
+    email_sent_at = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET invitation_sent_at = %(email_sent_at)s
+            WHERE id = %(user_id)s
+            """,
+            {
+                "email_sent_at": email_sent_at,
+                "user_id": personal_account["user_id"],
+            },
+        )
     connection.commit()
+    personal_account["approval_email_sent_at"] = email_sent_at
     return _serialize_personal_account(personal_account)
 
 
@@ -686,7 +709,7 @@ def get_root_admin_personal_accounts(connection, plan=None):
     return [_serialize_personal_account(row) for row in rows]
 
 
-def _create_or_refresh_personal_account_for_interest(connection, interest_row, *, updated_by, reset_base_url, source_email):
+def _create_or_refresh_personal_account_for_interest(connection, interest_row, *, updated_by, reset_base_url):
     now = _utcnow()
     reset_token = secrets.token_urlsafe(32)
     username = (interest_row.get("email") or "").strip().lower()
@@ -807,7 +830,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                         ELSE 'pending'
                     END,
                     approval_token = NULL,
-                    invitation_sent_at = %(invitation_sent_at)s,
+                    invitation_sent_at = NULL,
                     password_reset_token = %(password_reset_token)s,
                     password_reset_requested_at = %(password_reset_requested_at)s
                 WHERE id = %(user_id)s
@@ -822,7 +845,6 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                 """,
                 {
                     "user_id": user_row["id"],
-                    "invitation_sent_at": now,
                     "password_reset_token": reset_token,
                     "password_reset_requested_at": now,
                     "first_name": interest_row.get("first_name") or "",
@@ -856,7 +878,7 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                 'admin',
                 'pending',
                 NULL,
-                %(invitation_sent_at)s,
+                NULL,
                 %(password_reset_token)s,
                 %(password_reset_requested_at)s
             )
@@ -876,7 +898,6 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
                     "organization_id": personal_org_id,
                     "first_name": interest_row.get("first_name") or "",
                     "surname": interest_row.get("surname") or "",
-                    "invitation_sent_at": now,
                     "password_reset_token": reset_token,
                     "password_reset_requested_at": now,
                 },
@@ -914,15 +935,6 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
             )
 
     set_password_url = _build_set_password_url(reset_base_url, reset_token)
-    account = {
-        "username": username,
-        "first_name": interest_row.get("first_name") or "",
-    }
-    _send_personal_account_approved_email(
-        account=account,
-        set_password_url=set_password_url,
-        source_email=source_email,
-    )
     return {
         "organization_id": personal_org_id,
         "user_id": account_user_row.get("user_id"),
@@ -941,7 +953,8 @@ def _create_or_refresh_personal_account_for_interest(connection, interest_row, *
         "email_validated": bool(interest_row.get("email_validated")),
         "approved_at": interest_row.get("approved_at"),
         "approved_by": (updated_by or "").strip() or "",
-        "approval_email_sent_at": now,
+        "approval_email_sent_at": None,
+        "_set_password_url": set_password_url,
         "created_at": now,
         "updated_at": now,
     }
@@ -1118,6 +1131,16 @@ def _serialize_root_admin_user_summary(username, membership_rows):
     club_rows = [row for row in ordered_rows if (row.get("org_type") or "club") != "personal"]
     personal_plan = (personal_rows[0].get("plan") if personal_rows else None) or None
     registered_at = min((row["created_at"] for row in ordered_rows if row.get("created_at")), default=None)
+    personal_registration_rows = [row for row in personal_rows if row.get("interest_request_id") is not None]
+    memberships_approved = all(
+        (row.get("approval_status") or "approved") == "approved"
+        for row in ordered_rows
+    )
+    personal_email_verified = all(
+        bool(row.get("email_validated"))
+        for row in personal_registration_rows
+    )
+    email_verified = memberships_approved and personal_email_verified
 
     account_types = []
     if personal_plan == "personal_free":
@@ -1139,6 +1162,11 @@ def _serialize_root_admin_user_summary(username, membership_rows):
         "club_count": len(club_rows),
         "membership_count": len(ordered_rows),
         "account_types": account_types,
+        "email_verified": email_verified,
+        "unverified_membership_count": sum(
+            (row.get("approval_status") or "approved") != "approved"
+            for row in ordered_rows
+        ),
     }
 
 
@@ -1152,11 +1180,16 @@ def get_root_admin_users(connection, account_type=None, query=None):
                 u.first_name,
                 u.surname,
                 u.created_at,
+                u.approval_status,
                 o.org_type,
-                o.plan
+                o.plan,
+                o.interest_request_id,
+                i.email_validated
             FROM "SkwshOrgUsers" AS u
             INNER JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
+            LEFT JOIN "HitnScoreInterestRequests" AS i
+                ON i.id = o.interest_request_id
             ORDER BY LOWER(u.clubusername), u.created_at ASC, u.id ASC
             """
         )
@@ -1179,6 +1212,7 @@ def get_root_admin_users(connection, account_type=None, query=None):
         "personal_free_count": sum("personal_free" in user["account_types"] for user in users),
         "personal_plus_count": sum("personal_plus" in user["account_types"] for user in users),
         "club_user_count": sum("club" in user["account_types"] for user in users),
+        "unverified_user_count": sum(not user["email_verified"] for user in users),
     }
 
     requested_account_type = (account_type or "").strip().lower()

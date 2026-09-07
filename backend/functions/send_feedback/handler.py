@@ -1,9 +1,10 @@
 import os
 import re
 
-import boto3
 from aws_lambda_powertools import Logger
+from botocore.exceptions import BotoCoreError, ClientError
 
+from common.mailer import send_email_message
 from common.utils import error_response, parse_body, require_fields, success_response
 
 
@@ -43,7 +44,7 @@ def lambda_handler(event, context):
     destination_email = (
         os.getenv("FEEDBACK_TO_EMAIL")
         or os.getenv("INTEREST_TO_EMAIL")
-        or "rcktinterest@ucingo.com"
+        or "hello@hitnscore.com"
     )
     source_email = (
         os.getenv("FEEDBACK_FROM_EMAIL")
@@ -51,7 +52,6 @@ def lambda_handler(event, context):
         or destination_email
     )
 
-    ses_client = boto3.client("ses", region_name=os.getenv("AWS_REGION"))
     user_agent = (
         payload.get("user_agent")
         or (event.get("headers") or {}).get("user-agent")
@@ -77,23 +77,28 @@ def lambda_handler(event, context):
         ]
     )
 
-    ses_client.send_email(
-        Source=source_email,
-        Destination={"ToAddresses": [destination_email]},
-        ReplyToAddresses=[email],
-        Message={
-            "Subject": {
-                "Data": f"RcktScore: {category}",
-                "Charset": "UTF-8",
-            },
-            "Body": {
-                "Text": {
-                    "Data": message_text,
-                    "Charset": "UTF-8",
-                }
-            },
-        },
-    )
+    try:
+        send_email_message(
+            source_email=source_email,
+            destination_email=destination_email,
+            reply_to_addresses=[email],
+            subject=f"RcktScore: {category}",
+            text_body=message_text,
+        )
+    except (BotoCoreError, ClientError):
+        logger.exception("Feedback email delivery failed")
+        return error_response(
+            503,
+            "FEEDBACK_DELIVERY_FAILED",
+            "We could not deliver your message right now. Please try again later.",
+        )
+    except Exception:
+        logger.exception("Feedback email delivery failed unexpectedly")
+        return error_response(
+            503,
+            "FEEDBACK_DELIVERY_FAILED",
+            "We could not deliver your message right now. Please try again later.",
+        )
 
     logger.info("Feedback accepted for username=%s category=%s", payload.get("username"), category)
     return success_response(202, {"accepted": True})

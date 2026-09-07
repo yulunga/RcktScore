@@ -275,11 +275,15 @@ What to check:
 Common symptoms:
 
 - request stored but email not sent
+- `Ping Us` returns `FEEDBACK_DELIVERY_FAILED` because SES rejected or could not accept the message
 - personal signup returns `PERSONAL_SIGNUP_CONFIGURATION_ERROR` when the password-setup URL is not configured
 - personal signup creates a pending owner membership until the emailed password is chosen; this is email verification, not manual root approval
+- personal signup returning `REGISTRATION_FAILED` with a `SkwshOrgSettings_interest_request_id_fkey` error indicates migration `017_platform_enabled_sports.sql` is missing and the old optional-table fallback rolled back the registration insert; apply migration 017 and deploy the current transaction-safe fallback
 - club requests remain pending enquiries and do not create accounts automatically
 - password reset link points to the wrong host
 - organisation invite exists but user remains pending forever
+
+For `Ping Us`, verify that the deployed `FEEDBACK_FROM_EMAIL` identity exists in `eu-west-2` and that `FEEDBACK_TO_EMAIL` is permitted by the account's SES production or sandbox status. The checked-in feedback defaults use `hello@hitnscore.com`; redeploy the backend after changing these parameters because updating the iOS app alone cannot repair SES configuration.
 
 ## 7. Schema and Migration Issues
 

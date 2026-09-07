@@ -2317,6 +2317,24 @@ textarea {
   display: block;
 }
 
+.root-admin-user-row--unverified {
+  border-color: #e6b84a;
+  background: #fff8df;
+  box-shadow: inset 4px 0 0 #d9822b;
+}
+
+.root-admin-user-row .root-admin-verification-warning {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #f8d775;
+  color: #704400;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .root-admin-section-header {
   display: flex;
   align-items: center;

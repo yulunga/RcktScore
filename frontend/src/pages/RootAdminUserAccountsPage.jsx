@@ -102,11 +102,17 @@ export default function RootAdminUserAccountsPage() {
 
         <div className="dashboard-list">
           {users.map((user) => (
-            <article className="dashboard-item root-admin-user-row" key={user.id}>
+            <article
+              className={`dashboard-item root-admin-user-row${user.email_verified === false ? " root-admin-user-row--unverified" : ""}`}
+              key={user.id}
+            >
               <div className="root-admin-user-directory-fields">
                 <div>
                   <span className="helper-text">Username</span>
                   <strong>{user.username}</strong>
+                  {user.email_verified === false ? (
+                    <span className="root-admin-verification-warning">Email not verified</span>
+                  ) : null}
                 </div>
                 <div>
                   <span className="helper-text">Name</span>

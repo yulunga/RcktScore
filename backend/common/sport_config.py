@@ -45,19 +45,22 @@ def normalize_enabled_sports(values, default=None):
 
 def fetch_platform_enabled_sports(connection):
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT enabled_sports
-                FROM platform_settings
-                WHERE id = %(settings_id)s
-                LIMIT 1
-                """,
-                {"settings_id": PLATFORM_SETTINGS_KEY},
-            )
-            row = cursor.fetchone()
+        # A nested transaction becomes a savepoint when the caller already has
+        # pending writes. A missing optional table can then be handled without
+        # rolling back an in-progress registration or settings update.
+        with connection.transaction():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT enabled_sports
+                    FROM platform_settings
+                    WHERE id = %(settings_id)s
+                    LIMIT 1
+                    """,
+                    {"settings_id": PLATFORM_SETTINGS_KEY},
+                )
+                row = cursor.fetchone()
     except UndefinedTable:
-        connection.rollback()
         row = None
 
     return normalize_enabled_sports((row or {}).get("enabled_sports"))

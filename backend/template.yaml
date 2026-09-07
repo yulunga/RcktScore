@@ -23,16 +23,16 @@ Parameters:
     Default: prod
   InterestToEmail:
     Type: String
-    Default: rcktinterest@ucingo.com
+    Default: hello@hitnscore.com
   InterestFromEmail:
     Type: String
-    Default: rcktinterest@ucingo.com
+    Default: hello@hitnscore.com
   FeedbackToEmail:
     Type: String
-    Default: rcktinterest@ucingo.com
+    Default: hello@hitnscore.com
   FeedbackFromEmail:
     Type: String
-    Default: rcktinterest@ucingo.com
+    Default: hello@hitnscore.com
   UserInvitationFromEmail:
     Type: String
     Default: rcktinterest@ucingo.com
@@ -44,7 +44,7 @@ Parameters:
     Default: ""
   PasswordResetFromEmail:
     Type: String
-    Default: rcktinterest@ucingo.com
+    Default: hello@hitnscore.com
   PasswordResetBaseUrl:
     Type: String
     Default: "https://app.hitnscore.com"

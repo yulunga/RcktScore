@@ -191,7 +191,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 
 Current root-admin user-account behavior:
 
-- the user directory deduplicates organisation membership rows by case-insensitive username and can filter Personal Free, Personal Plus, or club users
+- the user directory deduplicates organisation membership rows by case-insensitive username, reports `email_verified` and `unverified_membership_count`, and can filter Personal Free, Personal Plus, or club users
 - user profiles return registration/contact details, latest session activity, personal and club associations, activated sports, match totals by sport, and recent attributable matches
 - club match activity is attributed using the recorded referee username; every match in a personal tenant is attributed to that tenant's owner
 - adding a club membership creates a pending invitation, preserving the club approval workflow
@@ -454,12 +454,14 @@ Current behavior:
 - register-interest writes to `HitnScoreInterestRequests`
 - `use_type = personal` records the request as `registered`, creates or refreshes a hidden `personal_free` organisation, owner membership, and personal court, then emails a time-limited password-setup link
 - personal signup returns `201` with `account_created = true` and does not require root-admin approval
+- the pending personal organisation/user and password token are committed before SES delivery; completing the emailed password link marks the membership approved and the interest record email-validated, while a delivery failure leaves the pending record available for retry
 - `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
 - migration `020_personal_registration_status.sql` converts historical personal-interest rows from approval terminology to `registered`; club rows retain pending/approved/denied states
 - personal signup requires `PASSWORD_RESET_BASE_URL` to be configured; the request origin is not used as a fallback
 - honeypot field is `company`
 - SES delivery must be configured correctly
 - feedback sends email but does not persist to a database table
+- feedback defaults to the verified `hello@hitnscore.com` sender and recipient; SES delivery failures return `503 FEEDBACK_DELIVERY_FAILED` in the normal API envelope instead of an unstructured Lambda error
 
 ## Response Contract
 
