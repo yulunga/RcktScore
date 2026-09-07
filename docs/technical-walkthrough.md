@@ -359,7 +359,7 @@ Current live sport engines:
 
 - undo removes the last non-`match_started` event
 - `stroke` is score-aware and can end a game or match
-- shirt-colour changes are plan-aware
+- shirt-colour changes are accepted for personal-free, personal-plus, and club accounts
 
 ## 13. Display Screen Flow
 

@@ -48,7 +48,7 @@ What is real and implemented:
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
 - native settings now use a plan-aware menu layout with About first, followed by Profile and Subscription, dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, personal-account deletion with two destructive confirmations, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
-- native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
+- native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
 - mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice

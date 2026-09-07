@@ -205,7 +205,7 @@ Common symptoms:
 - personal user cannot start a second match
 - a club match becomes scheduled instead of active
 - score or server state looks wrong after undo
-- shirt-colour changes do not apply for a personal-free account
+- a selected shirt colour is replaced by the default colour
 - tennis appears in setup but cannot be created
 - tennis score labels or server rotation look wrong during tie-breaks
 - a queued offline point appears to be applied twice after reconnection
@@ -213,6 +213,7 @@ Common symptoms:
 What to check:
 
 - tenant plan and organisation type
+- the submitted `player1_shirt_color` and `player2_shirt_color` values (all personal and club plans may set them)
 - `matches.sport` and the tenant `enabled_sports` list
 - court conflict behavior
 - latest `match_events` entries

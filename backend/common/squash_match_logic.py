@@ -647,10 +647,7 @@ def is_personal_tenant(connection, tenant_id):
 
 
 def _can_choose_shirt_colors(tenant_plan, tenant_id=None):
-    org_type = (tenant_plan or {}).get("org_type") or "club"
-    plan = (tenant_plan or {}).get("plan") or ("personal_free" if org_type == "personal" else "club_essentials")
-    is_personal = org_type == "personal" or _coerce_int(tenant_id) >= 50000
-    return not is_personal or plan == "personal_plus"
+    return True
 
 
 def _ensure_personal_match_court(connection, tenant_id):

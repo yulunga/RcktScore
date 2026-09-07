@@ -50,7 +50,7 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
     }
 
     var navigationTitle: String {
-        "Start \(displayName) Match"
+        "Match Setup - \(displayName)"
     }
 
     var isImplementedToday: Bool {
@@ -363,7 +363,6 @@ struct StartNewMatchView: View {
     @State private var playerSuggestions: [PlayerLookup] = []
     @State private var refereeSuggestions: [String] = []
     @State private var loadedOrganizationType: String?
-    @State private var loadedOrganizationPlan: String?
     @State private var loadedEnabledSports: [String] = []
     @State private var isLoading = false
     @State private var isSubmitting = false
@@ -387,27 +386,9 @@ struct StartNewMatchView: View {
         return (session?.organizationType ?? "club").lowercased()
     }
 
-    private var organizationPlan: String {
-        if let loadedOrganizationPlan, !loadedOrganizationPlan.isEmpty {
-            return loadedOrganizationPlan.lowercased()
-        }
-
-        if let plan = session?.plan, !plan.isEmpty {
-            return plan.lowercased()
-        }
-
-        return organizationType == "personal" ? "personal_free" : "club_essentials"
-    }
-
     private var isPersonalAccount: Bool { organizationType == "personal" }
     private var isTennisMatch: Bool { selectedSport == .tennis }
     private var showsTennisDoublesToggle: Bool { isTennisMatch }
-    private var showsCountryFields: Bool { !(isTennisMatch && isPersonalAccount) }
-    private var showsHandednessToggle: Bool { !isTennisMatch }
-
-    private var canChooseShirtColors: Bool {
-        !isPersonalAccount || organizationPlan == "personal_plus"
-    }
 
     private var enabledSportIDs: Set<String> {
         let source = loadedEnabledSports.isEmpty
@@ -447,7 +428,7 @@ struct StartNewMatchView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
+            VStack(spacing: 14) {
                 introCard
 
                 if let errorMessage {
@@ -542,7 +523,8 @@ struct StartNewMatchView: View {
             }
             .frame(maxWidth: 460)
             .padding(.horizontal, 18)
-            .padding(.vertical, 20)
+            .padding(.top, 10)
+            .padding(.bottom, 20)
             .frame(maxWidth: .infinity)
         }
         .background(
@@ -583,41 +565,11 @@ struct StartNewMatchView: View {
     }
 
     private var introCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !isTennisMatch {
-                Text(selectedSport.displayName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.dashboardBrand)
-            }
-
-            Text("Match Setup")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.primary)
-
-            if !isTennisMatch {
-                Text(
-                    isPersonalAccount
-                        ? "Enter both players and choose the match format before opening the live scoring screen."
-                        : "Complete the court, player, and match format details before opening the live scoring screen."
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-
-            if !canChooseShirtColors {
-                Text("Shirt colours are available on Personal+ and club plans.")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.dashboardAccentPink)
-            }
-        }
+        Text("Match Setup - \(selectedSport.displayName)")
+            .font(.title3.weight(.bold))
+            .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(Color.dashboardHeroBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.dashboardBorder, lineWidth: 1)
-        )
+        .padding(.horizontal, 4)
     }
 
     private var matchTypeCard: some View {
@@ -885,17 +837,12 @@ struct StartNewMatchView: View {
                     labeledField(title: "Surname", placeholder: "Surname", text: surname, focus: surnameFocus)
                 }
 
-                if showsHandednessToggle {
-                    Toggle(isOn: isLeftHanded) {
-                        Text("Lefty")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .tint(Color.dashboardBrand)
+                HStack(alignment: .top, spacing: 12) {
+                    handednessToggle(isLeftHanded: isLeftHanded)
+                    shirtColorPicker(selection: shirtColor)
                 }
 
-                if showsCountryFields {
-                    countryField(title: "Country", text: country, focus: countryFocus)
-                }
+                countryField(title: "Country", text: country, focus: countryFocus)
 
                 if !suggestions.isEmpty {
                     suggestionList(suggestions, id: \.id) { suggestion in
@@ -910,9 +857,6 @@ struct StartNewMatchView: View {
                     }
                 }
 
-                if canChooseShirtColors {
-                    shirtColorGrid(selection: shirtColor)
-                }
             }
         }
     }
@@ -949,9 +893,7 @@ struct StartNewMatchView: View {
                     surnameFocus: secondarySurnameFocus
                 )
 
-                if canChooseShirtColors {
-                    shirtColorGrid(selection: shirtColor)
-                }
+                shirtColorPicker(selection: shirtColor)
             }
         }
     }
@@ -1088,49 +1030,71 @@ struct StartNewMatchView: View {
         }
     }
 
-    private func shirtColorGrid(selection: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Shirt Colour")
+    private func handednessToggle(isLeftHanded: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Hand")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(
-                columns: [
-                    GridItem(.adaptive(minimum: 40, maximum: 52), spacing: 12)
-                ],
-                spacing: 12
-            ) {
+            Toggle("Lefty", isOn: isLeftHanded)
+                .font(.subheadline.weight(.semibold))
+                .tint(Color.dashboardBrand)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Color.dashboardInnerCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func shirtColorPicker(selection: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Shirt")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Menu {
                 ForEach(shirtColorOptions) { option in
                     Button {
                         selection.wrappedValue = option.id
                     } label: {
-                        ZStack {
-                            Circle()
-                                .fill(option.swatch)
-                                .frame(width: 34, height: 34)
-                                .overlay(
-                                    Circle()
-                                        .stroke(selection.wrappedValue == option.id ? option.border : option.border.opacity(0.5), lineWidth: 2)
-                                )
-
-                            if selection.wrappedValue == option.id {
-                                Image(systemName: "checkmark")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(option.foreground)
-                            }
+                        if selection.wrappedValue == option.id {
+                            Label(option.label, systemImage: "checkmark")
+                        } else {
+                            Text(option.label)
                         }
-                        .frame(width: 42, height: 42)
-                        .background(
-                            Circle()
-                                .fill(selection.wrappedValue == option.id ? option.swatch.opacity(0.18) : Color.dashboardInnerCardBackground)
-                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(option.label)
                     .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
                 }
+            } label: {
+                HStack(spacing: 9) {
+                    let selectedOption = shirtColorOptions.first(where: { $0.id == selection.wrappedValue }) ?? shirtColorOptions[0]
+
+                    Circle()
+                        .fill(selectedOption.swatch)
+                        .frame(width: 18, height: 18)
+                        .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
+
+                    Text(selectedOption.label)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Spacer(minLength: 4)
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Color.dashboardInnerCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+            .accessibilityLabel("Shirt")
+            .accessibilityValue(shirtColorOptions.first(where: { $0.id == selection.wrappedValue })?.label ?? "Navy")
+            .accessibilityIdentifier("startMatch.shirtColorPicker")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func selectionCard(
@@ -1264,7 +1228,6 @@ struct StartNewMatchView: View {
             await MainActor.run {
                 availableCourts = settings.courts
                 loadedOrganizationType = settings.organization.organizationType
-                loadedOrganizationPlan = settings.organization.plan
                 loadedEnabledSports = settings.organization.enabledSports
                 if !settings.organization.enabledSports.map({ $0.lowercased() }).contains(selectedSport.rawValue) {
                     errorMessage = "\(selectedSport.displayName) is not enabled for this account or club."
@@ -1486,14 +1449,14 @@ struct StartNewMatchView: View {
             courtAlias: isPersonalAccount ? nil : formState.courtAlias,
             player1Name: player1Name,
             player1Surname: isTennisMatch && formState.isDoubles ? "" : formState.player1Surname.trimmingCharacters(in: .whitespacesAndNewlines),
-            player1Country: showsCountryFields ? formState.player1Country.trimmingCharacters(in: .whitespacesAndNewlines) : "",
+            player1Country: formState.player1Country.trimmingCharacters(in: .whitespacesAndNewlines),
             player1Handedness: formState.player1IsLeftHanded ? "left" : "right",
-            player1ShirtColor: canChooseShirtColors ? formState.player1ShirtColor : "navy",
+            player1ShirtColor: formState.player1ShirtColor,
             player2Name: player2Name,
             player2Surname: isTennisMatch && formState.isDoubles ? "" : formState.player2Surname.trimmingCharacters(in: .whitespacesAndNewlines),
-            player2Country: showsCountryFields ? formState.player2Country.trimmingCharacters(in: .whitespacesAndNewlines) : "",
+            player2Country: formState.player2Country.trimmingCharacters(in: .whitespacesAndNewlines),
             player2Handedness: formState.player2IsLeftHanded ? "left" : "right",
-            player2ShirtColor: canChooseShirtColors ? formState.player2ShirtColor : "white",
+            player2ShirtColor: formState.player2ShirtColor,
             refereeName: isPersonalAccount ? "" : formState.refereeName.trimmingCharacters(in: .whitespacesAndNewlines),
             scoreType: formState.scoreType,
             bestOf: formState.bestOf,

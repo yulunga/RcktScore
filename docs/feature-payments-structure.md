@@ -88,7 +88,7 @@ Currently enforced in code:
 
 - one active personal match at a time
 - dashboard/history returns the last `3` completed matches
-- no shirt-colour selection entitlement
+- shirt-colour selection is enabled
 
 ### Personal plus
 
@@ -125,7 +125,7 @@ These are safe to describe as implemented today:
 
 - Personal accounts exist as hidden single-user organisations
 - Personal free has reduced match-history access
-- Personal plus unlocks deeper history than personal free and shirt colours
+- Personal plus unlocks deeper history than personal free; shirt colours are available on both tiers
 - Clubs have multi-user workspace, court management, and club match operations
 - clubs and personal accounts can have sport visibility rolled out selectively
 - tennis is a live selectable scoring sport alongside squash and racketball

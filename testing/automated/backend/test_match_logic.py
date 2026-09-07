@@ -2,6 +2,7 @@ from common.squash_match_logic import (
     _best_of_value,
     _games_to_win,
     _is_game_complete,
+    _can_choose_shirt_colors,
     _score_type_value,
     _shirt_color_value,
 )
@@ -29,6 +30,12 @@ def test_score_type_value_defaults_to_par_15_for_invalid_values():
 def test_shirt_color_value_falls_back_when_unknown():
     assert _shirt_color_value("blue", "navy") == "blue"
     assert _shirt_color_value("unknown", "navy") == "navy"
+
+
+def test_shirt_colors_are_available_to_both_personal_plans_and_clubs():
+    assert _can_choose_shirt_colors({"org_type": "personal", "plan": "personal_free"}, 50001) is True
+    assert _can_choose_shirt_colors({"org_type": "personal", "plan": "personal_plus"}, 50002) is True
+    assert _can_choose_shirt_colors({"org_type": "club", "plan": "club_essentials"}, 1) is True
 
 
 def test_game_completion_requires_target_and_two_point_margin():

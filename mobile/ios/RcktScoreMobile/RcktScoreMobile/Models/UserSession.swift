@@ -109,7 +109,7 @@ extension UserSession {
     }
 
     var canChooseShirtColors: Bool {
-        !isPersonalAccount || (plan ?? "").lowercased() == "personal_plus"
+        true
     }
 
     func switchingMembership(to membership: UserMembership) -> UserSession {

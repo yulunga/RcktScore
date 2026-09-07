@@ -524,7 +524,7 @@ Important current `matches` concepts:
 
 - tenant and court identity
 - player names, surnames, countries, handedness
-- player shirt colours
+- player shirt colours, available to personal-free, personal-plus, and club accounts
 - handicap flags and offsets
 - active/scheduled/completed status
 - game counts and final winner summary

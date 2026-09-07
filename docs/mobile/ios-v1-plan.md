@@ -28,7 +28,7 @@ Already in place:
 - native start-new-match flow with sport picker
 - player and referee lookup suggestions
 - court selection plus automatic scheduled fallback when a court is busy
-- handicap setup and tier-aware shirt-colour handling
+- handicap setup and dropdown shirt-colour selection for personal-free, personal-plus, and club accounts
 - enabled-sport-aware native setup flow for squash, racketball, and tennis
 - scheduled match start
 - live scoring with warm-up, first-server selection, score taps, stroke, let,
