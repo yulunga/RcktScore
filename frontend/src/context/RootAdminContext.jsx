@@ -36,21 +36,25 @@ function readStoredSession() {
   }
 }
 
+function writeStoredSession(nextSession) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!nextSession) {
+    window.sessionStorage.removeItem(ROOT_ADMIN_SESSION_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(ROOT_ADMIN_SESSION_KEY, JSON.stringify(nextSession));
+}
+
 export function RootAdminProvider({ children }) {
   const [session, setSession] = useState(() => readStoredSession());
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!session) {
-      window.sessionStorage.removeItem(ROOT_ADMIN_SESSION_KEY);
-      return;
-    }
-
-    window.sessionStorage.setItem(ROOT_ADMIN_SESSION_KEY, JSON.stringify(session));
+    writeStoredSession(session);
   }, [session]);
 
   useEffect(() => {
@@ -59,6 +63,7 @@ export function RootAdminProvider({ children }) {
     }
 
     const handleSessionInvalidated = () => {
+      writeStoredSession(null);
       setSession(null);
     };
 
@@ -85,12 +90,14 @@ export function RootAdminProvider({ children }) {
         username: trimmedUsername,
         password: trimmedPassword,
       });
-      setSession({
+      const nextSession = {
         ...response.rootAdminSession,
         loggedInAt: new Date().toISOString(),
-      });
+      };
+      writeStoredSession(nextSession);
+      setSession(nextSession);
 
-      return { ok: true, session: response.rootAdminSession };
+      return { ok: true, session: nextSession };
     } catch (requestError) {
       return {
         ok: false,
@@ -106,6 +113,7 @@ export function RootAdminProvider({ children }) {
     if (token) {
       rootAdminLogoutRequest(token).catch(() => {});
     }
+    writeStoredSession(null);
     setSession(null);
   }, [session]);
 
