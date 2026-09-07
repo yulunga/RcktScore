@@ -259,6 +259,35 @@ export function updateRootAdminPersonalAccount(requestId, payload) {
   });
 }
 
+export function getRootAdminUsers(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.accountType) {
+    params.set("account_type", filters.accountType);
+  }
+  if (filters.query) {
+    params.set("q", filters.query);
+  }
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest(`/root_admin/users${suffix}`);
+}
+
+export function getRootAdminUserProfile(userId) {
+  return apiRequest(`/root_admin/users/${userId}`);
+}
+
+export function addRootAdminUserMembership(userId, payload) {
+  return apiRequest(`/root_admin/users/${userId}/memberships`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteRootAdminUserMembership(userId, membershipId) {
+  return apiRequest(`/root_admin/users/${userId}/memberships/${membershipId}`, {
+    method: "DELETE",
+  });
+}
+
 export function createRootAdminOrganization(payload) {
   return apiRequest("/root_admin/organizations", {
     method: "POST",

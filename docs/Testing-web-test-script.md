@@ -438,7 +438,8 @@ Run smoke checks only (given current security posture notes):
 1. `/rckscoreAdmin`
 2. `/rckscoreAdmin/dashboard`
 3. `/rckscoreAdmin/interests`
-4. `/rckscoreAdmin/personal-accounts`
+4. `/rckscoreAdmin/users`
+5. `/rckscoreAdmin/users/:userId`
 
 Expected:
 
@@ -471,4 +472,3 @@ Minimum completion criteria:
 - Any High defects have documented workaround and owner
 - Mobile portrait + landscape coverage completed for all critical flows
 - iPad and desktop smoke/full coverage executed as planned
-

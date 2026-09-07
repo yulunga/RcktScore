@@ -8,7 +8,7 @@ from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
-from common.root_admin_logic import update_root_admin_interest_request_status
+from common.root_admin_logic import create_self_service_personal_account
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -38,7 +38,7 @@ def _upsert_interest_request(connection, payload):
         "email": email,
         "use_type": payload["use_type"],
         "club_name": payload.get("club_name") or None,
-        "approval_status": "pending",
+        "approval_status": "registered" if payload["use_type"] == "personal" else "pending",
         "email_validated": False,
         "page_url": payload.get("page_url") or None,
         "user_agent": payload.get("user_agent") or None,
@@ -193,11 +193,9 @@ def lambda_handler(event, context):
             if use_type == "personal":
                 if not password_setup_base_url:
                     raise ValueError("PASSWORD_RESET_BASE_URL must be configured for personal account signup")
-                personal_signup = update_root_admin_interest_request_status(
+                personal_signup = create_self_service_personal_account(
                     connection,
                     interest_row["id"],
-                    "approved",
-                    updated_by="self-service signup",
                     source_email=source_email,
                     reset_base_url=password_setup_base_url,
                 )
@@ -244,7 +242,7 @@ def lambda_handler(event, context):
                 "accepted": True,
                 "account_created": True,
                 "requires_password_setup": True,
-                "personal_account": personal_signup.get("personal_account") if personal_signup else None,
+                "personal_account": personal_signup,
             },
         )
 

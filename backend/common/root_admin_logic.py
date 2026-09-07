@@ -14,6 +14,7 @@ from common.organization_logic import (
     _utcnow,
     approve_organization_user_by_id,
     create_organization_user,
+    delete_organization_user,
     update_organization_user_role,
 )
 from common.password_reset_logic import RESET_TOKEN_TTL_HOURS
@@ -152,6 +153,7 @@ def get_root_admin_dashboard(connection):
                     COUNT(*) AS interest_count,
                     COUNT(*) FILTER (WHERE approval_status = 'pending') AS pending_interest_count
                 FROM "HitnScoreInterestRequests"
+                WHERE use_type = 'club'
                 """
             )
             interest_summary = cursor.fetchone() or {}
@@ -159,6 +161,14 @@ def get_root_admin_dashboard(connection):
             pending_interest_count = interest_summary.get("pending_interest_count") or 0
         except UndefinedTable:
             connection.rollback()
+
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT LOWER(clubusername)) AS total_user_count
+            FROM "SkwshOrgUsers"
+            """
+        )
+        total_user_count = (cursor.fetchone() or {}).get("total_user_count") or 0
 
         try:
             cursor.execute(
@@ -220,6 +230,7 @@ def get_root_admin_dashboard(connection):
             "interest_count": interest_count,
             "pending_interest_count": pending_interest_count,
             "personal_account_count": personal_account_count,
+            "total_user_count": total_user_count,
             "match_count": match_count,
             "completed_match_count": completed_match_count,
         },
@@ -524,10 +535,11 @@ def _send_personal_account_approved_email(*, account, set_password_url, source_e
 def get_root_admin_interest_requests(connection, status=None):
     requested_status = (status or "").strip().lower()
     params = {}
-    where_clause = ""
+    where_clauses = ["use_type = 'club'"]
     if requested_status in INTEREST_STATUSES:
-        where_clause = "WHERE approval_status = %(status)s"
+        where_clauses.append("approval_status = %(status)s")
         params["status"] = requested_status
+    where_clause = f"WHERE {' AND '.join(where_clauses)}"
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -566,6 +578,58 @@ def get_root_admin_interest_requests(connection, status=None):
         rows = cursor.fetchall()
 
     return [_serialize_interest_request(row) for row in rows]
+
+
+def create_self_service_personal_account(
+    connection,
+    request_id,
+    *,
+    source_email,
+    reset_base_url,
+):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                created_at,
+                updated_at,
+                first_name,
+                surname,
+                email,
+                use_type,
+                club_name,
+                personal_plan,
+                approval_status,
+                email_validated,
+                email_validated_at,
+                approved_at,
+                approved_by,
+                page_url,
+                user_agent
+            FROM "HitnScoreInterestRequests"
+            WHERE id = %(request_id)s
+              AND use_type = 'personal'
+            LIMIT 1
+            """,
+            {"request_id": int(request_id)},
+        )
+        interest_row = cursor.fetchone()
+
+    if not interest_row:
+        raise LookupError("Personal registration was not found")
+    if not source_email:
+        raise ValueError("INTEREST_FROM_EMAIL must be configured")
+
+    personal_account = _create_or_refresh_personal_account_for_interest(
+        connection,
+        interest_row,
+        updated_by="self-service signup",
+        reset_base_url=reset_base_url,
+        source_email=source_email,
+    )
+    connection.commit()
+    return _serialize_personal_account(personal_account)
 
 
 def get_root_admin_personal_accounts(connection, plan=None):
@@ -887,9 +951,6 @@ def update_root_admin_interest_request_status(
     request_id,
     status,
     updated_by=None,
-    *,
-    source_email=None,
-    reset_base_url=None,
 ):
     requested_status = (status or "").strip().lower()
     if requested_status not in INTEREST_STATUSES:
@@ -908,6 +969,7 @@ def update_root_admin_interest_request_status(
                 END,
                 approved_by = %(updated_by)s
             WHERE id = %(id)s
+              AND use_type = 'club'
             RETURNING
                 id,
                 created_at,
@@ -938,23 +1000,8 @@ def update_root_admin_interest_request_status(
     if not row:
         raise LookupError("Interest request not found")
 
-    personal_account = None
-    if requested_status == "approved" and (row.get("use_type") or "personal") == "personal":
-        if not source_email:
-            raise ValueError("INTEREST_FROM_EMAIL must be configured")
-        personal_account = _create_or_refresh_personal_account_for_interest(
-            connection,
-            row,
-            updated_by=updated_by,
-            reset_base_url=reset_base_url,
-            source_email=source_email,
-        )
-
     connection.commit()
-    result = _serialize_interest_request(row)
-    if personal_account:
-        result["personal_account"] = _serialize_personal_account(personal_account)
-    return result
+    return _serialize_interest_request(row)
 
 
 def update_root_admin_personal_account_settings(
@@ -1047,6 +1094,401 @@ def update_root_admin_personal_account_settings(
 
     connection.commit()
     return _serialize_personal_account(row)
+
+
+def _first_present(rows, field):
+    for row in rows:
+        value = row.get(field)
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+def _serialize_root_admin_user_summary(username, membership_rows):
+    ordered_rows = sorted(
+        membership_rows,
+        key=lambda row: (
+            0 if (row.get("org_type") or "club") == "personal" else 1,
+            row.get("created_at") or _utcnow(),
+            row["membership_id"],
+        ),
+    )
+    personal_rows = [row for row in ordered_rows if (row.get("org_type") or "club") == "personal"]
+    club_rows = [row for row in ordered_rows if (row.get("org_type") or "club") != "personal"]
+    personal_plan = (personal_rows[0].get("plan") if personal_rows else None) or None
+    registered_at = min((row["created_at"] for row in ordered_rows if row.get("created_at")), default=None)
+
+    account_types = []
+    if personal_plan == "personal_free":
+        account_types.append("personal_free")
+    if personal_plan == "personal_plus":
+        account_types.append("personal_plus")
+    if club_rows:
+        account_types.append("club")
+
+    return {
+        "id": min(row["membership_id"] for row in ordered_rows),
+        "username": username,
+        "first_name": _first_present(ordered_rows, "first_name"),
+        "surname": _first_present(ordered_rows, "surname"),
+        "registered_at": registered_at.isoformat() if registered_at else None,
+        "personal_plan": personal_plan,
+        "has_personal_account": bool(personal_rows),
+        "has_club_account": bool(club_rows),
+        "club_count": len(club_rows),
+        "membership_count": len(ordered_rows),
+        "account_types": account_types,
+    }
+
+
+def get_root_admin_users(connection, account_type=None, query=None):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                u.id AS membership_id,
+                u.clubusername,
+                u.first_name,
+                u.surname,
+                u.created_at,
+                o.org_type,
+                o.plan
+            FROM "SkwshOrgUsers" AS u
+            INNER JOIN "SkwshOrgSettings" AS o
+                ON o.id = u.organization_id
+            ORDER BY LOWER(u.clubusername), u.created_at ASC, u.id ASC
+            """
+        )
+        rows = cursor.fetchall()
+
+    memberships_by_username = {}
+    for row in rows:
+        username = (row.get("clubusername") or "").strip().lower()
+        if username:
+            memberships_by_username.setdefault(username, []).append(row)
+
+    users = [
+        _serialize_root_admin_user_summary(username, membership_rows)
+        for username, membership_rows in memberships_by_username.items()
+    ]
+    users.sort(key=lambda user: (user["surname"].lower(), user["first_name"].lower(), user["username"]))
+
+    summary = {
+        "total_user_count": len(users),
+        "personal_free_count": sum("personal_free" in user["account_types"] for user in users),
+        "personal_plus_count": sum("personal_plus" in user["account_types"] for user in users),
+        "club_user_count": sum("club" in user["account_types"] for user in users),
+    }
+
+    requested_account_type = (account_type or "").strip().lower()
+    if requested_account_type in {"personal_free", "personal_plus", "club"}:
+        users = [user for user in users if requested_account_type in user["account_types"]]
+
+    search_text = (query or "").strip().lower()
+    if search_text:
+        users = [
+            user
+            for user in users
+            if search_text in " ".join(
+                [user["username"], user["first_name"], user["surname"]]
+            ).lower()
+        ]
+
+    return {
+        "summary": summary,
+        "users": users,
+        "filters": {
+            "account_type": requested_account_type,
+            "query": search_text,
+        },
+    }
+
+
+def _root_admin_user_username(connection, user_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT clubusername
+            FROM "SkwshOrgUsers"
+            WHERE id = %(user_id)s
+            LIMIT 1
+            """,
+            {"user_id": int(user_id)},
+        )
+        row = cursor.fetchone()
+    return (row or {}).get("clubusername")
+
+
+def get_root_admin_user_profile(connection, user_id):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                u.id AS membership_id,
+                u.clubusername,
+                u.role,
+                u.approval_status,
+                u.first_name,
+                u.surname,
+                u.country,
+                u.telephone,
+                u.city_location,
+                u.created_at,
+                u.invitation_sent_at,
+                u.approved_at,
+                o.id AS organization_id,
+                o.organization_name,
+                o.org_type,
+                o.plan,
+                o.enabled_sports
+            FROM "SkwshOrgUsers" AS u
+            INNER JOIN "SkwshOrgSettings" AS o
+                ON o.id = u.organization_id
+            WHERE LOWER(u.clubusername) = LOWER(%(username)s)
+            ORDER BY
+                CASE WHEN o.org_type = 'personal' THEN 0 ELSE 1 END,
+                o.organization_name ASC,
+                u.id ASC
+            """,
+            {"username": username},
+        )
+        membership_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT
+                m.sport,
+                COUNT(*) AS match_count
+            FROM matches AS m
+            WHERE LOWER(COALESCE(m.referee_name, '')) = LOWER(%(username)s)
+               OR m.tenant_id IN (
+                    SELECT personal_u.organization_id
+                    FROM "SkwshOrgUsers" AS personal_u
+                    INNER JOIN "SkwshOrgSettings" AS personal_o
+                        ON personal_o.id = personal_u.organization_id
+                    WHERE LOWER(personal_u.clubusername) = LOWER(%(username)s)
+                      AND personal_o.org_type = 'personal'
+               )
+            GROUP BY m.sport
+            ORDER BY COUNT(*) DESC, m.sport ASC
+            """,
+            {"username": username},
+        )
+        sport_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT
+                m.id,
+                m.sport,
+                m.status,
+                m.player1_name,
+                m.player1_surname,
+                m.player2_name,
+                m.player2_surname,
+                m.created_at,
+                m.updated_at,
+                o.organization_name
+            FROM matches AS m
+            LEFT JOIN "SkwshOrgSettings" AS o
+                ON o.id = m.tenant_id
+            WHERE LOWER(COALESCE(m.referee_name, '')) = LOWER(%(username)s)
+               OR m.tenant_id IN (
+                    SELECT personal_u.organization_id
+                    FROM "SkwshOrgUsers" AS personal_u
+                    INNER JOIN "SkwshOrgSettings" AS personal_o
+                        ON personal_o.id = personal_u.organization_id
+                    WHERE LOWER(personal_u.clubusername) = LOWER(%(username)s)
+                      AND personal_o.org_type = 'personal'
+               )
+            ORDER BY COALESCE(m.updated_at, m.created_at) DESC, m.id DESC
+            LIMIT 10
+            """,
+            {"username": username},
+        )
+        recent_match_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT id, organization_name
+            FROM "SkwshOrgSettings"
+            WHERE COALESCE(org_type, 'club') <> 'personal'
+              AND id NOT IN (
+                  SELECT organization_id
+                  FROM "SkwshOrgUsers"
+                  WHERE LOWER(clubusername) = LOWER(%(username)s)
+              )
+            ORDER BY organization_name ASC, id ASC
+            """,
+            {"username": username},
+        )
+        available_clubs = cursor.fetchall()
+
+    summary = _serialize_root_admin_user_summary(username.lower(), membership_rows)
+    memberships = []
+    for row in membership_rows:
+        memberships.append(
+            {
+                "id": row["membership_id"],
+                "organization_id": row["organization_id"],
+                "organization_name": row.get("organization_name") or f"Organisation {row['organization_id']}",
+                "organization_type": row.get("org_type") or "club",
+                "plan": row.get("plan") or ("personal_free" if row.get("org_type") == "personal" else "club_essentials"),
+                "role": row.get("role") or "user",
+                "status": row.get("approval_status") or "approved",
+                "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
+                "registered_at": row["created_at"].isoformat() if row.get("created_at") else None,
+                "invitation_sent_at": row["invitation_sent_at"].isoformat() if row.get("invitation_sent_at") else None,
+                "approved_at": row["approved_at"].isoformat() if row.get("approved_at") else None,
+            }
+        )
+
+    recent_matches = []
+    for row in recent_match_rows:
+        player1 = " ".join(part for part in [row.get("player1_name"), row.get("player1_surname")] if part).strip()
+        player2 = " ".join(part for part in [row.get("player2_name"), row.get("player2_surname")] if part).strip()
+        recent_matches.append(
+            {
+                "id": str(row["id"]),
+                "sport": row.get("sport") or "squash",
+                "sport_label": SPORT_LABELS.get(row.get("sport") or "squash", (row.get("sport") or "squash").title()),
+                "status": row.get("status") or "active",
+                "players": f"{player1 or 'Player 1'} vs {player2 or 'Player 2'}",
+                "organization_name": row.get("organization_name") or "Unknown organisation",
+                "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+                "updated_at": row["updated_at"].isoformat() if row.get("updated_at") else None,
+            }
+        )
+
+    summary.update(
+        {
+            "country": _first_present(membership_rows, "country"),
+            "telephone": _first_present(membership_rows, "telephone"),
+            "city_location": _first_present(membership_rows, "city_location"),
+        }
+    )
+    game_types = [
+        {
+            "sport": row.get("sport") or "squash",
+            "label": SPORT_LABELS.get(row.get("sport") or "squash", (row.get("sport") or "squash").title()),
+            "match_count": row.get("match_count") or 0,
+        }
+        for row in sport_rows
+    ]
+
+    return {
+        "user": summary,
+        "memberships": memberships,
+        "activity": {
+            "match_count": sum(item["match_count"] for item in game_types),
+            "game_types": game_types,
+            "recent_matches": recent_matches,
+            "attribution_note": "Club activity is attributed from the recorded referee username; personal activity includes matches in the user's personal account.",
+        },
+        "available_clubs": [
+            {
+                "id": row["id"],
+                "organization_name": row.get("organization_name") or f"Organisation {row['id']}",
+            }
+            for row in available_clubs
+        ],
+    }
+
+
+def add_root_admin_user_club_membership(
+    connection,
+    user_id,
+    organization_id,
+    role,
+    *,
+    invitation_source_email=None,
+    approval_base_url=None,
+):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        raise LookupError("User not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COALESCE(org_type, 'club') AS org_type
+            FROM "SkwshOrgSettings"
+            WHERE id = %(organization_id)s
+            LIMIT 1
+            """,
+            {"organization_id": int(organization_id)},
+        )
+        organization = cursor.fetchone()
+    if not organization:
+        raise LookupError("Club not found")
+    if organization.get("org_type") == "personal":
+        raise ValueError("Users can only be added to club organisations here")
+
+    return create_organization_user(
+        connection,
+        organization_id,
+        username,
+        None,
+        role,
+        allow_existing_password_reuse=True,
+        invitation_source_email=invitation_source_email,
+        approval_base_url=approval_base_url,
+    )
+
+
+def remove_root_admin_user_club_membership(connection, user_id, membership_id):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        raise LookupError("User not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT u.organization_id, u.clubusername, COALESCE(o.org_type, 'club') AS org_type
+            FROM "SkwshOrgUsers" AS u
+            INNER JOIN "SkwshOrgSettings" AS o
+                ON o.id = u.organization_id
+            WHERE u.id = %(membership_id)s
+              AND LOWER(u.clubusername) = LOWER(%(username)s)
+            LIMIT 1
+            """,
+            {"membership_id": int(membership_id), "username": username},
+        )
+        membership = cursor.fetchone()
+
+    if not membership:
+        raise LookupError("Club membership not found")
+    if membership.get("org_type") == "personal":
+        raise ValueError("Personal account membership cannot be removed as a club association")
+
+    deleted = delete_organization_user(
+        connection,
+        membership["organization_id"],
+        membership_id,
+    )
+    if not deleted:
+        raise LookupError("Club membership not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT MIN(id) AS next_user_id
+            FROM "SkwshOrgUsers"
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+            """,
+            {"username": username},
+        )
+        remaining_user = cursor.fetchone() or {}
+    return {
+        "deleted": True,
+        "membership_id": int(membership_id),
+        "organization_id": membership["organization_id"],
+        "next_user_id": remaining_user.get("next_user_id"),
+    }
 
 
 def search_root_admin_organizations(connection, query):

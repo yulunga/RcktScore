@@ -113,7 +113,7 @@ Error:
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
-   - for Personal, automatically creates or refreshes the `personal_free` organisation, owner membership, and personal court, then sends a password-setup email
+   - for Personal, records a completed self-service registration, creates or refreshes the `personal_free` organisation, owner membership, and personal court, then sends a password-setup email without entering an admin approval queue
    - for Club, keeps the request pending and sends confirmation/admin enquiry emails
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
 6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
@@ -385,16 +385,20 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 - [frontend/src/pages/RootAdminDashboardPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminDashboardPage.jsx)
 - [frontend/src/pages/RootAdminClubPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminClubPage.jsx)
 - [frontend/src/pages/RootAdminInterestRequestsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminInterestRequestsPage.jsx)
-- [frontend/src/pages/RootAdminPersonalAccountsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminPersonalAccountsPage.jsx)
+- [frontend/src/pages/RootAdminUserAccountsPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminUserAccountsPage.jsx)
+- [frontend/src/pages/RootAdminUserProfilePage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/RootAdminUserProfilePage.jsx)
 
 ### Current path
 
-1. The root-admin UI loads dashboard, club, interest, and personal-account data from root-admin routes.
+1. The root-admin UI loads dashboard, club, club-enquiry, and unified user-account data from root-admin routes.
 2. Every root-admin route validates the bearer token against `root_admin_sessions`.
 3. Club-detail calls to shared organisation endpoints accept root access only after the same session validation succeeds.
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
 6. The platform dashboard now also links to a root-admin `RacketSports` page that calls `GET /root_admin/platform_sports` and `PUT /root_admin/platform_sports` to set the globally allowed sport list and push that same list to all clubs and personal accounts.
+7. `GET /root_admin/users` groups membership rows by username and supports Personal Free, Personal Plus, and club filters plus username/name search.
+8. `GET /root_admin/users/{user_id}` returns registration details, personal and club associations, enabled sports, and attributable scoring activity. Root admin can add a pending club invitation or remove an existing club association from this profile.
+9. Personal registrations do not appear in `GET /root_admin/interest_requests`; that queue now contains club enquiries only.
 
 ### Remaining hardening
 

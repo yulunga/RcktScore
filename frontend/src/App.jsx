@@ -18,8 +18,9 @@ import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
-import RootAdminPersonalAccountsPage from "./pages/RootAdminPersonalAccountsPage";
 import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
+import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
+import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
 
 export default function App() {
   return (
@@ -72,7 +73,23 @@ export default function App() {
         path="/rckscoreAdmin/personal-accounts"
         element={(
           <RootAdminProtectedRoute>
-            <RootAdminPersonalAccountsPage />
+            <RootAdminUserAccountsPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/users"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminUserAccountsPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
+        path="/rckscoreAdmin/users/:userId"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminUserProfilePage />
           </RootAdminProtectedRoute>
         )}
       />

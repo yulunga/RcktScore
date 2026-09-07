@@ -183,10 +183,20 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `PUT /root_admin/interest_requests/{request_id}`
 - `GET /root_admin/personal_accounts`
 - `PUT /root_admin/personal_accounts/{request_id}`
+- `GET /root_admin/users?account_type=...&q=...`
+- `GET /root_admin/users/{user_id}`
+- `POST /root_admin/users/{user_id}/memberships`
+- `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
 
-Current root-admin personal-account behavior:
+Current root-admin user-account behavior:
 
-- `PUT /root_admin/personal_accounts/{request_id}` can now update `personal_plan`, `enabled_sports`, or both for a personal account organisation
+- the user directory deduplicates organisation membership rows by case-insensitive username and can filter Personal Free, Personal Plus, or club users
+- user profiles return registration/contact details, personal and club associations, activated sports, match totals by sport, and recent attributable matches
+- club match activity is attributed using the recorded referee username; every match in a personal tenant is attributed to that tenant's owner
+- adding a club membership creates a pending invitation, preserving the club approval workflow
+- deleting a membership is limited to club associations; it does not delete the user's personal account
+- `PUT /root_admin/personal_accounts/{request_id}` remains the backing route for updating a personal organisation's `personal_plan` and `enabled_sports`
+- `GET /root_admin/personal_accounts` remains available for compatibility, but the web admin console now uses the unified user directory
 
 Current root-admin match-management behavior:
 
@@ -205,6 +215,7 @@ Current root-admin club-user behavior:
 
 - `POST /root_admin/organization_users` creates a pending organisation membership and emails an approval link
 - `PUT /root_admin/organization_users/{user_id}/approve` lets root admin manually approve a pending organisation user without waiting for the email link flow
+- `GET /root_admin/interest_requests` now returns club enquiries only; personal registrations never enter the admin approval queue
 
 ### Organisation and dashboard routes
 
@@ -439,9 +450,10 @@ Current behavior:
 Current behavior:
 
 - register-interest writes to `HitnScoreInterestRequests`
-- `use_type = personal` automatically approves the request, creates or refreshes a hidden `personal_free` organisation, owner membership, and personal court, then emails a time-limited password-setup link
+- `use_type = personal` records the request as `registered`, creates or refreshes a hidden `personal_free` organisation, owner membership, and personal court, then emails a time-limited password-setup link
 - personal signup returns `201` with `account_created = true` and does not require root-admin approval
 - `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
+- migration `020_personal_registration_status.sql` converts historical personal-interest rows from approval terminology to `registered`; club rows retain pending/approved/denied states
 - personal signup requires `PASSWORD_RESET_BASE_URL` to be configured; the request origin is not used as a fallback
 - honeypot field is `company`
 - SES delivery must be configured correctly

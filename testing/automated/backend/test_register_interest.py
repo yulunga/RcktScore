@@ -39,10 +39,10 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
     monkeypatch.setattr(handler, "_upsert_interest_request", lambda current_connection, payload: {"id": 27})
     monkeypatch.setattr(
         handler,
-        "update_root_admin_interest_request_status",
-        lambda current_connection, request_id, status, **kwargs: calls.append(
-            (request_id, status, kwargs)
-        ) or {"personal_account": {"organization_id": 50027}},
+        "create_self_service_personal_account",
+        lambda current_connection, request_id, **kwargs: calls.append(
+            (request_id, kwargs)
+        ) or {"organization_id": 50027},
     )
     monkeypatch.setattr(
         handler,
@@ -56,8 +56,8 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
     assert response["statusCode"] == 201
     assert body["data"]["account_created"] is True
     assert body["data"]["requires_password_setup"] is True
-    assert calls[0][0:2] == (27, "approved")
-    assert calls[0][2]["updated_by"] == "self-service signup"
+    assert calls[0][0] == 27
+    assert calls[0][1]["source_email"] == "sender@example.com"
 
 
 def test_club_registration_remains_a_managed_enquiry(monkeypatch):
@@ -72,7 +72,7 @@ def test_club_registration_remains_a_managed_enquiry(monkeypatch):
     monkeypatch.setattr(handler, "_upsert_interest_request", lambda current_connection, payload: {"id": 28})
     monkeypatch.setattr(
         handler,
-        "update_root_admin_interest_request_status",
+        "create_self_service_personal_account",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("Club enquiry created a personal account")),
     )
     monkeypatch.setattr(handler, "_send_interest_emails", lambda **kwargs: email_calls.append(kwargs))

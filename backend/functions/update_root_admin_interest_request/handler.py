@@ -1,5 +1,3 @@
-import os
-
 from aws_lambda_powertools import Logger
 
 from common.root_admin_logic import update_root_admin_interest_request_status
@@ -10,26 +8,6 @@ from common.utils import error_response, parse_body, path_parameter, success_res
 
 
 logger = Logger(service="update_root_admin_interest_request")
-
-
-def _header(event, name):
-    target = name.lower()
-    for key, value in (event.get("headers") or {}).items():
-        if key.lower() == target:
-            return value
-    return ""
-
-
-def _reset_base_url(event):
-    configured = (os.getenv("PASSWORD_RESET_BASE_URL") or "").strip()
-    if configured:
-        return configured.rstrip("/")
-
-    origin = (_header(event, "origin") or "").strip()
-    if origin:
-        return origin.rstrip("/")
-
-    return ""
 
 
 def lambda_handler(event, context):
@@ -52,8 +30,6 @@ def lambda_handler(event, context):
                 numeric_request_id,
                 payload.get("approval_status"),
                 updated_by=root_admin_session["username"],
-                source_email=(os.getenv("INTEREST_FROM_EMAIL") or "").strip(),
-                reset_base_url=_reset_base_url(event),
             )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

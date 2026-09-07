@@ -177,7 +177,11 @@ If a root-admin issue appears:
 - verify whether the failing route is a true root-admin route or a reused organisation route
 - check for `ROOT_ADMIN_SESSION_REQUIRED`, `ROOT_ADMIN_SESSION_INVALID`, `ROOT_ADMIN_SESSION_REPLACED`, or `ROOT_ADMIN_SESSION_EXPIRED`
 - verify migration `018_root_admin_sessions.sql` has been applied before testing login
+- verify migration `020_personal_registration_status.sql` has been applied if historical personal signups still show approval terminology
 - confirm the frontend is sending `Authorization: Bearer <token>` and is not relying on the removed `x-root-admin-request` header
+- if User Accounts totals look higher than the visible list, remember the summary cards count distinct usernames by account category and a user with both personal and club memberships can appear in more than one category
+- club match activity on a user profile is attributed from `matches.referee_name`; personal-account activity is attributed from the user's personal organisation
+- adding a club association intentionally creates a pending membership and invitation; personal registration remains immediate
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every club and personal account at once, check the root-admin `platform_sports` setting and whether the bulk apply path updated `SkwshOrgSettings.enabled_sports`

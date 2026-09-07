@@ -33,10 +33,6 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
-function displayUseType(value) {
-  return value === "club" ? "Club use" : "Personal use";
-}
-
 export default function RootAdminInterestRequestsPage() {
   const navigate = useNavigate();
   const { session } = useRootAdmin();
@@ -111,9 +107,9 @@ export default function RootAdminInterestRequestsPage() {
       <section className="hero-card stack compact">
         <div className="root-admin-section-header">
           <div>
-            <h1>Interested Users</h1>
+            <h1>Club Account Enquiries</h1>
             <p className="helper-text">
-              Review account enquiries and keep their status clear for follow-up.
+              Review new club enquiries. Personal users register immediately and do not enter this approval queue.
             </p>
           </div>
           <div className="button-row root-admin-actions">
@@ -129,7 +125,7 @@ export default function RootAdminInterestRequestsPage() {
 
       <section className="panel stack">
         <div className="root-admin-section-header">
-          <h2>Interest Queue</h2>
+          <h2>Club Approval Queue</h2>
           <div className="root-admin-tab-row" aria-label="Filter interest requests">
             {STATUS_FILTERS.map((filter) => (
               <button
@@ -183,7 +179,6 @@ export default function RootAdminInterestRequestsPage() {
                 </div>
 
                 <div className="root-admin-interest-details">
-                  <span>{displayUseType(request.use_type)}</span>
                   <span>{request.club_name || "No club supplied"}</span>
                   <span>Email validated: {request.email_validated ? "Yes" : "No"}</span>
                   <span>Registered: {formatDateTime(request.created_at)}</span>
@@ -196,7 +191,7 @@ export default function RootAdminInterestRequestsPage() {
                     disabled={savingId === request.id || currentStatus === "approved"}
                     onClick={() => updateStatus(request.id, "approved")}
                   >
-                    Approve & Email
+                    Approve Club Enquiry
                   </button>
                   <button
                     type="button"

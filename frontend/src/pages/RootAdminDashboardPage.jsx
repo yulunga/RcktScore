@@ -147,7 +147,7 @@ export default function RootAdminDashboardPage() {
             <div>{summary.organization_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Org Users</strong>
+            <strong>Club Memberships</strong>
             <div>{summary.user_count ?? 0}</div>
           </div>
           <div className="meta-item">
@@ -155,7 +155,7 @@ export default function RootAdminDashboardPage() {
             <div>{summary.admin_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Interested Users</strong>
+            <strong>Club Account Enquiries</strong>
             <button
               className="root-admin-summary-count"
               type="button"
@@ -168,15 +168,15 @@ export default function RootAdminDashboardPage() {
             </span>
           </div>
           <div className="meta-item">
-            <strong>Personal Accounts</strong>
+            <strong>User Accounts</strong>
             <button
               className="root-admin-summary-count"
               type="button"
-              onClick={() => navigate("/rckscoreAdmin/personal-accounts")}
+              onClick={() => navigate("/rckscoreAdmin/users")}
             >
-              {summary.personal_account_count ?? 0}
+              {summary.total_user_count ?? 0}
             </button>
-            <span className="root-admin-summary-note">Approved personal</span>
+            <span className="root-admin-summary-note">Personal and club users</span>
           </div>
           <div className="meta-item">
             <strong>Match Scores</strong>
