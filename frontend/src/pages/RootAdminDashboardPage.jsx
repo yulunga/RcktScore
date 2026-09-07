@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
-import { useRootAdmin } from "../hooks/useRootAdmin";
 import {
   createRootAdminOrganization,
   getRootAdminDashboard,
@@ -37,7 +36,6 @@ function formatWebsiteForSave(value) {
 
 export default function RootAdminDashboardPage() {
   const navigate = useNavigate();
-  useRootAdmin();
   const [dashboard, setDashboard] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
   const [searchTerm, setSearchTerm] = useState("");
@@ -138,9 +136,6 @@ export default function RootAdminDashboardPage() {
 
       <section className="hero-card stack compact">
         <h1>Platform Control Centre</h1>
-        <p className="helper-text">
-          Manage tenant organisations and their users from one top-level administration portal.
-        </p>
         <div className="meta-grid">
           <div className="meta-item">
             <strong>Organisations</strong>
@@ -191,14 +186,17 @@ export default function RootAdminDashboardPage() {
               Completed {summary.completed_match_count ?? 0}
             </span>
           </div>
-        </div>
-        <div className="button-row root-admin-actions root-admin-dashboard-actions">
           <button
+            className="meta-item root-admin-settings-card"
             type="button"
-            className="secondary"
             onClick={() => navigate("/rckscoreAdmin/racket-sports")}
           >
-            RacketSports
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M9.7 3.1h4.6l.6 2.2c.5.2.9.4 1.3.7l2.1-.6 2.3 4-1.6 1.6c0 .3.1.7.1 1s0 .7-.1 1l1.6 1.6-2.3 4-2.1-.6c-.4.3-.9.5-1.3.7l-.6 2.2H9.7l-.6-2.2c-.5-.2-.9-.4-1.3-.7l-2.1.6-2.3-4L5 13c0-.3-.1-.7-.1-1s0-.7.1-1L3.4 9.4l2.3-4 2.1.6c.4-.3.9-.5 1.3-.7l.6-2.2Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <strong>Settings</strong>
+            <span>RacketSports</span>
           </button>
         </div>
       </section>
@@ -208,50 +206,42 @@ export default function RootAdminDashboardPage() {
       {error ? <div className="notice error">{error}</div> : null}
 
       <section className="panel stack">
-        <div className="root-admin-section-header">
+        <div className="root-admin-section-header root-admin-directory-header">
           <h2>Club Directory</h2>
-          <div className="button-row root-admin-actions">
+          <div className="button-row root-admin-directory-actions">
+            <div className="root-admin-search root-admin-search-wide">
+              <input
+                aria-label="Search by Club Name"
+                id="root_admin_search"
+                placeholder="Search by Club Name"
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  if (error) setError("");
+                }}
+              />
+
+              {searchTerm.trim() ? (
+                <div className="root-admin-search-results">
+                  {searching ? (
+                    <div className="root-admin-search-item helper-text">Searching...</div>
+                  ) : visibleClubs.length === 0 ? (
+                    <div className="root-admin-search-item helper-text">No matching clubs found.</div>
+                  ) : (
+                    visibleClubs.map((organization) => (
+                      <button key={organization.id} className="root-admin-search-item" type="button" onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}>
+                        <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
+                        <span>{organization.org_email || organization.org_contact || `Tenant ${organization.id}`}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
             <button type="button" onClick={() => setShowCreateOverlay(true)}>
               New Club
             </button>
           </div>
-        </div>
-
-        <div className="root-admin-search root-admin-search-wide">
-          <input
-            aria-label="Search by Club Name"
-            id="root_admin_search"
-            placeholder="Search by Club Name"
-            value={searchTerm}
-            onChange={(event) => {
-              setSearchTerm(event.target.value);
-              if (error) {
-                setError("");
-              }
-            }}
-          />
-
-          {searchTerm.trim() ? (
-            <div className="root-admin-search-results">
-              {searching ? (
-                <div className="root-admin-search-item helper-text">Searching...</div>
-              ) : visibleClubs.length === 0 ? (
-                <div className="root-admin-search-item helper-text">No matching clubs found.</div>
-              ) : (
-                visibleClubs.map((organization) => (
-                  <button
-                    key={organization.id}
-                    className="root-admin-search-item"
-                    type="button"
-                    onClick={() => navigate(`/rckscoreAdmin/clubs/${organization.id}`)}
-                  >
-                    <strong>{organization.organization_name || `Organisation ${organization.id}`}</strong>
-                    <span>{organization.org_email || organization.org_contact || `Tenant ${organization.id}`}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          ) : null}
         </div>
 
         <div className="root-admin-club-list">

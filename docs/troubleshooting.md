@@ -183,6 +183,7 @@ If a root-admin issue appears:
 - club match activity on a user profile is attributed from `matches.referee_name`; personal-account activity is attributed from the user's personal organisation
 - user-profile Last Activity is the latest `org_user_sessions.last_seen_at` value for that username; `Not recorded` means no retained session activity exists
 - adding a club association intentionally creates a pending membership and invitation; personal registration remains immediate
+- a root-admin password change updates every membership row sharing the username and revokes the user's active web/mobile sessions; the user must sign in again with the replacement password
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every club and personal account at once, check the root-admin `platform_sports` setting and whether the bulk apply path updated `SkwshOrgSettings.enabled_sports`

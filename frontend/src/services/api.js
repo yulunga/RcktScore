@@ -288,6 +288,13 @@ export function deleteRootAdminUserMembership(userId, membershipId) {
   });
 }
 
+export function updateRootAdminUserPassword(userId, payload) {
+  return apiRequest(`/root_admin/users/${userId}/password`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createRootAdminOrganization(payload) {
   return apiRequest("/root_admin/organizations", {
     method: "POST",

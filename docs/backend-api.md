@@ -187,6 +187,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /root_admin/users/{user_id}`
 - `POST /root_admin/users/{user_id}/memberships`
 - `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
+- `PUT /root_admin/users/{user_id}/password`
 
 Current root-admin user-account behavior:
 
@@ -195,6 +196,7 @@ Current root-admin user-account behavior:
 - club match activity is attributed using the recorded referee username; every match in a personal tenant is attributed to that tenant's owner
 - adding a club membership creates a pending invitation, preserving the club approval workflow
 - deleting a membership is limited to club associations; it does not delete the user's personal account
+- changing a password hashes the replacement across every membership for that username, clears outstanding reset tokens, and revokes all active sessions for the user
 - `PUT /root_admin/personal_accounts/{request_id}` remains the backing route for updating a personal organisation's `personal_plan` and `enabled_sports`
 - `GET /root_admin/personal_accounts` remains available for compatibility, but the web admin console now uses the unified user directory
 

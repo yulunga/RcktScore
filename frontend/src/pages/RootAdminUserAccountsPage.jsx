@@ -52,12 +52,7 @@ export default function RootAdminUserAccountsPage() {
 
       <section className="hero-card stack compact">
         <div className="root-admin-section-header">
-          <div>
-            <h1>User Accounts</h1>
-            <p className="helper-text">
-              Search every registered user and review personal or club account membership.
-            </p>
-          </div>
+          <h1>User Accounts</h1>
           <div className="button-row root-admin-actions">
             <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
               Back to Platform Control Centre
@@ -84,19 +79,20 @@ export default function RootAdminUserAccountsPage() {
           ))}
         </div>
 
-        <div className="root-admin-search root-admin-search-wide">
-          <input
-            aria-label="Search users"
-            id="root_admin_user_search"
-            placeholder="Search by username, first name or surname"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </div>
-
-        <div className="root-admin-section-header">
+        <div className="root-admin-section-header root-admin-user-list-header">
           <h2>{accountFilter ? "Filtered Users" : "All Users"}</h2>
-          <span className="helper-text">{users.length} shown</span>
+          <div className="root-admin-user-list-tools">
+            <span className="helper-text">{users.length} shown</span>
+            <div className="root-admin-search root-admin-search-wide">
+              <input
+                aria-label="Search users"
+                id="root_admin_user_search"
+                placeholder="Search by username, first name or surname"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
         {loading ? <div className="notice">Loading user accounts...</div> : null}

@@ -397,7 +397,7 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.
 6. The platform dashboard now also links to a root-admin `RacketSports` page that calls `GET /root_admin/platform_sports` and `PUT /root_admin/platform_sports` to set the globally allowed sport list and push that same list to all clubs and personal accounts.
 7. `GET /root_admin/users` groups membership rows by username and supports Personal Free, Personal Plus, and club filters plus username/name search.
-8. `GET /root_admin/users/{user_id}` returns registration details, last session activity, personal and club associations, enabled sports, and attributable scoring activity. The web profile separates these into Profile, Subscription, Club Association, Scoring Activity, and Settings tabs. Root admin can add a pending club invitation or remove an existing club association from this profile.
+8. `GET /root_admin/users/{user_id}` returns registration details, last session activity, personal and club associations, enabled sports, and attributable scoring activity. The web profile separates these into Profile, Subscription, Club Association, Scoring Activity, and Settings tabs. Root admin can change the user's password, switch a personal subscription between Personal and Personal Plus, add a pending club invitation, or remove an existing club association.
 9. Personal registrations do not appear in `GET /root_admin/interest_requests`; that queue now contains club enquiries only.
 
 ### Remaining hardening

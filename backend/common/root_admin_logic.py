@@ -6,6 +6,7 @@ from common.sport_config import SPORT_LABELS
 from common.sport_config import constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports
 from psycopg.types.json import Jsonb
 from psycopg.errors import UndefinedTable
+from werkzeug.security import generate_password_hash
 
 from common.organization_logic import (
     APP_DISPLAY_NAME,
@@ -1505,6 +1506,36 @@ def remove_root_admin_user_club_membership(connection, user_id, membership_id):
         "organization_id": membership["organization_id"],
         "next_user_id": remaining_user.get("next_user_id"),
     }
+
+
+def update_root_admin_user_password(connection, user_id, password):
+    next_password = str(password or "")
+    if len(next_password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        raise LookupError("User not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET password_hash = %(password_hash)s,
+                password_reset_token = NULL,
+                password_reset_requested_at = NULL
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+            """,
+            {
+                "password_hash": generate_password_hash(next_password),
+                "username": username,
+            },
+        )
+
+    from common.session_logic import revoke_active_sessions_for_username
+    revoke_active_sessions_for_username(connection, username, reason="password_reset_by_root_admin")
+    connection.commit()
+    return {"updated": True, "username": username.lower()}
 
 
 def search_root_admin_organizations(connection, query):

@@ -10,10 +10,11 @@ import {
   deleteRootAdminUserMembership,
   getRootAdminUserProfile,
   updateRootAdminPersonalAccount,
+  updateRootAdminUserPassword,
 } from "../services/api";
 
 const PLAN_LABELS = {
-  personal_free: "Personal Free",
+  personal_free: "Personal",
   personal_plus: "Personal Plus",
   club_essentials: "Club Essentials",
   club_pro: "Club Pro",
@@ -52,6 +53,8 @@ export default function RootAdminUserProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [selectedClubId, setSelectedClubId] = useState("");
   const [selectedRole, setSelectedRole] = useState("user");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState("");
   const [message, setMessage] = useState("");
@@ -147,6 +150,29 @@ export default function RootAdminUserProfilePage() {
     );
   }
 
+  async function handlePasswordChange(event) {
+    event.preventDefault();
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("The password confirmation does not match.");
+      return;
+    }
+    if (!window.confirm(`Change the password for ${user.username}? All active sessions for this user will be signed out.`)) return;
+
+    const result = await runMutation(
+      "password",
+      () => updateRootAdminUserPassword(userId, { password: newPassword }),
+      "Password changed. All active sessions for this user have been signed out.",
+    );
+    if (result) {
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }
+
   const user = profile?.user || {};
   const activity = profile?.activity || {};
   const memberships = profile?.memberships || [];
@@ -158,7 +184,7 @@ export default function RootAdminUserProfilePage() {
       <RootAdminSessionBar />
 
       <section className="hero-card compact root-admin-profile-header">
-        <p className="helper-text">Account, scoring activity and club associations for {user.username || "this user"}.</p>
+        <strong className="root-admin-profile-username">{user.username || "User account"}</strong>
         <div className="button-row root-admin-actions">
           <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/users")}>Back to User Accounts</button>
         </div>
@@ -191,6 +217,23 @@ export default function RootAdminUserProfilePage() {
                 <div><strong>Date Registered</strong><span>{formatDateTime(user.registered_at)}</span></div>
                 <div><strong>Last Activity</strong><span>{formatDateTime(user.last_activity_at)}</span></div>
               </div>
+              <form className="stack root-admin-password-form" onSubmit={handlePasswordChange}>
+                <div className="panel-heading">
+                  <h3>Change Password</h3>
+                  <p className="helper-text">Changing the password signs this user out on every device.</p>
+                </div>
+                <div className="field-grid settings-field-grid-tight">
+                  <div className="field">
+                    <label htmlFor="root_admin_new_password">New Password</label>
+                    <input id="root_admin_new_password" minLength="8" required type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="root_admin_confirm_password">Confirm Password</label>
+                    <input id="root_admin_confirm_password" minLength="8" required type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                  </div>
+                </div>
+                <div className="button-row"><button disabled={savingKey === "password"} type="submit">{savingKey === "password" ? "Changing Password..." : "Change Password"}</button></div>
+              </form>
             </section>
           ) : null}
 
@@ -207,8 +250,8 @@ export default function RootAdminUserProfilePage() {
                     <div className="dashboard-item-meta"><span>Status: {membership.status}</span><span>Registered: {formatDateTime(membership.registered_at)}</span></div>
                     {membership.organization_type === "personal" ? (
                       <div className="button-row">
-                        <button disabled={savingKey === `plan-${membership.id}` || membership.plan === "personal_free"} type="button" onClick={() => handlePlanChange(membership, "personal_free")}>Set Personal Free</button>
-                        <button className="secondary" disabled={savingKey === `plan-${membership.id}` || membership.plan === "personal_plus"} type="button" onClick={() => handlePlanChange(membership, "personal_plus")}>Set Personal Plus</button>
+                        <button aria-pressed={membership.plan === "personal_free"} className={`root-admin-plan-option${membership.plan === "personal_free" ? " active" : ""}`} disabled={savingKey === `plan-${membership.id}`} type="button" onClick={() => handlePlanChange(membership, "personal_free")}>Personal</button>
+                        <button aria-pressed={membership.plan === "personal_plus"} className={`root-admin-plan-option${membership.plan === "personal_plus" ? " active" : ""}`} disabled={savingKey === `plan-${membership.id}`} type="button" onClick={() => handlePlanChange(membership, "personal_plus")}>Personal Plus</button>
                       </div>
                     ) : null}
                   </article>

@@ -486,6 +486,18 @@ Resources:
             Path: /root_admin/users/{user_id}/memberships/{membership_id}
             Method: DELETE
 
+  UpdateRootAdminUserPasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_user_password/handler.lambda_handler
+      Events:
+        UpdateRootAdminUserPassword:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/users/{user_id}/password
+            Method: PUT
+
   RegisterInterestFunction:
     Type: AWS::Serverless::Function
     Properties:
