@@ -114,6 +114,10 @@ struct OrganizationUserResponseData: Decodable {
     let user: OrganizationUser
 }
 
+struct DeletePersonalAccountRequest: Encodable {
+    let confirmation: String
+}
+
 struct CourtResponseData: Decodable {
     let court: CourtSummary
     let organizationSettings: OrganizationSettings?
@@ -261,6 +265,10 @@ private struct AcceptedResponseData: Decodable {
         case accepted
         case loggedOut = "logged_out"
     }
+}
+
+private struct DeletedAccountResponseData: Decodable {
+    let deleted: Bool
 }
 
 struct EndMatchRequest: Encodable {
@@ -530,6 +538,22 @@ final class APIClient {
             )
         )
         return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func deletePersonalAccount(organizationID: Int) async throws {
+        let request = try makeRequest(
+            path: "/personal_account/\(organizationID)",
+            method: "DELETE",
+            body: DeletePersonalAccountRequest(confirmation: "DELETE MY ACCOUNT")
+        )
+        let response: APIEnvelope<DeletedAccountResponseData> = try await send(request)
+        guard response.data?.deleted == true else {
+            throw APIErrorResponse(
+                code: "ACCOUNT_DELETION_FAILED",
+                message: "The server did not confirm account deletion.",
+                details: nil
+            )
+        }
     }
 
     func createOrganizationUser(

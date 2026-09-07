@@ -425,12 +425,108 @@ def update_personal_profile(connection, organization_id, username, payload):
             params,
         )
 
+        if current_username != target_username:
+            cursor.execute(
+                '''
+                UPDATE "SkwshOrgSettings"
+                SET owner_username = %(target_username)s
+                WHERE id = %(organization_id)s
+                  AND org_type = 'personal'
+                  AND LOWER(owner_username) = LOWER(%(current_username)s)
+                ''',
+                {
+                    "organization_id": org_id,
+                    "current_username": current_username,
+                    "target_username": target_username,
+                },
+            )
+
     if current_username != target_username:
         from common.session_logic import revoke_active_sessions_for_username
         revoke_active_sessions_for_username(connection, current_username, reason="profile_updated")
 
     connection.commit()
     return get_organization_settings(connection, org_id)
+
+
+def delete_personal_account(connection, organization_id, username):
+    """Permanently delete a self-service personal tenant and its owned data."""
+    org_id = int(organization_id)
+    current_username = normalize_email_address(username)
+    if not current_username:
+        raise ValueError("username is required")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            '''
+            SELECT id, interest_request_id
+            FROM "SkwshOrgSettings"
+            WHERE id = %(organization_id)s
+              AND org_type = 'personal'
+              AND LOWER(owner_username) = LOWER(%(username)s)
+            FOR UPDATE
+            ''',
+            {
+                "organization_id": org_id,
+                "username": current_username,
+            },
+        )
+        organization_row = cursor.fetchone()
+        if not organization_row:
+            raise ValueError("Only the owner of a personal account can delete it")
+
+        # Matches must be removed before their tenant/court records. Match events
+        # and offline action receipts cascade from the match record.
+        cursor.execute(
+            "DELETE FROM matches WHERE tenant_id = %(organization_id)s",
+            {"organization_id": org_id},
+        )
+        cursor.execute(
+            "DELETE FROM court_display_sessions WHERE tenant_id = %(organization_id)s",
+            {"organization_id": org_id},
+        )
+        cursor.execute(
+            '''
+            DELETE FROM "SkwshCourts"
+            WHERE organization_name = %(organization_id)s
+            ''',
+            {"organization_id": org_id},
+        )
+        cursor.execute(
+            '''
+            DELETE FROM "SkwshOrgUsers"
+            WHERE organization_id = %(organization_id)s
+            ''',
+            {"organization_id": org_id},
+        )
+        cursor.execute(
+            '''
+            DELETE FROM "SkwshOrgSettings"
+            WHERE id = %(organization_id)s
+            ''',
+            {"organization_id": org_id},
+        )
+
+        interest_request_id = organization_row.get("interest_request_id")
+        if interest_request_id:
+            cursor.execute(
+                '''
+                DELETE FROM "HitnScoreInterestRequests"
+                WHERE id = %(interest_request_id)s
+                  AND use_type = 'personal'
+                ''',
+                {"interest_request_id": interest_request_id},
+            )
+
+        # Sessions are identity-wide, so revoke/remove every token for the deleted
+        # username even if the email also had a managed club membership.
+        cursor.execute(
+            "DELETE FROM org_user_sessions WHERE LOWER(username) = LOWER(%(username)s)",
+            {"username": current_username},
+        )
+
+    connection.commit()
+    return True
 
 
 def create_organization_user(

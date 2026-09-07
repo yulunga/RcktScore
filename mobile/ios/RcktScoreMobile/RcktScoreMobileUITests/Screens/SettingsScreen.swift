@@ -4,6 +4,10 @@ struct SettingsScreen {
 
     let app: XCUIApplication
 
+    var aboutMenu: XCUIElement {
+        app.buttons["settings.menu.about"]
+    }
+
     var profileMenu: XCUIElement {
         app.buttons["settings.menu.profile"]
     }
@@ -54,6 +58,14 @@ struct SettingsScreen {
 
     var biometricToggle: XCUIElement {
         app.switches["settings.profile.biometricToggle"]
+    }
+
+    var deleteAccountButton: XCUIElement {
+        app.buttons["settings.profile.deleteAccountButton"]
+    }
+
+    var privacyButton: XCUIElement {
+        app.buttons["help.privacyButton"]
     }
 
     var loginSignInButton: XCUIElement {

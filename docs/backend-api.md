@@ -213,6 +213,7 @@ Current root-admin club-user behavior:
 - `GET /match_setup_lookup/{organization_id}?q=...`
 - `PUT /organization_details/{organization_id}`
 - `PUT /personal_profile/{organization_id}`
+- `DELETE /personal_account/{organization_id}`
 - `POST /organization_users`
 - `PUT /organization_users/{user_id}`
 - `DELETE /organization_users/{user_id}`
@@ -227,6 +228,7 @@ Current organisation-settings behavior:
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
 - the native iOS settings profile page uses `PUT /personal_profile/{organization_id}` for first name, surname, email/username, telephone, and country updates, and still uses `POST /password_reset/request` for password-reset emails
+- personal-account owners can call `DELETE /personal_account/{organization_id}` with the exact confirmation value `DELETE MY ACCOUNT`; the route requires a valid session for that organisation and independently verifies that the session username owns a personal tenant
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
 - the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
@@ -329,7 +331,19 @@ Current personal-profile behavior:
 - authorizes the presented org-user session against the requested organisation
 - updates the signed-in user rather than trusting a username supplied by the client
 - accepts `first_name`, `surname`, `email`, `telephone`, `country`, and `city_location`
-- changing `email` updates the login username across all memberships linked to that account and revokes existing sessions so the user must sign in again
+- changing `email` updates the login username across all memberships linked to that account, updates personal-tenant ownership where applicable, and revokes existing sessions so the user must sign in again
+
+### Personal-account deletion
+
+[functions/delete_personal_account/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_personal_account/handler.py)
+
+Current deletion behavior:
+
+- requires a valid org-user bearer session for the requested organisation
+- requires the JSON body `{ "confirmation": "DELETE MY ACCOUNT" }`
+- permits deletion only when the authenticated username is the owner of a tenant whose `org_type` is `personal`
+- permanently removes the personal tenant's matches, scoring events/action receipts through cascade, court display sessions, courts, memberships, organisation settings, associated personal signup record, and all active sessions for that username
+- returns `403 ACCOUNT_DELETION_FORBIDDEN` for a valid member who is not the personal-account owner
 
 - only the signed-in user can update their own personal profile
 - requires `username` in the payload

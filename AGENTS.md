@@ -47,13 +47,14 @@ What is real and implemented:
 - native iOS login now includes a show/hide password toggle and can restore an unexpired, device-bound Keychain session with Face ID or Touch ID when enabled from settings, including from the login screen after local sign-out
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
-- native settings now use a plan-aware menu layout with dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, association switching between available memberships, an in-app About page for version/build visibility, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
+- native settings now use a plan-aware menu layout with About first, followed by Profile and Subscription, dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, personal-account deletion with two destructive confirmations, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling and personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
 - mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice
 - organisation-user sessions now carry a server expiry timestamp; the native app discards expired cached sessions and supports Face ID or Touch ID for an unexpired session saved on that device
-- the native dashboard replaces its notification bell with an offline indicator while disconnected, and the login card explains that first-time sign-in requires connectivity
+- the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens a local notification page and highlights the unread welcome notice in yellow until it is viewed
+- native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
@@ -64,7 +65,7 @@ What is still partial or risky:
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting/stats views
-- the native notification center behind the dashboard bell is not implemented yet
+- the native notification center is local and welcome-only; server notifications, push delivery, and cross-device read state are not implemented yet
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior remains intentionally scoped: new match creation, scheduled-match activation, historic data, settings changes, and matches not previously opened on that device still require connectivity
 - there is no documented iOS CI/archive/release pipeline in the repo yet

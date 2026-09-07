@@ -39,12 +39,15 @@ Current unreleased iOS build state:
   timing
 - native settings support plan-aware account menus, local profile photo
   selection, self-profile editing, password-reset access, association
-  switching, an About page for app version/build visibility, organisation details, user management, court management,
+  switching, an About-first menu order, organisation details, user management, court management,
   racket-sport visibility, and display-code regeneration for club accounts
+- personal-account owners can delete their account from Profile after two destructive confirmations; the backend revalidates personal-account ownership and the app clears its session/offline cache after success
 - native login now supports password visibility toggling, and native settings
   can enable Face ID / Touch ID restoration of an unexpired, device-bound Keychain session at cold launch or from the login screen after local sign-out
 - each settings menu row now opens its own dedicated page rather than expanding inline
 - native help flows support in-app feedback and password reset requests
+- Help & Feedback includes an in-app privacy/data page, and the target bundles a required-reason privacy manifest
+- the online notification bell opens a local welcome notice; it glows yellow while unread and returns to white after the page is viewed
 - native login now supports organisation selection when the same email belongs
   to multiple approved clubs/accounts
 - the login landing page now places `Want In | Need Help` on one line; Personal registration creates an account immediately and emails password setup, while Club remains a managed enquiry
@@ -59,7 +62,7 @@ Current unreleased iOS build state:
 Known gaps before launch:
 
 - the current scoring layout is much stronger but still needs final iPhone-first UX polish
-- the dashboard bell does not yet open a real notification center
+- notifications are welcome-only and device-local; backend delivery, push notifications, and cross-device read state are not implemented
 - deeper association/federation links, account-level game settings, reporting,
   and stats are still placeholder sections in native settings
 - profile photos are still stored locally on the device rather than in a central shared profile store

@@ -27,6 +27,7 @@ Current limitations:
 - the improved iPhone scoring layout still needs final small-screen and
   accessibility hardening
 - no documented mobile CI/archive/release pipeline yet
+- native notifications are currently limited to a device-local welcome notice; backend delivery and push notifications are deferred
 - no completed mobile realtime/WebSocket path yet
 
 Use the dedicated docs in [docs/mobile](../docs/mobile/README.md) for current

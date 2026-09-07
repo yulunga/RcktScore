@@ -312,6 +312,13 @@ final class OfflineMatchStore: ObservableObject {
         syncMessage = "Offline scoring synchronised."
     }
 
+    func clear() {
+        snapshot = nil
+        isSyncing = false
+        syncMessage = nil
+        UserDefaults.standard.removeObject(forKey: storageKey)
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let decoded = try? JSONDecoder().decode(OfflineMatchSnapshot.self, from: data) else {

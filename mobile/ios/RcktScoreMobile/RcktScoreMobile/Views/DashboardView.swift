@@ -1,3 +1,4 @@
+import Foundation
 import PhotosUI
 import SwiftUI
 
@@ -46,6 +47,10 @@ struct DashboardView: View {
     @State private var selectedProfilePhotoItem: PhotosPickerItem?
     @State private var selectedProfilePhotoData: Data?
     @State private var isUpdatingBiometricUnlock = false
+    @State private var accountDeletionPrompt: AccountDeletionPrompt?
+    @State private var isDeletingAccount = false
+    @State private var showsNotifications = false
+    @State private var welcomeNotificationRead = false
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
@@ -179,7 +184,7 @@ struct DashboardView: View {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        var items: [SettingsMenuItem] = [.subscription, .profile, .association, .racketSports, .gameSettings, .about]
+        var items: [SettingsMenuItem] = [.about, .profile, .subscription, .association, .racketSports, .gameSettings]
         if isPersonalPlus {
             items.append(contentsOf: [.reporting, .stats])
         }
@@ -187,7 +192,7 @@ struct DashboardView: View {
         return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [.subscription, .profile, .association, .racketSports, .gameSettings, .about, .reporting, .stats, .helpFeedback]
+        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .stats, .helpFeedback]
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
@@ -270,6 +275,9 @@ struct DashboardView: View {
             .navigationDestination(item: $settingsNavigationItem) { item in
                 settingsDetailPage(for: item)
             }
+            .navigationDestination(isPresented: $showsNotifications) {
+                notificationCenterPage
+            }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .newMatch:
@@ -287,6 +295,7 @@ struct DashboardView: View {
             }
             .task {
                 seedHelpDefaults()
+                loadWelcomeNotificationState()
                 await loadDashboard()
             }
             .task(id: selectedProfilePhotoItem) {
@@ -307,6 +316,9 @@ struct DashboardView: View {
                 }
             }
             .refreshable { await loadDashboard() }
+            .alert(item: $accountDeletionPrompt) { prompt in
+                accountDeletionAlert(for: prompt)
+            }
         }
     }
 
@@ -335,10 +347,20 @@ struct DashboardView: View {
 
                 VStack(alignment: .trailing, spacing: 12) {
                     Button {
+                        guard isOnline else { return }
+                        showsNotifications = true
                     } label: {
-                        Image(systemName: isOnline ? "bell" : "wifi.slash")
+                        Image(systemName: isOnline ? (welcomeNotificationRead ? "bell" : "bell.fill") : "wifi.slash")
                             .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(isOnline ? Color.dashboardInk : Color.orange)
+                            .foregroundStyle(
+                                isOnline
+                                    ? (welcomeNotificationRead ? Color.white : Color.yellow)
+                                    : Color.orange
+                            )
+                            .shadow(
+                                color: isOnline && !welcomeNotificationRead ? Color.yellow.opacity(0.9) : .clear,
+                                radius: 8
+                            )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(isOnline ? "Notifications" : "Offline")
@@ -724,6 +746,7 @@ struct DashboardView: View {
             aboutSettingsCard
         case .helpFeedback:
             VStack(spacing: 12) {
+                privacyComplianceLinkCard
                 feedbackForm
                 resetForm
             }
@@ -852,6 +875,7 @@ struct DashboardView: View {
             .background(Color.dashboardBrand)
             .foregroundStyle(.white)
             .clipShape(Capsule())
+            .frame(maxWidth: .infinity)
             .buttonStyle(.plain)
             .disabled(savingSettingsKey != nil)
             .opacity(savingSettingsKey != nil ? 0.7 : 1)
@@ -907,6 +931,38 @@ struct DashboardView: View {
                     }
                 }
                 .padding(.top, 8)
+            }
+
+            if isPersonalAccount {
+                Button {
+                    accountDeletionPrompt = .first
+                } label: {
+                    HStack {
+                        if isDeletingAccount {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "trash")
+                        }
+                        Text(isDeletingAccount ? "Deleting Account…" : "Delete Account")
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.red)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(isDeletingAccount || !isOnline)
+                .opacity(isDeletingAccount || !isOnline ? 0.65 : 1)
+                .accessibilityIdentifier("settings.profile.deleteAccountButton")
+
+                if !isOnline {
+                    Text("Connect to the internet to delete your account permanently.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             if let resetErrorMessage {
@@ -1608,9 +1664,257 @@ struct DashboardView: View {
                 subtitle: "Send feedback or request a password reset without leaving the app."
             ) {
                 VStack(spacing: 14) {
+                    privacyComplianceLinkCard
                     feedbackForm
                     resetForm
                 }
+            }
+        }
+    }
+
+    private var notificationCenterPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "hand.wave.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Color.dashboardBrand)
+                        .frame(width: 44, height: 44)
+                        .background(Color.dashboardBrand.opacity(0.12))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Welcome to Hit n Score")
+                                .font(.headline.weight(.bold))
+                            Spacer()
+                            Text("Welcome")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(Color.dashboardBrand)
+                        }
+
+                        Text("Thanks for joining Hit n Score. You can create and score racket-sport matches, review your match history and manage your account from this app.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Text("Read")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(16)
+                .background(Color.dashboardInnerCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
+
+                Text("Future account and service notifications will appear here.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(18)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.dashboardBackgroundStart, Color.dashboardBackgroundEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            markWelcomeNotificationRead()
+        }
+    }
+
+    private var privacyComplianceLinkCard: some View {
+        NavigationLink {
+            privacyCompliancePage
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "hand.raised.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .frame(width: 36, height: 36)
+                    .background(Color.dashboardBrand.opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Privacy & Data")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text("How Hit n Score collects, uses and protects your information.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("help.privacyButton")
+    }
+
+    private var privacyCompliancePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Privacy Policy")
+                    .font(.title2.weight(.bold))
+                Text("Last updated: September 2026")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                privacySection(
+                    title: "Who we are",
+                    text: "Hit n Score is operated by ucingo, which acts as the data controller for personal information processed through the service. Privacy questions can be sent to privacy@hitnscore.com."
+                )
+                privacySection(
+                    title: "Information we collect",
+                    text: "We collect account and profile information such as your name, email address, telephone number, country and club or organisation membership. We also process the match, player, court, scoring and timing information you create, together with essential login, session, device and support information needed to operate and secure the service."
+                )
+                privacySection(
+                    title: "How information is used",
+                    text: "Information is used to create and manage accounts, provide match setup and scoring, synchronise offline actions, display match history, administer clubs, respond to support requests, prevent misuse and maintain the reliability and security of Hit n Score. We do not sell personal information or use it for cross-app advertising or tracking."
+                )
+                privacySection(
+                    title: "Legal basis",
+                    text: "We process information where it is necessary to provide the service you requested, where we have a legitimate interest in operating and securing the service, where you have given consent, or where processing is required by law."
+                )
+                privacySection(
+                    title: "Storage and service providers",
+                    text: "The service uses contracted infrastructure and communication providers, including AWS for application services and Supabase-hosted PostgreSQL for primary data storage. Those providers process information only as needed to deliver the service. Information may be processed outside your country with appropriate contractual and legal safeguards."
+                )
+                privacySection(
+                    title: "Information stored on this device",
+                    text: "An unexpired login session may be stored in the iOS Keychain when biometric login is enabled. One active match and its queued scoring actions may be stored temporarily on the device for offline use. A selected profile photograph currently remains local to the device. Face ID and Touch ID templates are managed by Apple and are never received or stored by Hit n Score."
+                )
+                privacySection(
+                    title: "Retention and deletion",
+                    text: "Account data is retained while the account is active and only as long as reasonably necessary for service, security, legal and operational purposes. Personal-account owners can permanently delete their account from Profile settings. Deletion removes the personal account, its owned matches and scoring records, its signup record and active sessions, except for limited information that must be retained by law or in time-limited backups."
+                )
+                privacySection(
+                    title: "Your rights",
+                    text: "Depending on your location, you may have rights to access, correct, erase, restrict or object to processing of your information and to request data portability. Contact privacy@hitnscore.com to exercise these rights or raise a privacy concern."
+                )
+                privacySection(
+                    title: "Security and children",
+                    text: "We use HTTPS, password hashing, access controls, expiring sessions and device-protected Keychain storage to safeguard information. No system can guarantee absolute security. Hit n Score is not directed to children under 13; clubs and guardians are responsible for ensuring any junior use is appropriately authorised and supervised."
+                )
+                privacySection(
+                    title: "Changes and contact",
+                    text: "We may update this policy when the service or legal requirements change. The current version and its update date will remain available in the app. General enquiries can be sent to hello@hitnscore.com and privacy enquiries to privacy@hitnscore.com."
+                )
+
+                if let policyURL = URL(string: "https://app.hitnscore.com/help?section=privacy") {
+                    Link("View the online Privacy Policy", destination: policyURL)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+            }
+            .padding(18)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.dashboardBackgroundStart, Color.dashboardBackgroundEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Privacy & Data")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func privacySection(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func loadWelcomeNotificationState() {
+        welcomeNotificationRead = UserDefaults.standard.bool(forKey: welcomeNotificationStorageKey)
+    }
+
+    private func markWelcomeNotificationRead() {
+        welcomeNotificationRead = true
+        UserDefaults.standard.set(true, forKey: welcomeNotificationStorageKey)
+    }
+
+    private var welcomeNotificationStorageKey: String {
+        let username = session?.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "anonymous"
+        return "rcktscore.mobile.welcomeNotificationRead.\(username)"
+    }
+
+    private func accountDeletionAlert(for prompt: AccountDeletionPrompt) -> Alert {
+        switch prompt {
+        case .first:
+            return Alert(
+                title: Text("Delete your account?"),
+                message: Text("This will permanently remove your personal account, matches and scoring history. This action cannot be undone."),
+                primaryButton: .destructive(Text("Continue")) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        accountDeletionPrompt = .final
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        case .final:
+            return Alert(
+                title: Text("Are you really sure?"),
+                message: Text("Your account and its data will be permanently deleted now."),
+                primaryButton: .destructive(Text("Delete Permanently")) {
+                    deletePersonalAccount()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func deletePersonalAccount() {
+        guard let organizationID = session?.organizationID,
+              isPersonalAccount,
+              isOnline,
+              !isDeletingAccount else {
+            return
+        }
+
+        isDeletingAccount = true
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.deletePersonalAccount(organizationID: organizationID)
+                UserDefaults.standard.removeObject(forKey: welcomeNotificationStorageKey)
+                container.offlineMatchStore.clear()
+                container.sessionStore.clear()
+            } catch {
+                settingsErrorMessage = (error as? APIErrorResponse)?.message
+                    ?? "Unable to delete your account right now."
+                isDeletingAccount = false
             }
         }
     }
@@ -3563,6 +3867,13 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case orgSettings
     case users
     case courts
+
+    var id: String { rawValue }
+}
+
+private enum AccountDeletionPrompt: String, Identifiable {
+    case first
+    case final
 
     var id: String { rawValue }
 }

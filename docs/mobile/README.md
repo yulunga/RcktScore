@@ -32,13 +32,15 @@ What the current app does:
   score/stroke/let actions, undo, early end, serve-side changes, in-match game
   settings, tennis scoring presentation, and court display-code visibility
 - native historic-match view with grouped point timeline and match/game timing
-- native settings with plan-aware account menus, local profile photo picking,
-  subscription/profile/association pages, self-profile editing, password-reset
-  access, optional Face ID / Touch ID session unlock, association switching, an
-  About page for app version/build visibility, sign-out access, and club-admin
+- native settings with plan-aware account menus ordered About, Profile, then
+  Subscription, local profile photo picking, self-profile editing, password-reset
+  access, optional Face ID / Touch ID session unlock, two-stage personal-account
+  deletion, association switching, sign-out access, and club-admin
   organisation/user/court/racket-sport controls
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
+- native Help & Feedback privacy/data policy and bundled iOS privacy manifest
+- a first-pass local notification page with a welcome notice and persisted unread/read bell state
 - dashboard offline handling now suppresses the old persistent fetch-error
   banner and replaces the bell with an offline indicator
 - native login now presents an organisation chooser when the same email belongs
@@ -55,7 +57,7 @@ What the current app does:
 What it does not yet match perfectly:
 
 - final iPhone-first polish of the scoring screen and secondary controls
-- native notification-center flows behind the dashboard bell
+- backend-fed notification delivery, push notifications, and cross-device read state
 - full implementation behind the native settings `Game Settings`, `Reporting`,
   `Stats`, and deeper federation-style association pages
 - central/shared profile-photo storage across devices and users

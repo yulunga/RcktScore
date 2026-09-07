@@ -120,8 +120,8 @@ Required work:
 4. docs, release notes, and signoff checklist refresh
 5. regression coverage for multi-organisation selection and association switching
 6. decision on whether placeholder settings sections ship or are hidden
-7. add and validate account-deletion initiation for self-service personal accounts
-8. add the required privacy manifest where the final archive uses required-reason APIs, and complete App Store privacy disclosures
+7. validate the implemented personal-account deletion flow end to end against a disposable deployed account
+8. validate the bundled privacy manifest, publish the final public privacy-policy URL, and complete App Store Connect privacy disclosures
 
 Definition of done:
 

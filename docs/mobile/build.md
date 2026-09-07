@@ -39,6 +39,10 @@ not overridden.
    - end match
 7. Open a scheduled match and verify start-then-score flow.
 8. Open Settings and verify the current menu structure and any launch-critical admin saves.
+9. Verify About, Profile, and Subscription are the first three settings rows.
+10. Open Help & Feedback, review the Privacy & Data page, and confirm its online policy link resolves.
+11. With a test personal account, verify both deletion confirmations appear. Cancel each stage during routine regression; perform one end-to-end destructive deletion only against a disposable account in the deployed test stack.
+12. Verify the initial online bell is yellow, opening Notifications marks the welcome notice read, and the bell returns white. Confirm offline mode still replaces it with the offline icon.
 
 Optional CLI smoke:
 
@@ -52,8 +56,8 @@ xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme
 - there is no documented archive/sign/distribute workflow yet
 - there is no documented release build-number policy yet
 - some local CLI builds fail before completion if the machine has no working iPhone simulator runtimes available to Xcode asset tooling
-- native notification-center behavior behind the dashboard bell is not implemented yet
-- offline scoring and offline history are still incomplete
+- notification delivery is welcome-only and local; there is no backend or push-notification path yet
+- offline scoring supports one cached active match, but offline history and offline match creation remain incomplete
 
 ## Current Release Readiness
 

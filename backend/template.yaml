@@ -557,6 +557,18 @@ Resources:
             Path: /personal_profile/{organization_id}
             Method: PUT
 
+  DeletePersonalAccountFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_personal_account/handler.lambda_handler
+      Events:
+        DeletePersonalAccount:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /personal_account/{organization_id}
+            Method: DELETE
+
   CreateOrgUserFunction:
     Type: AWS::Serverless::Function
     Properties:
