@@ -2599,6 +2599,14 @@ textarea {
   font-weight: 600;
 }
 
+.root-admin-filter-card--unverified {
+  background: #fff8df;
+}
+
+.root-admin-filter-card--unverified:not(.active) div {
+  color: #b35c00;
+}
+
 .root-admin-user-directory-fields {
   display: grid;
   flex: 1;
@@ -2613,13 +2621,19 @@ textarea {
 .root-admin-user-list-tools {
   display: flex;
   align-items: center;
-  flex: 1;
+  flex: 0 1 auto;
   justify-content: flex-end;
   gap: 14px;
+  margin-left: auto;
 }
 
 .root-admin-user-list-tools .root-admin-search-wide {
   width: min(520px, 55vw);
+}
+
+.root-admin-user-list-header {
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .root-admin-profile-header {
@@ -3649,7 +3663,12 @@ textarea {
   .root-admin-user-list-tools {
     align-items: stretch;
     flex-direction: column;
+    margin-left: 0;
     width: 100%;
+  }
+
+  .root-admin-user-list-header {
+    flex-wrap: wrap;
   }
 
   .root-admin-directory-actions .root-admin-search-wide,

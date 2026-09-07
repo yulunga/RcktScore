@@ -1216,7 +1216,9 @@ def get_root_admin_users(connection, account_type=None, query=None):
     }
 
     requested_account_type = (account_type or "").strip().lower()
-    if requested_account_type in {"personal_free", "personal_plus", "club"}:
+    if requested_account_type == "unverified":
+        users = [user for user in users if not user["email_verified"]]
+    elif requested_account_type in {"personal_free", "personal_plus", "club"}:
         users = [user for user in users if requested_account_type in user["account_types"]]
 
     search_text = (query or "").strip().lower()

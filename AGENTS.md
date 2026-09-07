@@ -58,7 +58,7 @@ What is real and implemented:
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
-- root-admin User Accounts directory across personal and club memberships, with account-type filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports
+- root-admin User Accounts directory across personal and club memberships, with account-type and unverified-user summary filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes

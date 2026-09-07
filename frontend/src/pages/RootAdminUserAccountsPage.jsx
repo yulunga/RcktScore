@@ -9,6 +9,7 @@ const ACCOUNT_FILTERS = [
   { value: "personal_free", label: "Personal Free", countKey: "personal_free_count" },
   { value: "personal_plus", label: "Personal Plus", countKey: "personal_plus_count" },
   { value: "club", label: "Club Accounts", countKey: "club_user_count" },
+  { value: "unverified", label: "Unverified Users", countKey: "unverified_user_count" },
 ];
 
 export default function RootAdminUserAccountsPage() {
@@ -68,7 +69,7 @@ export default function RootAdminUserAccountsPage() {
           {ACCOUNT_FILTERS.map((filter) => (
             <button
               key={filter.value}
-              className={`meta-item root-admin-filter-card${accountFilter === filter.value ? " active" : ""}`}
+              className={`meta-item root-admin-filter-card${filter.value === "unverified" ? " root-admin-filter-card--unverified" : ""}${accountFilter === filter.value ? " active" : ""}`}
               type="button"
               onClick={() => selectFilter(filter.value)}
             >
