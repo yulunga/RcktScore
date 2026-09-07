@@ -110,9 +110,6 @@ export default function RootAdminUserAccountsPage() {
                 <div>
                   <span className="helper-text">Username</span>
                   <strong>{user.username}</strong>
-                  {user.email_verified === false ? (
-                    <span className="root-admin-verification-warning">Email not verified</span>
-                  ) : null}
                 </div>
                 <div>
                   <span className="helper-text">Name</span>
@@ -123,7 +120,10 @@ export default function RootAdminUserAccountsPage() {
                   <strong>{user.surname || "Not provided"}</strong>
                 </div>
               </div>
-              <div className="button-row">
+              <div className="button-row root-admin-user-actions">
+                {user.email_verified === false ? (
+                  <span className="root-admin-verification-warning">Email not verified</span>
+                ) : null}
                 <button type="button" onClick={() => navigate(`/rckscoreAdmin/users/${user.id}`)}>
                   View Profile
                 </button>

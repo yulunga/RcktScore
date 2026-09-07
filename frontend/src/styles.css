@@ -2325,14 +2325,18 @@ textarea {
 
 .root-admin-user-row .root-admin-verification-warning {
   display: inline-flex;
+  align-items: center;
   width: fit-content;
-  margin-top: 6px;
   padding: 4px 9px;
   border-radius: 999px;
   background: #f8d775;
   color: #704400;
   font-size: 0.75rem;
   font-weight: 800;
+}
+
+.root-admin-user-actions {
+  align-items: center;
 }
 
 .root-admin-section-header {

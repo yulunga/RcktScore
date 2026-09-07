@@ -117,6 +117,7 @@ Error:
    - for Club, keeps the request pending and sends confirmation/admin enquiry emails
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
 6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
+7. In the native iOS client, a successful response replaces the submitted form with a confirmation screen. Personal registration explains that the emailed link verifies the address and sets the password; club registration explains that the team will make contact.
 
 ### Troubleshooting cues
 
@@ -147,7 +148,7 @@ Error:
 - if reset emails are not arriving, check SES sender configuration and `PASSWORD_RESET_FROM_EMAIL`
 - if links point to the wrong frontend host, check `PASSWORD_RESET_BASE_URL` and request `Origin`
 
-The native login `Ping Us` form posts name, email, category, message, app version/build, page identifier, and user agent to `POST /feedback`. The feedback Lambda validates the request, sends it through SES with the submitter as the reply-to address, and returns `202` when SES accepts it. SES delivery failures are mapped to `503 FEEDBACK_DELIVERY_FAILED`; the configured sender and recipient must be verified or otherwise permitted in the deployed SES account.
+The native login `Ping Us` form posts name, email, category, message, app version/build, page identifier, and user agent to `POST /feedback`. The feedback Lambda validates the request, sends it through SES with the submitter as the reply-to address, and returns `202` when SES accepts it. The native form is then replaced by a sent confirmation and close action. SES delivery failures are mapped to `503 FEEDBACK_DELIVERY_FAILED`; the configured sender and recipient must be verified or otherwise permitted in the deployed SES account.
 
 ## 5. Dashboard Flow
 

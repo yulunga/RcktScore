@@ -405,85 +405,89 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 18) {
             overlayHeader("Join Hit n Score")
 
-            Text("Welcome to Hit n Score — the racket-sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional features, with the option to upgrade for more advanced tools.\n\nLooking for a multi-user account for a racket club? Club accounts are currently set up with our team. Register your interest and we’ll be in touch.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            styledField(title: "Name") {
-                TextField("First name", text: $interestFirstName)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled(true)
-            }
-
-            styledField(title: "Surname") {
-                TextField("Surname", text: $interestSurname)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled(true)
-            }
-
-            styledField(title: "Email address") {
-                TextField("you@email.com", text: $interestEmail)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled(true)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("App Use")
-                    .font(.caption.weight(.semibold))
+            if let interestMessage {
+                submissionConfirmation(
+                    title: interestUseType == "personal"
+                        ? "Thank you for registering"
+                        : "Thank you for your interest",
+                    message: interestMessage
+                ) {
+                    closeRegisterInterestOverlay()
+                }
+            } else {
+                Text("Welcome to Hit n Score — the racket-sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional features, with the option to upgrade for more advanced tools.\n\nLooking for a multi-user account for a racket club? Club accounts are currently set up with our team. Register your interest and we’ll be in touch.")
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                Picker("App Use", selection: $interestUseType) {
-                    Text("Personal").tag("personal")
-                    Text("Club").tag("club")
-                }
-                .pickerStyle(.segmented)
-            }
-
-            if interestUseType == "club" {
-                styledField(title: "Club name") {
-                    TextField("Club name", text: $interestClubName)
+                styledField(title: "Name") {
+                    TextField("First name", text: $interestFirstName)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled(true)
                 }
-            }
 
-            styledField(title: "Human check: what is \(interestHumanLeft) + \(interestHumanRight)?") {
-                TextField("Enter answer", text: $interestHumanAnswer)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.numberPad)
-                    .autocorrectionDisabled(true)
-            }
-
-            if let interestErrorMessage {
-                Text(interestErrorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let interestMessage {
-                Text(interestMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Color.loginAction)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            HStack(spacing: 12) {
-                overlaySecondaryButton("Cancel") {
-                    overlayMode = nil
+                styledField(title: "Surname") {
+                    TextField("Surname", text: $interestSurname)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled(true)
                 }
-                .disabled(isSubmittingInterest)
 
-                overlayPrimaryButton(
-                    title: isSubmittingInterest
-                        ? "Sending..."
-                        : (interestUseType == "personal" ? "Create Personal Account" : "Register Club Interest"),
-                    showProgress: isSubmittingInterest
-                ) {
-                    submitRegisterInterest()
+                styledField(title: "Email address") {
+                    TextField("you@email.com", text: $interestEmail)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled(true)
                 }
-                .disabled(isSubmittingInterest)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("App Use")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("App Use", selection: $interestUseType) {
+                        Text("Personal").tag("personal")
+                        Text("Club").tag("club")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                if interestUseType == "club" {
+                    styledField(title: "Club name") {
+                        TextField("Club name", text: $interestClubName)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled(true)
+                    }
+                }
+
+                styledField(title: "Human check: what is \(interestHumanLeft) + \(interestHumanRight)?") {
+                    TextField("Enter answer", text: $interestHumanAnswer)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.numberPad)
+                        .autocorrectionDisabled(true)
+                }
+
+                if let interestErrorMessage {
+                    Text(interestErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 12) {
+                    overlaySecondaryButton("Cancel") {
+                        overlayMode = nil
+                    }
+                    .disabled(isSubmittingInterest)
+
+                    overlayPrimaryButton(
+                        title: isSubmittingInterest
+                            ? "Sending..."
+                            : (interestUseType == "personal" ? "Create Personal Account" : "Register Club Interest"),
+                        showProgress: isSubmittingInterest
+                    ) {
+                        submitRegisterInterest()
+                    }
+                    .disabled(isSubmittingInterest)
+                }
             }
         }
         .padding(24)
@@ -535,88 +539,90 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 18) {
             overlayHeader("Ping Us")
 
-            Text("Tell us what is working, what is broken, or what you want to improve.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            styledField(title: "Your name") {
-                TextField("Your name", text: $feedbackName)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled(true)
-            }
-
-            styledField(title: "Your email") {
-                TextField("you@email.com", text: $feedbackEmail)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled(true)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Subject")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Picker("Subject", selection: $feedbackCategory) {
-                    ForEach(feedbackCategories, id: \.self) { category in
-                        Text(category).tag(category)
-                    }
+            if let feedbackSuccessMessage {
+                submissionConfirmation(
+                    title: "Thank you for contacting us",
+                    message: feedbackSuccessMessage
+                ) {
+                    overlayMode = nil
                 }
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(Color(.tertiarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.loginBorder, lineWidth: 1)
-                )
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Tell us more")
-                    .font(.caption.weight(.semibold))
+            } else {
+                Text("Tell us what is working, what is broken, or what you want to improve.")
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                TextEditor(text: $feedbackMessage)
-                    .frame(minHeight: 120)
-                    .padding(10)
+                styledField(title: "Your name") {
+                    TextField("Your name", text: $feedbackName)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled(true)
+                }
+
+                styledField(title: "Your email") {
+                    TextField("you@email.com", text: $feedbackEmail)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled(true)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Subject")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("Subject", selection: $feedbackCategory) {
+                        ForEach(feedbackCategories, id: \.self) { category in
+                            Text(category).tag(category)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 14)
                     .background(Color(.tertiarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(Color.loginBorder, lineWidth: 1)
                     )
-            }
-
-            if let feedbackErrorMessage {
-                Text(feedbackErrorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if let feedbackSuccessMessage {
-                Text(feedbackSuccessMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Color.loginAction)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            HStack(spacing: 12) {
-                overlaySecondaryButton("Back") {
-                    overlayMode = .helpOptions
                 }
-                .disabled(isSubmittingFeedback)
 
-                overlayPrimaryButton(
-                    title: isSubmittingFeedback ? "Sending..." : "Send",
-                    showProgress: isSubmittingFeedback
-                ) {
-                    submitFeedback()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Tell us more")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    TextEditor(text: $feedbackMessage)
+                        .frame(minHeight: 120)
+                        .padding(10)
+                        .background(Color(.tertiarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.loginBorder, lineWidth: 1)
+                        )
                 }
-                .disabled(isSubmittingFeedback)
+
+                if let feedbackErrorMessage {
+                    Text(feedbackErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 12) {
+                    overlaySecondaryButton("Back") {
+                        overlayMode = .helpOptions
+                    }
+                    .disabled(isSubmittingFeedback)
+
+                    overlayPrimaryButton(
+                        title: isSubmittingFeedback ? "Sending..." : "Send",
+                        showProgress: isSubmittingFeedback
+                    ) {
+                        submitFeedback()
+                    }
+                    .disabled(isSubmittingFeedback)
+                }
             }
         }
         .padding(24)
@@ -835,6 +841,30 @@ struct LoginView: View {
         .buttonStyle(.plain)
     }
 
+    private func submissionConfirmation(
+        title: String,
+        message: String,
+        closeAction: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(Color.loginAction)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(.title3.weight(.bold))
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            overlayPrimaryButton(title: "Close", action: closeAction)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func togglePasswordVisibility() {
         let shouldRestorePasswordFocus = focusedField == .password
         focusedField = nil
@@ -1011,8 +1041,8 @@ struct LoginView: View {
                 )
                 await MainActor.run {
                     interestMessage = requestedUseType == "personal"
-                        ? "Your personal account has been created. Check your email to verify your address and choose your password."
-                        : "Thanks. We have received your club enquiry and will be in touch."
+                        ? "Your personal account has been created. We have sent a verification email to \(email). Open the link in the email to verify your address and set your password. You can then return to Hit n Score and sign in."
+                        : "We have received your club account enquiry. Our team will review the details and contact you at \(email) about the next steps."
                     interestErrorMessage = nil
                     isSubmittingInterest = false
                 }
@@ -1067,7 +1097,7 @@ struct LoginView: View {
                     build: AppConfig.buildID
                 )
                 await MainActor.run {
-                    feedbackSuccessMessage = "Thanks. Your message has been sent."
+                    feedbackSuccessMessage = "Your message has been sent successfully. We will review it and contact you at \(email) if a response is needed."
                     feedbackErrorMessage = nil
                     feedbackMessage = ""
                     isSubmittingFeedback = false

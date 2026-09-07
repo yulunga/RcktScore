@@ -462,6 +462,7 @@ Current behavior:
 - SES delivery must be configured correctly
 - feedback sends email but does not persist to a database table
 - feedback defaults to the verified `hello@hitnscore.com` sender and recipient; SES delivery failures return `503 FEEDBACK_DELIVERY_FAILED` in the normal API envelope instead of an unstructured Lambda error
+- after successful personal/club registration or feedback responses, the native iOS client replaces the relevant form with a confirmation and next-step screen; API errors leave the form available for correction or retry
 
 ## Response Contract
 
