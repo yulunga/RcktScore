@@ -1,0 +1,133 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "03838056",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6761487059",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "6GVCHR2885",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 810593165.97738397,
+    "_locale" : "en_GB",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "GBR",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "22369681",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "UK",
+          "locale" : "en_GB"
+        }
+      ],
+      "name" : "Personal Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "1.99",
+              "displayPrice" : "1.99",
+              "internalID" : "6809933955_BILLED_UPFRONT",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "6809933955",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "UK",
+              "displayName" : "UK",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.hitnscore.personalplus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Personal Plus Monthly",
+          "subscriptionGroupID" : "22369681",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "19.99",
+              "displayPrice" : "19.99",
+              "internalID" : "6809934134_BILLED_UPFRONT",
+              "isEnabled" : true
+            }
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "6809934134",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "UK",
+              "displayName" : "UK",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "com.hitnscore.personalplus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Personal Plus Year",
+          "subscriptionGroupID" : "22369681",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 5,
+    "minor" : 0
+  }
+}

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		347D28313050A6800007FAC9 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 347D28303050A67F0007FAC9 /* StoreKit.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		343DE7702FF9077800C5F143 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -19,6 +23,8 @@
 /* Begin PBXFileReference section */
 		343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RcktScoreMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		347D28303050A67F0007FAC9 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		347D28323050A9C10007FAC9 /* HitnScore.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = HitnScore.storekit; path = RcktScoreMobile/HitnScore.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -46,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				347D28313050A6800007FAC9 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,11 +62,21 @@
 		347077D32F756CF40099CAFA = {
 			isa = PBXGroup;
 			children = (
+				347D28323050A9C10007FAC9 /* HitnScore.storekit */,
 				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
 				343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */,
 				347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */,
+				347D282F3050A67F0007FAC9 /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		347D282F3050A67F0007FAC9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				347D28303050A67F0007FAC9 /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

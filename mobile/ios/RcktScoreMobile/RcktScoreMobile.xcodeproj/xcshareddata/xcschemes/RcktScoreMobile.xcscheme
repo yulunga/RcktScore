@@ -64,6 +64,9 @@
             ReferencedContainer = "container:RcktScoreMobile.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <StoreKitConfigurationFileReference
+         identifier = "../../RcktScoreMobile/HitnScore.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
