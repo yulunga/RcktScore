@@ -35,7 +35,7 @@ def lambda_handler(event, context):
                 return error_response(
                     403,
                     "PERSONAL_PLUS_REQUIRED" if plan == "personal_free" else "PERSONAL_HISTORY_LIMIT_REACHED",
-                    "Upgrade to Personal Plus to open this match." if plan == "personal_free" else "This match is outside the latest 50 matches included with Personal Plus.",
+                    "Upgrade to Personal Plus to open this match." if plan == "personal_free" else "This match is outside the latest 100 matches included with Personal Plus.",
                 )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

@@ -1039,7 +1039,7 @@ struct DashboardView: View {
             ?? 3
         let plusHistoryLimit = organizationSummary?.availablePlanEntitlements["personal_plus"]?.historyLimit
             ?? organizationSettings?.organization.availablePlanEntitlements["personal_plus"]?.historyLimit
-            ?? 50
+            ?? 100
         let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
                 ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", (session?.plan ?? "").lowercased() == "personal_free", nil),

@@ -336,8 +336,8 @@ Current behavior:
 - `organization.entitlements` is the client-facing copy of the same server contract used to cap queries
 - `organization.available_plan_entitlements` exposes both Personal plans so upgrade copy does not duplicate limit constants in clients
 - Personal Free responses contain the latest three completed matches and a redacted fourth preview when more history exists
-- Personal Plus responses contain at most the latest 50 completed matches and include performance data
-- `GET /get_score/{match_id}` enforces the current personal plan's completed-history window, so a previously known match ID cannot bypass either the Free three-match or Plus 50-match boundary
+- Personal Plus responses contain at most the latest 100 completed matches and include performance data
+- `GET /get_score/{match_id}` enforces the current personal plan's completed-history window, so a previously known match ID cannot bypass either the Free three-match or Plus 100-match boundary
 - Personal Plus performance is computed from retained match state and event actions, including results, games/points, serve points, playing time, close games/sets, streaks, scorelines, opponents, sport splits, and weekly/monthly summaries
 
 ### Notifications

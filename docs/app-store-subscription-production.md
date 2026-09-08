@@ -33,7 +33,7 @@ There is no free trial in the intended product: a Personal Free user chooses Upg
 ## Current product contract
 
 - Personal Free: latest 3 completed matches, no performance dashboard.
-- Personal Plus: latest 50 completed matches and the implemented performance dashboard.
+- Personal Plus: latest 100 completed matches and the implemented performance dashboard.
 - Both: core scoring and shirt-colour selection.
 
 The source of truth is `backend/common/plan_entitlements.py`. API responses expose the current values under `organization.entitlements` and both plans under `organization.available_plan_entitlements`, allowing web and iOS copy to follow the backend contract.

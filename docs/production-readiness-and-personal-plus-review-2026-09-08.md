@@ -79,7 +79,7 @@ defect discovery can extend them.
    across the user’s devices ([Apple guidelines](https://developer.apple.com/app-store/review/guidelines/)).
 3. **Keep the implemented entitlement contract under regression test.** The stale
    100-match/saved-player/filter/export claims have been removed. The authoritative
-   server contract now grants the latest 3 completed matches to Free and latest 50
+   server contract now grants the latest 3 completed matches to Free and latest 100
    to Plus, with performance enabled only for Plus; clients receive this contract
    in dashboard and organisation-settings responses.
 4. **Close tennis cross-client parity.** Web match setup and scoring must support
@@ -132,7 +132,7 @@ defect discovery can extend them.
 | Club subscription enquiry | Structured club name/address/postcode/email/site/phone request | Generic Ping Us message with a preset category | Reuse the structured backend enquiry and fields on web |
 | Notifications | Backend inbox, unread yellow bell; offline icon | Backend inbox, unread bell state | Add APNs push delivery if proactive background alerts are required |
 | Profile | Edit profile, password reset, biometric setting, delete account | Name/location edit and password reset; email read-only, no phone/delete surface | Add telephone and compliant account deletion; document email-change policy |
-| Personal subscription | Server-driven Free 3 / Plus 50 copy; no payment yet | Server-driven Free 3 / Plus 50 copy; no payment | Complete StoreKit verification and automatic lifecycle described in `docs/app-store-subscription-production.md` |
+| Personal subscription | Server-driven Free 3 / Plus 100 copy; no payment yet | Server-driven Free 3 / Plus 100 copy; no payment | Complete StoreKit verification and automatic lifecycle described in `docs/app-store-subscription-production.md` |
 | Club administration | Native settings expose organisation, users, courts and sports controls | Broader, more mature administration | Keep web as primary admin surface; test native subset against role permissions |
 | Root administration | Not offered, appropriately | Clubs, users, matches, sports, enquiries | Keep web-only, add audit/billing/least-privilege operations |
 | Public display | Opens external/web display | Native web scoreboard/display layouts | Web remains the correct display client; finish realtime contract |

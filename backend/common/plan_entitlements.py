@@ -4,7 +4,7 @@ PERSONAL_PLAN_ENTITLEMENTS = {
         "performance_enabled": False,
     },
     "personal_plus": {
-        "history_limit": 50,
+        "history_limit": 100,
         "performance_enabled": True,
     },
 }

@@ -316,7 +316,7 @@ export default function OrganisationSettingsPage() {
   const personalPlanLabel = personalPlan === "personal_plus" ? "Personal+" : "Personal Free";
   const personalHistoryLimit = settings?.organization?.available_plan_entitlements?.personal_plus?.history_limit
     ?? (personalPlan === "personal_plus" ? settings?.organization?.entitlements?.history_limit : null)
-    ?? 50;
+    ?? 100;
   const personalHeaderActions = [
     {
       label: "Back to Dashboard",
