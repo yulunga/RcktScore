@@ -253,6 +253,7 @@ struct StartNewMatchFlowView: View {
             StartNewMatchView(
                 selectedSport: sport,
                 activeMatches: activeMatches,
+                onClose: { dismiss() },
                 onComplete: onComplete
             )
         }
@@ -353,11 +354,11 @@ struct StartNewMatchFlowView: View {
 
 struct StartNewMatchView: View {
     @EnvironmentObject private var container: AppContainer
-    @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: MatchSetupFocusField?
 
     let selectedSport: MatchSport
     let activeMatches: [MatchSummary]
+    let onClose: () -> Void
     let onComplete: (StartNewMatchResult) -> Void
 
     @State private var formState = MatchSetupFormState()
@@ -559,7 +560,7 @@ struct StartNewMatchView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Close") {
-                    dismiss()
+                    onClose()
                 }
                 .accessibilityIdentifier("startMatch.setup.closeButton")
             }
@@ -848,7 +849,7 @@ struct StartNewMatchView: View {
 
             if let personalActiveMatch {
                 Button("Resume Active Match") {
-                    dismiss()
+                    onClose()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         onComplete(.openMatch(personalActiveMatch.id))
                     }
