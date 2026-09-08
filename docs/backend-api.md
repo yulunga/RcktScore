@@ -323,6 +323,11 @@ Current behavior:
   - `active_matches`
   - `scheduled_matches`
   - `recent_matches`
+  - `performance` for Personal Plus accounts
+- `organization.completed_match_count` and `organization.locked_history_count` describe retained and entitlement-locked history
+- Personal Free responses contain the latest three completed matches and a redacted fourth preview when more history exists
+- `GET /get_score/{match_id}` also enforces the Personal Free completed-history window, so a previously known match ID cannot bypass the upgrade boundary
+- Personal Plus performance is computed from retained match state and event actions, including results, games/points, serve points, playing time, close games/sets, streaks, scorelines, opponents, sport splits, and weekly/monthly summaries
 
 ### Organisation settings
 

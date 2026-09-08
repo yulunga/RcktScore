@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var activeMatches: [MatchSummary] = []
     @State private var scheduledMatches: [MatchSummary] = []
     @State private var recentMatches: [MatchSummary] = []
+    @State private var performanceSummary: PersonalPerformanceSummary?
     @State private var organizationSummary: DashboardOrganizationSummary?
     @State private var organizationSettings: OrganizationSettings?
     @State private var isLoading = false
@@ -56,6 +57,7 @@ struct DashboardView: View {
     @State private var isDeletingAccount = false
     @State private var showsNotifications = false
     @State private var welcomeNotificationRead = false
+    @State private var showsMatchesMenu = false
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
@@ -181,6 +183,12 @@ struct DashboardView: View {
     }
     private var usesCompactBottomNavigation: Bool {
         dynamicTypeSize.isAccessibilitySize
+    }
+    private var availableDashboardTabs: [DashboardTab] {
+        if isPersonalPlus {
+            return [.home, .matches, .performance, .settings, .help]
+        }
+        return DashboardTab.allCases.filter { $0 != .performance }
     }
     private var bottomNavigationIconSize: CGFloat {
         usesCompactBottomNavigation ? 18 : 22
@@ -327,6 +335,17 @@ struct DashboardView: View {
             .alert(item: $accountDeletionPrompt) { prompt in
                 accountDeletionAlert(for: prompt)
             }
+            .confirmationDialog("Matches", isPresented: $showsMatchesMenu, titleVisibility: .visible) {
+                Button("Current Matches") {
+                    selectedTab = .matches
+                }
+                Button("Match History") {
+                    selectedTab = .history
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Choose the matches view you would like to open.")
+            }
         }
     }
 
@@ -448,6 +467,8 @@ struct DashboardView: View {
             matchesContent
         case .history:
             historyContent
+        case .performance:
+            performanceContent
         case .settings:
             settingsContent
         case .help:
@@ -532,6 +553,182 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private var performanceContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Performance",
+                systemImage: "chart.xyaxis.line",
+                subtitle: "Results, court time, serving and progress across your sports."
+            ) {
+                if !isPersonalPlus {
+                    upgradePerformanceCard
+                } else if isLoading && performanceSummary == nil {
+                    HStack {
+                        ProgressView()
+                        Spacer()
+                    }
+                } else if let performance = performanceSummary {
+                    VStack(spacing: 16) {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            performanceStatCard(title: "Matches won", value: "\(performance.matchesWon)", detail: "\(performancePercentage(performance.winPercentage)) win rate")
+                            performanceStatCard(title: "Playing time", value: performanceDuration(performance.playingTimeSeconds), detail: "\(performance.matchesPlayed) matches")
+                            performanceStatCard(title: "Games won", value: "\(performance.gamesWon)", detail: "\(performancePercentage(performance.gameWinPercentage)) win rate")
+                            performanceStatCard(title: "Points won", value: "\(performance.pointsWon)", detail: "\(performancePercentage(performance.pointWinPercentage)) win rate")
+                            performanceStatCard(title: "Close games / sets", value: "\(performance.closeGamesWon)/\(performance.closeGamesPlayed)", detail: performancePercentage(performance.closeGameWinPercentage))
+                            performanceStatCard(title: "Points won on serve", value: "\(performance.servicePointsWon)", detail: "\(performancePercentage(performance.servicePointWinPercentage)) of serve points")
+                            performanceStatCard(title: "Current streak", value: "\(performance.currentWinStreak)", detail: "Best: \(performance.bestWinStreak)")
+                            performanceStatCard(title: "Points lost on serve", value: "\(performance.servicePointsLost)", detail: "From recorded actions")
+                        }
+
+                        performanceGroup(title: "Progress summaries") {
+                            performancePeriodRow(title: "This week", summary: performance.weeklySummary)
+                            Divider()
+                            performancePeriodRow(title: "This month", summary: performance.monthlySummary)
+                        }
+
+                        if !performance.monthlyImprovement.isEmpty {
+                            performanceGroup(title: "Monthly improvement") {
+                                ForEach(performance.monthlyImprovement) { item in
+                                    performanceRow(
+                                        title: item.sport,
+                                        value: item.percentagePointChange.map { String(format: "%+.1f pts", $0) } ?? "Not enough data",
+                                        detail: "\(item.currentMonthMatches) this month"
+                                    )
+                                }
+                            }
+                        }
+
+                        if !performance.sports.isEmpty {
+                            performanceGroup(title: "By sport") {
+                                ForEach(performance.sports) { sport in
+                                    performanceRow(
+                                        title: sport.sport,
+                                        value: "\(sport.won)-\(sport.lost)",
+                                        detail: "\(performancePercentage(sport.winPercentage)) · \(performanceDuration(sport.playingTimeSeconds))"
+                                    )
+                                }
+                            }
+                        }
+
+                        if !performance.opponents.isEmpty {
+                            performanceGroup(title: "Opponents") {
+                                ForEach(performance.opponents) { opponent in
+                                    performanceRow(
+                                        title: opponent.name,
+                                        value: "\(opponent.won)-\(opponent.lost)",
+                                        detail: "\(performancePercentage(opponent.winPercentage)) win rate"
+                                    )
+                                }
+                            }
+                        }
+
+                        if !performance.scorelineWins.isEmpty {
+                            performanceGroup(title: "Winning scorelines") {
+                                ForEach(performance.scorelineWins) { scoreline in
+                                    performanceRow(title: scoreline.scoreline, value: "\(scoreline.count)", detail: scoreline.count == 1 ? "win" : "wins")
+                                }
+                            }
+                        }
+
+                        if performance.unclassifiedMatchCount > 0 {
+                            Text("\(performance.unclassifiedMatchCount) match\(performance.unclassifiedMatchCount == 1 ? "" : "es") could not be assigned to your profile because the recorded player name differs from your registered name.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                } else {
+                    emptyState("No completed matches are available for performance reporting yet.")
+                }
+            }
+        }
+    }
+
+    private var upgradePerformanceCard: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.xyaxis.line")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(Color.dashboardBrand)
+            Text("Performance is included with Personal Plus")
+                .font(.headline.weight(.bold))
+                .multilineTextAlignment(.center)
+            Text("Upgrade to see trends, opponent records, serving results, streaks and weekly or monthly progress.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("View Personal Plus") {
+                selectedTab = .settings
+                selectedSettingsSection = .subscription
+                settingsNavigationItem = .subscription
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func performanceStatCard(title: String, value: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(value)
+                .font(.title2.weight(.heavy))
+                .foregroundStyle(Color.dashboardBrand)
+                .minimumScaleFactor(0.75)
+            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func performanceGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title).font(.headline.weight(.bold))
+            content()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func performancePeriodRow(title: String, summary: PerformancePeriodSummary) -> some View {
+        performanceRow(
+            title: title,
+            value: "\(summary.matchesWon)-\(summary.matchesLost)",
+            detail: "\(summary.matchesPlayed) matches · \(performanceDuration(summary.playingTimeSeconds)) · \(performancePercentage(summary.winPercentage))"
+        )
+    }
+
+    private func performanceRow(title: String, value: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.dashboardBrand)
+                .multilineTextAlignment(.trailing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func performancePercentage(_ value: Double?) -> String {
+        value.map { String(format: "%.1f%%", $0) } ?? "—"
+    }
+
+    private func performanceDuration(_ seconds: Int) -> String {
+        let minutes = max(0, seconds) / 60
+        let hours = minutes / 60
+        let remainder = minutes % 60
+        return hours > 0 ? "\(hours)h \(remainder)m" : "\(minutes)m"
     }
 
     private var settingsContent: some View {
@@ -755,7 +952,6 @@ struct DashboardView: View {
         case .helpFeedback:
             VStack(spacing: 12) {
                 feedbackForm
-                resetForm
                 privacyComplianceLinkCard
             }
         case .reporting:
@@ -2052,9 +2248,13 @@ struct DashboardView: View {
 
     private var bottomNavigationBar: some View {
         HStack(spacing: 0) {
-            ForEach(DashboardTab.allCases) { tab in
+            ForEach(availableDashboardTabs) { tab in
                 Button {
-                    selectedTab = tab
+                    if isPersonalPlus && tab == .matches {
+                        showsMatchesMenu = true
+                    } else {
+                        selectedTab = tab
+                    }
                 } label: {
                     VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                         Image(systemName: tab.icon)
@@ -2181,15 +2381,50 @@ struct DashboardView: View {
         } else {
             VStack(spacing: 12) {
                 ForEach(matches) { match in
-                    Button {
-                        navigationTarget = MatchRoute(id: match.id, presentation: .historic)
-                    } label: {
-                        recentMatchCard(match)
+                    if match.locked {
+                        lockedHistoryCard
+                    } else {
+                        Button {
+                            navigationTarget = MatchRoute(id: match.id, presentation: .historic)
+                        } label: {
+                            recentMatchCard(match)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private var lockedHistoryCard: some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Previous match").font(.headline)
+                Text("Player name · Opponent")
+                Text("Completed match details").font(.caption)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.dashboardInnerCardBackground)
+            .blur(radius: 6)
+
+            VStack(spacing: 7) {
+                Image(systemName: "lock.fill").foregroundStyle(Color.dashboardBrand)
+                Text("Unlock your full match history").font(.subheadline.weight(.bold))
+                Button("View Personal Plus") {
+                    selectedTab = .settings
+                    selectedSettingsSection = .subscription
+                    settingsNavigationItem = .subscription
+                }
+                .font(.caption.weight(.bold))
+            }
+            .padding(12)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -3035,10 +3270,11 @@ struct DashboardView: View {
             let dashboard = try await container.apiClient.getDashboard(
                 organizationID: organizationID,
                 activeLimit: 200,
-                recentLimit: 200
+                recentLimit: 1000
             )
             await MainActor.run {
                 organizationSummary = dashboard.organization
+                performanceSummary = dashboard.performance
                 activeMatches = dashboard.activeMatches
                 scheduledMatches = dashboard.scheduledMatches
                 recentMatches = dashboard.recentMatches
@@ -4101,6 +4337,7 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
     case home
     case matches
     case history
+    case performance
     case settings
     case help
 
@@ -4114,6 +4351,8 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "Matches"
         case .history:
             return "History"
+        case .performance:
+            return "Performance"
         case .settings:
             return "Settings"
         case .help:
@@ -4129,6 +4368,8 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "calendar.badge.clock"
         case .history:
             return "clock"
+        case .performance:
+            return "chart.xyaxis.line"
         case .settings:
             return "gearshape"
         case .help:

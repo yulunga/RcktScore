@@ -3714,6 +3714,105 @@ textarea {
   }
 }
 
+.dashboard-history-card--locked {
+  position: relative;
+  min-height: 150px;
+  overflow: hidden;
+}
+
+.dashboard-history-card__locked-content {
+  display: grid;
+  gap: 8px;
+  filter: blur(6px);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.dashboard-history-card__upgrade {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 20px;
+  text-align: center;
+  background: rgba(246, 250, 255, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.dashboard-history-card__upgrade button,
+.performance-upgrade-panel button {
+  justify-self: center;
+  margin-top: 6px;
+}
+
+.performance-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.performance-stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid #d7e3f0;
+  border-radius: 18px;
+  background: #f6f9fd;
+}
+
+.performance-stat-card span,
+.performance-stat-card small,
+.performance-list-row span {
+  color: #486581;
+}
+
+.performance-stat-card strong {
+  color: #1274d0;
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+}
+
+.performance-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.performance-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e3edf7;
+}
+
+.performance-list-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 740px) {
+  .performance-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard-history-card__upgrade {
+    background: rgba(16, 27, 42, 0.82);
+  }
+
+  .performance-stat-card {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
 @media (max-width: 640px) {
   .dashboard-card-grid {
     grid-template-columns: 1fr;

@@ -15,6 +15,7 @@ struct MatchSummary: Decodable, Identifiable {
     let matchDurationSeconds: Int?
     let winnerName: String?
     let state: MatchState?
+    let locked: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -32,6 +33,7 @@ struct MatchSummary: Decodable, Identifiable {
         case matchDurationSeconds = "match_duration_seconds"
         case winnerName = "winner_name"
         case state
+        case locked
     }
 
     init(from decoder: Decoder) throws {
@@ -51,6 +53,7 @@ struct MatchSummary: Decodable, Identifiable {
         matchDurationSeconds = try container.decodeIfPresent(Int.self, forKey: .matchDurationSeconds)
         winnerName = try container.decodeIfPresent(String.self, forKey: .winnerName)
         state = try container.decodeIfPresent(MatchState.self, forKey: .state)
+        locked = try container.decodeIfPresent(Bool.self, forKey: .locked) ?? false
     }
 }
 

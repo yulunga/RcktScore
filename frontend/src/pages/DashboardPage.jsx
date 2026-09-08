@@ -165,7 +165,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       try {
         const response = await getDashboard(session.organization_id, {
           activeLimit: screenMode === "history" ? 0 : 200,
-          recentLimit: screenMode === "history" ? 200 : (screenMode === "matches" ? 1 : 12),
+          recentLimit: screenMode === "history" ? 1000 : (screenMode === "matches" ? 1 : 12),
         });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
@@ -289,6 +289,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const organizationType = organization.type || inferOrganizationType(session);
   const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
   const isPersonalAccount = organizationType === "personal";
+  const isPersonalPlus = isPersonalAccount && organizationPlan === "personal_plus";
   const historyLimit = organization.history_limit;
   const historyTitle = screenMode === "history"
     ? "Played Matches"
@@ -308,6 +309,13 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       },
     ]
     : [];
+
+  if (screenMode === "dashboard" && isPersonalPlus) {
+    dashboardActions.push(
+      { label: "Matches", onClick: () => navigate("/matches") },
+      { label: "Performance", onClick: () => navigate("/performance") },
+    );
+  }
 
   if (screenMode === "dashboard" && !isPersonalAccount) {
     dashboardActions.push({
@@ -538,6 +546,22 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }
 
   function renderHistoryMatchCard(match) {
+    if (match.locked) {
+      return (
+        <article className="dashboard-item dashboard-history-card dashboard-history-card--locked" key={match.id}>
+          <div className="dashboard-history-card__locked-content" aria-hidden="true">
+            <strong>Previous match</strong>
+            <span>Player One vs Player Two</span>
+            <span>Match details and result</span>
+          </div>
+          <div className="dashboard-history-card__upgrade">
+            <strong>Unlock your complete match history</strong>
+            <span>Upgrade to Personal+ to view every retained match.</span>
+            <button type="button" onClick={() => navigate("/settings")}>View Personal+</button>
+          </div>
+        </article>
+      );
+    }
     const player1 = splitPlayerName(match.player1_name, match.player1_surname);
     const player2 = splitPlayerName(match.player2_name, match.player2_surname);
     const winnerSide = resolveWinnerSide(match);

@@ -12,6 +12,7 @@ import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
 import OrganisationUserPage from "./pages/OrganisationUserPage";
+import PerformancePage from "./pages/PerformancePage";
 import PingUsPage from "./pages/PingUsPage";
 import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
@@ -114,6 +115,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <DashboardPage screenMode="history" />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/performance"
+        element={(
+          <ProtectedRoute>
+            <PerformancePage />
           </ProtectedRoute>
         )}
       />

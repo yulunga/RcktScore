@@ -148,6 +148,9 @@ What to check:
 - whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
 - whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
+- for Personal Free, confirm the dashboard returns no more than three readable completed matches and only a redacted `locked: true` fourth preview
+- for Personal Plus statistics, verify the registered first name and surname exactly match player details stored on completed matches; otherwise those matches appear in `unclassified_match_count`
+- if point or serving percentages are unexpectedly empty, inspect the retained `match_events` payloads because those figures come from scoring actions rather than the final score alone
 - the `enabled_sports` JSON on `SkwshOrgSettings` matches what the UI should expose
 - whether the UI control is real or scaffold-only
 

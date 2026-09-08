@@ -37,12 +37,15 @@ What is real and implemented:
 - org-user login with backend session tokens
 - multi-organisation membership selection
 - dashboard, history, and match lists
+- personal-plan entitlements: Personal Free exposes the latest three completed matches plus a redacted upgrade teaser, while Personal Plus exposes expanded cross-device history and server-derived performance reporting
+- the Personal Free completed-history limit is enforced on both dashboard lists and direct authenticated match reads
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup, opening serve/receive selection, optional No-Ad deciding points, and an optional final-set 10-point match tiebreak
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
+- web and native Personal Plus performance views covering results, game/point and serve-point percentages, court time, close games/sets, streaks, opponents, scorelines, sport splits, and weekly/monthly progress
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
 - native iOS login now includes a show/hide password toggle and can restore an unexpired, device-bound Keychain session with Face ID or Touch ID when enabled from settings, including from the login screen after local sign-out
 - native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis

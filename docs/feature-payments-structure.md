@@ -87,7 +87,8 @@ Current limitation:
 Currently enforced in code:
 
 - one active personal match at a time
-- dashboard/history returns the last `3` completed matches
+- dashboard/history returns the latest `3` completed matches and, when older history exists, one redacted fourth card with a Personal Plus upgrade prompt
+- older matches remain stored in the backend; the entitlement limits what Personal Free clients can read
 - shirt-colour selection is enabled
 
 ### Personal plus
@@ -95,12 +96,13 @@ Currently enforced in code:
 Currently enforced in code:
 
 - same personal-account model as personal free
-- dashboard/history returns the last `12` completed matches
+- expanded cross-device match history for web, iPhone, and iPad (clients currently request up to `1000` recent matches per dashboard load)
+- a server-derived performance dashboard with match, game, point, serve-point, playing-time, close-game/set, streak, opponent, scoreline, sport, and weekly/monthly progress statistics
 - shirt-colour selection is enabled
 
 Important:
 
-- earlier drafts that described `100` retained matches do not match the current code
+- performance attribution currently requires the registered first name and surname to match a recorded participant name; unmatched matches are reported as unclassified rather than producing misleading figures
 
 ### Club plans
 

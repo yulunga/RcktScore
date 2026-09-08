@@ -19,12 +19,14 @@ struct DashboardResponse: Decodable {
     let activeMatches: [MatchSummary]
     let scheduledMatches: [MatchSummary]
     let recentMatches: [MatchSummary]
+    let performance: PersonalPerformanceSummary?
 
     enum CodingKeys: String, CodingKey {
         case organization
         case activeMatches = "active_matches"
         case scheduledMatches = "scheduled_matches"
         case recentMatches = "recent_matches"
+        case performance
     }
 
     init(from decoder: Decoder) throws {
@@ -33,6 +35,139 @@ struct DashboardResponse: Decodable {
         activeMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .activeMatches) ?? []
         scheduledMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .scheduledMatches) ?? []
         recentMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .recentMatches) ?? []
+        performance = try container.decodeIfPresent(PersonalPerformanceSummary.self, forKey: .performance)
+    }
+}
+
+struct PersonalPerformanceSummary: Decodable {
+    let classifiedMatchCount: Int
+    let unclassifiedMatchCount: Int
+    let matchesPlayed: Int
+    let matchesWon: Int
+    let matchesLost: Int
+    let winPercentage: Double?
+    let gamesWon: Int
+    let gamesLost: Int
+    let gameWinPercentage: Double?
+    let pointsWon: Int
+    let pointsLost: Int
+    let pointWinPercentage: Double?
+    let playingTimeSeconds: Int
+    let closeGamesPlayed: Int
+    let closeGamesWon: Int
+    let closeGameWinPercentage: Double?
+    let servicePointsWon: Int
+    let servicePointsLost: Int
+    let servicePointWinPercentage: Double?
+    let currentWinStreak: Int
+    let bestWinStreak: Int
+    let scorelineWins: [PerformanceScoreline]
+    let opponents: [PerformanceOpponent]
+    let sports: [PerformanceSport]
+    let monthlyImprovement: [PerformanceMonthlyImprovement]
+    let weeklySummary: PerformancePeriodSummary
+    let monthlySummary: PerformancePeriodSummary
+
+    enum CodingKeys: String, CodingKey {
+        case classifiedMatchCount = "classified_match_count"
+        case unclassifiedMatchCount = "unclassified_match_count"
+        case matchesPlayed = "matches_played"
+        case matchesWon = "matches_won"
+        case matchesLost = "matches_lost"
+        case winPercentage = "win_percentage"
+        case gamesWon = "games_won"
+        case gamesLost = "games_lost"
+        case gameWinPercentage = "game_win_percentage"
+        case pointsWon = "points_won"
+        case pointsLost = "points_lost"
+        case pointWinPercentage = "point_win_percentage"
+        case playingTimeSeconds = "playing_time_seconds"
+        case closeGamesPlayed = "close_games_played"
+        case closeGamesWon = "close_games_won"
+        case closeGameWinPercentage = "close_game_win_percentage"
+        case servicePointsWon = "service_points_won"
+        case servicePointsLost = "service_points_lost"
+        case servicePointWinPercentage = "service_point_win_percentage"
+        case currentWinStreak = "current_win_streak"
+        case bestWinStreak = "best_win_streak"
+        case scorelineWins = "scoreline_wins"
+        case opponents, sports
+        case monthlyImprovement = "monthly_improvement"
+        case weeklySummary = "weekly_summary"
+        case monthlySummary = "monthly_summary"
+    }
+}
+
+struct PerformanceScoreline: Decodable, Identifiable {
+    let scoreline: String
+    let count: Int
+    var id: String { scoreline }
+}
+
+struct PerformanceOpponent: Decodable, Identifiable {
+    let name: String
+    let matchesPlayed: Int
+    let won: Int
+    let lost: Int
+    let winPercentage: Double?
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, won, lost
+        case matchesPlayed = "matches_played"
+        case winPercentage = "win_percentage"
+    }
+}
+
+struct PerformanceSport: Decodable, Identifiable {
+    let sport: String
+    let matchesPlayed: Int
+    let won: Int
+    let lost: Int
+    let winPercentage: Double?
+    let playingTimeSeconds: Int
+    var id: String { sport }
+
+    enum CodingKeys: String, CodingKey {
+        case sport, won, lost
+        case matchesPlayed = "matches_played"
+        case winPercentage = "win_percentage"
+        case playingTimeSeconds = "playing_time_seconds"
+    }
+}
+
+struct PerformanceMonthlyImprovement: Decodable, Identifiable {
+    let sport: String
+    let currentMonthMatches: Int
+    let currentMonthWinPercentage: Double?
+    let previousMonthMatches: Int
+    let previousMonthWinPercentage: Double?
+    let percentagePointChange: Double?
+    var id: String { sport }
+
+    enum CodingKeys: String, CodingKey {
+        case sport
+        case currentMonthMatches = "current_month_matches"
+        case currentMonthWinPercentage = "current_month_win_percentage"
+        case previousMonthMatches = "previous_month_matches"
+        case previousMonthWinPercentage = "previous_month_win_percentage"
+        case percentagePointChange = "percentage_point_change"
+    }
+}
+
+struct PerformancePeriodSummary: Decodable {
+    let matchesPlayed: Int
+    let matchesWon: Int
+    let matchesLost: Int
+    let winPercentage: Double?
+    let playingTimeSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case matchesPlayed = "matches_played"
+        case matchesWon = "matches_won"
+        case matchesLost = "matches_lost"
+        case winPercentage = "win_percentage"
+        case playingTimeSeconds = "playing_time_seconds"
     }
 }
 
@@ -45,6 +180,8 @@ struct DashboardOrganizationSummary: Decodable {
     let courtCount: Int?
     let userCount: Int?
     let roles: [String]
+    let completedMatchCount: Int?
+    let lockedHistoryCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -55,6 +192,8 @@ struct DashboardOrganizationSummary: Decodable {
         case courtCount = "court_count"
         case userCount = "user_count"
         case roles
+        case completedMatchCount = "completed_match_count"
+        case lockedHistoryCount = "locked_history_count"
     }
 
     init(from decoder: Decoder) throws {
@@ -67,6 +206,8 @@ struct DashboardOrganizationSummary: Decodable {
         courtCount = try container.decodeIfPresent(Int.self, forKey: .courtCount)
         userCount = try container.decodeIfPresent(Int.self, forKey: .userCount)
         roles = try container.decodeIfPresent([String].self, forKey: .roles) ?? []
+        completedMatchCount = try container.decodeIfPresent(Int.self, forKey: .completedMatchCount)
+        lockedHistoryCount = try container.decodeIfPresent(Int.self, forKey: .lockedHistoryCount)
     }
 }
 

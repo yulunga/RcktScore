@@ -23,7 +23,7 @@ Already in place:
 - optional local Face ID / Touch ID unlock for a saved session
 - server-provided session expiry with mandatory fresh login after expiry
 - self-service personal-account signup, controlled club enquiries, and help flows on login
-- dashboard shell with `Home`, `Matches`, `History`, `Settings`, and `Need Help`
+- plan-aware dashboard navigation: Personal Free uses `Home`, `Matches`, `History`, `Settings`, and `Need Help`; Personal Plus uses `Home`, `Matches`, `Performance`, `Settings`, and `Need Help`, with current/history destinations behind Matches
 - active, scheduled, and recent match loading
 - native start-new-match flow with sport picker
 - player and referee lookup suggestions
@@ -37,6 +37,7 @@ Already in place:
 - warm-up, interval, and match timer flow
 - historic-match timeline with grouped point history and game-duration summary
 - history search and separate matches/history views
+- Personal Free three-match history entitlement with a locked fourth upgrade teaser, plus expanded Personal Plus cross-device history and performance reporting
 - native plan-aware settings menus for subscription, profile, association,
   racket sports, game settings, help, and club-admin tools
 - native organisation, user, court, and court display-code mutations through the
@@ -56,8 +57,8 @@ These are the main gaps still visible in the current iOS build:
   needs final small-screen polish and confidence-building QA
 - native tennis now covers online and offline game/set/tie-break transitions plus singles/doubles service and receiver order, but still needs broader device regression coverage
 - the dashboard bell has no real notification-center flow yet
-- settings areas for association links, account-level game-settings presets,
-  reporting, and stats are still placeholder surfaces
+- settings areas for federation-style association links, account-level game-settings presets,
+  and downloadable reporting are still placeholder surfaces; Personal Plus performance statistics are now live
 - offline history, offline match creation, scheduled activation, settings changes, and multi-match caching remain outside the current offline scope
 - offline scoring still needs physical-device Airplane Mode, app-termination, long-queue, session-expiry, and reconnect signoff
 - there is no documented mobile CI/archive/release pipeline yet

@@ -78,22 +78,39 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const location = useLocation();
   const { session, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [matchesMenuOpen, setMatchesMenuOpen] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
   const accountSubline = organizationType === "personal"
     ? planLabel(session?.plan || "personal_free")
     : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
+  const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
-    { label: "Matches", icon: "matches", onClick: () => navigate("/matches"), isActive: location.pathname === "/matches" },
-    { label: "History", icon: "history", onClick: () => navigate("/history"), isActive: location.pathname === "/history" },
+    {
+      label: "Matches",
+      icon: "matches",
+      onClick: () => {
+        if (isPersonalPlus) {
+          setMobileMenuOpen(false);
+          setMatchesMenuOpen(true);
+        } else {
+          navigate("/matches");
+        }
+      },
+      isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
+    },
+    ...(isPersonalPlus ? [{ label: "Performance", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" }] : [
+      { label: "History", icon: "history", onClick: () => navigate("/history"), isActive: location.pathname === "/history" },
+    ]),
     { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
     { label: "Need Help?", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping", accent: true },
   ];
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setMatchesMenuOpen(false);
   }, [location.pathname, location.hash]);
 
   return (
@@ -228,6 +245,24 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   <span className="mobile-fab-menu-sheet__label">{item.label}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {matchesMenuOpen ? (
+        <div className="mobile-fab-menu-overlay" role="presentation">
+          <button
+            className="mobile-fab-menu-overlay__backdrop"
+            type="button"
+            aria-label="Close matches menu"
+            onClick={() => setMatchesMenuOpen(false)}
+          />
+          <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Matches navigation">
+            <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
+            <div className="mobile-fab-menu-sheet__items">
+              <button className="mobile-fab-menu-sheet__item" type="button" onClick={() => navigate("/matches")}>Current Matches</button>
+              <button className="mobile-fab-menu-sheet__item" type="button" onClick={() => navigate("/history")}>Match History</button>
             </div>
           </div>
         </div>

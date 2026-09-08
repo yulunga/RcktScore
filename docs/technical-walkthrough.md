@@ -174,13 +174,17 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - loads scheduled matches for clubs
    - loads completed match history
    - applies personal-plan history limits
+   - returns a redacted fourth history teaser for Personal Free when older matches exist
+   - derives Personal Plus performance statistics from completed match state and event actions
 5. The API returns `data.dashboard`.
-6. The page renders screen-mode-specific views for dashboard, matches, or history.
+6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Personal Plus navigation combines current matches and history behind the Matches action.
+7. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-three window, preventing direct URL access from bypassing the entitlement.
 
 ### Troubleshooting cues
 
 - empty match lists can be valid if the `matches` tables are missing or empty
-- personal accounts intentionally return reduced history lists
+- Personal Free intentionally returns three readable history records plus an optional locked teaser; Personal Plus requests expanded history
+- performance matches are attributed only when the registered first name and surname exactly match one recorded participant
 
 ## 6. Organisation Settings Flow
 
@@ -417,7 +421,7 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 
 1. [ContentView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/ContentView.swift) routes the app to `LoginView` or `DashboardView` based on the persisted `SessionStore`, but clears the saved session and requires fresh credentials once `session_expires_at` is reached.
 2. [LoginView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/LoginView.swift) calls `POST /login` with `client_type = mobile_app`, handles `ACTIVE_SESSION_EXISTS`, exposes a local show/hide password control, and branches between `data.session` and `data.organizationSelection`. Multi-membership users receive a native account picker. First-time sign-in requires connectivity, and the login card displays an offline explanation when no network is available.
-3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}` and presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`. The header bell becomes an offline indicator while disconnected. Online, an unread welcome notice makes the bell yellow; opening the local notification page marks it read and restores the white bell. A cached active match can be reopened from the active-match section.
+3. [DashboardView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/DashboardView.swift) loads `GET /dashboard/{organization_id}`. Personal Free presents `Home`, `Matches`, `History`, `Settings`, and `Need Help`, with three readable history records and a locked fourth teaser. Personal Plus replaces the standalone History tab with Performance; tapping Matches offers Current Matches or Match History. The header bell becomes an offline indicator while disconnected. Online, an unread welcome notice makes the bell yellow; opening the local notification page marks it read and restores the white bell. A cached active match can be reopened from the active-match section.
 4. The native settings flow in `DashboardView.swift` now adapts its menu by plan and account type. About, Profile, and Subscription are the first three items, followed by the existing association, racket-sport, game-settings, reporting/stats where entitled, and help items. Each row pushes to its own detail page. Club admins also call `GET /organization_settings/{organization_id}` and `PUT /organization_details/{organization_id}` to manage organisation details, users, courts, and the persisted `enabled_sports` racket-sport visibility list.
    From Subscription, non-current Club Essentials and Club Pro cards open an authenticated club-enquiry page. A successful submission is added to the root-admin Club Account Enquiries queue and triggers confirmation to the signed-in user plus notification to the configured `INTEREST_TO_EMAIL` recipient.
 5. The native profile page edits first name, surname, email/username, telephone, and country through `PUT /personal_profile/{organization_id}`, and still uses the shared password-reset request route rather than a dedicated in-app password change endpoint. Personal-account owners can initiate permanent deletion through `DELETE /personal_account/{organization_id}` after two separate destructive confirmations. On success, the app clears its session and cached offline match. Profile photos remain local to the device and are not stored in a central shared profile service yet.
