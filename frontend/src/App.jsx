@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
+import NotificationsPage from "./pages/NotificationsPage";
 import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
 import OrganisationUserPage from "./pages/OrganisationUserPage";
 import PerformancePage from "./pages/PerformancePage";
@@ -19,6 +20,7 @@ import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
 import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
+import RootAdminNotificationsPage from "./pages/RootAdminNotificationsPage";
 import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
 import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
 import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
@@ -53,6 +55,10 @@ export default function App() {
             <RootAdminMatchesPage />
           </RootAdminProtectedRoute>
         )}
+      />
+      <Route
+        path="/rckscoreAdmin/notifications"
+        element={(<RootAdminProtectedRoute><RootAdminNotificationsPage /></RootAdminProtectedRoute>)}
       />
       <Route
         path="/rckscoreAdmin/racket-sports"
@@ -123,6 +129,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <PerformancePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/notifications"
+        element={(
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         )}
       />

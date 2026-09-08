@@ -194,8 +194,27 @@ export function getDashboard(organizationId, options = {}) {
   return apiRequest(`/dashboard/${organizationId}${suffix}`);
 }
 
+export function getNotifications(organizationId) {
+  return apiRequest(`/notifications/${organizationId}`);
+}
+
+export function markNotificationRead(notificationId, organizationId) {
+  return apiRequest(`/notifications/${notificationId}/read`, {
+    method: "POST",
+    body: JSON.stringify({ organization_id: organizationId }),
+  });
+}
+
 export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
+}
+
+export function getRootAdminNotifications() {
+  return apiRequest("/root_admin/notifications");
+}
+
+export function createRootAdminNotification(payload) {
+  return apiRequest("/root_admin/notifications", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function getRootAdminPlatformSports() {

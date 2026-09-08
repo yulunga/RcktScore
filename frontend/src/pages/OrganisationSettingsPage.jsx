@@ -314,6 +314,9 @@ export default function OrganisationSettingsPage() {
   const personalEmail = session?.email || currentPersonalUser.username || session?.username || "";
   const personalPlan = settings?.organization?.plan || session?.plan || "personal_free";
   const personalPlanLabel = personalPlan === "personal_plus" ? "Personal+" : "Personal Free";
+  const personalHistoryLimit = settings?.organization?.available_plan_entitlements?.personal_plus?.history_limit
+    ?? (personalPlan === "personal_plus" ? settings?.organization?.entitlements?.history_limit : null)
+    ?? 50;
   const personalHeaderActions = [
     {
       label: "Back to Dashboard",
@@ -654,8 +657,8 @@ export default function OrganisationSettingsPage() {
                   <span className="status-pill">Paid</span>
                 </div>
                 <div className="dashboard-item-meta">
-                  <span>Up to 100 completed matches</span>
-                  <span>Match history filters, saved players, stats, and export access are included in this tier.</span>
+                  <span>Up to {personalHistoryLimit} completed matches</span>
+                  <span>Performance trends, opponent records, serving results, streaks, and progress summaries.</span>
                 </div>
               </article>
               <article className="dashboard-item">

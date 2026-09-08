@@ -4,13 +4,12 @@ from datetime import datetime, timedelta, timezone
 from psycopg.errors import UndefinedTable
 
 from common.match_logic import list_matches
+from common.plan_entitlements import PERSONAL_PLAN_ENTITLEMENTS, personal_plan_contract, personal_plan_entitlements
 
 
 PERSONAL_HISTORY_LIMITS = {
-    "personal_free": 3,
+    plan: values["history_limit"] for plan, values in PERSONAL_PLAN_ENTITLEMENTS.items()
 }
-
-PERSONAL_PLUS_ANALYTICS_MATCH_LIMIT = 1000
 
 
 def _safe_list_matches(connection, organization_id, status, limit):
@@ -28,9 +27,10 @@ def _safe_list_matches(connection, organization_id, status, limit):
 
 def _history_limit_for_plan(org_type, plan, default_limit):
     if org_type == "personal":
-        if plan == "personal_plus":
-            return max(default_limit, 0)
-        return PERSONAL_HISTORY_LIMITS["personal_free"]
+        contract_limit = personal_plan_entitlements(plan)["history_limit"]
+        if default_limit <= 0:
+            return 0
+        return min(default_limit, contract_limit)
     return default_limit
 
 
@@ -277,8 +277,8 @@ def _locked_history_preview(match):
     }
 
 
-def personal_free_can_access_completed_match(connection, organization_id, match_id):
-    """Prevent a known match URL from bypassing the Personal Free history limit."""
+def personal_can_access_completed_match(connection, organization_id, match_id, plan):
+    """Prevent a known match URL from bypassing the current personal history limit."""
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -299,10 +299,15 @@ def personal_free_can_access_completed_match(connection, organization_id, match_
             {
                 "organization_id": int(organization_id),
                 "match_id": match_id,
-                "history_limit": PERSONAL_HISTORY_LIMITS["personal_free"],
+                "history_limit": personal_plan_entitlements(plan)["history_limit"],
             },
         )
         return bool((cursor.fetchone() or {}).get("is_available"))
+
+
+def personal_free_can_access_completed_match(connection, organization_id, match_id):
+    """Compatibility wrapper for existing callers and tests."""
+    return personal_can_access_completed_match(connection, organization_id, match_id, "personal_free")
 
 
 def get_dashboard_data(connection, organization_id, active_limit=12, recent_limit=12):
@@ -375,7 +380,7 @@ def get_dashboard_data(connection, organization_id, active_limit=12, recent_limi
             connection,
             organization_id=organization_id,
             status="completed",
-            limit=PERSONAL_PLUS_ANALYTICS_MATCH_LIMIT,
+            limit=PERSONAL_HISTORY_LIMITS["personal_plus"],
         )
         with connection.cursor() as cursor:
             cursor.execute(
@@ -426,6 +431,8 @@ def get_dashboard_data(connection, organization_id, active_limit=12, recent_limi
             "history_limit": history_limit,
             "completed_match_count": completed_match_count,
             "locked_history_count": max(0, completed_match_count - history_limit) if plan == "personal_free" else 0,
+            "entitlements": personal_plan_entitlements(plan) if org_type == "personal" else None,
+            "available_plan_entitlements": personal_plan_contract() if org_type == "personal" else None,
             "court_count": (courts_row or {}).get("court_count", 0),
             "user_count": (users_row or {}).get("user_count", 0),
             "roles": (users_row or {}).get("roles") or [],

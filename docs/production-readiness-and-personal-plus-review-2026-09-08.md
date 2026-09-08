@@ -71,16 +71,17 @@ defect discovery can extend them.
    desktop widths, the native scenario harness, and an Xcode build/test. Today the
    documented Pytest and Playwright commands require manual setup and Amplify only
    builds the frontend.
-2. **Implement subscription lifecycle end to end.** StoreKit 2 purchase and
+2. **Complete subscription lifecycle end to end.** Migration `024_app_store_subscription_lifecycle.sql` now provides verified subscription/event persistence, but StoreKit 2 purchase and
    restore, App Store product configuration, backend transaction verification,
    App Store Server Notifications, entitlement expiry/refund/grace handling,
    and an admin-visible audit trail are all still required. Apple requires IAP
    for consumer digital feature unlocks and requires subscribed features to work
    across the user’s devices ([Apple guidelines](https://developer.apple.com/app-store/review/guidelines/)).
-3. **Make entitlements accurate everywhere.** Remove the web claim of 100 matches,
-   saved players, filters, stats and export until implemented. The code currently
-   grants 3 completed matches to Free and 12 to Plus. Decide one product contract,
-   enforce it server-side, and make web/iOS/admin copy derive from it.
+3. **Keep the implemented entitlement contract under regression test.** The stale
+   100-match/saved-player/filter/export claims have been removed. The authoritative
+   server contract now grants the latest 3 completed matches to Free and latest 50
+   to Plus, with performance enabled only for Plus; clients receive this contract
+   in dashboard and organisation-settings responses.
 4. **Close tennis cross-client parity.** Web match setup and scoring must support
    the same singles/doubles metadata, no-ad option, final-set 10-point tiebreak,
    service/receiver rotation and completion behaviour as backend/native. Add
@@ -106,8 +107,8 @@ defect discovery can extend them.
 
 - Wire WebSocket live updates fully or explicitly label display refresh as
   polling/beta; do not promise realtime until reconnect and ordering are proven.
-- Replace the local-only welcome notification with backend notifications, push
-  delivery and cross-device read state if notifications are part of launch copy.
+- Add APNs push delivery and background badge refresh to the now-persisted
+  notification inbox if proactive alerts are part of launch copy.
 - Add root-admin audit events for plan, password, verification, membership,
   deletion and sport-setting changes, with actor, target, timestamp and request ID.
 - Split root access into least-privilege support, club-operations and billing
@@ -129,9 +130,9 @@ defect discovery can extend them.
 | Tennis doubles/serve | Dedicated native metadata, reducer and presentation | No matching doubles/no-ad/final-match-tiebreak controls found | Port setup and presentation; share scenario fixtures |
 | Shirt colours | Available to Personal Free and Plus | Personal Free is blocked in setup and live settings | Fix web entitlement to match the agreed product |
 | Club subscription enquiry | Structured club name/address/postcode/email/site/phone request | Generic Ping Us message with a preset category | Reuse the structured backend enquiry and fields on web |
-| Notifications | Local welcome notice, unread yellow bell; offline icon | Bell is rendered but has no action/state | Implement a web notification page/state or remove the inactive control |
+| Notifications | Backend inbox, unread yellow bell; offline icon | Backend inbox, unread bell state | Add APNs push delivery if proactive background alerts are required |
 | Profile | Edit profile, password reset, biometric setting, delete account | Name/location edit and password reset; email read-only, no phone/delete surface | Add telephone and compliant account deletion; document email-change policy |
-| Personal subscription | Plan page and club enquiry; no payment yet | Stale advertised benefits; no payment | Replace with one server-driven catalogue and StoreKit/web billing policy |
+| Personal subscription | Server-driven Free 3 / Plus 50 copy; no payment yet | Server-driven Free 3 / Plus 50 copy; no payment | Complete StoreKit verification and automatic lifecycle described in `docs/app-store-subscription-production.md` |
 | Club administration | Native settings expose organisation, users, courts and sports controls | Broader, more mature administration | Keep web as primary admin surface; test native subset against role permissions |
 | Root administration | Not offered, appropriately | Clubs, users, matches, sports, enquiries | Keep web-only, add audit/billing/least-privilege operations |
 | Public display | Opens external/web display | Native web scoreboard/display layouts | Web remains the correct display client; finish realtime contract |

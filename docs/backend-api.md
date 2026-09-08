@@ -71,6 +71,10 @@ Current runtime path:
 - [common/dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py)
   - active, scheduled, and completed match aggregation
   - plan-aware history limits
+- [common/plan_entitlements.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/plan_entitlements.py)
+  - authoritative Personal Free/Personal Plus history and performance contract
+- [common/notification_center_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/notification_center_logic.py)
+  - audience-targeted notification publishing, inbox listing, and cross-device read state
 - [common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
   - stable match facade and sport dispatcher
   - enabled-sport enforcement before match creation
@@ -188,6 +192,8 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /root_admin/users/{user_id}/memberships`
 - `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
 - `PUT /root_admin/users/{user_id}/password`
+- `GET /root_admin/notifications`
+- `POST /root_admin/notifications`
 
 Current root-admin user-account behavior:
 
@@ -222,6 +228,8 @@ Current root-admin club-user behavior:
 ### Organisation and dashboard routes
 
 - `GET /dashboard/{organization_id}`
+- `GET /notifications/{organization_id}`
+- `POST /notifications/{notification_id}/read`
 - `GET /organization_settings/{organization_id}`
 - `GET /match_setup_lookup/{organization_id}?q=...`
 - `PUT /organization_details/{organization_id}`
@@ -325,9 +333,20 @@ Current behavior:
   - `recent_matches`
   - `performance` for Personal Plus accounts
 - `organization.completed_match_count` and `organization.locked_history_count` describe retained and entitlement-locked history
+- `organization.entitlements` is the client-facing copy of the same server contract used to cap queries
+- `organization.available_plan_entitlements` exposes both Personal plans so upgrade copy does not duplicate limit constants in clients
 - Personal Free responses contain the latest three completed matches and a redacted fourth preview when more history exists
-- `GET /get_score/{match_id}` also enforces the Personal Free completed-history window, so a previously known match ID cannot bypass the upgrade boundary
+- Personal Plus responses contain at most the latest 50 completed matches and include performance data
+- `GET /get_score/{match_id}` enforces the current personal plan's completed-history window, so a previously known match ID cannot bypass either the Free three-match or Plus 50-match boundary
 - Personal Plus performance is computed from retained match state and event actions, including results, games/points, serve points, playing time, close games/sets, streaks, scorelines, opponents, sport splits, and weekly/monthly summaries
+
+### Notifications
+
+- `POST /root_admin/notifications` accepts `title`, `message`, and `audience`; supported audiences are `all`, `personal_free`, `personal_plus`, `club_essentials`, and `club_pro`
+- `GET /notifications/{organization_id}` returns notifications addressed to either `all` or the authenticated membership's current plan
+- `POST /notifications/{notification_id}/read` records the authenticated username's read state in Postgres, so the state follows that account across web, iPhone, and iPad
+- migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message
+- delivery is currently pull/inbox based; APNs push delivery is not yet implemented
 
 ### Organisation settings
 

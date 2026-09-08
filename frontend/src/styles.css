@@ -694,6 +694,38 @@ textarea {
   background: rgba(18, 116, 208, 0.08);
 }
 
+.club-page-header__notification-button--unread {
+  color: #ffc400;
+  background: rgba(255, 196, 0, 0.14);
+  box-shadow: 0 0 16px rgba(255, 196, 0, 0.5);
+}
+
+.notification-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px;
+  border: 1px solid #d8e2ec;
+  border-radius: 18px;
+  background: #f7fafc;
+}
+
+.notification-card--unread {
+  border-color: rgba(18, 116, 208, 0.42);
+  box-shadow: inset 4px 0 0 #1274d0;
+}
+
+.notification-card__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.notification-card__copy p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .dashboard-active-heading {
   display: inline-flex;
   align-items: center;
@@ -3744,6 +3776,33 @@ textarea {
 .performance-upgrade-panel button {
   justify-self: center;
   margin-top: 6px;
+}
+
+.matches-category-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.matches-category-switch button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.matches-category-switch button.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(14, 116, 209, 0.22);
 }
 
 .performance-stat-grid {

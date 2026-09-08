@@ -386,7 +386,8 @@ What to check:
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
 - whether the installed build includes the adaptive dark-mode styling now used by `StartNewMatchFlowView` and `StartNewMatchView`
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
-- whether the welcome-read `UserDefaults` key is scoped to the normalized signed-in username and `markWelcomeNotificationRead()` runs when the notification page appears
+- whether migration `023_system_notifications.sql` was applied and `GET /notifications/{organization_id}` returns the expected `all` or plan-specific audience
+- whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user bearer token
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
 
 Important current truths:
@@ -396,7 +397,7 @@ Important current truths:
 - historic matches, new match creation, scheduled-match activation, and settings changes are online-only in the native app
 - one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns
 - offline undo can remove actions still queued on that device; undoing an older server-synchronised action requires connectivity
-- the dashboard stays quiet when offline and replaces the bell with an offline icon; online, the local unread welcome notice makes the bell yellow until the notification page is opened, after which it returns to white
+- the dashboard stays quiet when offline and replaces the bell with an offline icon; online, an unread persisted notification makes the bell yellow until the user explicitly marks it read
 - self-service deletion applies only to the authenticated owner of a personal account; club memberships remain club-admin managed, and deletion requires two client confirmations plus server-side ownership validation
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
@@ -413,7 +414,7 @@ These are current product limitations, not accidental breakage:
 - organisation handicap toggle in settings is scaffold-only
 - reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
-- native Notifications is currently a local welcome-only page; server-fed notifications and push delivery remain unimplemented
+- notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
   and they are not wired into a documented CI pipeline

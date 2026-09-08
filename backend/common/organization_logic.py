@@ -9,6 +9,7 @@ from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
 from common.sport_config import constrain_enabled_sports, normalize_enabled_sports
+from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
 
 VALID_ROLES = {"admin", "user"}
 USER_STATUS_PENDING = "pending"
@@ -32,6 +33,8 @@ def _utcnow():
 
 
 def _serialize_organization(row):
+    org_type = row.get("org_type") or "club"
+    plan = row.get("plan") or "club_essentials"
     return {
         "id": row["id"],
         "organization_name": row.get("organization_name") or "",
@@ -41,8 +44,10 @@ def _serialize_organization(row):
         "org_telephone": row.get("org_telephone") or "",
         "org_email": row.get("org_email") or "",
         "org_webaddress": row.get("org_webaddress") or "",
-        "org_type": row.get("org_type") or "club",
-        "plan": row.get("plan") or "club_essentials",
+        "org_type": org_type,
+        "plan": plan,
+        "entitlements": personal_plan_entitlements(plan) if org_type == "personal" else None,
+        "available_plan_entitlements": personal_plan_contract() if org_type == "personal" else None,
         "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
         "is_hidden": bool(row.get("is_hidden")),
         "social_profiles": {

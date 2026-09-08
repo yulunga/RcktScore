@@ -32,6 +32,8 @@ struct OrganizationProfile: Decodable {
     let plan: String?
     let enabledSports: [String]
     let isHidden: Bool
+    let entitlements: PersonalPlanEntitlements?
+    let availablePlanEntitlements: [String: PersonalPlanEntitlements]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -46,6 +48,8 @@ struct OrganizationProfile: Decodable {
         case plan
         case enabledSports = "enabled_sports"
         case isHidden = "is_hidden"
+        case entitlements
+        case availablePlanEntitlements = "available_plan_entitlements"
     }
 
     init(from decoder: Decoder) throws {
@@ -62,6 +66,17 @@ struct OrganizationProfile: Decodable {
         plan = try container.decodeIfPresent(String.self, forKey: .plan)
         enabledSports = try container.decodeIfPresent([String].self, forKey: .enabledSports) ?? ["squash", "racketball", "tennis"]
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
+        entitlements = try container.decodeIfPresent(PersonalPlanEntitlements.self, forKey: .entitlements)
+        availablePlanEntitlements = try container.decodeIfPresent([String: PersonalPlanEntitlements].self, forKey: .availablePlanEntitlements) ?? [:]
+    }
+}
+
+struct PersonalPlanEntitlements: Decodable {
+    let historyLimit: Int
+    let performanceEnabled: Bool
+    enum CodingKeys: String, CodingKey {
+        case historyLimit = "history_limit"
+        case performanceEnabled = "performance_enabled"
     }
 }
 

@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
 
 from common.dashboard_logic import (
+    _history_limit_for_plan,
     _locked_history_preview,
     build_personal_performance,
+    personal_can_access_completed_match,
     personal_free_can_access_completed_match,
 )
+from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
 
 
 class _EntitlementCursor:
@@ -153,3 +156,22 @@ def test_personal_free_direct_history_access_uses_latest_three_window():
     assert personal_free_can_access_completed_match(connection, 50001, "match-id") is True
     assert connection.test_cursor.params["organization_id"] == 50001
     assert connection.test_cursor.params["history_limit"] == 3
+
+    personal_can_access_completed_match(connection, 50001, "match-id", "personal_plus")
+    assert connection.test_cursor.params["history_limit"] == 50
+
+
+def test_personal_contract_caps_history_server_side():
+    assert _history_limit_for_plan("personal", "personal_free", 1000) == 3
+    assert _history_limit_for_plan("personal", "personal_plus", 1000) == 50
+    assert _history_limit_for_plan("club", "club_pro", 1000) == 1000
+    assert personal_plan_entitlements("personal_free") == {
+        "history_limit": 3,
+        "performance_enabled": False,
+    }
+    assert personal_plan_entitlements("personal_plus") == {
+        "history_limit": 50,
+        "performance_enabled": True,
+    }
+    assert personal_plan_contract()["personal_free"]["history_limit"] == 3
+    assert personal_plan_contract()["personal_plus"]["history_limit"] == 50

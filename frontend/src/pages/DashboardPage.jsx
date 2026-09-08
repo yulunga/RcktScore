@@ -151,6 +151,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [showSportOverlay, setShowSportOverlay] = useState(false);
+  const [matchesCategory, setMatchesCategory] = useState("current");
   const scheduledDetailsTimeoutsRef = useRef({});
 
   useEffect(() => {
@@ -165,7 +166,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       try {
         const response = await getDashboard(session.organization_id, {
           activeLimit: screenMode === "history" ? 0 : 200,
-          recentLimit: screenMode === "history" ? 1000 : (screenMode === "matches" ? 1 : 12),
+          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : 12,
         });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
@@ -339,7 +340,11 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 12, 12);
   const historyMatches = recentMatches.slice(0, historyPreviewLimit);
   const normalizedHistorySearch = historySearch.trim().toLowerCase();
-  const historyCollection = screenMode === "history" ? recentMatches : historyMatches;
+  const showMatchesOnly = screenMode === "matches";
+  const showHistoryOnly = screenMode === "history";
+  const showCombinedHistory = isPersonalPlus && showMatchesOnly && matchesCategory === "history";
+  const showingHistory = showHistoryOnly || showCombinedHistory;
+  const historyCollection = showingHistory ? recentMatches : historyMatches;
   const filteredHistoryMatches = useMemo(() => {
     if (!normalizedHistorySearch) {
       return historyCollection;
@@ -365,9 +370,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const scheduledPages = chunkItems(scheduledMatches);
   const visibleScheduledPage = scheduledPages[clampPageIndex(scheduledPage, scheduledPages.length)] || [];
   const hasScheduledCarousel = screenMode === "dashboard" && !isPersonalAccount && scheduledPages.length > 1;
-
-  const showMatchesOnly = screenMode === "matches";
-  const showHistoryOnly = screenMode === "history";
 
   useEffect(() => {
     setHistoryPage((current) => clampPageIndex(current, historyPages.length));
@@ -640,8 +642,15 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
+      {isPersonalPlus && showMatchesOnly ? (
+        <div className="matches-category-switch" role="tablist" aria-label="Match category">
+          <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current Matches</button>
+          <button className={matchesCategory === "history" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "history"} onClick={() => setMatchesCategory("history")}>Match History</button>
+        </div>
+      ) : null}
+
       <section className="dashboard-grid">
-        {!showHistoryOnly ? (
+        {!showingHistory ? (
         <section className="panel stack" id="active-matches-section">
           <div className="panel-heading">
             <h2 className="dashboard-active-heading">
@@ -684,7 +693,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         </section>
         ) : null}
 
-        {!isPersonalAccount && !showHistoryOnly ? (
+        {!isPersonalAccount && !showingHistory ? (
           <section className="panel stack" id="scheduled-matches-section">
             <div className="panel-heading">
               <h2 className="dashboard-scheduled-heading">
@@ -727,7 +736,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           </section>
         ) : null}
 
-        {!showMatchesOnly ? (
+        {(!showMatchesOnly || showCombinedHistory) ? (
         <section className="panel stack" id="match-history-section">
           <div className="panel-heading panel-heading--with-action">
             <h2 className="dashboard-history-heading">
@@ -751,7 +760,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             ) : null}
           </div>
 
-          {showHistoryOnly ? (
+          {showingHistory ? (
             <div className="dashboard-history-search">
               <input
                 type="search"
@@ -767,13 +776,13 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           ) : (
             <>
               <div className="dashboard-list dashboard-list--desktop">
-                {(showHistoryOnly
+                {(showingHistory
                   ? filteredHistoryMatches
                   : (showAllHistory ? filteredHistoryMatches : filteredHistoryMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE))
                 ).map((match) => renderHistoryMatchCard(match))}
               </div>
               <div className="dashboard-carousel dashboard-carousel--mobile">
-                {showHistoryOnly || showAllHistory ? (
+                {showingHistory || showAllHistory ? (
                   <div className="dashboard-list">
                     {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
                   </div>

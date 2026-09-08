@@ -186,6 +186,10 @@ export default function RootAdminDashboardPage() {
               Completed {summary.completed_match_count ?? 0}
             </span>
           </div>
+          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/notifications") }>
+            <strong>Notifications</strong>
+            <span>Send targeted messages</span>
+          </button>
           <button
             className="meta-item root-admin-settings-card"
             type="button"

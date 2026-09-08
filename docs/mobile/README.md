@@ -42,7 +42,8 @@ What the current app does:
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
 - native Help & Feedback privacy/data policy and bundled iOS privacy manifest
-- a first-pass local notification page with a welcome notice and persisted unread/read bell state
+- a backend-fed notification inbox with a seeded welcome message and cross-device unread/read state
+- Personal Plus Matches opens directly with a Current Matches / Match History segmented selector
 - dashboard offline handling now suppresses the old persistent fetch-error
   banner and replaces the bell with an offline indicator
 - native login now presents an organisation chooser when the same email belongs
@@ -59,9 +60,10 @@ What the current app does:
 What it does not yet match perfectly:
 
 - final iPhone-first polish of the scoring screen and secondary controls
-- backend-fed notification delivery, push notifications, and cross-device read state
+- APNs push notification delivery and background badge refresh
 - full implementation behind the native settings `Game Settings`, `Reporting`,
-  `Stats`, and deeper federation-style association pages
+  and deeper federation-style association pages
+- StoreKit purchase, restore, Apple server verification, and automatic subscription entitlement changes
 - central/shared profile-photo storage across devices and users
 - offline history, match creation, scheduled activation, settings changes, and multi-match caching
 - documented CI/archive/release pipeline

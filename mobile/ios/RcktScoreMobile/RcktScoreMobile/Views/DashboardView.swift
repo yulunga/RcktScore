@@ -56,14 +56,16 @@ struct DashboardView: View {
     @State private var accountDeletionPrompt: AccountDeletionPrompt?
     @State private var isDeletingAccount = false
     @State private var showsNotifications = false
-    @State private var welcomeNotificationRead = false
-    @State private var showsMatchesMenu = false
+    @State private var notifications: [AppNotification] = []
+    @State private var notificationErrorMessage: String?
+    @State private var selectedMatchesCategory: MatchesCategory = .current
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
     private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
+    private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
     private var headerPlanLine: String {
         session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
     }
@@ -199,13 +201,13 @@ struct DashboardView: View {
     private var personalSettingsItems: [SettingsMenuItem] {
         var items: [SettingsMenuItem] = [.about, .profile, .subscription, .association, .racketSports, .gameSettings]
         if isPersonalPlus {
-            items.append(contentsOf: [.reporting, .stats])
+            items.append(.reporting)
         }
         items.append(.helpFeedback)
         return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .stats, .helpFeedback]
+        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .helpFeedback]
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
@@ -311,8 +313,8 @@ struct DashboardView: View {
             }
             .task {
                 seedHelpDefaults()
-                loadWelcomeNotificationState()
                 await loadDashboard()
+                await loadNotifications()
             }
             .task(id: selectedProfilePhotoItem) {
                 await loadSelectedProfilePhoto()
@@ -326,7 +328,10 @@ struct DashboardView: View {
             }
             .onChange(of: isOnline) { _, isOnline in
                 if isOnline {
-                    Task { await loadDashboard() }
+                    Task {
+                        await loadDashboard()
+                        await loadNotifications()
+                    }
                 } else if errorMessage == "Unable to fetch dashboard data." {
                     errorMessage = nil
                 }
@@ -334,17 +339,6 @@ struct DashboardView: View {
             .refreshable { await loadDashboard() }
             .alert(item: $accountDeletionPrompt) { prompt in
                 accountDeletionAlert(for: prompt)
-            }
-            .confirmationDialog("Matches", isPresented: $showsMatchesMenu, titleVisibility: .visible) {
-                Button("Current Matches") {
-                    selectedTab = .matches
-                }
-                Button("Match History") {
-                    selectedTab = .history
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Choose the matches view you would like to open.")
             }
         }
     }
@@ -377,15 +371,15 @@ struct DashboardView: View {
                         guard isOnline else { return }
                         showsNotifications = true
                     } label: {
-                        Image(systemName: isOnline ? (welcomeNotificationRead ? "bell" : "bell.fill") : "wifi.slash")
+                        Image(systemName: isOnline ? (hasUnreadNotifications ? "bell.fill" : "bell") : "wifi.slash")
                             .font(.system(size: 22, weight: .medium))
                             .foregroundStyle(
                                 isOnline
-                                    ? (welcomeNotificationRead ? Color.white : Color.yellow)
+                                    ? (hasUnreadNotifications ? Color.yellow : Color.white)
                                     : Color.orange
                             )
                             .shadow(
-                                color: isOnline && !welcomeNotificationRead ? Color.yellow.opacity(0.9) : .clear,
+                                color: isOnline && hasUnreadNotifications ? Color.yellow.opacity(0.9) : .clear,
                                 radius: 8
                             )
                     }
@@ -505,20 +499,37 @@ struct DashboardView: View {
 
     private var matchesContent: some View {
         VStack(spacing: 18) {
-            dashboardSection(
-                title: "Matches",
-                subtitle: isPersonalAccount
-                    ? "Your live and upcoming matches in one place."
-                    : "All active courts first, then scheduled matches below."
-            ) {
-                VStack(spacing: 18) {
-                    matchesSubsection(title: "Active Matches", icon: "dot.radiowaves.left.and.right") {
-                        activeMatchesContent(matches: activeMatches)
+            if isPersonalPlus {
+                Picker("Match category", selection: $selectedMatchesCategory) {
+                    ForEach(MatchesCategory.allCases) { category in
+                        Text(category.title).tag(category)
                     }
+                }
+                .pickerStyle(.segmented)
+                .padding(6)
+                .background(Color.dashboardCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityIdentifier("matches.categoryPicker")
+            }
 
-                    if !isPersonalAccount {
-                        matchesSubsection(title: "Scheduled Matches", icon: "calendar.badge.clock") {
-                            scheduledMatchesContent(matches: scheduledMatches)
+            if isPersonalPlus && selectedMatchesCategory == .history {
+                historyContent
+            } else {
+                dashboardSection(
+                    title: "Matches",
+                    subtitle: isPersonalAccount
+                        ? "Your live and upcoming matches in one place."
+                        : "All active courts first, then scheduled matches below."
+                ) {
+                    VStack(spacing: 18) {
+                        matchesSubsection(title: "Active Matches", icon: "dot.radiowaves.left.and.right") {
+                            activeMatchesContent(matches: activeMatches)
+                        }
+
+                        if !isPersonalAccount {
+                            matchesSubsection(title: "Scheduled Matches", icon: "calendar.badge.clock") {
+                                scheduledMatchesContent(matches: scheduledMatches)
+                            }
                         }
                     }
                 }
@@ -956,8 +967,6 @@ struct DashboardView: View {
             }
         case .reporting:
             reportingPlaceholderCard
-        case .stats:
-            statsPlaceholderCard
         case .organisation:
             organizationOverviewCard
         case .orgSettings:
@@ -1025,10 +1034,16 @@ struct DashboardView: View {
     }
 
     private var subscriptionSettingsCard: some View {
+        let freeHistoryLimit = organizationSummary?.availablePlanEntitlements["personal_free"]?.historyLimit
+            ?? organizationSettings?.organization.availablePlanEntitlements["personal_free"]?.historyLimit
+            ?? 3
+        let plusHistoryLimit = organizationSummary?.availablePlanEntitlements["personal_plus"]?.historyLimit
+            ?? organizationSettings?.organization.availablePlanEntitlements["personal_plus"]?.historyLimit
+            ?? 50
         let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
-                ("Personal", "Singles scoring with core personal access.", (session?.plan ?? "").lowercased() == "personal_free", nil),
-                ("Personal+", "Adds expanded match customisation and premium features.", (session?.plan ?? "").lowercased() == "personal_plus", nil),
+                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", (session?.plan ?? "").lowercased() == "personal_free", nil),
+                ("Personal+", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", (session?.plan ?? "").lowercased() == "personal_plus", nil),
                 ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
                 ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
             ]
@@ -1405,21 +1420,6 @@ struct DashboardView: View {
                 .font(.headline.weight(.semibold))
 
             Text("Reporting views are being prepared for this plan tier. This section will surface downloadable summaries and period views as that work lands.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dashboardInnerCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    private var statsPlaceholderCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Stats")
-                .font(.headline.weight(.semibold))
-
-            Text("Personal and club performance stats will appear here once the reporting layer is connected to completed match summaries.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -2002,45 +2002,42 @@ struct DashboardView: View {
     private var notificationCenterPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: "hand.wave.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Color.dashboardBrand)
-                        .frame(width: 44, height: 44)
-                        .background(Color.dashboardBrand.opacity(0.12))
-                        .clipShape(Circle())
+                if let notificationErrorMessage {
+                    dashboardInlineError(notificationErrorMessage)
+                }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Welcome to Hit n Score")
-                                .font(.headline.weight(.bold))
-                            Spacer()
-                            Text("Welcome")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(Color.dashboardBrand)
+                if notifications.isEmpty {
+                    emptyState("You have no notifications.")
+                } else {
+                    ForEach(notifications) { notification in
+                        HStack(alignment: .top, spacing: 14) {
+                            Image(systemName: notification.isRead ? "envelope.open" : "envelope.badge")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(notification.isRead ? Color.secondary : Color.dashboardBrand)
+                                .frame(width: 44, height: 44)
+                                .background(Color.dashboardBrand.opacity(0.12))
+                                .clipShape(Circle())
+
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(notification.title).font(.headline.weight(.bold))
+                                Text(notification.message).font(.subheadline).foregroundStyle(.secondary)
+                                if notification.isRead {
+                                    Text("Read").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                } else {
+                                    Button("Mark as read") {
+                                        Task { await markNotificationRead(notification) }
+                                    }
+                                    .font(.caption.weight(.bold))
+                                }
+                            }
+                            Spacer(minLength: 0)
                         }
-
-                        Text("Thanks for joining Hit n Score. You can create and score racket-sport matches, review your match history and manage your account from this app.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        Text("Read")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                        .padding(16)
+                        .background(Color.dashboardInnerCardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
                     }
                 }
-                .padding(16)
-                .background(Color.dashboardInnerCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.dashboardBorder, lineWidth: 1)
-                )
-
-                Text("Future account and service notifications will appear here.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(18)
         }
@@ -2054,9 +2051,7 @@ struct DashboardView: View {
         )
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            markWelcomeNotificationRead()
-        }
+        .task { await loadNotifications() }
     }
 
     private var privacyComplianceLinkCard: some View {
@@ -2181,20 +2176,6 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private func loadWelcomeNotificationState() {
-        welcomeNotificationRead = UserDefaults.standard.bool(forKey: welcomeNotificationStorageKey)
-    }
-
-    private func markWelcomeNotificationRead() {
-        welcomeNotificationRead = true
-        UserDefaults.standard.set(true, forKey: welcomeNotificationStorageKey)
-    }
-
-    private var welcomeNotificationStorageKey: String {
-        let username = session?.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "anonymous"
-        return "rcktscore.mobile.welcomeNotificationRead.\(username)"
-    }
-
     private func accountDeletionAlert(for prompt: AccountDeletionPrompt) -> Alert {
         switch prompt {
         case .first:
@@ -2235,7 +2216,6 @@ struct DashboardView: View {
         Task {
             do {
                 try await container.apiClient.deletePersonalAccount(organizationID: organizationID)
-                UserDefaults.standard.removeObject(forKey: welcomeNotificationStorageKey)
                 container.offlineMatchStore.clear()
                 container.sessionStore.clear()
             } catch {
@@ -2250,11 +2230,7 @@ struct DashboardView: View {
         HStack(spacing: 0) {
             ForEach(availableDashboardTabs) { tab in
                 Button {
-                    if isPersonalPlus && tab == .matches {
-                        showsMatchesMenu = true
-                    } else {
-                        selectedTab = tab
-                    }
+                    selectedTab = tab
                 } label: {
                     VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                         Image(systemName: tab.icon)
@@ -3290,6 +3266,33 @@ struct DashboardView: View {
                 print("DASHBOARD LOAD ERROR:", error)
                 errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to fetch dashboard data."
                 isLoading = false
+            }
+        }
+    }
+
+    private func loadNotifications() async {
+        guard isOnline, let organizationID = session?.organizationID else { return }
+        do {
+            let loaded = try await container.apiClient.getNotifications(organizationID: organizationID)
+            await MainActor.run {
+                notifications = loaded
+                notificationErrorMessage = nil
+            }
+        } catch {
+            await MainActor.run {
+                notificationErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load notifications."
+            }
+        }
+    }
+
+    private func markNotificationRead(_ notification: AppNotification) async {
+        guard let organizationID = session?.organizationID else { return }
+        do {
+            try await container.apiClient.markNotificationRead(notificationID: notification.id, organizationID: organizationID)
+            await loadNotifications()
+        } catch {
+            await MainActor.run {
+                notificationErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to mark this notification as read."
             }
         }
     }
@@ -4378,6 +4381,14 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
     }
 }
 
+private enum MatchesCategory: String, CaseIterable, Identifiable {
+    case current
+    case history
+
+    var id: String { rawValue }
+    var title: String { self == .current ? "Current Matches" : "Match History" }
+}
+
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case subscription
     case profile
@@ -4387,7 +4398,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case about
     case helpFeedback
     case reporting
-    case stats
     case organisation
     case orgSettings
     case users
@@ -4412,7 +4422,6 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case about
     case helpFeedback
     case reporting
-    case stats
     case organisation
     case orgSettings
     case users
@@ -4438,8 +4447,6 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Help & Feedback"
         case .reporting:
             return "Reporting"
-        case .stats:
-            return "Stats"
         case .organisation:
             return "Organisation"
         case .orgSettings:
@@ -4469,8 +4476,6 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "bubble.left.and.bubble.right"
         case .reporting:
             return "chart.bar.xaxis"
-        case .stats:
-            return "gauge.with.dots.needle.33percent"
         case .organisation:
             return "building.2"
         case .orgSettings:
@@ -4500,8 +4505,6 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .helpFeedback
         case .reporting:
             return .reporting
-        case .stats:
-            return .stats
         case .organisation:
             return .organisation
         case .orgSettings:

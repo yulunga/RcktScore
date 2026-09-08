@@ -96,7 +96,7 @@ Currently enforced in code:
 Currently enforced in code:
 
 - same personal-account model as personal free
-- expanded cross-device match history for web, iPhone, and iPad (clients currently request up to `1000` recent matches per dashboard load)
+- the latest `50` completed matches across web, iPhone, and iPad; the backend caps the response even if a client requests more
 - a server-derived performance dashboard with match, game, point, serve-point, playing-time, close-game/set, streak, opponent, scoreline, sport, and weekly/monthly progress statistics
 - shirt-colour selection is enabled
 
@@ -127,7 +127,7 @@ These are safe to describe as implemented today:
 
 - Personal accounts exist as hidden single-user organisations
 - Personal free has reduced match-history access
-- Personal plus unlocks deeper history than personal free; shirt colours are available on both tiers
+- Personal Plus unlocks the latest 50 completed matches and server-derived performance analytics; shirt colours are available on both tiers
 - Clubs have multi-user workspace, court management, and club match operations
 - clubs and personal accounts can have sport visibility rolled out selectively
 - tennis is a live selectable scoring sport alongside squash and racketball
@@ -156,8 +156,9 @@ These are safe to describe as implemented today:
 ### Personal plus
 
 - everything in personal free
-- more retained history than personal free
-- shirt-colour selection
+- latest 50 completed matches across signed-in devices
+- performance, opponent, serving, streak, scoreline, sport, and progress summaries
+- shirt-colour selection, which is also available to Free
 
 ### Club essentials
 
@@ -181,13 +182,13 @@ The repo does not yet contain strong club-pro enforcement logic.
 
 ## Next Product and Commercial Work
 
-1. Decide the true plan limits for:
-   - history retention
+1. Keep client and commercial copy tied to `backend/common/plan_entitlements.py`; the current personal contract is Free `3`, Plus `50`.
+2. Decide the true plan limits for:
    - courts
    - users
    - active matches
    - scheduled matches
-2. Implement those limits server-side.
-3. Decide whether player management remains lookup/history-based or becomes a real CRUD module.
-4. Add root-admin rate limiting, audit reporting, and operational session controls before positioning the admin surface as enterprise-grade.
-5. Complete WebSocket infrastructure before selling realtime display as a premium reliability feature.
+3. Implement those club limits server-side.
+4. Decide whether player management remains lookup/history-based or becomes a real CRUD module.
+5. Add root-admin rate limiting, audit reporting, and operational session controls before positioning the admin surface as enterprise-grade.
+6. Complete WebSocket infrastructure before selling realtime display as a premium reliability feature.

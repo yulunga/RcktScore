@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
+import { getNotifications } from "../services/api";
 
 function inferOrganizationType(session) {
   if (session?.organization_type) {
@@ -78,7 +79,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const location = useLocation();
   const { session, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [matchesMenuOpen, setMatchesMenuOpen] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
   const accountSubline = organizationType === "personal"
@@ -91,14 +92,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
     {
       label: "Matches",
       icon: "matches",
-      onClick: () => {
-        if (isPersonalPlus) {
-          setMobileMenuOpen(false);
-          setMatchesMenuOpen(true);
-        } else {
-          navigate("/matches");
-        }
-      },
+      onClick: () => navigate("/matches"),
       isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
     },
     ...(isPersonalPlus ? [{ label: "Performance", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" }] : [
@@ -110,8 +104,26 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
 
   useEffect(() => {
     setMobileMenuOpen(false);
-    setMatchesMenuOpen(false);
   }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUnreadState() {
+      if (!session?.organization_id) return;
+      try {
+        const response = await getNotifications(session.organization_id);
+        if (!cancelled) setHasUnreadNotifications((response.notifications || []).some((item) => !item.is_read));
+      } catch {
+        if (!cancelled) setHasUnreadNotifications(false);
+      }
+    }
+    loadUnreadState();
+    window.addEventListener("rcktscore:notifications-changed", loadUnreadState);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("rcktscore:notifications-changed", loadUnreadState);
+    };
+  }, [session?.organization_id]);
 
   return (
     <>
@@ -139,9 +151,10 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
           <div className="club-page-header__account">
             <div className="club-page-header__meta">
               <button
-                className="club-page-header__notification-button"
+                className={`club-page-header__notification-button${hasUnreadNotifications ? " club-page-header__notification-button--unread" : ""}`}
                 type="button"
                 aria-label="Notifications"
+                onClick={() => navigate("/notifications")}
               >
                 <svg
                   aria-hidden="true"
@@ -250,23 +263,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         </div>
       ) : null}
 
-      {matchesMenuOpen ? (
-        <div className="mobile-fab-menu-overlay" role="presentation">
-          <button
-            className="mobile-fab-menu-overlay__backdrop"
-            type="button"
-            aria-label="Close matches menu"
-            onClick={() => setMatchesMenuOpen(false)}
-          />
-          <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Matches navigation">
-            <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
-            <div className="mobile-fab-menu-sheet__items">
-              <button className="mobile-fab-menu-sheet__item" type="button" onClick={() => navigate("/matches")}>Current Matches</button>
-              <button className="mobile-fab-menu-sheet__item" type="button" onClick={() => navigate("/history")}>Match History</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }

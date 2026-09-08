@@ -57,9 +57,11 @@ What is real and implemented:
 - native tennis scoring is isolated in `TennisScoringReducer.swift` and `TennisScoringPresentation.swift`; shared match code retains loading, timers, networking, and offline queue plumbing
 - mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice
 - organisation-user sessions now carry a server expiry timestamp; the native app discards expired cached sessions and supports Face ID or Touch ID for an unexpired session saved on that device
-- the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens a local notification page and highlights the unread welcome notice in yellow until it is viewed
+- the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens the persisted notification inbox and highlights unread messages in yellow until explicitly marked read
+- system notifications are persisted in Postgres, can be published by root admin to all users or a specific plan, and share cross-device read state across web and iOS
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
+- one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 50 and receives performance analytics
 - native Subscription links for logged-in Club Essentials and Club Pro enquiries, capturing full club contact details in the root-admin queue and sending requester/admin acknowledgement emails
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
@@ -72,8 +74,9 @@ What is still partial or risky:
 
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
-- some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting/stats views
-- the native notification center is local and welcome-only; server notifications, push delivery, and cross-device read state are not implemented yet
+- some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting views
+- notifications currently use inbox polling; APNs push delivery and background notification badges are not implemented yet
+- App Store subscription persistence tables exist, but StoreKit purchase, Apple server verification, App Store Server Notifications, restore purchases, and automatic plan changes are not connected yet
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior remains intentionally scoped: new match creation, scheduled-match activation, historic data, settings changes, and matches not previously opened on that device still require connectivity
 - there is no documented iOS CI/archive/release pipeline in the repo yet
@@ -117,6 +120,8 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/dashboard`
 - `/matches`
 - `/history`
+- `/notifications`
+- `/performance`
 - `/settings`
 - `/settings/users/:userId`
 - `/ping`
@@ -129,6 +134,7 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/rckscoreAdmin/dashboard`
 - `/rckscoreAdmin/clubs/:organizationId`
 - `/rckscoreAdmin/matches`
+- `/rckscoreAdmin/notifications`
 - `/rckscoreAdmin/racket-sports`
 - `/rckscoreAdmin/interests`
 - `/rckscoreAdmin/personal-accounts` (legacy alias for User Accounts)

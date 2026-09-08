@@ -56,7 +56,7 @@ These are the main gaps still visible in the current iOS build:
 - the live scoring screen is much better than the earlier layout, but still
   needs final small-screen polish and confidence-building QA
 - native tennis now covers online and offline game/set/tie-break transitions plus singles/doubles service and receiver order, but still needs broader device regression coverage
-- the dashboard bell has no real notification-center flow yet
+- the dashboard bell opens a backend-fed notification inbox with cross-device read state; APNs push delivery is still outstanding
 - settings areas for federation-style association links, account-level game-settings presets,
   and downloadable reporting are still placeholder surfaces; Personal Plus performance statistics are now live
 - offline history, offline match creation, scheduled activation, settings changes, and multi-match caching remain outside the current offline scope
@@ -94,7 +94,7 @@ Required work:
 
 1. finish iPhone scorer polish across squash/racketball and tennis
 2. validate dark-mode device behavior for flows that intentionally force light presentation
-3. decide what the dashboard bell should do at launch if notifications remain unimplemented
+3. complete APNs push delivery if background notification alerts are required at launch
 4. decide whether placeholder settings sections should stay visible at launch
 5. preserve existing backend contracts and event behavior while tightening the UX
 
@@ -151,5 +151,5 @@ blocking:
 2. full spectator-display configuration
 3. WebSocket/live sync parity beyond the current refresh model
 4. offline history, offline match creation, and multi-match caching
-5. deep notification center flows behind the dashboard bell
+5. APNs registration, push delivery, and background badge refresh
 6. Android/native cross-platform work

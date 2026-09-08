@@ -49,7 +49,9 @@ Current unreleased iOS build state:
 - each settings menu row now opens its own dedicated page rather than expanding inline
 - native help flows support in-app feedback and password reset requests
 - Help & Feedback includes an in-app privacy/data page, and the target bundles a required-reason privacy manifest
-- the online notification bell opens a local welcome notice; it glows yellow while unread and returns to white after the page is viewed
+- the online notification bell opens the backend notification inbox; it glows yellow while a message is unread and returns to white after the message is marked read
+- Personal Plus Matches now opens directly and switches between Current Matches and Match History with a segmented selector
+- the unused Stats settings item has been removed
 - native login now supports organisation selection when the same email belongs
   to multiple approved clubs/accounts
 - the login landing page now places `Want In | Need Help` on one line; Personal registration creates an account immediately and emails password setup, while Club remains a managed enquiry
@@ -64,9 +66,9 @@ Current unreleased iOS build state:
 Known gaps before launch:
 
 - the current scoring layout is much stronger but still needs final iPhone-first UX polish
-- notifications are welcome-only and device-local; backend delivery, push notifications, and cross-device read state are not implemented
-- deeper association/federation links, account-level game settings, reporting,
-  and stats are still placeholder sections in native settings
+- inbox notifications and cross-device read state are implemented; APNs push delivery is not
+- deeper association/federation links, account-level game settings, and reporting are still placeholder sections in native settings
+- StoreKit purchasing, restore purchases, Apple server verification, and automatic plan updates remain release work
 - profile photos are still stored locally on the device rather than in a central shared profile store
 - offline history, offline match creation, scheduled activation, settings changes, and multi-match caching are not implemented
 - the offline scoring flow still needs Airplane Mode, restart, long-queue, and reconnect regression signoff on physical devices

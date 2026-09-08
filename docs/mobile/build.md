@@ -56,7 +56,7 @@ xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme
 - there is no documented archive/sign/distribute workflow yet
 - there is no documented release build-number policy yet
 - some local CLI builds fail before completion if the machine has no working iPhone simulator runtimes available to Xcode asset tooling
-- notification delivery is welcome-only and local; there is no backend or push-notification path yet
+- notification inbox delivery and read state are backend-backed; there is no APNs push-notification path yet
 - offline scoring supports one cached active match, but offline history and offline match creation remain incomplete
 
 ## Current Release Readiness

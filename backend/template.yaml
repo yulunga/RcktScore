@@ -569,6 +569,48 @@ Resources:
             Path: /dashboard/{organization_id}
             Method: GET
 
+  GetNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_notifications/handler.lambda_handler
+      Events:
+        GetNotifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /notifications/{organization_id}
+            Method: GET
+
+  ReadNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/read_notification/handler.lambda_handler
+      Events:
+        ReadNotification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /notifications/{notification_id}/read
+            Method: POST
+
+  RootAdminNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/root_admin_notifications/handler.lambda_handler
+      Events:
+        ListRootAdminNotifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/notifications
+            Method: GET
+        CreateRootAdminNotification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/notifications
+            Method: POST
+
   GetOrganizationSettingsFunction:
     Type: AWS::Serverless::Function
     Properties:

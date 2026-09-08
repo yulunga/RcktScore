@@ -182,6 +182,8 @@ struct DashboardOrganizationSummary: Decodable {
     let roles: [String]
     let completedMatchCount: Int?
     let lockedHistoryCount: Int?
+    let entitlements: PersonalPlanEntitlements?
+    let availablePlanEntitlements: [String: PersonalPlanEntitlements]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -194,6 +196,8 @@ struct DashboardOrganizationSummary: Decodable {
         case roles
         case completedMatchCount = "completed_match_count"
         case lockedHistoryCount = "locked_history_count"
+        case entitlements
+        case availablePlanEntitlements = "available_plan_entitlements"
     }
 
     init(from decoder: Decoder) throws {
@@ -208,6 +212,8 @@ struct DashboardOrganizationSummary: Decodable {
         roles = try container.decodeIfPresent([String].self, forKey: .roles) ?? []
         completedMatchCount = try container.decodeIfPresent(Int.self, forKey: .completedMatchCount)
         lockedHistoryCount = try container.decodeIfPresent(Int.self, forKey: .lockedHistoryCount)
+        entitlements = try container.decodeIfPresent(PersonalPlanEntitlements.self, forKey: .entitlements)
+        availablePlanEntitlements = try container.decodeIfPresent([String: PersonalPlanEntitlements].self, forKey: .availablePlanEntitlements) ?? [:]
     }
 }
 
@@ -241,6 +247,36 @@ enum LoginResult {
 
 struct DashboardResponseData: Decodable {
     let dashboard: DashboardResponse
+}
+
+struct NotificationListResponseData: Decodable {
+    let notifications: [AppNotification]
+}
+
+struct NotificationReadResponseData: Decodable {
+    let read: Bool
+}
+
+struct NotificationReadRequest: Encodable {
+    let organizationID: Int
+    enum CodingKeys: String, CodingKey { case organizationID = "organization_id" }
+}
+
+struct AppNotification: Decodable, Identifiable {
+    let id: String
+    let title: String
+    let message: String
+    let audience: String
+    let createdAt: String
+    let readAt: String?
+    let isRead: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, message, audience
+        case createdAt = "created_at"
+        case readAt = "read_at"
+        case isRead = "is_read"
+    }
 }
 
 struct OrganizationSettingsResponseData: Decodable {
@@ -626,6 +662,24 @@ final class APIClient {
         }
 
         return dashboard
+    }
+
+    func getNotifications(organizationID: Int) async throws -> [AppNotification] {
+        let request = try makeRequest(path: "/notifications/\(organizationID)", method: "GET")
+        let envelope: APIEnvelope<NotificationListResponseData> = try await send(request)
+        return envelope.data?.notifications ?? []
+    }
+
+    func markNotificationRead(notificationID: String, organizationID: Int) async throws {
+        let request = try makeRequest(
+            path: "/notifications/\(notificationID)/read",
+            method: "POST",
+            body: NotificationReadRequest(organizationID: organizationID)
+        )
+        let envelope: APIEnvelope<NotificationReadResponseData> = try await send(request)
+        guard envelope.data?.read == true else {
+            throw APIErrorResponse(code: "notification_read_failed", message: "The notification was not marked as read.", details: nil)
+        }
     }
 
     func getOrganizationSettings(organizationID: Int) async throws -> OrganizationSettings {
