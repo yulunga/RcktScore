@@ -453,6 +453,8 @@ Current behavior:
 - personal signup returns `201` with `account_created = true` and does not require root-admin approval
 - the pending personal organisation/user and password token are committed before SES delivery; completing the emailed password link marks the membership approved and the interest record email-validated, while a delivery failure leaves the pending record available for retry
 - `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
+- logged-in native subscription enquiries also send `requested_plan`, club address/postcode, club email, website, and telephone; these enriched requests require a valid organisation-user bearer session and the backend derives the requester email from that session
+- migration `022_club_subscription_enquiries.sql` adds the extended club fields and separates personal-registration uniqueness from club-enquiry uniqueness so a club enquiry cannot overwrite the requester’s personal registration record
 - migration `020_personal_registration_status.sql` converts historical personal-interest rows from approval terminology to `registered`; club rows retain pending/approved/denied states
 - personal signup requires `PASSWORD_RESET_BASE_URL` to be configured; the request origin is not used as a fallback
 - honeypot field is `company`

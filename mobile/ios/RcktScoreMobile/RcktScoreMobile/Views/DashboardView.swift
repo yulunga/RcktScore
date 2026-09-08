@@ -24,6 +24,11 @@ struct DashboardView: View {
     @State private var selectedTab: DashboardTab = .home
     @State private var selectedSettingsSection: SettingsSection = .subscription
     @State private var settingsNavigationItem: SettingsMenuItem?
+    @State private var clubEnquiryPlan: ClubSubscriptionPlan?
+    @State private var clubEnquiryDraft = ClubSubscriptionEnquiryDraft()
+    @State private var isSubmittingClubEnquiry = false
+    @State private var clubEnquiryErrorMessage: String?
+    @State private var clubEnquirySuccessMessage: String?
     @State private var organizationDetailsDraft = OrganizationDetailsDraft()
     @State private var newOrganizationUserDraft = OrganizationUserDraft()
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
@@ -274,6 +279,9 @@ struct DashboardView: View {
             }
             .navigationDestination(item: $settingsNavigationItem) { item in
                 settingsDetailPage(for: item)
+            }
+            .navigationDestination(item: $clubEnquiryPlan) { plan in
+                clubSubscriptionEnquiryPage(for: plan)
             }
             .navigationDestination(isPresented: $showsNotifications) {
                 notificationCenterPage
@@ -746,9 +754,9 @@ struct DashboardView: View {
             aboutSettingsCard
         case .helpFeedback:
             VStack(spacing: 12) {
-                privacyComplianceLinkCard
                 feedbackForm
                 resetForm
+                privacyComplianceLinkCard
             }
         case .reporting:
             reportingPlaceholderCard
@@ -821,16 +829,16 @@ struct DashboardView: View {
     }
 
     private var subscriptionSettingsCard: some View {
-        let planCards: [(title: String, subtitle: String, isCurrent: Bool)] = isPersonalAccount
+        let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
-                ("Personal", "Singles scoring with core personal access.", (session?.plan ?? "").lowercased() == "personal_free"),
-                ("Personal+", "Adds expanded match customisation and premium features.", (session?.plan ?? "").lowercased() == "personal_plus"),
-                ("Club Essentials", "Club management with courts, users, and match operations.", false),
-                ("Club Pro", "Expanded club package with higher-tier operational tooling.", false)
+                ("Personal", "Singles scoring with core personal access.", (session?.plan ?? "").lowercased() == "personal_free", nil),
+                ("Personal+", "Adds expanded match customisation and premium features.", (session?.plan ?? "").lowercased() == "personal_plus", nil),
+                ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
+                ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
             ]
             : [
-                ("Club Essentials", "Core club package for match operations and member management.", (session?.plan ?? "").lowercased() == "club_essentials"),
-                ("Club Pro", "Higher-tier club package for advanced reporting and expansion.", (session?.plan ?? "").lowercased() == "club_pro")
+                ("Club Essentials", "Core club package for match operations and member management.", (session?.plan ?? "").lowercased() == "club_essentials", .essentials),
+                ("Club Pro", "Higher-tier club package for advanced reporting and expansion.", (session?.plan ?? "").lowercased() == "club_pro", .pro)
             ]
 
         return VStack(alignment: .leading, spacing: 12) {
@@ -838,17 +846,144 @@ struct DashboardView: View {
                 .font(.headline.weight(.semibold))
 
             ForEach(planCards, id: \.title) { card in
-                subscriptionOptionCard(title: card.title, subtitle: card.subtitle, isCurrent: card.isCurrent)
+                subscriptionOptionCard(
+                    title: card.title,
+                    subtitle: card.subtitle,
+                    isCurrent: card.isCurrent,
+                    enquiryPlan: card.enquiryPlan
+                )
             }
-
-            Text("The highlighted subscription is the one currently active on this account.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func clubSubscriptionEnquiryPage(for plan: ClubSubscriptionPlan) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let clubEnquirySuccessMessage {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 42, weight: .semibold))
+                            .foregroundStyle(.green)
+
+                        Text("Thank you for your enquiry")
+                            .font(.title2.weight(.bold))
+
+                        Text(clubEnquirySuccessMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Button("Return to Subscriptions") {
+                            clubEnquiryPlan = nil
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(Color.dashboardBrand)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.dashboardInnerCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(plan.displayName)
+                            .font(.title2.weight(.bold))
+
+                        Text("Tell us about the club you would like to register. Your signed-in account details will be included automatically, and our team will contact you about the next steps.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        settingsValueRow(title: "Contact", value: currentUserDisplayName)
+                        settingsValueRow(title: "Username", value: session?.email ?? session?.username ?? "")
+
+                        dashboardTextField(
+                            title: "Club Name",
+                            placeholder: "Club name",
+                            text: $clubEnquiryDraft.clubName,
+                            accessibilityIdentifier: "settings.clubEnquiry.clubNameField"
+                        )
+                        dashboardTextField(
+                            title: "Club Address",
+                            placeholder: "Address",
+                            text: $clubEnquiryDraft.clubAddress,
+                            accessibilityIdentifier: "settings.clubEnquiry.addressField"
+                        )
+                        dashboardTextField(
+                            title: "Postcode",
+                            placeholder: "Postcode",
+                            text: $clubEnquiryDraft.clubPostcode,
+                            accessibilityIdentifier: "settings.clubEnquiry.postcodeField"
+                        )
+                        dashboardTextField(
+                            title: "Club Email Address",
+                            placeholder: "club@example.com",
+                            text: $clubEnquiryDraft.clubEmail,
+                            keyboardType: .emailAddress,
+                            accessibilityIdentifier: "settings.clubEnquiry.emailField"
+                        )
+                        dashboardTextField(
+                            title: "Website",
+                            placeholder: "https://www.example.com",
+                            text: $clubEnquiryDraft.clubWebsite,
+                            keyboardType: .URL,
+                            accessibilityIdentifier: "settings.clubEnquiry.websiteField"
+                        )
+                        dashboardTextField(
+                            title: "Club Telephone",
+                            placeholder: "Telephone number",
+                            text: $clubEnquiryDraft.clubTelephone,
+                            keyboardType: .phonePad,
+                            accessibilityIdentifier: "settings.clubEnquiry.telephoneField"
+                        )
+
+                        if let clubEnquiryErrorMessage {
+                            dashboardInlineError(clubEnquiryErrorMessage)
+                        }
+
+                        Button(isSubmittingClubEnquiry ? "Sending..." : "Send Club Enquiry") {
+                            submitClubSubscriptionEnquiry(plan)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.dashboardBrand)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .buttonStyle(.plain)
+                        .disabled(isSubmittingClubEnquiry || !isOnline)
+                        .opacity(isSubmittingClubEnquiry || !isOnline ? 0.7 : 1)
+                        .accessibilityIdentifier("settings.clubEnquiry.submitButton")
+
+                        if !isOnline {
+                            dashboardInlineError("An internet connection is required to send a club enquiry.")
+                        }
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.dashboardInnerCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+            }
+            .padding(18)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.dashboardBackgroundStart, Color.dashboardBackgroundEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Club Enquiry")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var profileSettingsCard: some View {
@@ -1056,10 +1191,6 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("About")
                 .font(.headline.weight(.semibold))
-
-            Text("This page shows the app version and build currently installed on this device.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
 
             settingsValueRow(title: "App", value: appDisplayName)
             settingsValueRow(title: "Version", value: appVersionNumber)
@@ -1664,9 +1795,9 @@ struct DashboardView: View {
                 subtitle: "Send feedback or request a password reset without leaving the app."
             ) {
                 VStack(spacing: 14) {
-                    privacyComplianceLinkCard
                     feedbackForm
                     resetForm
+                    privacyComplianceLinkCard
                 }
             }
         }
@@ -2403,8 +2534,45 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private func subscriptionOptionCard(title: String, subtitle: String, isCurrent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    @ViewBuilder
+    private func subscriptionOptionCard(
+        title: String,
+        subtitle: String,
+        isCurrent: Bool,
+        enquiryPlan: ClubSubscriptionPlan?
+    ) -> some View {
+        if let enquiryPlan, !isCurrent {
+            Button {
+                openClubSubscriptionEnquiry(enquiryPlan)
+            } label: {
+                subscriptionOptionCardContent(
+                    title: title,
+                    subtitle: subtitle,
+                    status: "Enquire",
+                    isCurrent: false
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("settings.subscription.\(enquiryPlan.rawValue).enquireButton")
+        } else {
+            subscriptionOptionCardContent(
+                title: title,
+                subtitle: subtitle,
+                status: isCurrent ? "Current" : "Available",
+                isCurrent: isCurrent
+            )
+        }
+    }
+
+    private func subscriptionOptionCardContent(
+        title: String,
+        subtitle: String,
+        status: String,
+        isCurrent: Bool
+    ) -> some View {
+        let isEnquiry = status == "Enquire"
+
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(title)
                     .font(.subheadline.weight(.bold))
@@ -2412,16 +2580,22 @@ struct DashboardView: View {
 
                 Spacer()
 
-                Text(isCurrent ? "Current" : "Available")
+                Text(status)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(isCurrent ? Color.dashboardBrand : .secondary)
+                    .foregroundStyle(isCurrent || isEnquiry ? Color.dashboardBrand : .secondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
-                        (isCurrent ? Color.dashboardBrand : Color.dashboardBorder)
-                            .opacity(isCurrent ? 0.14 : 0.3)
+                        (isCurrent || isEnquiry ? Color.dashboardBrand : Color.dashboardBorder)
+                            .opacity(isCurrent || isEnquiry ? 0.14 : 0.3)
                     )
                     .clipShape(Capsule())
+
+                if isEnquiry {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
             }
 
             Text(subtitle)
@@ -2581,8 +2755,10 @@ struct DashboardView: View {
                 .foregroundStyle(.secondary)
 
             TextField(placeholder, text: text)
-                .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
-                .autocorrectionDisabled(keyboardType == .emailAddress)
+                .textInputAutocapitalization(
+                    keyboardType == .emailAddress || keyboardType == .URL ? .never : .words
+                )
+                .autocorrectionDisabled(keyboardType == .emailAddress || keyboardType == .URL)
                 .keyboardType(keyboardType)
                 .accessibilityIdentifier(accessibilityIdentifier ?? "settings.field.\(title.replacingOccurrences(of: " ", with: "").lowercased())")
                 .padding(.horizontal, 14)
@@ -2907,6 +3083,89 @@ struct DashboardView: View {
             await MainActor.run {
                 settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load organisation settings."
                 isLoadingSettings = false
+            }
+        }
+    }
+
+    private func openClubSubscriptionEnquiry(_ plan: ClubSubscriptionPlan) {
+        clubEnquiryDraft = ClubSubscriptionEnquiryDraft(
+            clubName: isPersonalAccount ? "" : (session?.organizationName ?? ""),
+            clubAddress: "",
+            clubPostcode: "",
+            clubEmail: "",
+            clubWebsite: "",
+            clubTelephone: ""
+        )
+        clubEnquiryErrorMessage = nil
+        clubEnquirySuccessMessage = nil
+        isSubmittingClubEnquiry = false
+        clubEnquiryPlan = plan
+    }
+
+    private func submitClubSubscriptionEnquiry(_ plan: ClubSubscriptionPlan) {
+        let clubName = clubEnquiryDraft.clubName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clubAddress = clubEnquiryDraft.clubAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clubPostcode = clubEnquiryDraft.clubPostcode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clubEmail = clubEnquiryDraft.clubEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let clubWebsite = clubEnquiryDraft.clubWebsite.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clubTelephone = clubEnquiryDraft.clubTelephone.trimmingCharacters(in: .whitespacesAndNewlines)
+        let accountEmail = (session?.email ?? session?.username ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !clubName.isEmpty,
+              !clubAddress.isEmpty,
+              !clubPostcode.isEmpty,
+              !clubWebsite.isEmpty,
+              !clubTelephone.isEmpty else {
+            clubEnquiryErrorMessage = "Complete all club details before sending the enquiry."
+            return
+        }
+
+        guard isValidEmail(clubEmail) else {
+            clubEnquiryErrorMessage = "Enter a valid club email address."
+            return
+        }
+
+        guard isValidEmail(accountEmail) else {
+            clubEnquiryErrorMessage = "Your signed-in account does not contain a valid email address. Update your profile before sending the enquiry."
+            return
+        }
+
+        guard isOnline else {
+            clubEnquiryErrorMessage = "An internet connection is required to send a club enquiry."
+            return
+        }
+
+        isSubmittingClubEnquiry = true
+        clubEnquiryErrorMessage = nil
+
+        Task {
+            do {
+                try await container.apiClient.registerInterest(
+                    firstName: currentUserFirstName,
+                    surname: currentUserSurname,
+                    email: accountEmail,
+                    useType: "club",
+                    clubName: clubName,
+                    requestedPlan: plan.rawValue,
+                    clubAddress: clubAddress,
+                    clubPostcode: clubPostcode,
+                    clubEmail: clubEmail,
+                    clubWebsite: clubWebsite,
+                    clubTelephone: clubTelephone,
+                    pageURL: "ios-app://settings/subscription"
+                )
+                await MainActor.run {
+                    isSubmittingClubEnquiry = false
+                    clubEnquirySuccessMessage = "We have received your \(plan.displayName) enquiry for \(clubName). A confirmation has been sent to \(accountEmail), and the Hit n Score team will contact you about the next steps."
+                }
+            } catch {
+                await MainActor.run {
+                    isSubmittingClubEnquiry = false
+                    clubEnquiryErrorMessage = (error as? APIErrorResponse)?.message
+                        ?? "Unable to send the club enquiry right now."
+                }
             }
         }
     }
@@ -3790,6 +4049,31 @@ struct DashboardView: View {
             return plan.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
+}
+
+private enum ClubSubscriptionPlan: String, Identifiable {
+    case essentials = "club_essentials"
+    case pro = "club_pro"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .essentials:
+            return "Club Essentials"
+        case .pro:
+            return "Club Pro"
+        }
+    }
+}
+
+private struct ClubSubscriptionEnquiryDraft {
+    var clubName = ""
+    var clubAddress = ""
+    var clubPostcode = ""
+    var clubEmail = ""
+    var clubWebsite = ""
+    var clubTelephone = ""
 }
 
 private struct MatchRoute: Hashable, Identifiable {

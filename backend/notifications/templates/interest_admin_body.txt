@@ -4,6 +4,12 @@ Name: $first_name $surname
 Email: $email
 Use type: $use_type
 Club: $club_name
+Requested subscription: $requested_plan
+Club address: $club_address
+Club postcode: $club_postcode
+Club email: $club_email
+Club website: $club_website
+Club telephone: $club_telephone
 Approval status: pending
 Email validated: false
 Page URL: $page_url

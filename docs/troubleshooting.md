@@ -283,10 +283,14 @@ Common symptoms:
 - personal signup creates a pending owner membership until the emailed password is chosen; this is email verification, not manual root approval
 - personal signup returning `REGISTRATION_FAILED` with a `SkwshOrgSettings_interest_request_id_fkey` error indicates migration `017_platform_enabled_sports.sql` is missing and the old optional-table fallback rolled back the registration insert; apply migration 017 and deploy the current transaction-safe fallback
 - club requests remain pending enquiries and do not create accounts automatically
+- logged-in subscription enquiries require migration `022_club_subscription_enquiries.sql`; if the extended club fields fail to store, apply that migration before deploying the updated `register_interest` and root-admin interest-request functions
+- `SESSION_REQUIRED`, `SESSION_INVALID`, or `SESSION_EXPIRED` from a Club Essentials/Club Pro enquiry means the saved mobile session must be refreshed by signing in again
 - password reset link points to the wrong host
 - organisation invite exists but user remains pending forever
 
 For `Ping Us`, verify that the deployed `FEEDBACK_FROM_EMAIL` identity exists in `eu-west-2` and that `FEEDBACK_TO_EMAIL` is permitted by the account's SES production or sandbox status. The checked-in feedback defaults use `hello@hitnscore.com`; redeploy the backend after changing these parameters because updating the iOS app alone cannot repair SES configuration.
+
+For subscription enquiries, verify `INTEREST_FROM_EMAIL` is an SES-verified identity and `INTEREST_TO_EMAIL` is set to the intended `hello@` mailbox. The backend sends one confirmation to the signed-in requester and one admin notification to that configured destination.
 
 On iOS, the Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
 

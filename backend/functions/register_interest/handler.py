@@ -9,6 +9,7 @@ from psycopg.errors import UndefinedTable
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.root_admin_logic import create_self_service_personal_account
+from common.session_logic import SessionAuthError, require_org_user_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -17,6 +18,7 @@ logger = Logger(service="register_interest")
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 VALID_USE_TYPES = {"personal", "club"}
+VALID_CLUB_PLANS = {"club_essentials", "club_pro"}
 
 
 def _utcnow():
@@ -38,6 +40,12 @@ def _upsert_interest_request(connection, payload):
         "email": email,
         "use_type": payload["use_type"],
         "club_name": payload.get("club_name") or None,
+        "requested_plan": payload.get("requested_plan") or None,
+        "club_address": payload.get("club_address") or None,
+        "club_postcode": payload.get("club_postcode") or None,
+        "club_email": payload.get("club_email") or None,
+        "club_website": payload.get("club_website") or None,
+        "club_telephone": payload.get("club_telephone") or None,
         "approval_status": "registered" if payload["use_type"] == "personal" else "pending",
         "email_validated": False,
         "page_url": payload.get("page_url") or None,
@@ -50,9 +58,17 @@ def _upsert_interest_request(connection, payload):
             SELECT id
             FROM "HitnScoreInterestRequests"
             WHERE LOWER(email) = LOWER(%(email)s)
+              AND use_type = %(use_type)s
+              AND (
+                    %(use_type)s = 'personal'
+                    OR (
+                        LOWER(COALESCE(club_name, '')) = LOWER(COALESCE(%(club_name)s, ''))
+                        AND COALESCE(requested_plan, '') = COALESCE(%(requested_plan)s, '')
+                    )
+              )
             LIMIT 1
             """,
-            {"email": email},
+            values,
         )
         existing_row = cursor.fetchone()
 
@@ -65,6 +81,12 @@ def _upsert_interest_request(connection, payload):
                     surname = %(surname)s,
                     use_type = %(use_type)s,
                     club_name = %(club_name)s,
+                    requested_plan = %(requested_plan)s,
+                    club_address = %(club_address)s,
+                    club_postcode = %(club_postcode)s,
+                    club_email = %(club_email)s,
+                    club_website = %(club_website)s,
+                    club_telephone = %(club_telephone)s,
                     approval_status = %(approval_status)s,
                     page_url = %(page_url)s,
                     user_agent = %(user_agent)s
@@ -85,6 +107,12 @@ def _upsert_interest_request(connection, payload):
                 email,
                 use_type,
                 club_name,
+                requested_plan,
+                club_address,
+                club_postcode,
+                club_email,
+                club_website,
+                club_telephone,
                 approval_status,
                 email_validated,
                 page_url,
@@ -98,6 +126,12 @@ def _upsert_interest_request(connection, payload):
                 %(email)s,
                 %(use_type)s,
                 %(club_name)s,
+                %(requested_plan)s,
+                %(club_address)s,
+                %(club_postcode)s,
+                %(club_email)s,
+                %(club_website)s,
+                %(club_telephone)s,
                 %(approval_status)s,
                 %(email_validated)s,
                 %(page_url)s,
@@ -117,6 +151,12 @@ def _send_interest_emails(*, payload, destination_email, source_email):
         "email": payload["email"],
         "use_type": _display_use_type(payload["use_type"]),
         "club_name": payload.get("club_name") or "Not provided",
+        "requested_plan": (payload.get("requested_plan") or "Not specified").replace("_", " ").title(),
+        "club_address": payload.get("club_address") or "Not provided",
+        "club_postcode": payload.get("club_postcode") or "Not provided",
+        "club_email": payload.get("club_email") or "Not provided",
+        "club_website": payload.get("club_website") or "Not provided",
+        "club_telephone": payload.get("club_telephone") or "Not provided",
         "page_url": payload.get("page_url") or "Unknown",
         "user_agent": payload.get("user_agent") or "Unknown",
     }
@@ -152,6 +192,12 @@ def lambda_handler(event, context):
     email = (payload.get("email") or "").strip().lower()
     use_type = (payload.get("use_type") or "").strip().lower()
     club_name = (payload.get("club_name") or "").strip()
+    requested_plan = (payload.get("requested_plan") or "").strip().lower()
+    club_address = (payload.get("club_address") or "").strip()
+    club_postcode = (payload.get("club_postcode") or "").strip()
+    club_email = (payload.get("club_email") or "").strip().lower()
+    club_website = (payload.get("club_website") or "").strip()
+    club_telephone = (payload.get("club_telephone") or "").strip()
     honeypot = (payload.get("company") or "").strip()
 
     if not EMAIL_PATTERN.match(email):
@@ -160,6 +206,26 @@ def lambda_handler(event, context):
         return error_response(400, "INVALID_USE_TYPE", "A valid use type is required")
     if use_type == "club" and not club_name:
         return error_response(400, "CLUB_NAME_REQUIRED", "Club name is required for club use")
+    if requested_plan:
+        if use_type != "club" or requested_plan not in VALID_CLUB_PLANS:
+            return error_response(400, "INVALID_CLUB_PLAN", "A valid club subscription is required")
+        required_club_fields = {
+            "club_address": club_address,
+            "club_postcode": club_postcode,
+            "club_email": club_email,
+            "club_website": club_website,
+            "club_telephone": club_telephone,
+        }
+        missing_club_fields = [key for key, value in required_club_fields.items() if not value]
+        if missing_club_fields:
+            return error_response(
+                400,
+                "CLUB_DETAILS_REQUIRED",
+                "Complete all club contact details before submitting the enquiry.",
+                {"fields": missing_club_fields},
+            )
+        if not EMAIL_PATTERN.match(club_email):
+            return error_response(400, "INVALID_CLUB_EMAIL", "A valid club email address is required")
 
     # Quietly absorb obvious bot submissions without sending an email.
     if honeypot:
@@ -182,12 +248,21 @@ def lambda_handler(event, context):
         "email": email,
         "use_type": use_type,
         "club_name": club_name,
+        "requested_plan": requested_plan,
+        "club_address": club_address,
+        "club_postcode": club_postcode,
+        "club_email": club_email,
+        "club_website": club_website,
+        "club_telephone": club_telephone,
         "page_url": page_url,
         "user_agent": user_agent,
     }
 
     try:
         with get_db_connection() as connection:
+            if requested_plan:
+                authenticated_session = require_org_user_session(connection, event)
+                request_payload["email"] = authenticated_session["username"]
             interest_row = _upsert_interest_request(connection, request_payload)
             personal_signup = None
             if use_type == "personal":
@@ -201,6 +276,8 @@ def lambda_handler(event, context):
                 )
             else:
                 connection.commit()
+    except SessionAuthError as auth_error:
+        return session_error_response(auth_error)
     except UndefinedTable:
         logger.exception("Interest request table is missing")
         return error_response(

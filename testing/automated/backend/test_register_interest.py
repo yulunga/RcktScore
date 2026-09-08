@@ -84,3 +84,89 @@ def test_club_registration_remains_a_managed_enquiry(monkeypatch):
     assert body["data"]["account_created"] is False
     assert connection.commit_count == 1
     assert len(email_calls) == 1
+
+
+def test_logged_in_club_subscription_enquiry_captures_full_club_details(monkeypatch):
+    connection = FakeConnection()
+    stored_payloads = []
+    email_calls = []
+
+    @contextmanager
+    def fake_connection():
+        yield connection
+
+    event = registration_event("club")
+    event["headers"]["authorization"] = "Bearer valid-session"
+    event["body"].update(
+        {
+            "email": "client-supplied@example.com",
+            "requested_plan": "club_pro",
+            "club_address": "1 Centre Court",
+            "club_postcode": "SW19 5AE",
+            "club_email": "club@example.com",
+            "club_website": "https://club.example.com",
+            "club_telephone": "020 1234 5678",
+        }
+    )
+
+    monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+    monkeypatch.setattr(
+        handler,
+        "require_org_user_session",
+        lambda current_connection, current_event: {"username": "signed-in@example.com"},
+    )
+    monkeypatch.setattr(
+        handler,
+        "_upsert_interest_request",
+        lambda current_connection, payload: stored_payloads.append(payload.copy()) or {"id": 29},
+    )
+    monkeypatch.setattr(handler, "_send_interest_emails", lambda **kwargs: email_calls.append(kwargs))
+
+    response = handler.lambda_handler(event, None)
+    body = json.loads(response["body"])
+
+    assert response["statusCode"] == 202
+    assert body["data"]["account_created"] is False
+    assert stored_payloads[0]["email"] == "signed-in@example.com"
+    assert stored_payloads[0]["requested_plan"] == "club_pro"
+    assert stored_payloads[0]["club_address"] == "1 Centre Court"
+    assert stored_payloads[0]["club_email"] == "club@example.com"
+    assert email_calls[0]["payload"]["club_website"] == "https://club.example.com"
+
+
+def test_club_subscription_enquiry_requires_complete_club_details():
+    event = registration_event("club")
+    event["body"]["requested_plan"] = "club_essentials"
+
+    response = handler.lambda_handler(event, None)
+    body = json.loads(response["body"])
+
+    assert response["statusCode"] == 400
+    assert body["error"]["code"] == "CLUB_DETAILS_REQUIRED"
+
+
+def test_club_subscription_enquiry_requires_a_logged_in_session(monkeypatch):
+    connection = FakeConnection()
+
+    @contextmanager
+    def fake_connection():
+        yield connection
+
+    event = registration_event("club")
+    event["body"].update(
+        {
+            "requested_plan": "club_essentials",
+            "club_address": "1 Centre Court",
+            "club_postcode": "SW19 5AE",
+            "club_email": "club@example.com",
+            "club_website": "https://club.example.com",
+            "club_telephone": "020 1234 5678",
+        }
+    )
+    monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+
+    response = handler.lambda_handler(event, None)
+    body = json.loads(response["body"])
+
+    assert response["statusCode"] == 401
+    assert body["error"]["code"] == "SESSION_REQUIRED"

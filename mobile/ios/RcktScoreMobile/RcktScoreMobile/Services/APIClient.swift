@@ -215,6 +215,12 @@ struct RegisterInterestRequest: Encodable {
     let email: String
     let useType: String
     let clubName: String
+    let requestedPlan: String?
+    let clubAddress: String?
+    let clubPostcode: String?
+    let clubEmail: String?
+    let clubWebsite: String?
+    let clubTelephone: String?
     let company: String
     let pageURL: String
     let userAgent: String
@@ -225,6 +231,12 @@ struct RegisterInterestRequest: Encodable {
         case email
         case useType = "use_type"
         case clubName = "club_name"
+        case requestedPlan = "requested_plan"
+        case clubAddress = "club_address"
+        case clubPostcode = "club_postcode"
+        case clubEmail = "club_email"
+        case clubWebsite = "club_website"
+        case clubTelephone = "club_telephone"
         case company
         case pageURL = "page_url"
         case userAgent = "user_agent"
@@ -378,6 +390,12 @@ final class APIClient {
         email: String,
         useType: String,
         clubName: String,
+        requestedPlan: String? = nil,
+        clubAddress: String? = nil,
+        clubPostcode: String? = nil,
+        clubEmail: String? = nil,
+        clubWebsite: String? = nil,
+        clubTelephone: String? = nil,
         company: String = "",
         pageURL: String = "ios-app://login",
         userAgent: String = "RcktScore iOS App"
@@ -391,6 +409,12 @@ final class APIClient {
                 email: email,
                 useType: useType,
                 clubName: clubName,
+                requestedPlan: requestedPlan,
+                clubAddress: clubAddress,
+                clubPostcode: clubPostcode,
+                clubEmail: clubEmail,
+                clubWebsite: clubWebsite,
+                clubTelephone: clubTelephone,
                 company: company,
                 pageURL: pageURL,
                 userAgent: userAgent

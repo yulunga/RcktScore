@@ -57,6 +57,7 @@ What is real and implemented:
 - the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens a local notification page and highlights the unread welcome notice in yellow until it is viewed
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
+- native Subscription links for logged-in Club Essentials and Club Pro enquiries, capturing full club contact details in the root-admin queue and sending requester/admin acknowledgement emails
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
 - root-admin User Accounts directory across personal and club memberships, with account-type and unverified-user summary filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports

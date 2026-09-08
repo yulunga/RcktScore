@@ -37,6 +37,8 @@ What the current app does:
   access, optional Face ID / Touch ID session unlock, two-stage personal-account
   deletion, association switching, sign-out access, and club-admin
   organisation/user/court/racket-sport controls
+- authenticated Club Essentials and Club Pro enquiry forms under Subscription,
+  including complete club contact details and root-admin/email handoff
 - each native settings menu row now opens its own page with standard back navigation
 - native help flows for feedback and password reset
 - native Help & Feedback privacy/data policy and bundled iOS privacy manifest

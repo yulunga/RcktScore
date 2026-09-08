@@ -41,6 +41,8 @@ Current unreleased iOS build state:
   selection, self-profile editing, password-reset access, association
   switching, an About-first menu order, organisation details, user management, court management,
   racket-sport visibility, and display-code regeneration for club accounts
+- Club Essentials and Club Pro subscription cards now open a signed-in enquiry
+  flow that records club contact details for root admin and sends acknowledgement emails
 - personal-account owners can delete their account from Profile after two destructive confirmations; the backend revalidates personal-account ownership and the app clears its session/offline cache after success
 - native login now supports password visibility toggling, and native settings
   can enable Face ID / Touch ID restoration of an unexpired, device-bound Keychain session at cold launch or from the login screen after local sign-out

@@ -33,6 +33,12 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
+function formatPlan(value) {
+  if (value === "club_essentials") return "Club Essentials";
+  if (value === "club_pro") return "Club Pro";
+  return "Club plan not specified";
+}
+
 export default function RootAdminInterestRequestsPage() {
   const navigate = useNavigate();
   const { session } = useRootAdmin();
@@ -180,6 +186,12 @@ export default function RootAdminInterestRequestsPage() {
 
                 <div className="root-admin-interest-details">
                   <span>{request.club_name || "No club supplied"}</span>
+                  <span>Requested plan: {formatPlan(request.requested_plan)}</span>
+                  <span>Address: {request.club_address || "Not supplied"}</span>
+                  <span>Postcode: {request.club_postcode || "Not supplied"}</span>
+                  <span>Club email: {request.club_email || "Not supplied"}</span>
+                  <span>Website: {request.club_website || "Not supplied"}</span>
+                  <span>Telephone: {request.club_telephone || "Not supplied"}</span>
                   <span>Email validated: {request.email_validated ? "Yes" : "No"}</span>
                   <span>Registered: {formatDateTime(request.created_at)}</span>
                   <span>Updated: {formatDateTime(request.updated_at)}</span>
