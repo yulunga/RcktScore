@@ -24,7 +24,7 @@
     "_developerTeamID" : "6GVCHR2885",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 810593165.97738397,
+    "_lastSynchronizedDate" : 810595756.05761504,
     "_locale" : "en_GB",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "GBR",
@@ -39,7 +39,7 @@
       "localizations" : [
         {
           "description" : "",
-          "displayName" : "UK",
+          "displayName" : "Personal Plus Upgrade",
           "locale" : "en_GB"
         }
       ],
@@ -70,8 +70,8 @@
           ],
           "localizations" : [
             {
-              "description" : "UK",
-              "displayName" : "UK",
+              "description" : "Personal Plus Subscription",
+              "displayName" : "Personal Plus Upgrade",
               "locale" : "en_GB"
             }
           ],
@@ -109,8 +109,8 @@
           ],
           "localizations" : [
             {
-              "description" : "UK",
-              "displayName" : "UK",
+              "description" : "Personal Plus Subscription",
+              "displayName" : "Personal Plus Upgrade",
               "locale" : "en_GB"
             }
           ],

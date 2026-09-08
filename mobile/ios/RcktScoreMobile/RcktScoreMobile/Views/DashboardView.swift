@@ -1,5 +1,6 @@
 import Foundation
 import PhotosUI
+import StoreKit
 import SwiftUI
 
 struct DashboardView: View {
@@ -59,11 +60,18 @@ struct DashboardView: View {
     @State private var notifications: [AppNotification] = []
     @State private var notificationErrorMessage: String?
     @State private var selectedMatchesCategory: MatchesCategory = .current
+    @State private var showsManageSubscriptions = false
+    @State private var isPersonalPlusOptionsExpanded = false
+    @State private var personalPlusCollapseTask: Task<Void, Never>?
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
     private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
+    private var hasActiveStoreKitPersonalPlus: Bool { !container.purchaseService.activeProductIDs.isEmpty }
+    private var isPersonalPlusCurrentOnSubscriptionScreen: Bool {
+        isPersonalPlus || hasActiveStoreKitPersonalPlus
+    }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
     private var headerPlanLine: String {
@@ -1042,8 +1050,8 @@ struct DashboardView: View {
             ?? 100
         let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
-                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", (session?.plan ?? "").lowercased() == "personal_free", nil),
-                ("Personal+", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", (session?.plan ?? "").lowercased() == "personal_plus", nil),
+                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", (session?.plan ?? "").lowercased() == "personal_free" && !hasActiveStoreKitPersonalPlus, nil),
+                ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", isPersonalPlusCurrentOnSubscriptionScreen, nil),
                 ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
                 ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
             ]
@@ -1057,18 +1065,140 @@ struct DashboardView: View {
                 .font(.headline.weight(.semibold))
 
             ForEach(planCards, id: \.title) { card in
-                subscriptionOptionCard(
-                    title: card.title,
-                    subtitle: card.subtitle,
-                    isCurrent: card.isCurrent,
-                    enquiryPlan: card.enquiryPlan
-                )
+                if card.title == "Personal Plus" {
+                    personalPlusSubscriptionOptionCard(
+                        subtitle: card.subtitle,
+                        isCurrent: card.isCurrent
+                    )
+
+                    if isPersonalPlusOptionsExpanded {
+                        personalPlusPurchaseControls
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .move(edge: .top).combined(with: .opacity)
+                                )
+                            )
+                    }
+                } else {
+                    subscriptionOptionCard(
+                        title: card.title,
+                        subtitle: card.subtitle,
+                        isCurrent: card.isCurrent,
+                        enquiryPlan: card.enquiryPlan
+                    )
+                }
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .task {
+            guard isPersonalAccount else { return }
+            await container.purchaseService.loadProducts()
+            await container.purchaseService.refreshCurrentEntitlements()
+        }
+        .manageSubscriptionsSheet(isPresented: $showsManageSubscriptions)
+        .onDisappear {
+            personalPlusCollapseTask?.cancel()
+            personalPlusCollapseTask = nil
+        }
+    }
+
+    @ViewBuilder
+    private var personalPlusPurchaseControls: some View {
+        let purchaseService = container.purchaseService
+
+        VStack(alignment: .leading, spacing: 12) {
+            if purchaseService.isLoading {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading App Store prices…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if purchaseService.canRunLocalPurchases && !isPersonalPlus {
+                Text("Choose Personal Plus")
+                    .font(.subheadline.weight(.bold))
+
+                ForEach(purchaseService.products, id: \.id) { product in
+                    Button {
+                        Task {
+                            await purchaseService.purchase(product)
+                            openPersonalPlusOptions()
+                        }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(purchaseService.planName(for: product))
+                                    .font(.subheadline.weight(.bold))
+                                Text(purchaseService.planDetail(for: product))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            Spacer()
+                            if purchaseService.purchasingProductID == product.id {
+                                ProgressView()
+                            } else {
+                                Text(product.displayPrice)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(Color.dashboardBrand)
+                            }
+                        }
+                        .padding(14)
+                        .background(Color.dashboardInputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(
+                                    purchaseService.activeProductIDs.contains(product.id)
+                                        ? Color.dashboardAccentPink
+                                        : Color.dashboardBorder,
+                                    lineWidth: purchaseService.activeProductIDs.contains(product.id) ? 2 : 1
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(purchaseService.purchasingProductID != nil)
+                    .accessibilityIdentifier("settings.subscription.\(purchaseService.planName(for: product).lowercased()).purchaseButton")
+                }
+
+                Text("Local StoreKit testing only — completing a test purchase does not change the Hit n Score account plan yet.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            if let statusMessage = purchaseService.statusMessage {
+                dashboardInlineSuccess(statusMessage)
+            }
+
+            if let purchaseError = purchaseService.errorMessage {
+                dashboardInlineError(purchaseError)
+            }
+
+            HStack(spacing: 10) {
+                if purchaseService.canRunLocalPurchases {
+                    Button("Restore Purchases") {
+                        Task { await purchaseService.restorePurchases() }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(purchaseService.purchasingProductID != nil)
+                }
+
+                if isPersonalPlus || !purchaseService.activeProductIDs.isEmpty {
+                    Button("Manage Subscription") {
+                        showsManageSubscriptions = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
     }
 
     private func clubSubscriptionEnquiryPage(for plan: ClubSubscriptionPlan) -> some View {
@@ -2745,6 +2875,66 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
+    private func personalPlusSubscriptionOptionCard(
+        subtitle: String,
+        isCurrent: Bool
+    ) -> some View {
+        Button {
+            if isPersonalPlusOptionsExpanded {
+                closePersonalPlusOptions()
+            } else {
+                openPersonalPlusOptions()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                subscriptionOptionCardContent(
+                    title: "Personal Plus",
+                    subtitle: subtitle,
+                    status: isCurrent ? "Current" : "Upgrade Option",
+                    isCurrent: isCurrent
+                )
+
+                Image(systemName: isPersonalPlusOptionsExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .frame(width: 22)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.subscription.personalPlus.expandButton")
+        .accessibilityValue(isPersonalPlusOptionsExpanded ? "Expanded" : "Collapsed")
+    }
+
+    private func openPersonalPlusOptions() {
+        personalPlusCollapseTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.8)) {
+            isPersonalPlusOptionsExpanded = true
+        }
+
+        personalPlusCollapseTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(20))
+            guard !Task.isCancelled else { return }
+
+            if container.purchaseService.purchasingProductID != nil {
+                openPersonalPlusOptions()
+                return
+            }
+
+            withAnimation(.easeInOut(duration: 0.8)) {
+                isPersonalPlusOptionsExpanded = false
+            }
+            personalPlusCollapseTask = nil
+        }
+    }
+
+    private func closePersonalPlusOptions() {
+        personalPlusCollapseTask?.cancel()
+        personalPlusCollapseTask = nil
+        withAnimation(.easeInOut(duration: 0.8)) {
+            isPersonalPlusOptionsExpanded = false
+        }
+    }
+
     @ViewBuilder
     private func subscriptionOptionCard(
         title: String,
@@ -2782,6 +2972,9 @@ struct DashboardView: View {
         isCurrent: Bool
     ) -> some View {
         let isEnquiry = status == "Enquire"
+        let statusColor = isCurrent
+            ? Color.dashboardAccentPink
+            : (isEnquiry ? Color.dashboardBrand : Color.secondary)
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -2793,12 +2986,11 @@ struct DashboardView: View {
 
                 Text(status)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(isCurrent || isEnquiry ? Color.dashboardBrand : .secondary)
+                    .foregroundStyle(statusColor)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
-                        (isCurrent || isEnquiry ? Color.dashboardBrand : Color.dashboardBorder)
-                            .opacity(isCurrent || isEnquiry ? 0.14 : 0.3)
+                        statusColor.opacity(isCurrent || isEnquiry ? 0.16 : 0.12)
                     )
                     .clipShape(Capsule())
 
@@ -2815,11 +3007,11 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isCurrent ? Color.dashboardBrand.opacity(0.08) : Color.dashboardInputBackground)
+        .background(isCurrent ? Color.dashboardAccentPink.opacity(0.09) : Color.dashboardInputBackground)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(isCurrent ? Color.dashboardBrand.opacity(0.25) : Color.dashboardBorder, lineWidth: 1)
+                .stroke(isCurrent ? Color.dashboardAccentPink.opacity(0.45) : Color.dashboardBorder, lineWidth: 1)
         )
     }
 
@@ -4277,7 +4469,7 @@ struct DashboardView: View {
     private func planDisplayName(for plan: String) -> String {
         switch plan.lowercased() {
         case "personal_plus":
-            return "Personal+"
+            return "Personal Plus"
         case "personal_free":
             return "Personal Free"
         case "club_pro":

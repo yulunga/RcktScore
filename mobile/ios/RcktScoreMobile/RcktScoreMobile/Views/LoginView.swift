@@ -958,7 +958,7 @@ struct LoginView: View {
     private func displayPlanName(_ plan: String) -> String {
         switch plan.lowercased() {
         case "personal_plus":
-            return "Personal+"
+            return "Personal Plus"
         case "personal_free":
             return "Personal"
         case "club_pro":

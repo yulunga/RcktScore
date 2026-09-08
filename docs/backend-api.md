@@ -348,6 +348,14 @@ Current behavior:
 - migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message
 - delivery is currently pull/inbox based; APNs push delivery is not yet implemented
 
+### App Store subscription boundary
+
+- iOS can load and locally test `com.hitnscore.personalplus.monthly` and `com.hitnscore.personalplus.yearly` through StoreKit 2
+- the native subscription screen treats a locally verified active StoreKit entitlement as the displayed current plan for StoreKit testing, but this presentation state is not a backend entitlement and does not unlock server-protected Personal Plus features
+- there is not yet a backend account-token, signed-transaction verification, subscription-status, or App Store Server Notifications endpoint
+- consequently, StoreKit purchase controls are Debug-only and local verified transactions do not change `SkwshOrgSettings.plan`
+- production activation must verify Apple's signed JWS and bind its `appAccountToken` to the authenticated personal organisation before granting Personal Plus
+
 ### Organisation settings
 
 [functions/get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py)

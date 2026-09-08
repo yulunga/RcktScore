@@ -2,7 +2,7 @@
 
 ## Current implementation boundary
 
-The repository now has persistence for verified App Store subscriptions and incoming lifecycle events in migration `024_app_store_subscription_lifecycle.sql`. This is deliberately only the server foundation. The app must not grant Personal Plus from an unverified device response, and the existing root-admin plan switch remains a testing/admin mechanism rather than proof of payment.
+The repository now has persistence for verified App Store subscriptions and incoming lifecycle events in migration `024_app_store_subscription_lifecycle.sql`. The native app also has a Debug-only StoreKit 2 service for monthly/yearly product loading, local verified purchases, transaction updates, current entitlements, Restore Purchases and Manage Subscription. Its controls expand from the Personal Plus plan card for 20 seconds, and a locally active entitlement updates the current-plan presentation for testing. This deliberately does not update the backend plan. The app must not grant Personal Plus from an unverified device response, and the existing root-admin plan switch remains a testing/admin mechanism rather than proof of payment.
 
 There is no free trial in the intended product: a Personal Free user chooses Upgrade, confirms the App Store purchase, and receives Personal Plus only after server verification.
 
@@ -10,7 +10,7 @@ There is no free trial in the intended product: a Personal Free user chooses Upg
 
 1. Create a `Personal Plus` auto-renewable subscription group in App Store Connect with at least one product, for example a monthly product. Do not configure an introductory or trial offer.
 2. Complete Paid Apps agreements, banking, tax, price, localisation, review screenshot, subscription description, privacy policy, and terms links in App Store Connect.
-3. Add a StoreKit 2 purchase service to iOS. Load the product from App Store Connect, show Apple's localised price, call `purchase`, finish verified transactions, expose Restore Purchases, and link to Apple's Manage Subscriptions screen.
+3. Promote the existing Debug StoreKit 2 purchase service to production only after step 4 and step 5 are connected. It already loads both products, shows Apple's localised prices, calls `purchase`, handles verified local transactions, exposes Restore Purchases, and links to Apple's Manage Subscriptions screen.
 4. Obtain a stable UUID `appAccountToken` from the backend for the authenticated personal account and pass it into each purchase. This binds the Apple transaction to the correct Hit n Score account without trusting an email in the receipt.
 5. Add an authenticated backend verification endpoint. It must verify Apple's signed JWS certificate chain and payload, confirm bundle ID, product ID, environment, transaction ownership, expiry and revocation state, then upsert `app_store_subscriptions` idempotently.
 6. Configure App Store Server Notifications V2. The public webhook verifies every signed payload before inserting `app_store_subscription_events`, then updates the authoritative subscription row for purchase, renewal, billing retry, grace period, expiry, refund and revocation events.

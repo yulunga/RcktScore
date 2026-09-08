@@ -96,7 +96,7 @@ extension UserSession {
     var planDisplayName: String {
         switch (plan ?? "").lowercased() {
         case "personal_plus":
-            return "Personal+"
+            return "Personal Plus"
         case "personal_free":
             return "Personal Free"
         case "club_pro":

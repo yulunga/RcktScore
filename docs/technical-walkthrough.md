@@ -433,13 +433,14 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 11. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
 12. Offline scope is deliberately limited to a match previously opened on that device. Creating matches, activating scheduled matches, loading history, changing settings, account deletion, and opening uncached matches still require connectivity.
 13. Help & Feedback includes a native privacy/data page covering account, match, device, offline and biometric handling. [PrivacyInfo.xcprivacy](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/PrivacyInfo.xcprivacy) declares the app's required-reason UserDefaults access. App Store Connect privacy answers and the public policy URL must still be maintained for each release.
+14. [StoreKitPurchaseService.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/StoreKitPurchaseService.swift) loads the monthly and yearly Personal Plus products, displays Apple's localised prices, observes transaction updates, reads current entitlements, restores purchases, and supports Apple's manage-subscriptions sheet. The subscription page expands those controls directly below Personal Plus for 20 seconds, then slowly collapses them; a locally active entitlement makes Personal Plus the pink-highlighted current plan and removes the Personal highlight. Debug builds can complete locally verified StoreKit test transactions, but the displayed local state does not change the backend account plan or server-side entitlements. Release purchasing remains disabled until server verification is implemented.
 
 ### Current native gap
 
 - the current iPhone scoring layout is much improved but still needs final polish
 - notification inbox delivery and read state are backend-backed; APNs push delivery is not implemented
 - reporting, game-settings presets, and deeper federation-style association integrations in native settings are not fully implemented
-- migration `024_app_store_subscription_lifecycle.sql` provides storage for verified Apple transactions and events, but the StoreKit/App Store Server verification lifecycle is not connected yet
+- migration `024_app_store_subscription_lifecycle.sql` provides storage for verified Apple transactions and events, and the Debug iOS StoreKit purchase surface exists, but server-issued account tokens, JWS verification, App Store Server Notifications and automatic plan changes are not connected yet
 - offline history, offline match creation, and multi-match caching are not implemented; offline scoring is limited to one previously opened active match
 - release pipeline, realtime sync, and final signoff coverage are still partial
 

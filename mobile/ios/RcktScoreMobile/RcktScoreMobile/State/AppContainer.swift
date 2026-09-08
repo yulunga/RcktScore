@@ -7,6 +7,7 @@ final class AppContainer: ObservableObject {
     let sessionStore: SessionStore
     let networkMonitor: NetworkMonitor
     let offlineMatchStore: OfflineMatchStore
+    let purchaseService: StoreKitPurchaseService
     let uiTestLaunchOptions: UITestLaunchOptions
     private var cancellables = Set<AnyCancellable>()
 
@@ -15,6 +16,7 @@ final class AppContainer: ObservableObject {
         sessionStore: SessionStore? = nil,
         networkMonitor: NetworkMonitor? = nil,
         offlineMatchStore: OfflineMatchStore? = nil,
+        purchaseService: StoreKitPurchaseService? = nil,
         uiTestLaunchOptions: UITestLaunchOptions? = nil
     ) {
         let resolvedLaunchOptions = uiTestLaunchOptions ?? .current
@@ -23,6 +25,7 @@ final class AppContainer: ObservableObject {
         self.sessionStore = sessionStore ?? SessionStore(uiTestLaunchOptions: resolvedLaunchOptions)
         self.networkMonitor = networkMonitor ?? NetworkMonitor()
         self.offlineMatchStore = offlineMatchStore ?? OfflineMatchStore()
+        self.purchaseService = purchaseService ?? StoreKitPurchaseService()
         self.apiClient.setSessionToken(self.sessionStore.sessionToken)
         self.apiClient.onSessionInvalidated = { [weak self] code in
             self?.sessionStore.clear(expired: code == "SESSION_EXPIRED")
@@ -47,6 +50,12 @@ final class AppContainer: ObservableObject {
             .store(in: &cancellables)
 
         self.offlineMatchStore.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        self.purchaseService.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
