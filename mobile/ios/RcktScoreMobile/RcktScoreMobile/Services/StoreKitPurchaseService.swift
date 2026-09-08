@@ -9,6 +9,7 @@ final class StoreKitPurchaseService: ObservableObject {
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var activeProductIDs: Set<String> = []
+    @Published private(set) var hasRefreshedCurrentEntitlements = false
     @Published private(set) var isLoading = false
     @Published private(set) var purchasingProductID: String?
     @Published var statusMessage: String?
@@ -127,6 +128,7 @@ final class StoreKitPurchaseService: ObservableObject {
             currentProductIDs.insert(transaction.productID)
         }
         activeProductIDs = currentProductIDs
+        hasRefreshedCurrentEntitlements = true
     }
 
     func planName(for product: Product) -> String {
@@ -183,7 +185,15 @@ final class StoreKitPurchaseService: ObservableObject {
         // Local StoreKit testing deliberately does not change the backend plan.
         // Production must send the signed JWS plus a server-issued appAccountToken
         // to the backend and wait for authoritative entitlement activation here.
-        activeProductIDs.insert(transaction.productID)
+        let isActive = transaction.revocationDate == nil
+            && !transaction.isUpgraded
+            && (transaction.expirationDate.map { $0 > Date() } ?? true)
+
+        if isActive {
+            activeProductIDs.insert(transaction.productID)
+        } else {
+            activeProductIDs.remove(transaction.productID)
+        }
     }
 
     private func productOrder(_ productID: String) -> Int {

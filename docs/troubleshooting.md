@@ -416,7 +416,7 @@ These are current product limitations, not accidental breakage:
 - WebSocket infrastructure is partial
 - notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
 - StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal monthly/yearly, Restore Purchases, and Manage Subscription controls for 20 seconds
-- a verified local purchase highlights Personal Plus as Current on the subscription screen and removes the Personal highlight, but it still does not change the Hit n Score backend account plan or unlock server-side Plus entitlements
+- during Debug StoreKit testing, only a currently active StoreKit entitlement outlines Personal Plus in green and marks it Current in pink; the app refreshes this after transaction updates, foregrounding, restoring, and closing Manage Subscription. If an expired test subscription remains active, use Xcode's StoreKit transaction manager to inspect or remove the test transaction, then foreground the app
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
   and they are not wired into a documented CI pipeline

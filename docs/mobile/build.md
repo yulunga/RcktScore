@@ -57,7 +57,7 @@ xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme
 - there is no documented release build-number policy yet
 - some local CLI builds fail before completion if the machine has no working iPhone simulator runtimes available to Xcode asset tooling
 - notification inbox delivery and read state are backend-backed; there is no APNs push-notification path yet
-- local StoreKit testing uses `HitnScore.storekit` selected under Scheme > Run > Options; in Debug, tap Personal Plus to expose monthly/yearly purchase, restore, and manage controls for 20 seconds. A locally active entitlement changes the subscription-screen current-plan highlight only. Release purchasing remains disabled pending backend verification
+- local StoreKit testing uses `HitnScore.storekit` selected under Scheme > Run > Options; in Debug, tap Personal Plus to expose monthly/yearly purchase, restore, and manage controls for 20 seconds. The app refreshes current entitlements on foreground and marks only the active tier with a green outline and pink Current badge. Release purchasing remains disabled pending backend verification
 - offline scoring supports one cached active match, but offline history and offline match creation remain incomplete
 
 ## Current Release Readiness

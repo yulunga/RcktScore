@@ -70,7 +70,11 @@ struct DashboardView: View {
     private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
     private var hasActiveStoreKitPersonalPlus: Bool { !container.purchaseService.activeProductIDs.isEmpty }
     private var isPersonalPlusCurrentOnSubscriptionScreen: Bool {
-        isPersonalPlus || hasActiveStoreKitPersonalPlus
+        if container.purchaseService.canRunLocalPurchases,
+           container.purchaseService.hasRefreshedCurrentEntitlements {
+            return hasActiveStoreKitPersonalPlus
+        }
+        return isPersonalPlus || hasActiveStoreKitPersonalPlus
     }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
@@ -1050,7 +1054,7 @@ struct DashboardView: View {
             ?? 100
         let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
-                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", (session?.plan ?? "").lowercased() == "personal_free" && !hasActiveStoreKitPersonalPlus, nil),
+                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", !isPersonalPlusCurrentOnSubscriptionScreen, nil),
                 ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", isPersonalPlusCurrentOnSubscriptionScreen, nil),
                 ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
                 ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
@@ -1100,6 +1104,12 @@ struct DashboardView: View {
             await container.purchaseService.refreshCurrentEntitlements()
         }
         .manageSubscriptionsSheet(isPresented: $showsManageSubscriptions)
+        .onChange(of: showsManageSubscriptions) { _, isPresented in
+            guard !isPresented else { return }
+            Task {
+                await container.purchaseService.refreshCurrentEntitlements()
+            }
+        }
         .onDisappear {
             personalPlusCollapseTask?.cancel()
             personalPlusCollapseTask = nil
@@ -1120,7 +1130,7 @@ struct DashboardView: View {
                 }
             }
 
-            if purchaseService.canRunLocalPurchases && !isPersonalPlus {
+            if purchaseService.canRunLocalPurchases && !isPersonalPlusCurrentOnSubscriptionScreen {
                 Text("Choose Personal Plus")
                     .font(.subheadline.weight(.bold))
 
@@ -1182,16 +1192,24 @@ struct DashboardView: View {
 
             HStack(spacing: 10) {
                 if purchaseService.canRunLocalPurchases {
-                    Button("Restore Purchases") {
+                    Button {
                         Task { await purchaseService.restorePurchases() }
+                    } label: {
+                        Text("Restore Purchases")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .disabled(purchaseService.purchasingProductID != nil)
                 }
 
-                if isPersonalPlus || !purchaseService.activeProductIDs.isEmpty {
-                    Button("Manage Subscription") {
+                if purchaseService.canRunLocalPurchases || isPersonalPlus || !purchaseService.activeProductIDs.isEmpty {
+                    Button {
                         showsManageSubscriptions = true
+                    } label: {
+                        Text("Manage Subscription")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                 }
@@ -2886,19 +2904,13 @@ struct DashboardView: View {
                 openPersonalPlusOptions()
             }
         } label: {
-            HStack(spacing: 10) {
-                subscriptionOptionCardContent(
-                    title: "Personal Plus",
-                    subtitle: subtitle,
-                    status: isCurrent ? "Current" : "Upgrade Option",
-                    isCurrent: isCurrent
-                )
-
-                Image(systemName: isPersonalPlusOptionsExpanded ? "chevron.up" : "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.dashboardBrand)
-                    .frame(width: 22)
-            }
+            subscriptionOptionCardContent(
+                title: "Personal Plus",
+                subtitle: subtitle,
+                status: isCurrent ? "Current" : "Upgrade Option",
+                isCurrent: isCurrent,
+                trailingSystemImage: isPersonalPlusOptionsExpanded ? "chevron.up" : "chevron.down"
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("settings.subscription.personalPlus.expandButton")
@@ -2969,7 +2981,8 @@ struct DashboardView: View {
         title: String,
         subtitle: String,
         status: String,
-        isCurrent: Bool
+        isCurrent: Bool,
+        trailingSystemImage: String? = nil
     ) -> some View {
         let isEnquiry = status == "Enquire"
         let statusColor = isCurrent
@@ -2999,6 +3012,13 @@ struct DashboardView: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Color.dashboardBrand)
                 }
+
+                if let trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                        .frame(width: 18)
+                }
             }
 
             Text(subtitle)
@@ -3007,11 +3027,11 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isCurrent ? Color.dashboardAccentPink.opacity(0.09) : Color.dashboardInputBackground)
+        .background(Color.dashboardInputBackground)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(isCurrent ? Color.dashboardAccentPink.opacity(0.45) : Color.dashboardBorder, lineWidth: 1)
+                .stroke(isCurrent ? Color.green : Color.dashboardBorder, lineWidth: isCurrent ? 2 : 1)
         )
     }
 

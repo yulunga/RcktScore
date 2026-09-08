@@ -28,6 +28,9 @@ struct ContentView: View {
             case .active:
                 container.sessionStore.validateExpiry()
                 container.sessionStore.appDidBecomeActive()
+                Task {
+                    await container.purchaseService.refreshCurrentEntitlements()
+                }
                 if container.sessionStore.requiresBiometricUnlock {
                     Task {
                         _ = await container.sessionStore.unlockWithBiometrics()

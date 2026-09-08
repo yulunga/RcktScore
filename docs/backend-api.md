@@ -351,7 +351,7 @@ Current behavior:
 ### App Store subscription boundary
 
 - iOS can load and locally test `com.hitnscore.personalplus.monthly` and `com.hitnscore.personalplus.yearly` through StoreKit 2
-- the native subscription screen treats a locally verified active StoreKit entitlement as the displayed current plan for StoreKit testing, but this presentation state is not a backend entitlement and does not unlock server-protected Personal Plus features
+- during Debug StoreKit testing, the native subscription screen refreshes current entitlements when it opens, when the app returns active, after transaction updates, and after closing subscription management; only a currently active, non-revoked and non-expired StoreKit entitlement displays Personal Plus as Current
 - there is not yet a backend account-token, signed-transaction verification, subscription-status, or App Store Server Notifications endpoint
 - consequently, StoreKit purchase controls are Debug-only and local verified transactions do not change `SkwshOrgSettings.plan`
 - production activation must verify Apple's signed JWS and bind its `appAccountToken` to the authenticated personal organisation before granting Personal Plus
