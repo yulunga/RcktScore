@@ -126,6 +126,8 @@ private struct MatchSetupFormState {
     var player2Band = ""
     var player1Offset = 0
     var player2Offset = 0
+    var tennisNoAdScoring = false
+    var tennisFinalSetMatchTiebreak = false
 
     var player1LookupQuery: String {
         [player1Name, player1Surname]
@@ -568,8 +570,8 @@ struct StartNewMatchView: View {
         Text("Match Setup - \(selectedSport.displayName)")
             .font(.title3.weight(.bold))
             .foregroundStyle(.primary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 
     private var matchTypeCard: some View {
@@ -644,51 +646,63 @@ struct StartNewMatchView: View {
     }
 
     private var formatCard: some View {
-        cardSection(title: "Format") {
-            VStack(spacing: 14) {
+        VStack(spacing: 14) {
+            if isTennisMatch {
+                selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5]) { value in
+                    "Best of \(value)"
+                }
+                .onChange(of: formState.bestOf) {
+                    if formState.bestOf == 1 {
+                        formState.tennisFinalSetMatchTiebreak = false
+                    }
+                }
+
+                checkboxOption(
+                    title: "No-Ad scoring",
+                    description: "At 40–40, the receiver chooses the Deuce or Ad court. The next point wins the game.",
+                    isOn: $formState.tennisNoAdScoring,
+                    identifier: "startMatch.tennisNoAdToggle"
+                )
+
+                checkboxOption(
+                    title: "Final-set 10-point match tiebreak",
+                    description: "When the match reaches a deciding final set, play one tiebreak to 10 points instead. The winner must lead by two.",
+                    isOn: $formState.tennisFinalSetMatchTiebreak,
+                    identifier: "startMatch.tennisFinalSetMatchTiebreakToggle",
+                    isEnabled: formState.bestOf > 1
+                )
+            } else {
                 HStack(spacing: 12) {
                     selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5]) { value in
                         "Best of \(value)"
                     }
 
-                    selectionCard(title: "Game Format", value: $formState.scoreType, options: isTennisMatch ? [4, 6] : [11, 15]) { value in
-                        if isTennisMatch {
-                            return "First to \(value)"
-                        }
-                        return "PAR-\(value)"
+                    selectionCard(title: "Game Format", value: $formState.scoreType, options: [11, 15]) { value in
+                        "PAR-\(value)"
                     }
                     .disabled(formState.handicapEnabled)
                     .opacity(formState.handicapEnabled ? 0.6 : 1)
                 }
 
-                if !isTennisMatch {
-                    Toggle(isOn: $formState.handicapEnabled) {
-                        Text("Handicap Match")
-                            .font(.subheadline.weight(.semibold))
+                Toggle(isOn: $formState.handicapEnabled) {
+                    Text("Handicap Match")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .tint(Color.dashboardBrand)
+                .accessibilityIdentifier("startMatch.handicapToggle")
+                .onChange(of: formState.handicapEnabled) {
+                    if formState.handicapEnabled {
+                        formState.scoreType = 15
+                    } else {
+                        formState.player1Band = ""
+                        formState.player2Band = ""
+                        formState.player1Offset = 0
+                        formState.player2Offset = 0
                     }
-                    .tint(Color.dashboardBrand)
-                    .accessibilityIdentifier("startMatch.handicapToggle")
-                    .onChange(of: formState.handicapEnabled) {
-                        if formState.handicapEnabled {
-                            formState.scoreType = 15
-                        } else {
-                            formState.player1Band = ""
-                            formState.player2Band = ""
-                            formState.player1Offset = 0
-                            formState.player2Offset = 0
-                        }
-                        refreshSetupNotice()
-                    }
+                    refreshSetupNotice()
+                }
 
-                    if !isPersonalAccount {
-                        Toggle(isOn: $formState.scheduleMatch) {
-                            Text("Schedule Match")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .tint(Color.dashboardBrand)
-                        .accessibilityIdentifier("startMatch.scheduleToggle")
-                    }
-                } else if !isPersonalAccount {
+                if !isPersonalAccount {
                     Toggle(isOn: $formState.scheduleMatch) {
                         Text("Schedule Match")
                             .font(.subheadline.weight(.semibold))
@@ -697,7 +711,63 @@ struct StartNewMatchView: View {
                     .accessibilityIdentifier("startMatch.scheduleToggle")
                 }
             }
+
+            if isTennisMatch && !isPersonalAccount {
+                Toggle(isOn: $formState.scheduleMatch) {
+                    Text("Schedule Match")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .tint(Color.dashboardBrand)
+                .accessibilityIdentifier("startMatch.scheduleToggle")
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(Color.dashboardCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
+    }
+
+    private func checkboxOption(
+        title: String,
+        description: String,
+        isOn: Binding<Bool>,
+        identifier: String,
+        isEnabled: Bool = true
+    ) -> some View {
+        Button {
+            guard isEnabled else { return }
+            isOn.wrappedValue.toggle()
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isOn.wrappedValue ? "checkmark.square.fill" : "square")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(isOn.wrappedValue ? Color.dashboardBrand : .secondary)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.5)
+        .accessibilityIdentifier(identifier)
     }
 
     private var refereeCard: some View {
@@ -1241,7 +1311,7 @@ struct StartNewMatchView: View {
 
     private func applyOrganizationDefaults() {
         if isTennisMatch {
-            formState.scoreType = [4, 6].contains(formState.scoreType) ? formState.scoreType : 6
+            formState.scoreType = 6
             formState.bestOf = [1, 3, 5].contains(formState.bestOf) ? formState.bestOf : 3
             formState.handicapEnabled = false
             formState.player1Band = ""
@@ -1470,7 +1540,9 @@ struct StartNewMatchView: View {
             team2Player1Name: isTennisMatch ? (formState.isDoubles ? formState.player3Name.trimmingCharacters(in: .whitespacesAndNewlines) : formState.player2Name.trimmingCharacters(in: .whitespacesAndNewlines)) : nil,
             team2Player1Surname: isTennisMatch ? (formState.isDoubles ? formState.player3Surname.trimmingCharacters(in: .whitespacesAndNewlines) : formState.player2Surname.trimmingCharacters(in: .whitespacesAndNewlines)) : nil,
             team2Player2Name: (isTennisMatch && formState.isDoubles) ? formState.player4Name.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
-            team2Player2Surname: (isTennisMatch && formState.isDoubles) ? formState.player4Surname.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+            team2Player2Surname: (isTennisMatch && formState.isDoubles) ? formState.player4Surname.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+            tennisNoAdScoring: isTennisMatch && formState.tennisNoAdScoring,
+            tennisFinalSetMatchTiebreak: isTennisMatch && formState.tennisFinalSetMatchTiebreak && formState.bestOf > 1
         )
 
         do {

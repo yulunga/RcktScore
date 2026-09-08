@@ -201,6 +201,8 @@ struct CreateMatchRequest: Encodable {
     let team2Player1Surname: String?
     let team2Player2Name: String?
     let team2Player2Surname: String?
+    let tennisNoAdScoring: Bool
+    let tennisFinalSetMatchTiebreak: Bool
 
     enum CodingKeys: String, CodingKey {
         case tenantID = "tenant_id"
@@ -236,6 +238,8 @@ struct CreateMatchRequest: Encodable {
         case team2Player1Surname = "team2_player1_surname"
         case team2Player2Name = "team2_player2_name"
         case team2Player2Surname = "team2_player2_surname"
+        case tennisNoAdScoring = "tennis_no_ad_scoring"
+        case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
     }
 }
 

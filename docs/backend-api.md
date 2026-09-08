@@ -245,7 +245,8 @@ Current organisation-settings behavior:
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
 - the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
-- native tennis match creation can now include optional team-format and lineup metadata for doubles, and the tennis `server` event path accepts opening serve/receive order metadata in the event payload
+- native tennis match creation can include optional team-format and lineup metadata for doubles, `tennis_no_ad_scoring`, and `tennis_final_set_match_tiebreak`; the tennis `server` event path accepts opening serve/receive order metadata
+- at a No-Ad 40-40 score, `POST /event_action` must record `action_type: receiver_choice` with `side: Right` for the Deuce court or `side: Left` for the Ad court before the next point is accepted
 
 ### Match and scoring routes
 
@@ -431,18 +432,14 @@ Current behavior:
 - additional engine files for `padel`, `table_tennis`, `badminton`, and `pickleball` are wired but currently raise a safe unsupported-sport error
 - supported score types by live engine:
   - squash/racketball: `11`, `15`
-  - tennis: `4`, `6`
+  - tennis: new native matches use `6`; `4` remains readable for historical short-set matches
 - supported best-of values:
   - `1`
   - `3`
   - `5`
-- supported action types:
-  - `let`
-  - `match_settings`
-  - `stroke`
-  - `server`
-  - `serve_side`
-  - `timer`
+- squash/racketball action types: `let`, `match_settings`, `stroke`, `server`, `serve_side`, `timer`
+- tennis action types: `match_settings`, `receiver_choice`, `server`, `timer`
+- migration `021_tennis_scoring_formats.sql` adds the two persisted tennis format flags
 
 ### Interest requests and feedback
 

@@ -796,6 +796,32 @@ final class APIClient {
         return try await unwrapMatchResponse(request)
     }
 
+    func chooseNoAdReceiverSide(matchID: String, side: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {
+        let request = try makeRequest(
+            path: "/event_action",
+            method: "POST",
+            body: EventActionRequest(
+                matchID: matchID,
+                actionType: "receiver_choice",
+                playerSide: nil,
+                note: nil,
+                side: side,
+                currentServer: nil,
+                currentServerSide: nil,
+                serviceSide: nil,
+                matchDurationSeconds: nil,
+                currentServerParticipantID: nil,
+                currentReceiver: nil,
+                currentReceiverSide: nil,
+                currentReceiverParticipantID: nil,
+                serveOrder: nil,
+                receiverDeuceOrder: nil,
+                clientActionID: clientActionID
+            )
+        )
+        return try await unwrapMatchResponse(request)
+    }
+
     func selectFirstServer(
         matchID: String,
         currentServer: String,

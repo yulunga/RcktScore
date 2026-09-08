@@ -137,6 +137,10 @@ struct MatchState: Codable {
     let player1ScoreLabel: String?
     let player2ScoreLabel: String?
     let isTieBreak: Bool
+    let isMatchTiebreak: Bool
+    let tennisNoAdScoring: Bool
+    let tennisFinalSetMatchTiebreak: Bool
+    let noAdDecidingSide: String?
     let teamFormat: String?
     let tennisTeams: [String: [TennisParticipant]]?
     let currentServerParticipantID: String?
@@ -174,6 +178,10 @@ struct MatchState: Codable {
         case player1ScoreLabel = "player1_score_label"
         case player2ScoreLabel = "player2_score_label"
         case isTieBreak = "is_tie_break"
+        case isMatchTiebreak = "is_match_tiebreak"
+        case tennisNoAdScoring = "tennis_no_ad_scoring"
+        case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
+        case noAdDecidingSide = "no_ad_deciding_side"
         case teamFormat = "team_format"
         case tennisTeams = "tennis_teams"
         case currentServerParticipantID = "current_server_participant_id"
@@ -228,7 +236,11 @@ struct MatchState: Codable {
         gameHistory: [GameHistoryEntry],
         matchComplete: Bool,
         winnerName: String?,
-        events: [MatchEvent]
+        events: [MatchEvent],
+        isMatchTiebreak: Bool = false,
+        tennisNoAdScoring: Bool = false,
+        tennisFinalSetMatchTiebreak: Bool = false,
+        noAdDecidingSide: String? = nil
     ) {
         self.player1Score = player1Score
         self.player2Score = player2Score
@@ -248,6 +260,10 @@ struct MatchState: Codable {
         self.player1ScoreLabel = player1ScoreLabel
         self.player2ScoreLabel = player2ScoreLabel
         self.isTieBreak = isTieBreak
+        self.isMatchTiebreak = isMatchTiebreak
+        self.tennisNoAdScoring = tennisNoAdScoring
+        self.tennisFinalSetMatchTiebreak = tennisFinalSetMatchTiebreak
+        self.noAdDecidingSide = noAdDecidingSide
         self.teamFormat = teamFormat
         self.tennisTeams = tennisTeams
         self.currentServerParticipantID = currentServerParticipantID
@@ -287,6 +303,10 @@ struct MatchState: Codable {
         player1ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player1ScoreLabel)
         player2ScoreLabel = try container.decodeIfPresent(String.self, forKey: .player2ScoreLabel)
         isTieBreak = try container.decodeIfPresent(Bool.self, forKey: .isTieBreak) ?? false
+        isMatchTiebreak = try container.decodeIfPresent(Bool.self, forKey: .isMatchTiebreak) ?? false
+        tennisNoAdScoring = try container.decodeIfPresent(Bool.self, forKey: .tennisNoAdScoring) ?? false
+        tennisFinalSetMatchTiebreak = try container.decodeIfPresent(Bool.self, forKey: .tennisFinalSetMatchTiebreak) ?? false
+        noAdDecidingSide = try container.decodeIfPresent(String.self, forKey: .noAdDecidingSide)
         teamFormat = try container.decodeIfPresent(String.self, forKey: .teamFormat)
         tennisTeams = try container.decodeIfPresent([String: [TennisParticipant]].self, forKey: .tennisTeams)
         currentServerParticipantID = try container.decodeIfPresent(String.self, forKey: .currentServerParticipantID)
@@ -409,6 +429,10 @@ struct MatchEventPayload: Codable {
     let serveOrder: [String]?
     let receiverDeuceOrder: [String: String]?
     let isTieBreak: Bool?
+    let isMatchTiebreak: Bool?
+    let tennisNoAdScoring: Bool?
+    let tennisFinalSetMatchTiebreak: Bool?
+    let noAdDecidingSide: String?
     let player1ScoreLabel: String?
     let player2ScoreLabel: String?
 
@@ -443,6 +467,10 @@ struct MatchEventPayload: Codable {
         case serveOrder = "serve_order"
         case receiverDeuceOrder = "receiver_deuce_order"
         case isTieBreak = "is_tie_break"
+        case isMatchTiebreak = "is_match_tiebreak"
+        case tennisNoAdScoring = "tennis_no_ad_scoring"
+        case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
+        case noAdDecidingSide = "no_ad_deciding_side"
         case player1ScoreLabel = "player1_score_label"
         case player2ScoreLabel = "player2_score_label"
     }
@@ -478,6 +506,10 @@ struct MatchEventPayload: Codable {
         serveOrder: [String]? = nil,
         receiverDeuceOrder: [String: String]? = nil,
         isTieBreak: Bool? = nil,
+        isMatchTiebreak: Bool? = nil,
+        tennisNoAdScoring: Bool? = nil,
+        tennisFinalSetMatchTiebreak: Bool? = nil,
+        noAdDecidingSide: String? = nil,
         player1ScoreLabel: String? = nil,
         player2ScoreLabel: String? = nil
     ) {
@@ -511,6 +543,10 @@ struct MatchEventPayload: Codable {
         self.serveOrder = serveOrder
         self.receiverDeuceOrder = receiverDeuceOrder
         self.isTieBreak = isTieBreak
+        self.isMatchTiebreak = isMatchTiebreak
+        self.tennisNoAdScoring = tennisNoAdScoring
+        self.tennisFinalSetMatchTiebreak = tennisFinalSetMatchTiebreak
+        self.noAdDecidingSide = noAdDecidingSide
         self.player1ScoreLabel = player1ScoreLabel
         self.player2ScoreLabel = player2ScoreLabel
     }

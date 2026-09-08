@@ -208,6 +208,8 @@ Common symptoms:
 - a selected shirt colour is replaced by the default colour
 - tennis appears in setup but cannot be created
 - tennis score labels or server rotation look wrong during tie-breaks
+- No-Ad scoring reaches 40-40 but the next point cannot be recorded
+- a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
 
 What to check:
@@ -221,6 +223,7 @@ What to check:
 - whether the action used `score_point` or `event_action`
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
+- whether migration `021_tennis_scoring_formats.sql` is present, the match row contains the expected tennis flags, and a `receiver_choice` event exists before a No-Ad deciding point
 
 Important current truths:
 
@@ -312,6 +315,7 @@ If behavior seems impossible:
 
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
+- for No-Ad and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
@@ -389,7 +393,8 @@ Important current truths:
 - self-service deletion applies only to the authenticated owner of a personal account; club memberships remain club-admin managed, and deletion requires two client confirmations plus server-side ownership validation
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
-- native tennis scoring now expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
+- native tennis scoring expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
+- at No-Ad deuce the receiver must choose Deuce or Ad court; that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
 - the current scorer is functionally ahead of the docs that used to describe it,
   but its iPhone layout still needs redesign
 - the shared iOS bottom navigation now compacts labels and icon sizing under larger Dynamic Type settings, but extremely aggressive accessibility sizes may still need further tab-bar simplification if new labels are added later

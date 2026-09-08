@@ -6,7 +6,7 @@ from common import squash_match_logic as shared
 
 
 SPORT = "tennis"
-ALLOWED_ACTION_TYPES = {"let", "match_settings", "server", "serve_side", "stroke", "timer"}
+ALLOWED_ACTION_TYPES = {"match_settings", "receiver_choice", "server", "timer"}
 VALID_BEST_OF_OPTIONS = {1, 3, 5}
 VALID_SCORE_TYPE_OPTIONS = {4, 6}
 TENNIS_POINT_LABELS = {
@@ -239,6 +239,12 @@ def _score_type_value(value):
     return parsed if parsed in VALID_SCORE_TYPE_OPTIONS else 6
 
 
+def _bool_value(value):
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _games_to_win(best_of):
     return (_best_of_value(best_of) // 2) + 1
 
@@ -257,16 +263,24 @@ def _should_start_tie_break(player1_set_games, player2_set_games, score_type):
     return player1_set_games == trigger and player2_set_games == trigger
 
 
-def _is_regular_game_complete(player1_score, player2_score):
+def _is_regular_game_complete(player1_score, player2_score, no_ad_scoring=False):
     highest = max(player1_score, player2_score)
     lowest = min(player1_score, player2_score)
-    return highest >= 4 and (highest - lowest) >= 2
+    required_margin = 1 if no_ad_scoring else 2
+    return highest >= 4 and (highest - lowest) >= required_margin
 
 
-def _is_tie_break_complete(player1_score, player2_score):
+def _is_tie_break_complete(player1_score, player2_score, target=7):
     highest = max(player1_score, player2_score)
     lowest = min(player1_score, player2_score)
-    return highest >= 7 and (highest - lowest) >= 2
+    return highest >= target and (highest - lowest) >= 2
+
+
+def _should_start_final_set_match_tiebreak(player1_sets_won, player2_sets_won, best_of, enabled):
+    if not enabled or _best_of_value(best_of) <= 1:
+        return False
+    sets_to_win = _games_to_win(best_of)
+    return player1_sets_won == player2_sets_won == sets_to_win - 1
 
 
 def _is_set_complete(player1_set_games, player2_set_games, score_type):
@@ -349,6 +363,9 @@ def _event_summary(match_row, event_type, payload):
         if server_side == "player2":
             return f"{match_row['player2_name']} selected to serve first"
         return f"{match_row['player1_name']} selected to serve first"
+    if event_type == "receiver_choice":
+        court = "Deuce" if payload.get("side") == "Right" else "Ad"
+        return f"Receiver chose the {court} court for the No-Ad deciding point"
     if event_type == "serve_side":
         return f"Serve changed to {payload.get('side', 'Right')}"
     if event_type == "let":
@@ -422,8 +439,12 @@ def _initial_state(match_row):
         "player1_set_games": 0,
         "player2_set_games": 0,
         "is_tie_break": False,
+        "is_match_tiebreak": False,
         "tiebreak_first_server_side": None,
         "tiebreak_first_server_participant_id": None,
+        "tennis_no_ad_scoring": _bool_value(match_row.get("tennis_no_ad_scoring")),
+        "tennis_final_set_match_tiebreak": _bool_value(match_row.get("tennis_final_set_match_tiebreak")),
+        "no_ad_deciding_side": None,
         "score_display_mode": "tennis",
         "player1_score_label": player1_score_label,
         "player2_score_label": player2_score_label,
@@ -500,6 +521,17 @@ def _build_state(match_row, event_rows):
             if payload.get("serve_order"):
                 state["serve_order"] = payload.get("serve_order")
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
+            state["is_match_tiebreak"] = bool(payload.get("is_match_tiebreak"))
+            state["tennis_no_ad_scoring"] = _bool_value(
+                payload.get("tennis_no_ad_scoring", state["tennis_no_ad_scoring"])
+            )
+            state["tennis_final_set_match_tiebreak"] = _bool_value(
+                payload.get(
+                    "tennis_final_set_match_tiebreak",
+                    state["tennis_final_set_match_tiebreak"],
+                )
+            )
+            state["no_ad_deciding_side"] = payload.get("no_ad_deciding_side")
             state["tiebreak_first_server_side"] = payload.get("tiebreak_first_server_side")
             state["tiebreak_first_server_participant_id"] = payload.get(
                 "tiebreak_first_server_participant_id",
@@ -568,6 +600,8 @@ def _build_state(match_row, event_rows):
             state["player1_set_games"] = shared._coerce_int(payload.get("player1_set_games"), state["player1_set_games"])
             state["player2_set_games"] = shared._coerce_int(payload.get("player2_set_games"), state["player2_set_games"])
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
+            state["is_match_tiebreak"] = bool(payload.get("is_match_tiebreak"))
+            state["no_ad_deciding_side"] = payload.get("no_ad_deciding_side")
             state["tiebreak_first_server_side"] = payload.get("tiebreak_first_server_side")
             state["tiebreak_first_server_participant_id"] = payload.get(
                 "tiebreak_first_server_participant_id",
@@ -579,6 +613,14 @@ def _build_state(match_row, event_rows):
                 state["winner_name"] = payload.get("winner_name")
             _apply_score_labels(state)
         elif event_type == "serve_side":
+            state["service_side"] = payload.get("side", state["service_side"])
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
+            )
+        elif event_type == "receiver_choice":
+            state["no_ad_deciding_side"] = payload.get("side")
             state["service_side"] = payload.get("side", state["service_side"])
             _apply_current_service_participants(
                 state,
@@ -631,6 +673,7 @@ def _build_state(match_row, event_rows):
                 state["match_duration_seconds"],
             )
             state["is_tie_break"] = bool(payload.get("is_tie_break"))
+            state["is_match_tiebreak"] = bool(payload.get("is_match_tiebreak"))
             state["tiebreak_first_server_participant_id"] = payload.get(
                 "tiebreak_first_server_participant_id",
                 state.get("tiebreak_first_server_participant_id"),
@@ -675,6 +718,8 @@ def _serialize_match(match_row, event_rows):
         "score_type": _score_type_value(match_row.get("score_type", 6)),
         "best_of": best_of,
         "games_to_win": shared._coerce_int(match_row.get("games_to_win"), _games_to_win(best_of)),
+        "tennis_no_ad_scoring": _bool_value(match_row.get("tennis_no_ad_scoring")),
+        "tennis_final_set_match_tiebreak": _bool_value(match_row.get("tennis_final_set_match_tiebreak")),
         "current_game_number": shared._coerce_int(match_row.get("current_game_number"), 1),
         "player1_games_won": shared._coerce_int(match_row.get("player1_games_won")),
         "player2_games_won": shared._coerce_int(match_row.get("player2_games_won")),
@@ -867,6 +912,8 @@ def create_match(connection, payload, source="api"):
                 score_type,
                 best_of,
                 games_to_win,
+                tennis_no_ad_scoring,
+                tennis_final_set_match_tiebreak,
                 current_game_number,
                 player1_games_won,
                 player2_games_won,
@@ -907,6 +954,8 @@ def create_match(connection, payload, source="api"):
                 %(score_type)s,
                 %(best_of)s,
                 %(games_to_win)s,
+                %(tennis_no_ad_scoring)s,
+                %(tennis_final_set_match_tiebreak)s,
                 1,
                 0,
                 0,
@@ -948,6 +997,8 @@ def create_match(connection, payload, source="api"):
                 "score_type": score_type,
                 "best_of": best_of,
                 "games_to_win": games_to_win,
+                "tennis_no_ad_scoring": _bool_value(match_payload.get("tennis_no_ad_scoring")),
+                "tennis_final_set_match_tiebreak": _bool_value(match_payload.get("tennis_final_set_match_tiebreak")),
                 "player1_final_score": None,
                 "player2_final_score": None,
                 "winner_side": None,
@@ -994,6 +1045,8 @@ def create_match(connection, payload, source="api"):
                     "score_type": score_type,
                     "best_of": best_of,
                     "games_to_win": games_to_win,
+                    "tennis_no_ad_scoring": initial_state["tennis_no_ad_scoring"],
+                    "tennis_final_set_match_tiebreak": initial_state["tennis_final_set_match_tiebreak"],
                     "current_game_number": 1,
                     "player1_games_won": 0,
                     "player2_games_won": 0,
@@ -1019,7 +1072,10 @@ def create_match(connection, payload, source="api"):
                     "player2_score_label": player2_score_label,
                     "score_display_mode": "tennis",
                     "is_tie_break": False,
+                    "is_match_tiebreak": False,
+                    "no_ad_deciding_side": None,
                     "tiebreak_first_server_side": None,
+                    "tiebreak_first_server_participant_id": None,
                 }),
                 "event_source": source,
                 "created_at": now,
@@ -1087,6 +1143,19 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     tiebreak_first_server_side = state.get("tiebreak_first_server_side")
     tiebreak_first_server_participant_id = state.get("tiebreak_first_server_participant_id")
     is_tie_break = bool(state.get("is_tie_break"))
+    is_match_tiebreak = bool(state.get("is_match_tiebreak"))
+    no_ad_scoring = bool(state.get("tennis_no_ad_scoring"))
+    final_set_match_tiebreak = bool(state.get("tennis_final_set_match_tiebreak"))
+    no_ad_deciding_side = state.get("no_ad_deciding_side")
+
+    if (
+        no_ad_scoring
+        and not is_tie_break
+        and player1_score == 3
+        and player2_score == 3
+        and no_ad_deciding_side not in {"Right", "Left"}
+    ):
+        raise ValueError("The receiver must choose the Deuce or Ad court before the No-Ad deciding point")
 
     if scorer_side == "player1":
         player1_score += 1
@@ -1104,6 +1173,8 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     next_receiver_participant_id = _receiver_for_side(state, next_receiver_side, next_service_side)
     next_set_number = current_set_number
     next_tie_break = is_tie_break
+    next_is_match_tiebreak = is_match_tiebreak
+    next_no_ad_deciding_side = no_ad_deciding_side
     next_tiebreak_first_server_side = tiebreak_first_server_side
     next_tiebreak_first_server_participant_id = tiebreak_first_server_participant_id
     set_result = None
@@ -1111,15 +1182,26 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     if is_tie_break:
         first_server_side = tiebreak_first_server_side or current_server_side
         first_server_participant_id = tiebreak_first_server_participant_id or current_server_participant_id
-        if _is_tie_break_complete(player1_score, player2_score):
+        tie_break_target = 10 if is_match_tiebreak else 7
+        if _is_tie_break_complete(player1_score, player2_score, target=tie_break_target):
             set_completed = True
             winner_side = _winner_side(player1_score, player2_score)
-            if winner_side == "player1":
-                player1_set_games += 1
-                player1_sets_won += 1
+            if is_match_tiebreak:
+                if winner_side == "player1":
+                    player1_sets_won += 1
+                    player1_set_games = 1
+                    player2_set_games = 0
+                else:
+                    player2_sets_won += 1
+                    player1_set_games = 0
+                    player2_set_games = 1
             else:
-                player2_set_games += 1
-                player2_sets_won += 1
+                if winner_side == "player1":
+                    player1_set_games += 1
+                    player1_sets_won += 1
+                else:
+                    player2_set_games += 1
+                    player2_sets_won += 1
             winner_name = _player_name(match, winner_side)
             set_result = {
                 "game_number": current_set_number,
@@ -1127,6 +1209,9 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 "player2_score": player2_set_games,
                 "winner_side": winner_side,
                 "winner_name": winner_name,
+                "is_match_tiebreak": is_match_tiebreak,
+                "player1_tiebreak_score": player1_score,
+                "player2_tiebreak_score": player2_score,
             }
             if player1_sets_won >= sets_to_win or player2_sets_won >= sets_to_win:
                 match_completed = True
@@ -1137,6 +1222,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 player1_set_games = 0
                 player2_set_games = 0
                 next_tie_break = False
+                next_is_match_tiebreak = False
                 next_tiebreak_first_server_side = None
                 next_tiebreak_first_server_participant_id = None
                 if serve_order and first_server_participant_id in serve_order:
@@ -1144,6 +1230,8 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                     next_server_side = _participant_side(state, next_server_participant_id) or _opponent(first_server_side)
                 else:
                     next_server_side = _opponent(first_server_side)
+                if serve_order and next_server_participant_id in serve_order:
+                    serve_order = _rotate_order(serve_order, next_server_participant_id)
                 next_service_side = "Right"
         else:
             next_server_participant_id = _next_tie_break_server_participant(
@@ -1152,7 +1240,8 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
             ) or first_server_participant_id
             next_server_side = _participant_side(state, next_server_participant_id) or _next_tie_break_server(first_server_side, player1_score, player2_score)
     else:
-        if _is_regular_game_complete(player1_score, player2_score):
+        if _is_regular_game_complete(player1_score, player2_score, no_ad_scoring=no_ad_scoring):
+            next_no_ad_deciding_side = None
             game_winner_side = _winner_side(player1_score, player2_score)
             if game_winner_side == "player1":
                 player1_set_games += 1
@@ -1186,9 +1275,20 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                     if serve_order:
                         next_server_participant_id = serve_order[completed_set_games % len(serve_order)]
                         next_server_side = _participant_side(state, next_server_participant_id) or _opponent(current_server_side)
+                        serve_order = _rotate_order(serve_order, next_server_participant_id)
                     else:
                         next_server_side = _opponent(current_server_side)
                     next_service_side = "Right"
+                    if _should_start_final_set_match_tiebreak(
+                        player1_sets_won,
+                        player2_sets_won,
+                        best_of,
+                        final_set_match_tiebreak,
+                    ):
+                        next_tie_break = True
+                        next_is_match_tiebreak = True
+                        next_tiebreak_first_server_side = next_server_side
+                        next_tiebreak_first_server_participant_id = next_server_participant_id
             elif _should_start_tie_break(player1_set_games, player2_set_games, score_type):
                 player1_score = 0
                 player2_score = 0
@@ -1199,6 +1299,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                     next_server_participant_id = next_tiebreak_first_server_participant_id
                     next_tiebreak_first_server_side = _participant_side(state, next_tiebreak_first_server_participant_id) or _opponent(current_server_side)
                     next_server_side = next_tiebreak_first_server_side
+                    serve_order = _rotate_order(serve_order, next_server_participant_id)
                 else:
                     next_tiebreak_first_server_side = _opponent(current_server_side)
                     next_server_side = next_tiebreak_first_server_side
@@ -1213,6 +1314,9 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 else:
                     next_server_side = _opponent(current_server_side)
                 next_service_side = "Right"
+
+        if no_ad_scoring and not next_tie_break and player1_score == 3 and player2_score == 3:
+            next_no_ad_deciding_side = None
 
     if not match_completed:
         winner_side = None
@@ -1245,6 +1349,10 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "current_receiver_side": next_receiver_side,
         "current_receiver_participant_id": next_receiver_participant_id,
         "is_tie_break": next_tie_break,
+        "is_match_tiebreak": next_is_match_tiebreak,
+        "tennis_no_ad_scoring": no_ad_scoring,
+        "tennis_final_set_match_tiebreak": final_set_match_tiebreak,
+        "no_ad_deciding_side": next_no_ad_deciding_side,
         "tiebreak_first_server_side": next_tiebreak_first_server_side,
         "tiebreak_first_server_participant_id": next_tiebreak_first_server_participant_id,
         "serve_order": serve_order,
@@ -1277,6 +1385,10 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "player1_set_games": player1_set_games,
         "player2_set_games": player2_set_games,
         "is_tie_break": next_tie_break,
+        "is_match_tiebreak": next_is_match_tiebreak,
+        "tennis_no_ad_scoring": no_ad_scoring,
+        "tennis_final_set_match_tiebreak": final_set_match_tiebreak,
+        "no_ad_deciding_side": next_no_ad_deciding_side,
         "tiebreak_first_server_side": next_tiebreak_first_server_side,
         "tiebreak_first_server_participant_id": next_tiebreak_first_server_participant_id,
         "serve_order": serve_order,
@@ -1504,6 +1616,41 @@ def _prepare_server_selection(match, payload):
     }
 
 
+def _prepare_receiver_choice(match, payload):
+    state = match["state"]
+    if match["status"] == "completed" or state.get("match_complete"):
+        raise ValueError("Match is already complete")
+    if not state.get("tennis_no_ad_scoring"):
+        raise ValueError("Receiver choice is only available when No-Ad scoring is enabled")
+    if state.get("is_tie_break") or state.get("player1_score") != 3 or state.get("player2_score") != 3:
+        raise ValueError("Receiver choice is only available at a No-Ad deciding point")
+
+    side = payload.get("side")
+    if side not in {"Right", "Left"}:
+        raise ValueError("Receiver choice requires side = 'Right' or 'Left'")
+
+    next_state = {
+        **state,
+        "service_side": side,
+        "no_ad_deciding_side": side,
+    }
+    _apply_current_service_participants(
+        next_state,
+        server_participant_id=state.get("current_server_participant_id"),
+        service_side=side,
+    )
+    return {
+        **payload,
+        "side": side,
+        "current_server": next_state.get("current_server"),
+        "current_server_side": next_state.get("current_server_side"),
+        "current_server_participant_id": next_state.get("current_server_participant_id"),
+        "current_receiver": next_state.get("current_receiver"),
+        "current_receiver_side": next_state.get("current_receiver_side"),
+        "current_receiver_participant_id": next_state.get("current_receiver_participant_id"),
+    }, next_state
+
+
 def event_action(connection, match_id, action_type, payload, source="api"):
     if action_type not in ALLOWED_ACTION_TYPES:
         raise ValueError(f"action_type must be one of: {', '.join(sorted(ALLOWED_ACTION_TYPES))}")
@@ -1521,30 +1668,18 @@ def event_action(connection, match_id, action_type, payload, source="api"):
         prepared_payload = _prepare_server_selection(match, payload)
         return _append_event(connection, match_id, action_type, prepared_payload, source=source)
 
-    if action_type == "stroke":
-        scorer_side = payload.get("player_side")
-        if scorer_side not in {"player1", "player2"}:
-            raise ValueError("stroke events require player_side = 'player1' or 'player2'")
-
+    if action_type == "receiver_choice":
         match = get_match(connection, match_id)
         if not match:
             return None
-
-        transition = _prepare_scoring_transition(
-            match,
-            scorer_side=scorer_side,
-            event_type="stroke",
-            extra_payload=payload,
-        )
-        completed_at = shared._utcnow() if transition["state"]["match_complete"] else None
+        prepared_payload, next_state = _prepare_receiver_choice(match, payload)
         return _append_event(
             connection,
             match_id,
-            transition["event_type"],
-            transition["payload"],
+            action_type,
+            prepared_payload,
             source=source,
-            state_override=transition["state"],
-            completed_at=completed_at,
+            state_override=next_state,
         )
 
     return _append_event(connection, match_id, action_type, payload, source=source)
@@ -1557,7 +1692,7 @@ def undo_last_action(connection, match_id):
             SELECT id
             FROM match_events
             WHERE match_id = %(match_id)s
-              AND event_type <> 'match_started'
+              AND event_type NOT IN ('match_started', 'timer')
             ORDER BY created_at DESC, id DESC
             LIMIT 1
             """,
@@ -1573,6 +1708,22 @@ def undo_last_action(connection, match_id):
             WHERE id = %(event_id)s
             """,
             {"event_id": last_event["id"]},
+        )
+        cursor.execute(
+            """
+            UPDATE matches
+            SET status = 'active',
+                completed_at = NULL,
+                winner_side = NULL,
+                winner_name = NULL,
+                ended_early = false,
+                end_reason = NULL,
+                player1_final_score = NULL,
+                player2_final_score = NULL,
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {"match_id": match_id, "updated_at": shared._utcnow()},
         )
 
     match = get_match(connection, match_id)

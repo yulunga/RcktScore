@@ -40,7 +40,7 @@ What is real and implemented:
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
-- sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup metadata and opening serve/receive selection support
+- sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup, opening serve/receive selection, optional No-Ad deciding points, and an optional final-set 10-point match tiebreak
 - separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
@@ -51,6 +51,7 @@ What is real and implemented:
 - native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
+- native tennis scoring is isolated in `TennisScoringReducer.swift` and `TennisScoringPresentation.swift`; shared match code retains loading, timers, networking, and offline queue plumbing
 - mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice
 - organisation-user sessions now carry a server expiry timestamp; the native app discards expired cached sessions and supports Face ID or Touch ID for an unexpired session saved on that device
 - the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens a local notification page and highlights the unread welcome notice in yellow until it is viewed
@@ -95,6 +96,7 @@ What is still partial or risky:
   - iOS project in `ios/RcktScoreMobile/`
   - mobile-facing shared references in `shared/`
   - offline active-match state and action queue in `ios/RcktScoreMobile/RcktScoreMobile/State/OfflineMatchStore.swift`
+  - native tennis rules and score UI in `ios/RcktScoreMobile/RcktScoreMobile/State/TennisScoringReducer.swift` and `ios/RcktScoreMobile/RcktScoreMobile/Views/TennisScoringPresentation.swift`
 - `docs/`
   - backend/API reference
   - lifecycle walkthrough
@@ -176,4 +178,5 @@ Additional checked-in test commands:
 ```bash
 pytest -c testing/automated/backend/pytest.ini testing/automated/backend
 cd frontend && npm run test:e2e:smoke
+testing/automated/mobile/run-tennis-scenarios.sh
 ```

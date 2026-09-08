@@ -3,9 +3,10 @@ import SwiftUI
 
 private let defaultWarmupSeconds = 60
 private let intervalSeconds = 90
+private let tennisSetIntervalSeconds = 120
 private let matchTimerStorageKeyPrefix = "rcktscore.matchTimer"
 private let squashScoreTypeOptions = [11, 15]
-private let tennisScoreTypeOptions = [4, 6]
+private let tennisScoreTypeOptions = [6]
 private let bestOfOptions = [1, 3, 5]
 
 private struct ShirtColorOption: Identifiable {
@@ -172,7 +173,7 @@ struct MatchScoringView: View {
         case .firstServer:
             return isTennisMatch ? "Serve & Receive" : "First Server"
         case .interval:
-            return "Game Break - 90s"
+            return isTennisMatch ? "Set Break - 120s" : "Game Break - 90s"
         case .matchLive:
             return "Match Time"
         }
@@ -197,7 +198,7 @@ struct MatchScoringView: View {
                 ? "Choose the opening server and receiver to begin the live match clock."
                 : "Choose the opening server to begin the live match clock."
         case .interval:
-            return "90 second break between games."
+            return isTennisMatch ? "120 second break between sets." : "90 second break between games."
         case .matchLive:
             return "Tap the clock to pause or resume the match."
         }
@@ -703,7 +704,9 @@ struct MatchScoringView: View {
         expandsVertically: Bool = false
     ) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 12) {
-            scoreSummaryBanner(match, compact: compact)
+            if !isTennisMatch {
+                scoreSummaryBanner(match, compact: compact)
+            }
 
             if match.status.lowercased() == "scheduled" {
                 HStack {
@@ -728,14 +731,24 @@ struct MatchScoringView: View {
                 .padding(.horizontal, compact ? 12 : 16)
             }
 
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
+            if isTennisMatch, let live {
+                TennisScoringPresentation(
+                    match: match,
+                    state: live,
+                    compact: compact,
+                    landscapeTablet: landscapeTablet,
+                    scoringDisabled: isMutating || isMatchComplete || timerPhase != .matchLive,
+                    onScore: { side in Task { await addPoint(for: side) } },
+                    onChooseReceiverCourt: { side in Task { await chooseNoAdReceiverCourt(side) } }
+                )
+            } else {
+                VStack(spacing: 0) {
+                    HStack(spacing: 0) {
                     playerHeaderStrip(
                         firstName: match.player1Name,
                         surname: match.player1Surname,
                         isServing: live?.currentServerSide == "player1",
                         serviceSide: live?.serviceSide ?? "Right",
-                        sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player1", match: match),
                         compact: compact,
                         landscapeTablet: landscapeTablet
@@ -746,21 +759,18 @@ struct MatchScoringView: View {
                         surname: match.player2Surname,
                         isServing: live?.currentServerSide == "player2",
                         serviceSide: live?.serviceSide ?? "Right",
-                        sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player2", match: match),
                         compact: compact,
                         landscapeTablet: landscapeTablet
                     )
                 }
 
-                HStack(alignment: .top) {
+                    HStack(alignment: .top) {
                     playerCard(
                         side: "player1",
                         score: live?.player1Score ?? 0,
                         scoreLabel: displayScoreLabel(for: "player1"),
                         games: live?.player1GamesWon ?? 0,
-                        currentSetGames: live?.player1SetGames ?? 0,
-                        sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player1", match: match),
                         compact: compact,
                         landscapeTablet: landscapeTablet
@@ -777,16 +787,15 @@ struct MatchScoringView: View {
                         score: live?.player2Score ?? 0,
                         scoreLabel: displayScoreLabel(for: "player2"),
                         games: live?.player2GamesWon ?? 0,
-                        currentSetGames: live?.player2SetGames ?? 0,
-                        sport: match.sport ?? "",
                         shirtColorValue: shirtColorValue(for: "player2", match: match),
                         compact: compact,
                         landscapeTablet: landscapeTablet
                     )
+                    }
+                    .padding(.horizontal, landscapeTablet ? 12 : (compact ? 6 : 8))
+                    .padding(.top, landscapeTablet ? 16 : (compact ? 10 : 12))
+                    .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
                 }
-                .padding(.horizontal, landscapeTablet ? 12 : (compact ? 6 : 8))
-                .padding(.top, landscapeTablet ? 16 : (compact ? 10 : 12))
-                .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
             }
 
             if expandsVertically {
@@ -1251,7 +1260,6 @@ struct MatchScoringView: View {
             }
         }
     }
-
     @ViewBuilder
     private func pointRailLane(
         entry: PointRailEntry,
@@ -1310,10 +1318,6 @@ struct MatchScoringView: View {
     }
 
     private func scoreSummaryText(for match: MatchDetail) -> String {
-        if isTennisMatch {
-            return "First to \(live?.scoreType ?? match.scoreType) Games • Set \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)"
-        }
-
         return "Score to \(match.scoreType) • Game \(live?.currentGameNumber ?? 1) • Best of \(live?.bestOf ?? match.bestOf)"
     }
 
@@ -1384,8 +1388,17 @@ struct MatchScoringView: View {
 
             HStack(spacing: 12) {
                 detailItem("Match Format", value: isTennisMatch ? "Best of \(live?.bestOf ?? match.bestOf) Sets" : "Best of \(live?.bestOf ?? match.bestOf)")
-                detailItem("Game Format", value: isTennisMatch ? "First to \(live?.scoreType ?? match.scoreType) Games" : "PAR-\(live?.scoreType ?? match.scoreType)")
+                if !isTennisMatch {
+                    detailItem("Game Format", value: "PAR-\(live?.scoreType ?? match.scoreType)")
+                }
                 detailItem("Court Alias", value: match.courtAlias ?? "Not set")
+            }
+
+            if isTennisMatch {
+                HStack(spacing: 12) {
+                    detailItem("No-Ad", value: live?.tennisNoAdScoring == true ? "Enabled" : "Off")
+                    detailItem("Final-set Match Tiebreak", value: live?.tennisFinalSetMatchTiebreak == true ? "Enabled" : "Off")
+                }
             }
 
             if canChoosePlayerShirtColors {
@@ -1449,14 +1462,11 @@ struct MatchScoringView: View {
         surname: String?,
         isServing: Bool,
         serviceSide: String,
-        sport: String,
         shirtColorValue: String,
         compact: Bool,
         landscapeTablet: Bool
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
-        let isTennisHeader = sport.lowercased() == "tennis"
-
         VStack(spacing: compact ? 8 : 10) {
             Text(fullName(firstName: firstName, surname: surname))
                 .font(.system(size: landscapeTablet ? 24 : (compact ? 19 : 21), weight: .bold))
@@ -1468,8 +1478,10 @@ struct MatchScoringView: View {
             HStack {
                 Spacer(minLength: 0)
                 if isServing {
-                    if isTennisHeader {
-                        Text("Serving")
+                    Button {
+                        Task { await toggleServeSide(current: serviceSide) }
+                    } label: {
+                        Text(serviceSide)
                             .font(.subheadline.weight(.semibold))
                             .frame(minWidth: compact ? 62 : 68)
                             .padding(.horizontal, compact ? 10 : 12)
@@ -1481,27 +1493,10 @@ struct MatchScoringView: View {
                                     .stroke(Color.rcktCompleted, lineWidth: 2)
                             )
                             .clipShape(Capsule())
-                    } else {
-                        Button {
-                            Task { await toggleServeSide(current: serviceSide) }
-                        } label: {
-                            Text(serviceSide)
-                                .font(.subheadline.weight(.semibold))
-                                .frame(minWidth: compact ? 62 : 68)
-                                .padding(.horizontal, compact ? 10 : 12)
-                                .padding(.vertical, compact ? 7 : 8)
-                                .background(.white)
-                                .foregroundStyle(.black)
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.rcktCompleted, lineWidth: 2)
-                                )
-                                .clipShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
-                        .opacity(canToggleCurrentServeSide ? 1 : 0.72)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
+                    .opacity(canToggleCurrentServeSide ? 1 : 0.72)
                 } else {
                     Capsule()
                         .fill(Color.clear)
@@ -1523,14 +1518,10 @@ struct MatchScoringView: View {
         score: Int,
         scoreLabel: String,
         games: Int,
-        currentSetGames: Int,
-        sport: String,
         shirtColorValue: String,
         compact: Bool,
         landscapeTablet: Bool
     ) -> some View {
-        let isTennisCard = sport.lowercased() == "tennis"
-
         VStack(spacing: compact ? 8 : 10) {
             Text(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
                 .font(.system(size: landscapeTablet ? 56 : (compact ? 40 : 46), weight: .heavy, design: .rounded))
@@ -1543,16 +1534,9 @@ struct MatchScoringView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous))
 
-            Text(isTennisCard ? "Games: \(currentSetGames)" : "Games: \(games)")
+            Text("Games: \(games)")
                 .font(landscapeTablet ? .subheadline.weight(.semibold) : (compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold)))
                 .frame(maxWidth: .infinity, alignment: .center)
-
-            if isTennisCard {
-                Text("Sets: \(games)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.82))
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
         }
         .padding(.horizontal, landscapeTablet ? 14 : (compact ? 10 : 12))
         .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
@@ -1714,18 +1698,19 @@ struct MatchScoringView: View {
                 }
                 .pickerStyle(.segmented)
             }
+            if !isTennisMatch {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Game Format")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Game Format")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Picker("Game Format", selection: $gameSettingsForm.scoreType) {
-                    ForEach(availableScoreTypeOptions, id: \.self) { option in
-                        Text(isTennisMatch ? "First to \(option)" : "PAR-\(option)").tag(option)
+                    Picker("Game Format", selection: $gameSettingsForm.scoreType) {
+                        ForEach(availableScoreTypeOptions, id: \.self) { option in
+                            Text("PAR-\(option)").tag(option)
+                        }
                     }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
             }
 
             if canChoosePlayerShirtColors {
@@ -2055,7 +2040,7 @@ struct MatchScoringView: View {
 
             if !isMatchComplete {
                 timerPhase = .interval
-                timerSeconds = intervalSeconds
+                timerSeconds = isTennisMatch ? tennisSetIntervalSeconds : intervalSeconds
                 timerRunning = true
             }
             return
@@ -2296,8 +2281,25 @@ struct MatchScoringView: View {
 
     private func addPoint(for side: String) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !(isTennisMatch
+            && live?.tennisNoAdScoring == true
+            && live?.isTieBreak == false
+            && live?.player1Score == 3
+            && live?.player2Score == 3
+            && live?.noAdDecidingSide == nil) else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .scorePoint, matchID: matchID, scorer: side)
+        }
+    }
+
+    private func chooseNoAdReceiverCourt(_ side: String) async {
+        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        await performQueuedMutation {
+            container.offlineMatchStore.enqueue(
+                kind: .receiverChoice,
+                matchID: matchID,
+                side: side
+            )
         }
     }
 
