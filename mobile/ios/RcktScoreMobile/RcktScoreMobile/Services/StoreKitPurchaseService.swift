@@ -11,10 +11,14 @@ final class StoreKitPurchaseService: ObservableObject {
     @Published private(set) var activeProductIDs: Set<String> = []
     @Published private(set) var isLoading = false
     @Published private(set) var purchasingProductID: String?
+    @Published private(set) var purchasesEnabled = false
     @Published var statusMessage: String?
     @Published var errorMessage: String?
 
     private var transactionUpdatesTask: Task<Void, Never>?
+    private weak var apiClient: APIClient?
+    private var organizationIDProvider: (() -> Int?)?
+    private var purchaseContext: AppleSubscriptionContext?
 
     init() {
         transactionUpdatesTask = observeTransactionUpdates()
@@ -29,8 +33,22 @@ final class StoreKitPurchaseService: ObservableObject {
 #if DEBUG
         true
 #else
-        false
+        purchasesEnabled
 #endif
+    }
+
+    func configure(
+        apiClient: APIClient,
+        organizationIDProvider: @escaping () -> Int?
+    ) {
+        self.apiClient = apiClient
+        self.organizationIDProvider = organizationIDProvider
+    }
+
+    func accountDidChange() {
+        purchaseContext = nil
+        purchasesEnabled = false
+        Task { await processUnfinishedTransactions() }
     }
 
     func loadProducts(force: Bool = false) async {
@@ -41,10 +59,12 @@ final class StoreKitPurchaseService: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let loadedProducts = try await Product.products(for: [
-                Self.monthlyProductID,
-                Self.yearlyProductID
-            ])
+            let context = try await loadPurchaseContext(force: force)
+            let configuredProductIDs = [context.productIDs.monthly, context.productIDs.yearly]
+            guard Set(configuredProductIDs) == Set([Self.monthlyProductID, Self.yearlyProductID]) else {
+                throw StoreKitPurchaseError.productConfigurationMismatch
+            }
+            let loadedProducts = try await Product.products(for: configuredProductIDs)
             products = loadedProducts.sorted { productOrder($0.id) < productOrder($1.id) }
 
             if products.count != 2 {
@@ -74,14 +94,30 @@ final class StoreKitPurchaseService: ObservableObject {
         defer { purchasingProductID = nil }
 
         do {
-            let result = try await product.purchase()
+            let context = try await loadPurchaseContext(force: true)
+            let result = try await product.purchase(options: [
+                .appAccountToken(context.appAccountToken)
+            ])
             switch result {
             case .success(let verificationResult):
                 let transaction = try verified(verificationResult)
-                await recordLocalTestTransaction(transaction)
-                await transaction.finish()
+                if context.purchasesEnabled {
+                    let subscription = try await submitToBackend(
+                        verificationResult,
+                        organizationID: context.organizationID
+                    )
+                    await transaction.finish()
+                    statusMessage = "Personal Plus is active until \(displayDate(subscription.expiresAt))."
+                } else {
+#if DEBUG
+                    await recordLocalTestTransaction(transaction)
+                    await transaction.finish()
+                    statusMessage = "Local StoreKit test completed. Server purchasing remains disabled, so your Hit n Score plan was not changed."
+#else
+                    throw StoreKitPurchaseError.serverPurchasesDisabled
+#endif
+                }
                 await refreshCurrentEntitlements()
-                statusMessage = "Test purchase completed. Your server account has not been upgraded because backend Apple verification is not connected yet."
             case .pending:
                 statusMessage = "The purchase is pending approval or payment confirmation."
             case .userCancelled:
@@ -104,10 +140,33 @@ final class StoreKitPurchaseService: ObservableObject {
         errorMessage = nil
         do {
             try await AppStore.sync()
+            let context = try await loadPurchaseContext(force: true)
+            var restoredOnServer = false
+            for await entitlement in Transaction.currentEntitlements {
+                guard case .verified(let transaction) = entitlement,
+                      [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID)
+                else {
+                    continue
+                }
+                if context.purchasesEnabled {
+                    _ = try await submitToBackend(
+                        entitlement,
+                        organizationID: context.organizationID
+                    )
+                    await transaction.finish()
+                    restoredOnServer = true
+                }
+            }
             await refreshCurrentEntitlements()
-            statusMessage = activeProductIDs.isEmpty
-                ? "No active Personal Plus test subscription was found."
-                : "Active Personal Plus test subscription restored."
+            if context.purchasesEnabled {
+                statusMessage = restoredOnServer
+                    ? "Your Personal Plus purchase was restored and verified."
+                    : "No active Personal Plus subscription was found."
+            } else {
+                statusMessage = activeProductIDs.isEmpty
+                    ? "No active Personal Plus test subscription was found."
+                    : "A local test subscription was found. Server purchasing remains disabled."
+            }
         } catch {
             errorMessage = "Unable to restore purchases: \(error.localizedDescription)"
         }
@@ -160,11 +219,25 @@ final class StoreKitPurchaseService: ObservableObject {
                     guard [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID) else {
                         continue
                     }
-                    await self.recordLocalTestTransaction(transaction)
-                    await transaction.finish()
+                    guard let context = try? await self.loadPurchaseContext(force: true) else {
+                        self.errorMessage = "Sign in and reconnect to verify the pending App Store transaction."
+                        continue
+                    }
+                    if context.purchasesEnabled {
+                        _ = try await self.submitToBackend(
+                            update,
+                            organizationID: context.organizationID
+                        )
+                        await transaction.finish()
+                    } else {
+#if DEBUG
+                        await self.recordLocalTestTransaction(transaction)
+                        await transaction.finish()
+#endif
+                    }
                     await self.refreshCurrentEntitlements()
                 } catch {
-                    self.errorMessage = "An App Store transaction could not be verified on this device."
+                    self.errorMessage = "Unable to verify the App Store transaction: \(error.localizedDescription)"
                 }
             }
         }
@@ -177,6 +250,69 @@ final class StoreKitPurchaseService: ObservableObject {
         case .unverified(_, let error):
             throw StoreKitPurchaseError.unverified(error)
         }
+    }
+
+    private func loadPurchaseContext(force: Bool) async throws -> AppleSubscriptionContext {
+        if !force, let purchaseContext {
+            return purchaseContext
+        }
+        guard let apiClient,
+              let organizationID = organizationIDProvider?()
+        else {
+            throw StoreKitPurchaseError.signedInPersonalAccountRequired
+        }
+        let context = try await apiClient.getAppleSubscriptionContext(
+            organizationID: organizationID
+        )
+        purchaseContext = context
+        purchasesEnabled = context.purchasesEnabled
+        return context
+    }
+
+    private func submitToBackend(
+        _ verificationResult: VerificationResult<Transaction>,
+        organizationID: Int
+    ) async throws -> VerifiedAppleSubscription {
+        guard let apiClient else {
+            throw StoreKitPurchaseError.signedInPersonalAccountRequired
+        }
+        let appTransactionResult = try await AppTransaction.shared
+        _ = try verified(appTransactionResult)
+        return try await apiClient.verifyApplePurchase(
+            organizationID: organizationID,
+            signedTransaction: verificationResult.jwsRepresentation,
+            signedAppTransaction: appTransactionResult.jwsRepresentation
+        )
+    }
+
+    private func processUnfinishedTransactions() async {
+        guard let context = try? await loadPurchaseContext(force: true),
+              context.purchasesEnabled
+        else {
+            return
+        }
+        for await result in Transaction.unfinished {
+            do {
+                let transaction = try verified(result)
+                guard [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID) else {
+                    continue
+                }
+                _ = try await submitToBackend(
+                    result,
+                    organizationID: context.organizationID
+                )
+                await transaction.finish()
+            } catch {
+                errorMessage = "A pending App Store transaction is waiting for server verification: \(error.localizedDescription)"
+            }
+        }
+        await refreshCurrentEntitlements()
+    }
+
+    private func displayDate(_ value: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: value) else { return value }
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 
     private func recordLocalTestTransaction(_ transaction: Transaction) async {
@@ -201,11 +337,20 @@ final class StoreKitPurchaseService: ObservableObject {
 
 private enum StoreKitPurchaseError: LocalizedError {
     case unverified(Error)
+    case productConfigurationMismatch
+    case serverPurchasesDisabled
+    case signedInPersonalAccountRequired
 
     var errorDescription: String? {
         switch self {
         case .unverified(let error):
             return "The App Store transaction could not be verified: \(error.localizedDescription)"
+        case .productConfigurationMismatch:
+            return "The App Store products do not match the products allowed by the server."
+        case .serverPurchasesDisabled:
+            return "Apple purchases are currently disabled by the server."
+        case .signedInPersonalAccountRequired:
+            return "Sign in to your personal account before managing a subscription."
         }
     }
 }

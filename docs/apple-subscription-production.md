@@ -2,19 +2,21 @@
 
 ## Current repository status
 
-The StoreKit 2 user interface and the initial persistence schema exist, but the
-backend is not yet a trusted subscription authority. Release purchasing must
-remain disabled until every launch gate below is complete.
+The StoreKit 2 purchase/context connection and authenticated initial-purchase
+verification boundary now exist. The full lifecycle is not yet a production
+subscription authority, so Release purchasing must remain disabled until every
+launch gate below is complete.
 
 | Area | Current state | Production gate |
 | --- | --- | --- |
 | Products | Monthly and yearly IDs are loaded in Debug | Confirm both are in one App Store Connect subscription group and cleared for sale |
-| Purchase UI | Local verified StoreKit transactions work | Send a server-issued account token and transaction JWS to the backend |
-| Persistence | Migrations `024` and `025` add lifecycle storage, stable personal-account tokens and entitlement audit | Deploy and verify both migrations in order |
+| Purchase UI | StoreKit passes the server token and submits transaction/app JWS values | Deploy and pass Sandbox/TestFlight verification before enabling Release |
+| Persistence | Migrations `024`–`026` add lifecycle storage, stable tokens, verified transaction ledger, reconciliation metadata and entitlement audit | Deploy and verify all migrations in order |
 | Entitlement | `SkwshOrgSettings.plan` controls Free/Plus everywhere | Only a verified Apple lifecycle processor or explicit audited admin override may change it |
 | Notifications | Not implemented | Configure and verify App Store Server Notifications V2 for Sandbox and Production |
 | Recovery | Not implemented | Schedule App Store Server API reconciliation and alert on drift/failure |
-| Account context | Authenticated context endpoint and server-issued token are implemented | Deploy migration `025` before the endpoint and connect iOS to it |
+| Account context | Authenticated context endpoint, stable token and iOS connection are implemented | Keep the purchase gate off until Sandbox verification passes |
+| Purchase verification | Authenticated Apple-library JWS verification and atomic initial Plus activation are implemented | Configure/deploy identity values and pass real Sandbox evidence |
 | Admin | Manual plan switching exists | Show Apple status, renewal, expiry, environment, event history and audit history |
 
 ## Authoritative flow
@@ -55,11 +57,11 @@ account. See [Apple's appAccountToken documentation](https://developer.apple.com
   is currently enabled.
 - Never accept an account token supplied by the client as the account mapping.
 
-### Authenticated purchase verification
+### Authenticated purchase verification — implemented, deployment pending
 
 `POST /subscriptions/apple/verify`
 
-- Accept `organization_id` and `signed_transaction`.
+- Accept `organization_id`, `signed_transaction`, and `signed_app_transaction`.
 - Apply the same membership checks as the context endpoint.
 - Verify and decode the JWS with Apple's official App Store Server Library.
 - Require the decoded `appAccountToken` to match the organisation's stored UUID.
@@ -161,7 +163,7 @@ continue linking customers to Apple's Manage Subscriptions screen.
 - [ ] Bundle ID and numeric Apple app ID configured separately for Sandbox/Production verification.
 - [ ] Sandbox and Production Server Notifications V2 URLs configured in App Store Connect.
 - [ ] Billing Grace Period policy enabled/configured in App Store Connect to match the table above.
-- [ ] Migrations `024_app_store_subscription_lifecycle.sql` then `025_apple_subscription_account_identity.sql` deployed before the new Lambdas.
+- [ ] Migrations `024_app_store_subscription_lifecycle.sql`, `025_apple_subscription_account_identity.sql`, then `026_apple_purchase_verification.sql` deployed before the verification Lambda.
 - [ ] Context, verification, notification, reconciliation and root-admin endpoints deployed.
 - [ ] Release iOS purchasing enabled only after the production endpoint health check passes.
 - [ ] Alerts, dashboards, DLQ and an operational runbook are in place.

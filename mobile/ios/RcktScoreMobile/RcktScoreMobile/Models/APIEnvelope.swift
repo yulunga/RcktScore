@@ -7,7 +7,7 @@ struct APIEnvelope<T: Decodable>: Decodable {
     let meta: [String: String]?
 }
 
-struct APIErrorResponse: Decodable, Error {
+struct APIErrorResponse: Decodable, LocalizedError {
     let code: String
     let message: String
     let details: String?
@@ -43,4 +43,6 @@ struct APIErrorResponse: Decodable, Error {
         case message
         case details
     }
+
+    var errorDescription: String? { message }
 }

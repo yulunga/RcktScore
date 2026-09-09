@@ -262,6 +262,71 @@ struct NotificationReadRequest: Encodable {
     enum CodingKeys: String, CodingKey { case organizationID = "organization_id" }
 }
 
+struct AppleSubscriptionContext: Decodable {
+    let organizationID: Int
+    let appAccountToken: UUID
+    let currentPlan: String
+    let purchasesEnabled: Bool
+    let productIDs: AppleSubscriptionProductIDs
+
+    enum CodingKeys: String, CodingKey {
+        case organizationID = "organization_id"
+        case appAccountToken = "app_account_token"
+        case currentPlan = "current_plan"
+        case purchasesEnabled = "purchases_enabled"
+        case productIDs = "product_ids"
+    }
+}
+
+struct AppleSubscriptionProductIDs: Decodable {
+    let monthly: String
+    let yearly: String
+}
+
+struct AppleSubscriptionContextResponseData: Decodable {
+    let appleSubscriptionContext: AppleSubscriptionContext
+}
+
+struct ApplePurchaseVerificationRequest: Encodable {
+    let organizationID: Int
+    let signedTransaction: String
+    let signedAppTransaction: String
+
+    enum CodingKeys: String, CodingKey {
+        case organizationID = "organization_id"
+        case signedTransaction = "signed_transaction"
+        case signedAppTransaction = "signed_app_transaction"
+    }
+}
+
+struct VerifiedAppleSubscription: Decodable {
+    let organizationID: Int
+    let currentPlan: String
+    let transactionID: String
+    let originalTransactionID: String
+    let productID: String
+    let environment: String
+    let status: String
+    let expiresAt: String
+    let idempotent: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case organizationID = "organization_id"
+        case currentPlan = "current_plan"
+        case transactionID = "transaction_id"
+        case originalTransactionID = "original_transaction_id"
+        case productID = "product_id"
+        case environment
+        case status
+        case expiresAt = "expires_at"
+        case idempotent
+    }
+}
+
+struct ApplePurchaseVerificationResponseData: Decodable {
+    let appleSubscription: VerifiedAppleSubscription
+}
+
 struct AppNotification: Decodable, Identifiable {
     let id: String
     let title: String
@@ -662,6 +727,47 @@ final class APIClient {
         }
 
         return dashboard
+    }
+
+    func getAppleSubscriptionContext(organizationID: Int) async throws -> AppleSubscriptionContext {
+        let request = try makeRequest(
+            path: "/subscriptions/apple/context/\(organizationID)",
+            method: "GET"
+        )
+        let envelope: APIEnvelope<AppleSubscriptionContextResponseData> = try await send(request)
+        guard let context = envelope.data?.appleSubscriptionContext else {
+            throw APIErrorResponse(
+                code: "empty_response",
+                message: "No Apple subscription context was returned.",
+                details: nil
+            )
+        }
+        return context
+    }
+
+    func verifyApplePurchase(
+        organizationID: Int,
+        signedTransaction: String,
+        signedAppTransaction: String
+    ) async throws -> VerifiedAppleSubscription {
+        let request = try makeRequest(
+            path: "/subscriptions/apple/verify",
+            method: "POST",
+            body: ApplePurchaseVerificationRequest(
+                organizationID: organizationID,
+                signedTransaction: signedTransaction,
+                signedAppTransaction: signedAppTransaction
+            )
+        )
+        let envelope: APIEnvelope<ApplePurchaseVerificationResponseData> = try await send(request)
+        guard let subscription = envelope.data?.appleSubscription else {
+            throw APIErrorResponse(
+                code: "empty_response",
+                message: "No verified Apple subscription was returned.",
+                details: nil
+            )
+        }
+        return subscription
     }
 
     func getNotifications(organizationID: Int) async throws -> [AppNotification] {

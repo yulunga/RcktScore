@@ -16,6 +16,9 @@ Globals:
         APPLE_PURCHASES_ENABLED: !Ref ApplePurchasesEnabled
         APPLE_PERSONAL_PLUS_MONTHLY_PRODUCT_ID: !Ref ApplePersonalPlusMonthlyProductId
         APPLE_PERSONAL_PLUS_YEARLY_PRODUCT_ID: !Ref ApplePersonalPlusYearlyProductId
+        APPLE_BUNDLE_ID: !Ref AppleBundleId
+        APPLE_APP_ID: !Ref AppleAppId
+        APPLE_ALLOWED_ENVIRONMENTS: !Ref AppleAllowedEnvironments
 
 Parameters:
   SupabaseDbUrl:
@@ -73,6 +76,20 @@ Parameters:
   ApplePersonalPlusYearlyProductId:
     Type: String
     Default: com.hitnscore.personalplus.yearly
+  AppleBundleId:
+    Type: String
+    Default: rcktScore.RcktScoreMobile
+  AppleAppId:
+    Type: Number
+    Default: 0
+    MinValue: 0
+  AppleAllowedEnvironments:
+    Type: String
+    Default: Sandbox
+    AllowedValues:
+      - Sandbox
+      - Production
+      - Sandbox,Production
 
 Resources:
   RcktScoreHttpApi:
@@ -595,6 +612,19 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /subscriptions/apple/context/{organization_id}
             Method: GET
+
+  VerifyAppleSubscriptionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/verify_apple_subscription/handler.lambda_handler
+      Timeout: 30
+      Events:
+        VerifyAppleSubscription:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/apple/verify
+            Method: POST
 
   GetNotificationsFunction:
     Type: AWS::Serverless::Function

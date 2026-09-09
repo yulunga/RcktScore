@@ -26,6 +26,12 @@ final class AppContainer: ObservableObject {
         self.networkMonitor = networkMonitor ?? NetworkMonitor()
         self.offlineMatchStore = offlineMatchStore ?? OfflineMatchStore()
         self.purchaseService = purchaseService ?? StoreKitPurchaseService()
+        self.purchaseService.configure(
+            apiClient: self.apiClient,
+            organizationIDProvider: { [weak sessionStore = self.sessionStore] in
+                sessionStore?.session?.organizationID
+            }
+        )
         self.apiClient.setSessionToken(self.sessionStore.sessionToken)
         self.apiClient.onSessionInvalidated = { [weak self] code in
             self?.sessionStore.clear(expired: code == "SESSION_EXPIRED")
@@ -40,6 +46,7 @@ final class AppContainer: ObservableObject {
         self.sessionStore.$session
             .sink { [weak self] session in
                 self?.apiClient.setSessionToken(session?.sessionToken)
+                self?.purchaseService.accountDidChange()
             }
             .store(in: &cancellables)
 

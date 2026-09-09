@@ -1099,7 +1099,7 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task {
             guard isPersonalAccount else { return }
-            await container.purchaseService.loadProducts()
+            await container.purchaseService.loadProducts(force: true)
             await container.purchaseService.refreshCurrentEntitlements()
         }
         .manageSubscriptionsSheet(isPresented: $showsManageSubscriptions)
@@ -1137,6 +1137,9 @@ struct DashboardView: View {
                     Button {
                         Task {
                             await purchaseService.purchase(product)
+                            if purchaseService.errorMessage == nil {
+                                await loadDashboard()
+                            }
                             openPersonalPlusOptions()
                         }
                     } label: {
@@ -1171,9 +1174,15 @@ struct DashboardView: View {
                     .accessibilityIdentifier("settings.subscription.\(purchaseService.planName(for: product).lowercased()).purchaseButton")
                 }
 
-                Text("Local StoreKit testing only — completing a test purchase does not change the Hit n Score account plan yet.")
+                Text(
+                    purchaseService.purchasesEnabled
+                        ? "Apple verifies payment and Hit n Score verifies the signed transaction before Personal Plus is activated."
+                        : "Local StoreKit testing only — server purchasing is currently disabled and test purchases do not change your account plan."
+                )
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(
+                        purchaseService.purchasesEnabled ? Color.secondary : Color.orange
+                    )
             }
 
             if let statusMessage = purchaseService.statusMessage {
@@ -1187,7 +1196,12 @@ struct DashboardView: View {
             HStack(spacing: 10) {
                 if purchaseService.canRunLocalPurchases {
                     Button {
-                        Task { await purchaseService.restorePurchases() }
+                        Task {
+                            await purchaseService.restorePurchases()
+                            if purchaseService.errorMessage == nil {
+                                await loadDashboard()
+                            }
+                        }
                     } label: {
                         Text("Restore Purchases")
                             .font(.caption.weight(.semibold))

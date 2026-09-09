@@ -57,7 +57,7 @@ xcodebuild -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj -scheme
 - there is no documented release build-number policy yet
 - some local CLI builds fail before completion if the machine has no working iPhone simulator runtimes available to Xcode asset tooling
 - notification inbox delivery and read state are backend-backed; there is no APNs push-notification path yet
-- local StoreKit testing uses `HitnScore.storekit` selected under Scheme > Run > Options; in Debug, tap Personal Plus to expose monthly/yearly purchase, restore, and manage controls for 20 seconds. The app refreshes StoreKit entitlements on foreground, but the green outline and pink Current badge follow the latest backend organisation plan until server verification is implemented. Release purchasing remains disabled pending backend verification
+- local StoreKit testing uses `HitnScore.storekit` selected under Scheme > Run > Options; in Debug, tap Personal Plus to expose monthly/yearly purchase, restore, and manage controls for 20 seconds. Local Xcode transactions remain non-authoritative while the backend gate is off. End-to-end JWS testing uses Sandbox/TestFlight; when enabled, iOS passes the server account token, submits transaction/app JWS values, finishes only after backend acceptance, and refreshes the authoritative dashboard plan
 - offline scoring supports one cached active match, but offline history and offline match creation remain incomplete
 
 ## Current Release Readiness
