@@ -54,6 +54,7 @@ What is real and implemented:
 - native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native squash/racketball scoring also selects its compact presentation by available width, keeps point rails and warm-up actions within phone bounds, and presents a dedicated completed-match summary when the final point is scored
+- native scoring keeps light shirt colours readable with adaptive dark score text, distinguishes a running timer with a light-green control, and uses a pink-accented in-place action sheet with explicit player names for stroke and let choices
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
 - native offline replay preserves actions added while an earlier request is still synchronising and reports the underlying API or network error when an online replay cannot complete
 - native tennis scoring is isolated in `TennisScoringReducer.swift` and `TennisScoringPresentation.swift`; shared match code retains loading, timers, networking, and offline queue plumbing

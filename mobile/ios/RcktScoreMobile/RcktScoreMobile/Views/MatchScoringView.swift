@@ -89,7 +89,6 @@ struct MatchScoringView: View {
     @State private var selectedOpeningReceiverParticipantID: String?
     @State private var showActionMenu = false
     @State private var pendingActionSelection: MatchActionSelection?
-    @State private var showPlayerActionSheet = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -354,13 +353,12 @@ struct MatchScoringView: View {
         Button {
             openGameSettings()
         } label: {
-            Image(systemName: "slider.horizontal.3")
-                .font(.subheadline.weight(.bold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+            Image(systemName: "gearshape.fill")
+                .font(.headline.weight(.bold))
+                .frame(width: 44, height: 44)
                 .background(Color.rcktBlue.opacity(0.12))
                 .foregroundStyle(Color.rcktBlue)
-                .clipShape(Capsule())
+                .clipShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(isMutating || match == nil)
@@ -388,22 +386,6 @@ struct MatchScoringView: View {
         fullName(firstName: match?.player2Name ?? "Player 2", surname: match?.player2Surname)
     }
 
-    @ViewBuilder
-    private var playerActionDialogButtons: some View {
-        Button(playerOneActionLabel) {
-            Task { await handlePendingActionSelection(for: "player1") }
-        }
-
-        Button(playerTwoActionLabel) {
-            Task { await handlePendingActionSelection(for: "player2") }
-        }
-
-        Button("Cancel", role: .cancel) {
-            pendingActionSelection = nil
-            showPlayerActionSheet = false
-        }
-    }
-
     private var actionDialogTitle: String {
         switch pendingActionSelection {
         case .letAwarded:
@@ -415,41 +397,150 @@ struct MatchScoringView: View {
         }
     }
 
-    private var playerActionSheet: some View {
+    private var matchActionSheet: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text(actionDialogTitle)
-                    .font(.title3.weight(.bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(pendingActionSelection == nil ? "Match Actions" : actionDialogTitle)
+                            .font(.title2.weight(.bold))
+                        Text("\(playerOneActionLabel) vs \(playerTwoActionLabel)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
 
-                Button(playerOneActionLabel) {
-                    Task { await handlePendingActionSelection(for: "player1") }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.rcktBlue)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("scoring.playerAction.player1")
+                    Spacer(minLength: 0)
 
-                Button(playerTwoActionLabel) {
-                    Task { await handlePendingActionSelection(for: "player2") }
+                    Button {
+                        pendingActionSelection = nil
+                        showActionMenu = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.bold))
+                            .frame(width: 40, height: 40)
+                            .background(Color.rcktBlue.opacity(0.12))
+                            .foregroundStyle(Color.rcktBlue)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Close match actions")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.rcktBlue)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("scoring.playerAction.player2")
 
-                Button("Cancel", role: .cancel) {
-                    pendingActionSelection = nil
-                    showPlayerActionSheet = false
+                if pendingActionSelection == nil {
+                    if !isTennisMatch {
+                        matchActionButton(title: "Stroke", systemImage: "hand.raised.fill") {
+                            pendingActionSelection = .strokeAgainst
+                        }
+                        .accessibilityIdentifier("scoring.action.stroke")
+                        .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+
+                        matchActionButton(title: "Let", systemImage: "pause.circle.fill") {
+                            pendingActionSelection = .letAwarded
+                        }
+                        .accessibilityIdentifier("scoring.action.let")
+                        .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+                    }
+
+                    matchActionButton(title: "Undo Last Action", systemImage: "arrow.uturn.backward.circle.fill") {
+                        showActionMenu = false
+                        Task { await undoLastAction() }
+                    }
+                    .accessibilityIdentifier("scoring.action.undo")
+                    .disabled(isMutating || undoLocked)
+
+                    matchActionButton(
+                        title: "End Match Early",
+                        systemImage: "xmark.octagon.fill",
+                        foreground: .rcktDanger,
+                        border: .rcktDanger
+                    ) {
+                        showActionMenu = false
+                        Task { await endMatchEarly() }
+                    }
+                    .accessibilityIdentifier("scoring.action.endEarly")
+                    .disabled(isMutating || isMatchComplete)
+                } else {
+                    Text("Choose the player")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    matchActionButton(
+                        title: playerActionButtonLabel(playerOneActionLabel),
+                        systemImage: "person.fill"
+                    ) {
+                        Task { await handlePendingActionSelection(for: "player1") }
+                    }
+                    .accessibilityIdentifier("scoring.playerAction.player1")
+
+                    matchActionButton(
+                        title: playerActionButtonLabel(playerTwoActionLabel),
+                        systemImage: "person.fill"
+                    ) {
+                        Task { await handlePendingActionSelection(for: "player2") }
+                    }
+                    .accessibilityIdentifier("scoring.playerAction.player2")
+
+                    Button {
+                        pendingActionSelection = nil
+                    } label: {
+                        Label("Back to Match Actions", systemImage: "chevron.left")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.rcktBlue)
+                    .accessibilityIdentifier("scoring.playerAction.cancel")
                 }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("scoring.playerAction.cancel")
 
                 Spacer(minLength: 0)
             }
-            .padding(24)
-            .navigationTitle("Choose Player")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(22)
+            .background(Color.rcktCardBackground)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func matchActionButton(
+        title: String,
+        systemImage: String,
+        foreground: Color = .primary,
+        border: Color = .rcktPink,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(border)
+                    .frame(width: 26)
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(foreground)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity)
+            .background(Color(.secondarySystemBackground))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(border, lineWidth: 2)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func playerActionButtonLabel(_ playerName: String) -> String {
+        switch pendingActionSelection {
+        case .letAwarded:
+            return "Award Let to \(playerName)"
+        case .strokeAgainst:
+            return "Stroke Against \(playerName)"
+        case nil:
+            return playerName
         }
     }
 
@@ -620,42 +711,10 @@ struct MatchScoringView: View {
         .sheet(isPresented: $showGameSettingsSheet) {
             gameSettingsSheet
         }
-        .sheet(isPresented: $showPlayerActionSheet) {
-            playerActionSheet
-        }
-        .confirmationDialog("Match Action", isPresented: $showActionMenu, titleVisibility: .visible) {
-            if !isTennisMatch {
-                Button("Stroke") {
-                    pendingActionSelection = .strokeAgainst
-                    showPlayerActionSheet = true
-                }
-                .accessibilityIdentifier("scoring.action.stroke")
-                .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
-
-                Button("Let") {
-                    pendingActionSelection = .letAwarded
-                    showPlayerActionSheet = true
-                }
-                .accessibilityIdentifier("scoring.action.let")
-                .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
-            }
-
-            Button("Undo Last Action") {
-                Task { await undoLastAction() }
-            }
-            .accessibilityIdentifier("scoring.action.undo")
-            .disabled(isMutating || undoLocked)
-
-            Button("End Match Early", role: .destructive) {
-                Task { await endMatchEarly() }
-            }
-            .accessibilityIdentifier("scoring.action.endEarly")
-            .disabled(isMutating || isMatchComplete)
-
-            Button("Cancel", role: .cancel) {
-                pendingActionSelection = nil
-            }
-            .accessibilityIdentifier("scoring.action.cancel")
+        .sheet(isPresented: $showActionMenu, onDismiss: {
+            pendingActionSelection = nil
+        }) {
+            matchActionSheet
         }
     }
 
@@ -950,7 +1009,7 @@ struct MatchScoringView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, isTabletLandscape ? 13 : (compactLayout ? 11 : 12))
                     .background(timerChipBackgroundColor)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(timerChipForegroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -1088,7 +1147,7 @@ struct MatchScoringView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
                             .background(timerChipBackgroundColor)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(timerChipForegroundColor)
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -1267,7 +1326,7 @@ struct MatchScoringView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .background(timerChipBackgroundColor)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(timerChipForegroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -1629,15 +1688,18 @@ struct MatchScoringView: View {
         compact: Bool,
         landscapeTablet: Bool
     ) -> some View {
+        let foreground = shirtForegroundColor(for: shirtColorValue)
+        let usesDarkForeground = isLightShirtColor(shirtColorValue)
+
         VStack(spacing: compact ? 8 : 10) {
             Text(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
                 .font(.system(size: landscapeTablet ? 56 : (compact ? 40 : 46), weight: .heavy, design: .rounded))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, landscapeTablet ? 18 : (compact ? 10 : 12))
-                .background(Color.white.opacity(0.18))
+                .background(usesDarkForeground ? Color.black.opacity(0.06) : Color.white.opacity(0.18))
                 .overlay(
                     RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.24), lineWidth: 2)
+                        .stroke(usesDarkForeground ? Color.black.opacity(0.20) : Color.white.opacity(0.24), lineWidth: 2)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous))
 
@@ -1650,8 +1712,12 @@ struct MatchScoringView: View {
         .frame(width: landscapeTablet ? 182 : (compact ? 88 : 128))
         .frame(minHeight: landscapeTablet ? 232 : (compact ? 148 : 164), alignment: .top)
         .background(shirtFillColor(for: shirtColorValue))
-        .foregroundStyle(.white)
+        .foregroundStyle(foreground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(usesDarkForeground ? Color.black.opacity(0.18) : Color.clear, lineWidth: 1.5)
+        )
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture {
             Task { await addPoint(for: side) }
@@ -1689,12 +1755,11 @@ struct MatchScoringView: View {
     }
 
     private func shirtForegroundColor(for value: String) -> Color {
-        switch value.lowercased() {
-        case "white", "yellow", "pink":
-            return .black
-        default:
-            return .white
-        }
+        isLightShirtColor(value) ? .black : .white
+    }
+
+    private func isLightShirtColor(_ value: String) -> Bool {
+        ["white", "yellow", "pink"].contains(value.lowercased())
     }
 
     @ViewBuilder
@@ -1966,10 +2031,14 @@ struct MatchScoringView: View {
         }
 
         if timerPhase == .matchLive {
-            return timerRunning ? Color.rcktBlue : Color.rcktSlate
+            return timerRunning ? Color.rcktTimerRunning : Color.rcktSlate
         }
 
         return timerRunning ? Color.rcktBlue : Color.rcktSlate
+    }
+
+    private var timerChipForegroundColor: Color {
+        timerPhase == .matchLive && timerRunning ? Color.rcktNavy : .white
     }
 
     private func loadMatch() async {
@@ -2432,7 +2501,7 @@ struct MatchScoringView: View {
     private func handlePendingActionSelection(for side: String) async {
         let action = pendingActionSelection
         pendingActionSelection = nil
-        showPlayerActionSheet = false
+        showActionMenu = false
 
         switch action {
         case .letAwarded:
@@ -2920,6 +2989,7 @@ private extension Color {
     static let rcktDanger = Color(red: 214 / 255, green: 69 / 255, blue: 69 / 255)
     static let rcktServe = Color(red: 217 / 255, green: 130 / 255, blue: 43 / 255)
     static let rcktActive = Color(red: 82 / 255, green: 205 / 255, blue: 120 / 255)
+    static let rcktTimerRunning = Color(red: 178 / 255, green: 235 / 255, blue: 193 / 255)
     static let rcktCompleted = Color(red: 196 / 255, green: 68 / 255, blue: 92 / 255)
     static let rcktCardBackground = Color(UIColor.secondarySystemGroupedBackground)
     static let rcktBorder = Color(

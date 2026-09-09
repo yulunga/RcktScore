@@ -456,6 +456,7 @@ Current behavior:
 - when a `client_action_id` is supplied, the backend records it in `match_action_receipts`; replaying the same UUID for the same match action returns current match state without applying the action again
 - reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
 - native iOS serialises queued scoring requests, preserves any new action appended while a previous request is in flight, and retains failed actions for a safe retry with the same UUID; the client now surfaces the returned API or network error rather than describing every failure as an offline condition
+- the native scorer labels stroke choices as `Stroke Against <player>` but continues to send the opposite player as the awarded `player_side`; let choices include the selected player's name and retain the existing optional `player_side` request behavior
 - personal accounts can only have one active match at a time
 - clubs can auto-schedule a match if the chosen court already has an active match
 - live sport engines today:
