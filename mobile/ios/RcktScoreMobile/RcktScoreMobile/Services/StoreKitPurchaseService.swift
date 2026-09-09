@@ -71,7 +71,7 @@ final class StoreKitPurchaseService: ObservableObject {
                 let loadedIDs = Set(products.map(\.id))
                 let missingIDs = [Self.monthlyProductID, Self.yearlyProductID]
                     .filter { !loadedIDs.contains($0) }
-                errorMessage = "Unable to load: \(missingIDs.joined(separator: ", ")). Check the active StoreKit configuration."
+                errorMessage = missingProductMessage(for: missingIDs)
             }
         } catch {
             errorMessage = "Unable to load Personal Plus subscriptions: \(error.localizedDescription)"
@@ -332,6 +332,15 @@ final class StoreKitPurchaseService: ObservableObject {
 
     private func productOrder(_ productID: String) -> Int {
         productID == Self.monthlyProductID ? 0 : 1
+    }
+
+    private func missingProductMessage(for productIDs: [String]) -> String {
+        let products = productIDs.joined(separator: ", ")
+#if DEBUG
+        return "Unable to load: \(products). Check the active StoreKit configuration."
+#else
+        return "The App Store did not return: \(products). Check the subscription status, localisation, agreements and availability in App Store Connect."
+#endif
     }
 }
 

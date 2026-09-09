@@ -1129,6 +1129,24 @@ struct DashboardView: View {
                 }
             }
 
+            if !purchaseService.isLoading,
+               !purchaseService.canRunLocalPurchases,
+               !isPersonalPlus {
+                dashboardInlineError(
+                    "Personal Plus purchasing is disabled by the Hit n Score server. "
+                    + "Refresh after the Sandbox purchasing deployment is complete."
+                )
+
+                Button("Refresh Purchase Status") {
+                    Task {
+                        await purchaseService.loadProducts(force: true)
+                        openPersonalPlusOptions()
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+            }
+
             if purchaseService.canRunLocalPurchases && !isPersonalPlus {
                 Text("Choose Personal Plus")
                     .font(.subheadline.weight(.bold))
