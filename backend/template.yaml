@@ -19,6 +19,10 @@ Globals:
         APPLE_BUNDLE_ID: !Ref AppleBundleId
         APPLE_APP_ID: !Ref AppleAppId
         APPLE_ALLOWED_ENVIRONMENTS: !Ref AppleAllowedEnvironments
+        APPLE_SERVER_API_SECRET_ARN: !If
+          - HasAppleServerApiSecret
+          - !Ref AppleServerApiSecretArn
+          - ""
 
 Parameters:
   SupabaseDbUrl:
@@ -90,6 +94,13 @@ Parameters:
       - Sandbox
       - Production
       - Sandbox,Production
+  AppleServerApiSecretArn:
+    Type: String
+    Default: ""
+    Description: Optional Secrets Manager ARN containing private_key, key_id and issuer_id.
+
+Conditions:
+  HasAppleServerApiSecret: !Not [!Equals [!Ref AppleServerApiSecretArn, ""]]
 
 Resources:
   RcktScoreHttpApi:
@@ -625,6 +636,53 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /subscriptions/apple/verify
             Method: POST
+
+  AppleSubscriptionNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/apple_subscription_notifications/handler.lambda_handler
+      Timeout: 30
+      Events:
+        AppleSubscriptionNotifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/apple/notifications
+            Method: POST
+
+  ReconcileAppleSubscriptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/reconcile_apple_subscriptions/handler.lambda_handler
+      Timeout: 120
+      Policies:
+        - !If
+          - HasAppleServerApiSecret
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref AppleServerApiSecretArn
+          - !Ref AWS::NoValue
+      Events:
+        HourlyAppleReconcile:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            FlexibleTimeWindow:
+              Mode: "OFF"
+
+  GetRootAdminSubscriptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_subscriptions/handler.lambda_handler
+      Events:
+        GetRootAdminSubscriptions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/subscriptions
+            Method: GET
 
   GetNotificationsFunction:
     Type: AWS::Serverless::Function

@@ -213,6 +213,11 @@ export function getRootAdminNotifications() {
   return apiRequest("/root_admin/notifications");
 }
 
+export function getRootAdminSubscriptions(organizationId) {
+  const suffix = organizationId ? `?organization_id=${encodeURIComponent(organizationId)}` : "";
+  return apiRequest(`/root_admin/subscriptions${suffix}`);
+}
+
 export function createRootAdminNotification(payload) {
   return apiRequest("/root_admin/notifications", { method: "POST", body: JSON.stringify(payload) });
 }

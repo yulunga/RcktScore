@@ -190,6 +190,10 @@ export default function RootAdminDashboardPage() {
             <strong>Notifications</strong>
             <span>Send targeted messages</span>
           </button>
+          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/subscriptions") }>
+            <strong>Subscriptions</strong>
+            <span>Apple lifecycle and entitlement audit</span>
+          </button>
           <button
             className="meta-item root-admin-settings-card"
             type="button"

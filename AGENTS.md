@@ -66,8 +66,8 @@ What is real and implemented:
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 100 and receives performance analytics
-- native iOS StoreKit 2 purchasing loads the authenticated server context, passes the stable account UUID into StoreKit, submits Apple-signed transaction and app-transaction JWS values to the backend, and finishes server-enabled transactions only after backend acceptance; local Xcode StoreKit testing remains non-authoritative while the deployment gate is off
-- authenticated Apple purchase-context and verification endpoints now bind each personal organisation to a stable UUID; migrations `025_apple_subscription_account_identity.sql` and `026_apple_purchase_verification.sql` provide account identity, the verified transaction ledger, reconciliation metadata, idempotent subscription persistence, and entitlement audit
+- native iOS StoreKit 2 purchasing loads the authenticated server context, passes the stable account UUID into StoreKit, submits Apple-signed transaction and app-transaction JWS values to the backend, and finishes server-enabled transactions only after backend acceptance; local Xcode StoreKit testing remains non-authoritative
+- authenticated Apple purchase context/verification, App Store Server Notifications V2, renewal/cancellation/grace/refund/expiry processing, hourly App Store Server API reconciliation, automatic plan changes, root-admin subscription activity and append-only entitlement audit are implemented; migrations `025`–`027` provide their persistence model
 - native Subscription links for logged-in Club Essentials and Club Pro enquiries, capturing full club contact details in the root-admin queue and sending requester/admin acknowledgement emails
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
@@ -82,7 +82,7 @@ What is still partial or risky:
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting views
 - notifications currently use inbox polling; APNs push delivery and background notification badges are not implemented yet
-- Apple authenticated purchase verification and automatic initial Personal Plus activation are implemented but deployment-gated; App Store Server Notifications, renewal/refund/expiry processing, reconciliation, and subscription admin activity are not connected yet
+- the complete Apple lifecycle code is present, but production activation remains gated on applying migration `027`, storing an App Store Connect In-App Purchase key in Secrets Manager, deploying, configuring Apple Sandbox/Production V2 URLs and grace-period policy, and passing the documented lifecycle tests
 - Release StoreKit purchasing stays disabled until the verification endpoint has passed Sandbox/TestFlight testing; a local Xcode StoreKit transaction intentionally does not update `personal_plan`
 - the production Apple subscription architecture and release gates are documented in `docs/apple-subscription-production.md`; the implementation remains incomplete until its endpoint, notification, reconciliation, admin and audit checklists pass
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
@@ -143,6 +143,7 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/rckscoreAdmin/clubs/:organizationId`
 - `/rckscoreAdmin/matches`
 - `/rckscoreAdmin/notifications`
+- `/rckscoreAdmin/subscriptions`
 - `/rckscoreAdmin/racket-sports`
 - `/rckscoreAdmin/interests`
 - `/rckscoreAdmin/personal-accounts` (legacy alias for User Accounts)

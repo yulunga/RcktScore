@@ -2,10 +2,11 @@
 
 ## Current repository status
 
-The StoreKit 2 purchase/context connection and authenticated initial-purchase
-verification boundary now exist. The full lifecycle is not yet a production
-subscription authority, so Release purchasing must remain disabled until every
-launch gate below is complete.
+The StoreKit 2 purchase/context connection and the complete backend lifecycle
+are implemented. TestFlight has proved the initial Sandbox purchase, persistent
+subscription and atomic Free-to-Plus audit path. Production is still gated on
+deploying migration `027`, configuring Apple credentials/URLs and passing every
+lifecycle test below.
 
 | Area | Current state | Production gate |
 | --- | --- | --- |
@@ -13,11 +14,11 @@ launch gate below is complete.
 | Purchase UI | StoreKit passes the server token and submits transaction/app JWS values | Deploy and pass Sandbox/TestFlight verification before enabling Release |
 | Persistence | Migrations `024`–`026` add lifecycle storage, stable tokens, verified transaction ledger, reconciliation metadata and entitlement audit | Deploy and verify all migrations in order |
 | Entitlement | `SkwshOrgSettings.plan` controls Free/Plus everywhere | Only a verified Apple lifecycle processor or explicit audited admin override may change it |
-| Notifications | Not implemented | Configure and verify App Store Server Notifications V2 for Sandbox and Production |
-| Recovery | Not implemented | Schedule App Store Server API reconciliation and alert on drift/failure |
+| Notifications | V2 signed receiver and common lifecycle processor implemented | Configure and verify Sandbox and Production URLs in App Store Connect |
+| Recovery | Hourly expiry/reconciliation Lambda implemented | Store the In-App Purchase key in Secrets Manager and verify repaired missed events |
 | Account context | Authenticated context endpoint, stable token and iOS connection are implemented | Keep the purchase gate off until Sandbox verification passes |
 | Purchase verification | Authenticated Apple-library JWS verification and atomic initial Plus activation are implemented | Configure/deploy identity values and pass real Sandbox evidence |
-| Admin | Manual plan switching exists | Show Apple status, renewal, expiry, environment, event history and audit history |
+| Admin | Subscription state, errors, event history and entitlement audit page implemented | Deploy and verify with root-admin session |
 
 ## Authoritative flow
 
@@ -71,7 +72,7 @@ account. See [Apple's appAccountToken documentation](https://developer.apple.com
 - Reject invalid, mismatched, revoked or unsupported transactions without
   changing the plan.
 
-### Apple notification receiver
+### Apple notification receiver — implemented, deployment/configuration pending
 
 `POST /subscriptions/apple/notifications`
 
@@ -110,7 +111,7 @@ At minimum process `SUBSCRIBED`, `DID_RENEW`,
 
 ## Database additions
 
-Create a follow-on migration after `024` with:
+Migration `027_apple_subscription_lifecycle_processing.sql` completes the model with:
 
 - a stable, unique `app_account_token` attached to the personal organisation;
 - raw and decoded transaction metadata needed to reproduce the entitlement;
@@ -127,8 +128,8 @@ Manager, never in the migration, SAM parameters, source control or Lambda logs.
 
 ## Reconciliation and operations
 
-- Add an EventBridge-scheduled Lambda, initially hourly for subscriptions near
-  expiry or in grace/retry and daily for all other active subscriptions.
+- The EventBridge Scheduler runs hourly. It enforces locally known expiry/grace
+  deadlines even when Apple is unavailable, then reconciles due subscriptions.
 - Call `Get All Subscription Statuses`; use transaction/refund history when the
   status is ambiguous. Apple also provides notification history for missed
   deliveries. See the [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi).
@@ -141,20 +142,42 @@ Manager, never in the migration, SAM parameters, source control or Lambda logs.
 
 ## Root-admin subscription activity
 
-The user Subscription tab must show:
+`/rckscoreAdmin/subscriptions` shows:
 
 - effective Hit n Score plan and whether it is Apple-managed or an admin override;
 - product (monthly/yearly), verified status, environment, expiry/grace date,
   auto-renew status, original transaction ID and last verification/reconciliation;
 - chronological Apple lifecycle activity and entitlement audit entries;
-- visible drift/processing errors and a controlled Reconcile action;
-- an explicit, reason-required, audited admin override. An override must not
-  silently replace or invalidate the Apple transaction record.
+- visible drift and processing/reconciliation errors. Manual root-admin plan
+  changes append an audit record without modifying Apple's transaction ledger.
 
 Root admins cannot cancel an Apple subscription for the customer; the app should
 continue linking customers to Apple's Manage Subscriptions screen.
 
 ## Configuration checklist
+
+### Deployment sequence
+
+1. Apply `backend/schema/027_apple_subscription_lifecycle_processing.sql` in
+   Supabase before deploying these Lambdas.
+2. In App Store Connect, create an In-App Purchase key under **Users and
+   Access → Integrations → In-App Purchase**. Download the `.p8` once and note
+   its key ID and issuer ID.
+3. Create one AWS Secrets Manager JSON secret in `eu-west-2` with keys
+   `private_key` (the complete PEM text), `key_id`, and `issuer_id`. Never put
+   these values in `samconfig.toml` or Git.
+4. Add `AppleServerApiSecretArn="<the-secret-arn>"` to the existing local
+   `parameter_overrides` in `backend/samconfig.toml`, then run `sam build` and
+   `sam deploy` from `backend/`.
+5. Configure the App Store Connect Sandbox V2 URL as
+   `https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod/subscriptions/apple/notifications`.
+   Keep `AppleAllowedEnvironments="Sandbox"` while running the lifecycle suite.
+6. Enable Billing Grace Period for Sandbox testing and exercise renewal,
+   cancellation, retry/grace, expiry, refund/revocation and a missed-event
+   reconciliation. Confirm `/rckscoreAdmin/subscriptions` after each case.
+7. Only after Sandbox evidence passes, configure the Production V2 URL and
+   change `AppleAllowedEnvironments` to `Sandbox,Production` for the release
+   transition.
 
 - [ ] App Store Connect Paid Applications agreement, banking and tax are active.
 - [ ] Monthly/yearly products use their exact production IDs and one subscription group.
@@ -163,7 +186,7 @@ continue linking customers to Apple's Manage Subscriptions screen.
 - [ ] Bundle ID and numeric Apple app ID configured separately for Sandbox/Production verification.
 - [ ] Sandbox and Production Server Notifications V2 URLs configured in App Store Connect.
 - [ ] Billing Grace Period policy enabled/configured in App Store Connect to match the table above.
-- [ ] Migrations `024_app_store_subscription_lifecycle.sql`, `025_apple_subscription_account_identity.sql`, then `026_apple_purchase_verification.sql` deployed before the verification Lambda.
+- [ ] Migrations `024_app_store_subscription_lifecycle.sql` through `027_apple_subscription_lifecycle_processing.sql` deployed in order.
 - [ ] Context, verification, notification, reconciliation and root-admin endpoints deployed.
 - [ ] Release iOS purchasing enabled only after the production endpoint health check passes.
 - [ ] Alerts, dashboards, DLQ and an operational runbook are in place.

@@ -22,6 +22,7 @@ import RootAdminLoginPage from "./pages/RootAdminLoginPage";
 import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
 import RootAdminNotificationsPage from "./pages/RootAdminNotificationsPage";
 import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
+import RootAdminSubscriptionsPage from "./pages/RootAdminSubscriptionsPage";
 import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
 import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
 
@@ -59,6 +60,10 @@ export default function App() {
       <Route
         path="/rckscoreAdmin/notifications"
         element={(<RootAdminProtectedRoute><RootAdminNotificationsPage /></RootAdminProtectedRoute>)}
+      />
+      <Route
+        path="/rckscoreAdmin/subscriptions"
+        element={(<RootAdminProtectedRoute><RootAdminSubscriptionsPage /></RootAdminProtectedRoute>)}
       />
       <Route
         path="/rckscoreAdmin/racket-sports"

@@ -238,56 +238,82 @@ class OfficialAppleSignedDataVerifier:
                 status_code=403,
             )
 
-        decoded_payload = {
-            "transactionId": _string_value(getattr(transaction, "transactionId", None)),
-            "originalTransactionId": _string_value(getattr(transaction, "originalTransactionId", None)),
-            "appAccountToken": _string_value(getattr(transaction, "appAccountToken", None)),
-            "productId": _string_value(getattr(transaction, "productId", None)),
-            "bundleId": _string_value(getattr(transaction, "bundleId", None)),
-            "environment": environment_name,
-            "type": _string_value(getattr(transaction, "type", None)),
-            "transactionReason": _string_value(getattr(transaction, "transactionReason", None)),
-            "purchaseDate": getattr(transaction, "purchaseDate", None),
-            "expiresDate": getattr(transaction, "expiresDate", None),
-            "revocationDate": getattr(transaction, "revocationDate", None),
-            "isUpgraded": bool(getattr(transaction, "isUpgraded", False)),
-            "appTransactionId": _string_value(getattr(transaction, "appTransactionId", None)),
-        }
-
-        return VerifiedApplePurchase(
-            transaction_id=_required_string(getattr(transaction, "transactionId", None), "transactionId"),
-            original_transaction_id=_required_string(
-                getattr(transaction, "originalTransactionId", None),
-                "originalTransactionId",
-            ),
-            app_account_token=_required_string(
-                getattr(transaction, "appAccountToken", None),
-                "appAccountToken",
-            ),
-            product_id=_required_string(getattr(transaction, "productId", None), "productId"),
-            bundle_id=_required_string(getattr(transaction, "bundleId", None), "bundleId"),
+        return normalize_verified_transaction(
+            transaction,
+            environment_name,
             app_apple_id=decoded_app_id,
-            app_transaction_id=transaction_app_id,
-            environment=environment_name,
-            product_type=_required_string(getattr(transaction, "type", None), "type"),
-            transaction_reason=_string_value(getattr(transaction, "transactionReason", None)),
-            purchased_at=_milliseconds_to_datetime(
-                getattr(transaction, "purchaseDate", None),
-                "purchaseDate",
-                required=True,
-            ),
-            expires_at=_milliseconds_to_datetime(
-                getattr(transaction, "expiresDate", None),
-                "expiresDate",
-                required=True,
-            ),
-            revoked_at=_milliseconds_to_datetime(
-                getattr(transaction, "revocationDate", None),
-                "revocationDate",
-            ),
-            is_upgraded=bool(getattr(transaction, "isUpgraded", False)),
-            decoded_payload=decoded_payload,
+            expected_app_transaction_id=signed_app_transaction_id,
         )
+
+
+def normalize_verified_transaction(
+    transaction,
+    environment_name,
+    *,
+    app_apple_id=None,
+    expected_app_transaction_id=None,
+):
+    transaction_app_id = _required_string(
+        getattr(transaction, "appTransactionId", None),
+        "appTransactionId",
+    )
+    if expected_app_transaction_id and transaction_app_id != expected_app_transaction_id:
+        raise ApplePurchaseVerificationError(
+            "APPLE_APP_TRANSACTION_MISMATCH",
+            "The transaction and application identity belong to different App Store accounts.",
+            status_code=403,
+        )
+
+    decoded_payload = {
+        "transactionId": _string_value(getattr(transaction, "transactionId", None)),
+        "originalTransactionId": _string_value(getattr(transaction, "originalTransactionId", None)),
+        "appAccountToken": _string_value(getattr(transaction, "appAccountToken", None)),
+        "productId": _string_value(getattr(transaction, "productId", None)),
+        "bundleId": _string_value(getattr(transaction, "bundleId", None)),
+        "environment": environment_name,
+        "type": _string_value(getattr(transaction, "type", None)),
+        "transactionReason": _string_value(getattr(transaction, "transactionReason", None)),
+        "purchaseDate": getattr(transaction, "purchaseDate", None),
+        "expiresDate": getattr(transaction, "expiresDate", None),
+        "revocationDate": getattr(transaction, "revocationDate", None),
+        "isUpgraded": bool(getattr(transaction, "isUpgraded", False)),
+        "appTransactionId": _string_value(getattr(transaction, "appTransactionId", None)),
+    }
+
+    return VerifiedApplePurchase(
+        transaction_id=_required_string(getattr(transaction, "transactionId", None), "transactionId"),
+        original_transaction_id=_required_string(
+            getattr(transaction, "originalTransactionId", None),
+            "originalTransactionId",
+        ),
+        app_account_token=_required_string(
+            getattr(transaction, "appAccountToken", None),
+            "appAccountToken",
+        ),
+        product_id=_required_string(getattr(transaction, "productId", None), "productId"),
+        bundle_id=_required_string(getattr(transaction, "bundleId", None), "bundleId"),
+        app_apple_id=app_apple_id,
+        app_transaction_id=transaction_app_id,
+        environment=environment_name,
+        product_type=_required_string(getattr(transaction, "type", None), "type"),
+        transaction_reason=_string_value(getattr(transaction, "transactionReason", None)),
+        purchased_at=_milliseconds_to_datetime(
+            getattr(transaction, "purchaseDate", None),
+            "purchaseDate",
+            required=True,
+        ),
+        expires_at=_milliseconds_to_datetime(
+            getattr(transaction, "expiresDate", None),
+            "expiresDate",
+            required=True,
+        ),
+        revoked_at=_milliseconds_to_datetime(
+            getattr(transaction, "revocationDate", None),
+            "revocationDate",
+        ),
+        is_upgraded=bool(getattr(transaction, "isUpgraded", False)),
+        decoded_payload=decoded_payload,
+    )
 
 
 def _validate_purchase(purchase, account, now):

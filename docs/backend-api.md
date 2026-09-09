@@ -194,6 +194,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `PUT /root_admin/users/{user_id}/password`
 - `GET /root_admin/notifications`
 - `POST /root_admin/notifications`
+- `GET /root_admin/subscriptions?organization_id=...`
 
 Current root-admin user-account behavior:
 
@@ -355,9 +356,12 @@ Current behavior:
 - `GET /subscriptions/apple/context/{organization_id}` now requires an organisation-user bearer session, verifies that the caller is the personal-account owner, and returns that account's stable server-issued `appAccountToken`, configured monthly/yearly product IDs, current plan, and purchase-enabled flag
 - `POST /subscriptions/apple/verify` requires a valid organisation-user session plus `organization_id`, `signed_transaction`, and `signed_app_transaction`; it verifies both JWS values with Apple's server library and packaged Apple PKI roots, then validates ownership, account token, bundle, numeric app ID in Production, product, environment, expiry, upgrade and revocation state
 - an accepted transaction is inserted idempotently into `app_store_transactions` and upserted into `app_store_subscriptions`; the plan update and append-only entitlement audit occur in the same database transaction
-- migrations `025_apple_subscription_account_identity.sql` and `026_apple_purchase_verification.sql` provide the stable token, verified transaction ledger, reconciliation metadata and append-only entitlement audit
+- migrations `025_apple_subscription_account_identity.sql`, `026_apple_purchase_verification.sql`, and `027_apple_subscription_lifecycle_processing.sql` provide stable identity, the verified transaction ledger, lifecycle/event state, retry/reconciliation metadata and an enforced append-only entitlement audit
+- `POST /subscriptions/apple/notifications` is the unauthenticated-by-session App Store Server Notifications V2 receiver. It authenticates Apple by verifying the outer `signedPayload` and nested JWS values, deduplicates `notificationUUID`, rejects out-of-order state, and applies renewals, auto-renew changes, billing retry/grace, expiry, refund and revocation through the common lifecycle processor
+- an hourly EventBridge Scheduler invokes reconciliation. It first enforces known expiry/grace deadlines, then calls Apple `Get All Subscription Statuses` for due subscriptions using an In-App Purchase key held in AWS Secrets Manager; failures record bounded retry state
+- `GET /root_admin/subscriptions` requires a root-admin bearer session and returns current Apple subscription state, processing/reconciliation errors, V2 event activity and entitlement audit history
 - StoreKit now uses the returned account token and finishes a server-enabled purchase only after backend acceptance; local Xcode StoreKit tests remain non-authoritative while `APPLE_PURCHASES_ENABLED=false`
-- App Store Server Notifications V2, renewal/refund/expiry processing, reconciliation, subscription status/admin APIs and production activation remain outstanding
+- production activation remains outstanding until migration/configuration deployment and Sandbox/Production lifecycle evidence pass the release checklist
 - the complete production architecture, lifecycle mapping, configuration gates and test checklist are maintained in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md)
 
 ### Organisation settings

@@ -440,8 +440,8 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 - the current iPhone scoring layout is much improved but still needs final polish
 - notification inbox delivery and read state are backend-backed; APNs push delivery is not implemented
 - reporting, game-settings presets, and deeper federation-style association integrations in native settings are not fully implemented
-- migrations `024`–`026`, the purchase-context endpoint, and `POST /subscriptions/apple/verify` now connect the stable account UUID through StoreKit to Apple-library JWS verification, idempotent persistence, atomic initial Plus activation and entitlement audit
-- App Store Server Notifications V2, renewal/refund/expiry processing, scheduled reconciliation and root-admin subscription activity remain the next subscription stages
+- migrations `024`–`027`, the purchase-context/verification endpoints, the public Apple-signed V2 notification receiver and scheduled reconciliation now connect the stable account UUID through StoreKit and Apple's Server API to one entitlement processor
+- renewal, auto-renew cancellation, billing retry/grace, expiry, refund and revocation update subscription state and change `personal_free`/`personal_plus` only according to verified access; root admin can inspect current state, notification attempts, reconciliation failures and the immutable entitlement history
 - [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md) is the launch checklist for completing that boundary, including endpoint trust, lifecycle state rules, reconciliation, admin activity and append-only entitlement audit
 - offline history, offline match creation, and multi-match caching are not implemented; offline scoring is limited to one previously opened active match
 - release pipeline, realtime sync, and final signoff coverage are still partial

@@ -2827,6 +2827,43 @@ textarea {
   color: #b83280;
 }
 
+.subscription-admin-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.subscription-admin-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.5fr) repeat(4, minmax(9rem, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(126, 154, 184, 0.32);
+  border-radius: 1rem;
+  background: rgba(244, 248, 252, 0.86);
+}
+
+.subscription-admin-row.compact {
+  grid-template-columns: minmax(12rem, 1.4fr) minmax(15rem, 1.4fr) minmax(12rem, 1fr);
+}
+
+.subscription-admin-row > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.subscription-admin-row span {
+  color: #486581;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .subscription-admin-row,
+  .subscription-admin-row.compact {
+    grid-template-columns: 1fr;
+  }
+}
+
 .root-admin-interest-details {
   display: flex;
   flex-wrap: wrap;

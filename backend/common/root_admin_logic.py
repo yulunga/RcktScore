@@ -1050,6 +1050,19 @@ def update_root_admin_personal_account_settings(
 
     now = _utcnow()
     with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT plan, owner_username, app_account_token
+            FROM "SkwshOrgSettings"
+            WHERE id = %(id)s AND org_type = 'personal'
+            FOR UPDATE
+            """,
+            {"id": request_id},
+        )
+        previous_account = cursor.fetchone()
+        if not previous_account:
+            raise LookupError("Personal account not found")
+
         set_parts = []
         params = {"id": request_id}
         if "plan" in updates:
@@ -1076,6 +1089,36 @@ def update_root_admin_personal_account_settings(
             params,
         )
         organization_row = cursor.fetchone()
+
+        if (
+            organization_row
+            and "plan" in updates
+            and previous_account.get("plan") in PERSONAL_PLANS
+            and previous_account.get("plan") != updates["plan"]
+        ):
+            cursor.execute(
+                """
+                INSERT INTO subscription_entitlement_audit (
+                    organization_id, account_username, previous_plan, new_plan,
+                    source, reason, effective_at, app_account_token,
+                    actor_type, actor_identifier, metadata
+                ) VALUES (
+                    %(organization_id)s, %(username)s, %(previous_plan)s,
+                    %(new_plan)s, 'admin', 'root_admin_plan_override', %(now)s,
+                    %(app_account_token)s, 'root_admin', %(updated_by)s,
+                    '{}'::jsonb
+                )
+                """,
+                {
+                    "organization_id": request_id,
+                    "username": previous_account.get("owner_username"),
+                    "previous_plan": previous_account.get("plan"),
+                    "new_plan": updates["plan"],
+                    "now": now,
+                    "app_account_token": previous_account.get("app_account_token"),
+                    "updated_by": (updated_by or "root_admin").strip(),
+                },
+            )
 
         if not organization_row:
             row = None
@@ -1265,6 +1308,7 @@ def _root_admin_user_username(connection, user_id):
             {"user_id": int(user_id)},
         )
         row = cursor.fetchone()
+
     return (row or {}).get("clubusername")
 
 
