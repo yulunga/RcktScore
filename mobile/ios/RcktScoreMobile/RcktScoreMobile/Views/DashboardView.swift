@@ -1163,12 +1163,7 @@ struct DashboardView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(
-                                    purchaseService.activeProductIDs.contains(product.id)
-                                        ? Color.dashboardAccentPink
-                                        : Color.dashboardBorder,
-                                    lineWidth: purchaseService.activeProductIDs.contains(product.id) ? 2 : 1
-                                )
+                                .stroke(Color.dashboardBorder, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
