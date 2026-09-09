@@ -9,7 +9,6 @@ final class StoreKitPurchaseService: ObservableObject {
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var activeProductIDs: Set<String> = []
-    @Published private(set) var hasRefreshedCurrentEntitlements = false
     @Published private(set) var isLoading = false
     @Published private(set) var purchasingProductID: String?
     @Published var statusMessage: String?
@@ -128,7 +127,6 @@ final class StoreKitPurchaseService: ObservableObject {
             currentProductIDs.insert(transaction.productID)
         }
         activeProductIDs = currentProductIDs
-        hasRefreshedCurrentEntitlements = true
     }
 
     func planName(for product: Product) -> String {

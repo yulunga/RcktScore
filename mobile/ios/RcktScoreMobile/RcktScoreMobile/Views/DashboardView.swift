@@ -67,19 +67,18 @@ struct DashboardView: View {
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isPersonalAccount: Bool { session?.isPersonalAccount ?? false }
-    private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
-    private var hasActiveStoreKitPersonalPlus: Bool { !container.purchaseService.activeProductIDs.isEmpty }
-    private var isPersonalPlusCurrentOnSubscriptionScreen: Bool {
-        if container.purchaseService.canRunLocalPurchases,
-           container.purchaseService.hasRefreshedCurrentEntitlements {
-            return hasActiveStoreKitPersonalPlus
-        }
-        return isPersonalPlus || hasActiveStoreKitPersonalPlus
+    private var currentPlanCode: String {
+        (organizationSummary?.plan ?? organizationSettings?.organization.plan ?? session?.plan ?? "")
+            .lowercased()
     }
+    private var isPersonalPlus: Bool { currentPlanCode == "personal_plus" }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
     private var headerPlanLine: String {
-        session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
+        if !currentPlanCode.isEmpty {
+            return planDisplayName(for: currentPlanCode)
+        }
+        return session?.planDisplayName ?? (isPersonalAccount ? "Personal Free" : "Club Essentials")
     }
     private var currentUserDisplayName: String {
         let name = session?.fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -1054,8 +1053,8 @@ struct DashboardView: View {
             ?? 100
         let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
             ? [
-                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", !isPersonalPlusCurrentOnSubscriptionScreen, nil),
-                ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", isPersonalPlusCurrentOnSubscriptionScreen, nil),
+                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", !isPersonalPlus, nil),
+                ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", isPersonalPlus, nil),
                 ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
                 ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
             ]
@@ -1130,7 +1129,7 @@ struct DashboardView: View {
                 }
             }
 
-            if purchaseService.canRunLocalPurchases && !isPersonalPlusCurrentOnSubscriptionScreen {
+            if purchaseService.canRunLocalPurchases && !isPersonalPlus {
                 Text("Choose Personal Plus")
                     .font(.subheadline.weight(.bold))
 

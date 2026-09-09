@@ -416,7 +416,8 @@ These are current product limitations, not accidental breakage:
 - WebSocket infrastructure is partial
 - notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
 - StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal monthly/yearly, Restore Purchases, and Manage Subscription controls for 20 seconds
-- during Debug StoreKit testing, only a currently active StoreKit entitlement outlines Personal Plus in green and marks it Current in pink; the app refreshes this after transaction updates, foregrounding, restoring, and closing Manage Subscription. If an expired test subscription remains active, use Xcode's StoreKit transaction manager to inspect or remove the test transaction, then foreground the app
+- the subscription page's green current-tier outline and pink Current badge follow the latest backend organisation plan, not a local StoreKit test transaction. If the UI disagrees with `SkwshOrgSettings.plan`, confirm `GET /dashboard/{organization_id}` returns the expected plan and that the app is online so it can replace its cached login-session plan
+- cancelling an Apple auto-renewable subscription normally disables renewal but retains Personal Plus through the paid `expires_at`; downgrade only after verified expiry or revocation. Local Xcode StoreKit transactions can be inspected or expired from Xcode's transaction manager
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
   and they are not wired into a documented CI pipeline
