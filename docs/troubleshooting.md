@@ -381,6 +381,7 @@ What to check:
 - whether `OfflineMatchStore.swift` contains a cached match for the same username and organisation membership
 - whether the cached match had been opened online on this device before connectivity was lost
 - whether queued UUIDs exist in `match_action_receipts` after reconnection, and whether the saved session expired before synchronisation
+- if the device is online but an action remains queued, use the detailed synchronisation message now shown by the scorer to distinguish an API rejection, expired session, missing migration, or transport failure; the action remains queued under its original UUID for a safe retry
 - whether `GET /organization_settings/{organization_id}` returned the updated `enabled_sports`
 - whether `SessionStore` was refreshed after the native settings save and `StartNewMatchView.swift` is filtering against the current `enabled_sports`
 - whether the profile photo was only chosen locally in the native settings screen and was never backed by a server-side upload path
@@ -403,8 +404,7 @@ Important current truths:
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
 - native tennis scoring expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
 - at No-Ad deuce the receiver must choose Deuce or Ad court; that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
-- the current scorer is functionally ahead of the docs that used to describe it,
-  but its iPhone layout still needs redesign
+- the squash/racketball scorer now selects compact widths on phone-sized screens, scrolls long game history horizontally, adapts warm-up actions when they cannot fit side by side, and shows a completed-match summary after the final point
 - the shared iOS bottom navigation now compacts labels and icon sizing under larger Dynamic Type settings, but extremely aggressive accessibility sizes may still need further tab-bar simplification if new labels are added later
 
 ## 10. Things That Are Not Bugs Right Now

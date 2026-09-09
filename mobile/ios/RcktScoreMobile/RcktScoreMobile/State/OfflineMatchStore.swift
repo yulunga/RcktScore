@@ -127,6 +127,7 @@ final class OfflineMatchStore: ObservableObject {
     @Published private var snapshot: OfflineMatchSnapshot?
     @Published private(set) var isSyncing = false
     @Published private(set) var syncMessage: String?
+    @Published private(set) var lastSyncErrorMessage: String?
 
     private let storageKey = "rcktscore.mobile.offlineActiveMatch"
 
@@ -269,6 +270,7 @@ final class OfflineMatchStore: ObservableObject {
         snapshot.cachedAt = Date()
         self.snapshot = snapshot
         syncMessage = "Offline changes waiting to sync."
+        lastSyncErrorMessage = nil
         persist()
         return true
     }
@@ -288,41 +290,60 @@ final class OfflineMatchStore: ObservableObject {
     }
 
     func sync(using apiClient: APIClient, session: UserSession?) async {
-        guard !isSyncing,
-              let session,
+        if isSyncing {
+            while isSyncing {
+                try? await Task.sleep(for: .milliseconds(25))
+            }
+            return
+        }
+
+        guard let session,
               !session.isExpired,
-              var current = snapshot,
-              current.ownerUsername.caseInsensitiveCompare(session.username) == .orderedSame,
-              current.ownerOrganizationID == session.organizationID,
-              !current.queuedActions.isEmpty else {
+              let initial = snapshot,
+              initial.ownerUsername.caseInsensitiveCompare(session.username) == .orderedSame,
+              initial.ownerOrganizationID == session.organizationID,
+              !initial.queuedActions.isEmpty else {
             return
         }
 
         isSyncing = true
         syncMessage = "Synchronising offline scoring…"
+        lastSyncErrorMessage = nil
         defer { isSyncing = false }
 
-        while let action = current.queuedActions.first {
+        while let current = snapshot,
+              current.ownerUsername.caseInsensitiveCompare(session.username) == .orderedSame,
+              current.ownerOrganizationID == session.organizationID,
+              let action = current.queuedActions.first {
             do {
                 let updatedMatch = try await action.send(using: apiClient)
-                current.serverMatch = updatedMatch
-                current.queuedActions.removeFirst()
-                current.cachedAt = Date()
-                snapshot = current
+                guard var latest = snapshot,
+                      latest.serverMatch.id == action.matchID else {
+                    return
+                }
+
+                latest.serverMatch = updatedMatch
+                latest.queuedActions.removeAll { $0.id == action.id }
+                latest.cachedAt = Date()
+                snapshot = latest
                 persist()
             } catch {
-                syncMessage = "Offline changes are saved and will retry when a connection is available."
+                let detail = (error as? APIErrorResponse)?.message ?? error.localizedDescription
+                lastSyncErrorMessage = detail
+                syncMessage = "Unable to synchronise scoring: \(detail)"
                 return
             }
         }
 
-        syncMessage = "Offline scoring synchronised."
+        syncMessage = nil
+        lastSyncErrorMessage = nil
     }
 
     func clear() {
         snapshot = nil
         isSyncing = false
         syncMessage = nil
+        lastSyncErrorMessage = nil
         UserDefaults.standard.removeObject(forKey: storageKey)
     }
 

@@ -455,6 +455,7 @@ Current behavior:
 - `POST /score_point`, `POST /event_action`, `POST /undo_action`, and `POST /end_match` accept an optional `client_action_id` UUID
 - when a `client_action_id` is supplied, the backend records it in `match_action_receipts`; replaying the same UUID for the same match action returns current match state without applying the action again
 - reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
+- native iOS serialises queued scoring requests, preserves any new action appended while a previous request is in flight, and retains failed actions for a safe retry with the same UUID; the client now surfaces the returned API or network error rather than describing every failure as an offline condition
 - personal accounts can only have one active match at a time
 - clubs can auto-schedule a match if the chosen court already has an active match
 - live sport engines today:

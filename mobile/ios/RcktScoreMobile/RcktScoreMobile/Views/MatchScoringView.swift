@@ -506,6 +506,9 @@ struct MatchScoringView: View {
 
                     if isTabletLandscape {
                         landscapeScoringLayout(match)
+                    } else if isMatchComplete {
+                        completedMatchCard(match, compact: compactLayout)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     } else {
                         scoreboardCard(
                             match,
@@ -514,15 +517,14 @@ struct MatchScoringView: View {
                             expandsVertically: true
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
                         Spacer(minLength: 0)
+                    }
+
+                    if !isTabletLandscape, let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
                     Spacer(minLength: 0)
@@ -549,7 +551,7 @@ struct MatchScoringView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let compactLayout = geometry.size.height < 760
+            let compactLayout = geometry.size.width < 600 || geometry.size.height < 760
             let isTabletLandscape = UIDevice.current.userInterfaceIdiom == .pad && geometry.size.width > geometry.size.height
             let bottomDockInset = isTabletLandscape ? 2.0 : 6.0
             let bottomDockHeight = bottomDockReservedHeight(
@@ -675,13 +677,18 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func landscapeScoringLayout(_ match: MatchDetail) -> some View {
         VStack(spacing: 14) {
-            scoreboardCard(
-                match,
-                compact: false,
-                landscapeTablet: true,
-                expandsVertically: true
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            if isMatchComplete {
+                completedMatchCard(match, compact: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else {
+                scoreboardCard(
+                    match,
+                    compact: false,
+                    landscapeTablet: true,
+                    expandsVertically: true
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
 
             if let errorMessage {
                 Text(errorMessage)
@@ -693,6 +700,80 @@ struct MatchScoringView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func completedMatchCard(_ match: MatchDetail, compact: Bool) -> some View {
+        VStack(spacing: compact ? 14 : 18) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: compact ? 44 : 54, weight: .semibold))
+                .foregroundStyle(Color.rcktActive)
+
+            Text("Match Complete")
+                .font(compact ? .title2.weight(.bold) : .title.weight(.bold))
+
+            if let winnerName = live?.winnerName, !winnerName.isEmpty {
+                Text("\(winnerName) won")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(Color.rcktBlue)
+            }
+
+            HStack(spacing: 12) {
+                completedMatchMetric(
+                    title: fullName(firstName: match.player1Name, surname: match.player1Surname),
+                    value: "\(live?.player1GamesWon ?? 0)"
+                )
+                completedMatchMetric(
+                    title: fullName(firstName: match.player2Name, surname: match.player2Surname),
+                    value: "\(live?.player2GamesWon ?? 0)"
+                )
+            }
+
+            matchHistoryStrip
+
+            if displayedTimerSeconds > 0 {
+                Text("Match time \(formatSeconds(displayedTimerSeconds))")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                dismiss()
+            } label: {
+                Text("Return to Matches")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.rcktBlue)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("scoring.completed.returnButton")
+        }
+        .padding(compact ? 18 : 24)
+        .frame(maxWidth: .infinity, alignment: .top)
+        .background(Color.rcktCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.rcktBorder, lineWidth: 1)
+        )
+    }
+
+    private func completedMatchMetric(title: String, value: String) -> some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+            Text(value)
+                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.rcktBlue)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     @ViewBuilder
@@ -776,11 +857,11 @@ struct MatchScoringView: View {
                         landscapeTablet: landscapeTablet
                     )
 
-                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 8 : 12))
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 4 : 12))
 
                     pointRail(compact: compact, landscapeTablet: landscapeTablet)
 
-                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 8 : 12))
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 4 : 12))
 
                     playerCard(
                         side: "player2",
@@ -792,7 +873,7 @@ struct MatchScoringView: View {
                         landscapeTablet: landscapeTablet
                     )
                     }
-                    .padding(.horizontal, landscapeTablet ? 12 : (compact ? 6 : 8))
+                    .padding(.horizontal, landscapeTablet ? 12 : (compact ? 4 : 8))
                     .padding(.top, landscapeTablet ? 16 : (compact ? 10 : 12))
                     .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
                 }
@@ -987,28 +1068,16 @@ struct MatchScoringView: View {
                     .foregroundStyle(.secondary)
 
                 if timerPhase == .warmupReady {
-                    HStack(spacing: 12) {
-                        Button("Start Warm-Up") {
-                            handleStartWarmup()
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            startWarmupOverlayButton
+                            skipWarmupOverlayButton
                         }
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.rcktBlue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .accessibilityIdentifier("scoring.warmup.startButton")
 
-                        Button("Skip Warm-Up") {
-                            handleSkipWarmup()
+                        VStack(spacing: 12) {
+                            startWarmupOverlayButton
+                            skipWarmupOverlayButton
                         }
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.rcktSlate)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .accessibilityIdentifier("scoring.warmup.skipButton")
                     }
                 } else {
                     Button {
@@ -1046,6 +1115,42 @@ struct MatchScoringView: View {
                     .stroke(Color.rcktBorder, lineWidth: 1)
             )
         }
+    }
+
+    private var startWarmupOverlayButton: some View {
+        Button {
+            handleStartWarmup()
+        } label: {
+            Text("Start Warm-Up")
+                .font(.headline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.rcktBlue)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("scoring.warmup.startButton")
+    }
+
+    private var skipWarmupOverlayButton: some View {
+        Button {
+            handleSkipWarmup()
+        } label: {
+            Text("Skip Warm-Up")
+                .font(.headline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.rcktSlate)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("scoring.warmup.skipButton")
     }
 
     @ViewBuilder
@@ -1197,7 +1302,7 @@ struct MatchScoringView: View {
             if isTabletPortrait {
                 return 96
             }
-            return compact ? 84 : 92
+            return compact ? 64 : 92
         }()
         let railHeight: CGFloat = {
             if landscapeTablet {
@@ -1270,7 +1375,7 @@ struct MatchScoringView: View {
     ) -> some View {
         Group {
             if entry.displaySide == targetSide {
-                HStack(spacing: landscapeTablet ? 10 : 8) {
+                HStack(spacing: landscapeTablet ? 10 : (compact ? 4 : 8)) {
                     scoreSheetMarker(
                         label: entry.displaySideLabel,
                         isCurrentServe: entry.isCurrentServe,
@@ -1289,7 +1394,7 @@ struct MatchScoringView: View {
                 .frame(width: laneWidth, alignment: targetSide == "player1" ? .trailing : .leading)
             } else {
                 Color.clear
-                    .frame(width: laneWidth, height: landscapeTablet ? 44 : (compact ? 32 : 34))
+                    .frame(width: laneWidth, height: landscapeTablet ? 44 : (compact ? 30 : 34))
             }
         }
     }
@@ -1332,19 +1437,21 @@ struct MatchScoringView: View {
     @ViewBuilder
     private var matchHistoryStrip: some View {
         if let gameHistory = live?.gameHistory, !gameHistory.isEmpty {
-            HStack(spacing: 8) {
-                ForEach(gameHistory) { game in
-                    VStack(spacing: 4) {
-                        Text("\(game.player1Score) - \(game.player2Score)")
-                            .font(.subheadline.weight(.semibold))
-                        Text(initials(for: game.winnerName))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(gameHistory) { game in
+                        VStack(spacing: 4) {
+                            Text("\(game.player1Score) - \(game.player2Score)")
+                                .font(.subheadline.weight(.semibold))
+                            Text(initials(for: game.winnerName))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 92)
+                        .padding(.vertical, 10)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    .frame(width: 92)
-                    .padding(.vertical, 10)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -1538,9 +1645,9 @@ struct MatchScoringView: View {
                 .font(landscapeTablet ? .subheadline.weight(.semibold) : (compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold)))
                 .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(.horizontal, landscapeTablet ? 14 : (compact ? 10 : 12))
+        .padding(.horizontal, landscapeTablet ? 14 : (compact ? 6 : 12))
         .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
-        .frame(width: landscapeTablet ? 182 : (compact ? 118 : 128))
+        .frame(width: landscapeTablet ? 182 : (compact ? 88 : 128))
         .frame(minHeight: landscapeTablet ? 232 : (compact ? 148 : 164), alignment: .top)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(.white)
@@ -1622,10 +1729,10 @@ struct MatchScoringView: View {
         landscapeTablet: Bool
     ) -> some View {
         Text(label)
-            .font(.system(size: landscapeTablet ? 20 : (compact ? 15 : 17), weight: .bold, design: .rounded))
+            .font(.system(size: landscapeTablet ? 20 : (compact ? 13 : 17), weight: .bold, design: .rounded))
             .frame(
-                width: landscapeTablet ? 48 : (compact ? 34 : 38),
-                height: landscapeTablet ? 44 : (compact ? 32 : 34)
+                width: landscapeTablet ? 48 : (compact ? 28 : 38),
+                height: landscapeTablet ? 44 : (compact ? 30 : 34)
             )
             .background(
                 RoundedRectangle(cornerRadius: landscapeTablet ? 14 : 12, style: .continuous)
@@ -2431,7 +2538,9 @@ struct MatchScoringView: View {
         }
 
         if isOnline, container.offlineMatchStore.pendingActionCount > 0 {
-            errorMessage = container.offlineMatchStore.syncMessage
+            errorMessage = container.offlineMatchStore.lastSyncErrorMessage
+                ?? container.offlineMatchStore.syncMessage
+                ?? "Scoring changes are still waiting to synchronise."
         }
         isMutating = false
     }
