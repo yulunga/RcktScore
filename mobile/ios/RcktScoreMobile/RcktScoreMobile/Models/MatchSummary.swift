@@ -438,6 +438,20 @@ struct MatchEventPayload: Codable {
     let noAdDecidingSide: String?
     let player1ScoreLabel: String?
     let player2ScoreLabel: String?
+    let pointServerSide: String?
+    let pointServerParticipantID: String?
+    let pointReceiverSide: String?
+    let pointReceiverParticipantID: String?
+    let pointServiceSide: String?
+    let pointPlayer1Score: Int?
+    let pointPlayer2Score: Int?
+    let pointPlayer1ScoreLabel: String?
+    let pointPlayer2ScoreLabel: String?
+    let tennisGameCompleted: Bool?
+    let setCompleted: Bool?
+    let completedGameNumber: Int?
+    let completedGamePlayer1Games: Int?
+    let completedGamePlayer2Games: Int?
 
     enum CodingKeys: String, CodingKey {
         case scorer
@@ -476,6 +490,20 @@ struct MatchEventPayload: Codable {
         case noAdDecidingSide = "no_ad_deciding_side"
         case player1ScoreLabel = "player1_score_label"
         case player2ScoreLabel = "player2_score_label"
+        case pointServerSide = "point_server_side"
+        case pointServerParticipantID = "point_server_participant_id"
+        case pointReceiverSide = "point_receiver_side"
+        case pointReceiverParticipantID = "point_receiver_participant_id"
+        case pointServiceSide = "point_service_side"
+        case pointPlayer1Score = "point_player1_score"
+        case pointPlayer2Score = "point_player2_score"
+        case pointPlayer1ScoreLabel = "point_player1_score_label"
+        case pointPlayer2ScoreLabel = "point_player2_score_label"
+        case tennisGameCompleted = "tennis_game_completed"
+        case setCompleted = "set_completed"
+        case completedGameNumber = "completed_game_number"
+        case completedGamePlayer1Games = "completed_game_player1_games"
+        case completedGamePlayer2Games = "completed_game_player2_games"
     }
 
     init(
@@ -514,7 +542,21 @@ struct MatchEventPayload: Codable {
         tennisFinalSetMatchTiebreak: Bool? = nil,
         noAdDecidingSide: String? = nil,
         player1ScoreLabel: String? = nil,
-        player2ScoreLabel: String? = nil
+        player2ScoreLabel: String? = nil,
+        pointServerSide: String? = nil,
+        pointServerParticipantID: String? = nil,
+        pointReceiverSide: String? = nil,
+        pointReceiverParticipantID: String? = nil,
+        pointServiceSide: String? = nil,
+        pointPlayer1Score: Int? = nil,
+        pointPlayer2Score: Int? = nil,
+        pointPlayer1ScoreLabel: String? = nil,
+        pointPlayer2ScoreLabel: String? = nil,
+        tennisGameCompleted: Bool? = nil,
+        setCompleted: Bool? = nil,
+        completedGameNumber: Int? = nil,
+        completedGamePlayer1Games: Int? = nil,
+        completedGamePlayer2Games: Int? = nil
     ) {
         self.scorer = scorer
         self.playerSide = playerSide
@@ -552,6 +594,20 @@ struct MatchEventPayload: Codable {
         self.noAdDecidingSide = noAdDecidingSide
         self.player1ScoreLabel = player1ScoreLabel
         self.player2ScoreLabel = player2ScoreLabel
+        self.pointServerSide = pointServerSide
+        self.pointServerParticipantID = pointServerParticipantID
+        self.pointReceiverSide = pointReceiverSide
+        self.pointReceiverParticipantID = pointReceiverParticipantID
+        self.pointServiceSide = pointServiceSide
+        self.pointPlayer1Score = pointPlayer1Score
+        self.pointPlayer2Score = pointPlayer2Score
+        self.pointPlayer1ScoreLabel = pointPlayer1ScoreLabel
+        self.pointPlayer2ScoreLabel = pointPlayer2ScoreLabel
+        self.tennisGameCompleted = tennisGameCompleted
+        self.setCompleted = setCompleted
+        self.completedGameNumber = completedGameNumber
+        self.completedGamePlayer1Games = completedGamePlayer1Games
+        self.completedGamePlayer2Games = completedGamePlayer2Games
     }
 }
 

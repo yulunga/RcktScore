@@ -417,6 +417,7 @@ private enum OfflineScoringReducer {
                 action,
                 to: &next,
                 match: match,
+                previousState: state,
                 previousGameHistoryCount: previousGameHistoryCount
             )
         }
@@ -481,10 +482,34 @@ private enum OfflineScoringReducer {
         _ action: OfflineQueuedMatchAction,
         to state: inout MutableMatchState,
         match: MatchDetail,
+        previousState: MatchState,
         previousGameHistoryCount: Int
     ) {
         let gameResult = state.gameHistory.count > previousGameHistoryCount ? state.gameHistory.last : nil
         let scoringSide = action.scorer ?? action.playerSide
+        let isTennisPoint = (match.sport ?? "squash").lowercased() == "tennis"
+            && (action.kind == .scorePoint || action.kind == .stroke)
+        let pointPlayer1Score = isTennisPoint
+            ? previousState.player1Score + (scoringSide == "player1" ? 1 : 0)
+            : nil
+        let pointPlayer2Score = isTennisPoint
+            ? previousState.player2Score + (scoringSide == "player2" ? 1 : 0)
+            : nil
+        let pointLabels = pointPlayer1Score.flatMap { player1 in
+            pointPlayer2Score.map { player2 in
+                tennisPointLabels(player1: player1, player2: player2, isTieBreak: previousState.isTieBreak)
+            }
+        }
+        let previousSetGames = previousState.player1SetGames + previousState.player2SetGames
+        let currentSetGames = state.player1SetGames + state.player2SetGames
+        let tennisGameCompleted = isTennisPoint
+            && (gameResult != nil || currentSetGames > previousSetGames)
+        let completedGamePlayer1Games = tennisGameCompleted
+            ? (gameResult?.player1Score ?? state.player1SetGames)
+            : nil
+        let completedGamePlayer2Games = tennisGameCompleted
+            ? (gameResult?.player2Score ?? state.player2SetGames)
+            : nil
         let summary: String
         switch action.kind {
         case .scorePoint:
@@ -549,12 +574,44 @@ private enum OfflineScoringReducer {
                     tennisFinalSetMatchTiebreak: state.tennisFinalSetMatchTiebreak,
                     noAdDecidingSide: state.noAdDecidingSide,
                     player1ScoreLabel: state.player1ScoreLabel,
-                    player2ScoreLabel: state.player2ScoreLabel
+                    player2ScoreLabel: state.player2ScoreLabel,
+                    pointServerSide: isTennisPoint ? previousState.currentServerSide : nil,
+                    pointServerParticipantID: isTennisPoint ? previousState.currentServerParticipantID : nil,
+                    pointReceiverSide: isTennisPoint ? previousState.currentReceiverSide : nil,
+                    pointReceiverParticipantID: isTennisPoint ? previousState.currentReceiverParticipantID : nil,
+                    pointServiceSide: isTennisPoint ? previousState.serviceSide : nil,
+                    pointPlayer1Score: pointPlayer1Score,
+                    pointPlayer2Score: pointPlayer2Score,
+                    pointPlayer1ScoreLabel: pointLabels?.0,
+                    pointPlayer2ScoreLabel: pointLabels?.1,
+                    tennisGameCompleted: tennisGameCompleted,
+                    setCompleted: gameResult != nil,
+                    completedGameNumber: tennisGameCompleted
+                        ? (completedGamePlayer1Games ?? 0) + (completedGamePlayer2Games ?? 0)
+                        : nil,
+                    completedGamePlayer1Games: completedGamePlayer1Games,
+                    completedGamePlayer2Games: completedGamePlayer2Games
                 ),
                 createdAt: ISO8601DateFormatter().string(from: action.createdAt),
                 summary: summary
             )
         )
+    }
+
+    private static func tennisPointLabels(
+        player1: Int,
+        player2: Int,
+        isTieBreak: Bool
+    ) -> (String, String) {
+        if isTieBreak {
+            return (String(player1), String(player2))
+        }
+        if player1 >= 3 && player2 >= 3 {
+            if player1 == player2 { return ("40", "40") }
+            return player1 > player2 ? ("Ad", "40") : ("40", "Ad")
+        }
+        let labels = [0: "0", 1: "15", 2: "30", 3: "40"]
+        return (labels[player1] ?? "40", labels[player2] ?? "40")
     }
 
 }

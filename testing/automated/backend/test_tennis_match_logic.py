@@ -47,6 +47,31 @@ def test_advantage_deuce_requires_two_clear_points():
     assert match["state"]["player2_score_label"] == "40"
 
 
+def test_point_event_preserves_point_context_and_marks_regular_game_boundary():
+    match = make_match(
+        player1_score=3,
+        player2_score=0,
+        current_server_side="player1",
+        current_receiver_side="player2",
+        service_side="Left",
+    )
+    match, transition = point(match, "player1")
+
+    payload = transition["payload"]
+    assert payload["point_server_side"] == "player1"
+    assert payload["point_receiver_side"] == "player2"
+    assert payload["point_service_side"] == "Left"
+    assert payload["point_player1_score"] == 4
+    assert payload["point_player2_score"] == 0
+    assert payload["tennis_game_completed"] is True
+    assert payload["game_completed"] is True
+    assert payload["set_completed"] is False
+    assert payload["completed_game_number"] == 1
+    assert payload["completed_game_player1_games"] == 1
+    assert payload["completed_game_player2_games"] == 0
+    assert match["state"]["current_server_side"] == "player2"
+
+
 def test_no_ad_requires_receiver_choice_then_next_point_wins():
     match = make_match(
         player1_score=3,
@@ -135,9 +160,12 @@ def test_best_of_one_match_completes_when_first_set_is_won():
         player1_set_games=5,
         player2_set_games=0,
     )
-    match, _ = point(match, "player1")
+    match, transition = point(match, "player1")
     assert match["state"]["match_complete"] is True
     assert match["state"]["winner_name"] == "Alex"
+    assert transition["payload"]["tennis_game_completed"] is True
+    assert transition["payload"]["set_completed"] is True
+    assert transition["payload"]["game_completed"] is True
 
 
 def test_event_rebuild_without_last_point_restores_pre_point_state_for_undo():

@@ -13,6 +13,9 @@ Globals:
         SUPABASE_DB_URL: !Ref SupabaseDbUrl
         ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
         ORG_USER_SESSION_TTL_DAYS: !Ref OrgUserSessionTtlDays
+        APPLE_PURCHASES_ENABLED: !Ref ApplePurchasesEnabled
+        APPLE_PERSONAL_PLUS_MONTHLY_PRODUCT_ID: !Ref ApplePersonalPlusMonthlyProductId
+        APPLE_PERSONAL_PLUS_YEARLY_PRODUCT_ID: !Ref ApplePersonalPlusYearlyProductId
 
 Parameters:
   SupabaseDbUrl:
@@ -58,6 +61,18 @@ Parameters:
     Default: 30
     MinValue: 1
     MaxValue: 90
+  ApplePurchasesEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  ApplePersonalPlusMonthlyProductId:
+    Type: String
+    Default: com.hitnscore.personalplus.monthly
+  ApplePersonalPlusYearlyProductId:
+    Type: String
+    Default: com.hitnscore.personalplus.yearly
 
 Resources:
   RcktScoreHttpApi:
@@ -567,6 +582,18 @@ Resources:
           Properties:
             ApiId: !Ref RcktScoreHttpApi
             Path: /dashboard/{organization_id}
+            Method: GET
+
+  GetAppleSubscriptionContextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_apple_subscription_context/handler.lambda_handler
+      Events:
+        GetAppleSubscriptionContext:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/apple/context/{organization_id}
             Method: GET
 
   GetNotificationsFunction:

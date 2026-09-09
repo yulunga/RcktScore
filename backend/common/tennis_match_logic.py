@@ -1139,6 +1139,12 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     score_type = state["score_type"]
     current_server_side = state.get("current_server_side") or "player1"
     current_server_participant_id = state.get("current_server_participant_id") or _current_game_server_participant_id(state)
+    point_service_side = state.get("service_side") or "Right"
+    point_receiver_side = state.get("current_receiver_side") or _opponent(current_server_side)
+    point_receiver_participant_id = (
+        state.get("current_receiver_participant_id")
+        or _receiver_for_side(state, point_receiver_side, point_service_side)
+    )
     serve_order = _combined_serve_order(state)
     tiebreak_first_server_side = state.get("tiebreak_first_server_side")
     tiebreak_first_server_participant_id = state.get("tiebreak_first_server_participant_id")
@@ -1162,7 +1168,19 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     else:
         player2_score += 1
 
+    point_player1_score = player1_score
+    point_player2_score = player2_score
+    point_player1_score_label, point_player2_score_label = _tennis_score_labels(
+        point_player1_score,
+        point_player2_score,
+        is_tie_break,
+    )
+
     set_completed = False
+    tennis_game_completed = False
+    completed_game_number = None
+    completed_game_player1_games = None
+    completed_game_player2_games = None
     match_completed = False
     winner_side = None
     winner_name = None
@@ -1184,6 +1202,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         first_server_participant_id = tiebreak_first_server_participant_id or current_server_participant_id
         tie_break_target = 10 if is_match_tiebreak else 7
         if _is_tie_break_complete(player1_score, player2_score, target=tie_break_target):
+            tennis_game_completed = True
             set_completed = True
             winner_side = _winner_side(player1_score, player2_score)
             if is_match_tiebreak:
@@ -1202,6 +1221,9 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 else:
                     player2_set_games += 1
                     player2_sets_won += 1
+            completed_game_number = player1_set_games + player2_set_games
+            completed_game_player1_games = player1_set_games
+            completed_game_player2_games = player2_set_games
             winner_name = _player_name(match, winner_side)
             set_result = {
                 "game_number": current_set_number,
@@ -1241,12 +1263,17 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
             next_server_side = _participant_side(state, next_server_participant_id) or _next_tie_break_server(first_server_side, player1_score, player2_score)
     else:
         if _is_regular_game_complete(player1_score, player2_score, no_ad_scoring=no_ad_scoring):
+            tennis_game_completed = True
             next_no_ad_deciding_side = None
             game_winner_side = _winner_side(player1_score, player2_score)
             if game_winner_side == "player1":
                 player1_set_games += 1
             else:
                 player2_set_games += 1
+
+            completed_game_number = player1_set_games + player2_set_games
+            completed_game_player1_games = player1_set_games
+            completed_game_player2_games = player2_set_games
 
             if _is_set_complete(player1_set_games, player2_set_games, score_type):
                 set_completed = True
@@ -1358,8 +1385,22 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "serve_order": serve_order,
         "player1_score_label": player1_score_label,
         "player2_score_label": player2_score_label,
+        "point_server_side": current_server_side,
+        "point_server_participant_id": current_server_participant_id,
+        "point_receiver_side": point_receiver_side,
+        "point_receiver_participant_id": point_receiver_participant_id,
+        "point_service_side": point_service_side,
+        "point_player1_score": point_player1_score,
+        "point_player2_score": point_player2_score,
+        "point_player1_score_label": point_player1_score_label,
+        "point_player2_score_label": point_player2_score_label,
+        "tennis_game_completed": tennis_game_completed,
+        "set_completed": set_completed,
+        "completed_game_number": completed_game_number,
+        "completed_game_player1_games": completed_game_player1_games,
+        "completed_game_player2_games": completed_game_player2_games,
         "score_display_mode": "tennis",
-        "game_completed": set_completed and not match_completed,
+        "game_completed": tennis_game_completed,
         "game_result": set_result,
         "match_completed": match_completed,
         "winner_side": winner_side if match_completed else None,

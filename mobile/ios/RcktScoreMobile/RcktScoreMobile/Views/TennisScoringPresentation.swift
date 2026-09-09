@@ -12,6 +12,7 @@ struct TennisScoringPresentation: View {
     let onChooseReceiverCourt: (String) -> Void
 
     private let brandBlue = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    private let brandPink = Color(red: 235 / 255, green: 77 / 255, blue: 159 / 255)
     private let activeGreen = Color(red: 82 / 255, green: 205 / 255, blue: 120 / 255)
     private let navy = Color(red: 28 / 255, green: 61 / 255, blue: 99 / 255)
 
@@ -21,6 +22,13 @@ struct TennisScoringPresentation: View {
             && state.player1Score == 3
             && state.player2Score == 3
             && state.noAdDecidingSide == nil
+    }
+
+    private var pointEvents: [MatchEvent] {
+        state.events.filter {
+            ($0.eventType == "score_point" || $0.eventType == "stroke")
+                && ($0.payload?.scorer ?? $0.payload?.playerSide) != nil
+        }
     }
 
     var body: some View {
@@ -73,12 +81,121 @@ struct TennisScoringPresentation: View {
             .foregroundStyle(.secondary)
             .padding(.horizontal, compact ? 12 : 18)
 
+            if !pointEvents.isEmpty {
+                pointTimeline
+            }
+
             if requiresReceiverChoice {
                 receiverChoice
                     .transition(.scale.combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: requiresReceiverChoice)
+    }
+
+    private var pointTimeline: some View {
+        VStack(spacing: 6) {
+            HStack {
+                Text(match.player1Name)
+                Spacer()
+                Text("Point timeline")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(match.player2Name)
+            }
+            .font(.caption2.weight(.bold))
+
+            Divider()
+
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 6) {
+                        ForEach(pointEvents) { event in
+                            timelinePoint(event)
+                                .id(event.id)
+
+                            if let payload = event.payload,
+                               payload.tennisGameCompleted == true {
+                                gameDivider(payload)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onAppear {
+                    if let lastID = pointEvents.last?.id {
+                        proxy.scrollTo(lastID, anchor: .bottom)
+                    }
+                }
+                .onChange(of: pointEvents.count) {
+                    if let lastID = pointEvents.last?.id {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            proxy.scrollTo(lastID, anchor: .bottom)
+                        }
+                    }
+                }
+            }
+            .frame(height: landscapeTablet ? 220 : (compact ? 120 : 150))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, compact ? 8 : 12)
+        .accessibilityIdentifier("tennis.pointTimeline")
+    }
+
+    private func timelinePoint(_ event: MatchEvent) -> some View {
+        let payload = event.payload
+        let scorer = payload?.scorer ?? payload?.playerSide ?? "player1"
+        let wonOnServe = payload?.pointServerSide.map { $0 == scorer }
+        let role = wonOnServe.map { $0 ? "Serve" : "Return" } ?? "Point"
+        let court = payload?.pointServiceSide.map { $0.lowercased() == "right" ? "Deuce" : "Ad" }
+        let detail = [role, court].compactMap { $0 }.joined(separator: " · ")
+        let score = scorer == "player1"
+            ? (payload?.pointPlayer1ScoreLabel ?? payload?.player1ScoreLabel ?? "•")
+            : (payload?.pointPlayer2ScoreLabel ?? payload?.player2ScoreLabel ?? "•")
+
+        return HStack(spacing: 8) {
+            timelineMarker(score, visible: scorer == "player1")
+            Text(detail)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+            timelineMarker(score, visible: scorer == "player2")
+        }
+    }
+
+    private func timelineMarker(_ score: String, visible: Bool) -> some View {
+        Text(visible ? score : "")
+            .font(.caption.weight(.bold))
+            .frame(width: 44, height: 28)
+            .background(visible ? brandPink.opacity(0.14) : Color.clear)
+            .foregroundStyle(brandPink)
+            .clipShape(Capsule())
+    }
+
+    private func gameDivider(_ payload: MatchEventPayload) -> some View {
+        let game = payload.completedGameNumber.map { "Game \($0)" } ?? "Game"
+        let score: String?
+        if let player1Games = payload.completedGamePlayer1Games,
+           let player2Games = payload.completedGamePlayer2Games {
+            score = "\(player1Games)–\(player2Games)"
+        } else {
+            score = nil
+        }
+        let label = [game, score].compactMap { $0 }.joined(separator: " · ")
+
+        return HStack(spacing: 8) {
+            Rectangle().fill(brandPink.opacity(0.65)).frame(height: 2)
+            Text(label)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(brandPink)
+                .fixedSize()
+            Rectangle().fill(brandPink.opacity(0.65)).frame(height: 2)
+        }
+        .padding(.vertical, 2)
+        .accessibilityLabel("\(label) completed")
     }
 
     private var formatBanner: some View {

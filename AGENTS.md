@@ -58,6 +58,7 @@ What is real and implemented:
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
 - native offline replay preserves actions added while an earlier request is still synchronising and reports the underlying API or network error when an online replay cannot complete
 - native tennis scoring is isolated in `TennisScoringReducer.swift` and `TennisScoringPresentation.swift`; shared match code retains loading, timers, networking, and offline queue plumbing
+- native tennis scoring includes a point timeline with explicit game dividers; new backend/offline tennis point events preserve the point-time server, receiver, Deuce/Ad court, score and game/set boundary for accurate future serve/return statistics
 - mobile scoring actions use client-generated UUIDs and backend `match_action_receipts` so reconnect retries cannot apply the same action twice
 - organisation-user sessions now carry a server expiry timestamp; the native app discards expired cached sessions and supports Face ID or Touch ID for an unexpired session saved on that device
 - the native dashboard replaces its notification bell with an offline indicator while disconnected; online, the bell opens the persisted notification inbox and highlights unread messages in yellow until explicitly marked read
@@ -66,6 +67,7 @@ What is real and implemented:
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 100 and receives performance analytics
 - native iOS has a debug-safe StoreKit 2 purchase service for the configured monthly and yearly Personal Plus products, including local product/price loading, verified test purchases, transaction updates, foreground/current-entitlement refresh, restore purchases, and Apple's manage-subscriptions sheet; these neutral purchase choices expand from the Personal Plus plan for 20 seconds, while the displayed current tier remains authoritative from the latest backend dashboard/settings plan
+- an authenticated Apple purchase-context endpoint now issues and returns a stable UUID owned by each personal organisation; migration `025_apple_subscription_account_identity.sql` backfills existing personal accounts and creates the entitlement-audit foundation
 - native Subscription links for logged-in Club Essentials and Club Pro enquiries, capturing full club contact details in the root-admin queue and sending requester/admin acknowledgement emails
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
 - root-admin UI and supporting backend functions, including system-wide match listing plus root-admin archive/delete controls
@@ -80,8 +82,9 @@ What is still partial or risky:
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting views
 - notifications currently use inbox polling; APNs push delivery and background notification badges are not implemented yet
-- App Store subscription persistence tables exist, but StoreKit purchase, Apple server verification, App Store Server Notifications, restore purchases, and automatic plan changes are not connected yet
-- StoreKit purchasing is enabled only in Debug until backend JWS verification and server-issued `appAccountToken` binding are connected; a local test purchase intentionally does not update `personal_plan`
+- App Store subscription persistence and account-token foundations exist, but iOS purchase-context integration, Apple server verification, App Store Server Notifications, reconciliation, subscription admin activity, and automatic plan changes are not connected yet
+- StoreKit purchasing is enabled only in Debug until backend JWS verification is connected; a local test purchase intentionally does not update `personal_plan`
+- the production Apple subscription architecture and release gates are documented in `docs/apple-subscription-production.md`; the implementation remains incomplete until its endpoint, notification, reconciliation, admin and audit checklists pass
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
 - offline behavior remains intentionally scoped: new match creation, scheduled-match activation, historic data, settings changes, and matches not previously opened on that device still require connectivity
 - there is no documented iOS CI/archive/release pipeline in the repo yet

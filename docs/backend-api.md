@@ -352,9 +352,12 @@ Current behavior:
 
 - iOS can load and locally test `com.hitnscore.personalplus.monthly` and `com.hitnscore.personalplus.yearly` through StoreKit 2
 - the native subscription screen refreshes StoreKit current entitlements when it opens, when the app returns active, after transaction updates, and after closing subscription management, but the current account tier is derived from the latest backend dashboard/settings `organization.plan`; a local StoreKit transaction is not allowed to override that server tier
-- there is not yet a backend account-token, signed-transaction verification, subscription-status, or App Store Server Notifications endpoint
+- `GET /subscriptions/apple/context/{organization_id}` now requires an organisation-user bearer session, verifies that the caller is the personal-account owner, and returns that account's stable server-issued `appAccountToken`, configured monthly/yearly product IDs, current plan, and purchase-enabled flag
+- migration `025_apple_subscription_account_identity.sql` backfills the stable token for personal accounts and creates the append-only entitlement-change audit structure
+- there is not yet a signed-transaction verification, subscription-status, reconciliation, or App Store Server Notifications endpoint
 - consequently, StoreKit purchase controls are Debug-only and local verified transactions do not change `SkwshOrgSettings.plan`
 - production activation must verify Apple's signed JWS and bind its `appAccountToken` to the authenticated personal organisation before granting Personal Plus
+- the complete production architecture, lifecycle mapping, configuration gates and test checklist are maintained in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md)
 
 ### Organisation settings
 
@@ -473,6 +476,7 @@ Current behavior:
   - `5`
 - squash/racketball action types: `let`, `match_settings`, `stroke`, `server`, `serve_side`, `timer`
 - tennis action types: `match_settings`, `receiver_choice`, `server`, `timer`
+- new tennis point events preserve point-time fields separately from the next-point state: `point_server_side`, `point_server_participant_id`, `point_receiver_side`, `point_receiver_participant_id`, `point_service_side`, point score/labels, `tennis_game_completed`, `set_completed`, and completed-game number/score. `game_completed` now marks every completed tennis game rather than only a completed set
 - migration `021_tennis_scoring_formats.sql` adds the two persisted tennis format flags
 
 ### Interest requests and feedback
