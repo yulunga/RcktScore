@@ -6,9 +6,11 @@ import pytest
 
 from common.apple_purchase_verification import VerifiedApplePurchase
 from common.apple_subscription_lifecycle import (
+    EXPIRY_RECONCILIATION_FALLBACK_DELAY,
     _derive_status,
     _entitled,
     apply_lifecycle_state,
+    expire_elapsed_entitlements,
     normalize_renewal_info,
 )
 
@@ -68,6 +70,16 @@ def test_renewal_remains_active_and_entitled():
     purchase = _purchase()
     renewal = _renewal()
     status = _derive_status("DID_RENEW", None, 1, purchase, renewal, NOW)
+    assert status == "active"
+    assert _entitled(status, purchase, renewal, NOW) is True
+
+
+def test_verified_active_status_remains_entitled_during_transaction_delivery_window():
+    purchase = _purchase(expires_at=NOW - timedelta(minutes=2))
+    renewal = _renewal()
+
+    status = _derive_status("apple_status_reconciliation", None, 1, purchase, renewal, NOW)
+
     assert status == "active"
     assert _entitled(status, purchase, renewal, NOW) is True
 
@@ -185,3 +197,94 @@ def test_out_of_order_notification_cannot_replace_newer_state():
     assert result["stale"] is True
     assert result["plan_after"] == "personal_plus"
     assert not any(query.startswith("UPDATE") or query.startswith("INSERT") for query in connection.executions)
+
+
+class _ExpiryCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.rows = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def execute(self, query, params):
+        normalized = " ".join(query.split())
+        self.connection.executions.append((normalized, params))
+        if normalized.startswith("SELECT s.id"):
+            self.rows = (
+                [self.connection.subscription]
+                if self.connection.subscription["expires_at"] <= params["expiry_cutoff"]
+                else []
+            )
+        elif normalized.startswith("UPDATE app_store_subscriptions"):
+            self.connection.subscription_updates += 1
+        elif normalized.startswith('UPDATE "SkwshOrgSettings"'):
+            self.connection.plan_updates += 1
+        elif normalized.startswith("INSERT INTO subscription_entitlement_audit"):
+            self.connection.audit_inserts += 1
+
+    def fetchall(self):
+        return self.rows
+
+
+class _ExpiryConnection:
+    def __init__(self, expires_at):
+        self.subscription = {
+            "id": 7,
+            "organization_id": 50007,
+            "username": "testb@hitnscore.com",
+            "app_account_token": str(uuid4()),
+            "original_transaction_id": "original-1",
+            "latest_transaction_id": "transaction-1",
+            "status": "active",
+            "expires_at": expires_at,
+            "grace_period_expires_at": None,
+            "plan": "personal_plus",
+        }
+        self.executions = []
+        self.subscription_updates = 0
+        self.plan_updates = 0
+        self.audit_inserts = 0
+        self.commits = 0
+
+    def cursor(self):
+        return _ExpiryCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+
+def test_expiry_worker_defers_recently_elapsed_subscription_for_apple_delivery():
+    connection = _ExpiryConnection(NOW - timedelta(minutes=2))
+
+    expired = expire_elapsed_entitlements(connection, now=NOW)
+
+    assert expired == 0
+    assert connection.subscription_updates == 0
+    assert connection.plan_updates == 0
+    assert connection.audit_inserts == 0
+    select_params = connection.executions[0][1]
+    assert select_params["expiry_cutoff"] == NOW - EXPIRY_RECONCILIATION_FALLBACK_DELAY
+
+
+def test_expiry_worker_downgrades_once_after_reconciliation_window_elapses():
+    connection = _ExpiryConnection(
+        NOW - EXPIRY_RECONCILIATION_FALLBACK_DELAY - timedelta(seconds=1)
+    )
+
+    expired = expire_elapsed_entitlements(connection, now=NOW)
+
+    assert expired == 1
+    assert connection.subscription_updates == 1
+    assert connection.plan_updates == 1
+    assert connection.audit_inserts == 1
+    audit_query, audit_params = next(
+        execution
+        for execution in connection.executions
+        if execution[0].startswith("INSERT INTO subscription_entitlement_audit")
+    )
+    assert "expiry_deadline_elapsed_after_reconciliation_window" in audit_query
+    assert '"fallback_delay_seconds": 900' in audit_params["metadata"]

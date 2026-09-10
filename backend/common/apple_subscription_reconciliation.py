@@ -104,9 +104,9 @@ def _record_reconciliation_failure(connection, subscription_id, message, now, re
 
 def reconcile_subscriptions(connection, *, now=None, batch_size=DEFAULT_BATCH_SIZE):
     effective_now = now or datetime.now(timezone.utc)
-    expired = expire_elapsed_entitlements(connection, now=effective_now)
     credentials = _server_api_credentials()
     if credentials is None:
+        expired = expire_elapsed_entitlements(connection, now=effective_now)
         return {
             "expired": expired,
             "reconciled": 0,
@@ -122,7 +122,23 @@ def reconcile_subscriptions(connection, *, now=None, batch_size=DEFAULT_BATCH_SI
             FROM app_store_subscriptions
             WHERE next_reconciliation_at IS NULL
                OR next_reconciliation_at <= %(now)s
-            ORDER BY COALESCE(next_reconciliation_at, '-infinity'::timestamptz), id
+               OR (
+                    status = 'active'
+                    AND expires_at <= %(now)s
+                  )
+               OR (
+                    status IN ('grace_period', 'billing_retry')
+                    AND COALESCE(grace_period_expires_at, expires_at) <= %(now)s
+                  )
+            ORDER BY
+                CASE
+                    WHEN status = 'active' AND expires_at <= %(now)s THEN 0
+                    WHEN status IN ('grace_period', 'billing_retry')
+                         AND COALESCE(grace_period_expires_at, expires_at) <= %(now)s THEN 0
+                    ELSE 1
+                END,
+                COALESCE(next_reconciliation_at, '-infinity'::timestamptz),
+                id
             LIMIT %(limit)s
             """,
             {"now": effective_now, "limit": int(batch_size)},
@@ -185,4 +201,8 @@ def reconcile_subscriptions(connection, *, now=None, batch_size=DEFAULT_BATCH_SI
             )
             failed += 1
 
+    # Apple is queried first for every elapsed row in the batch. This local
+    # deadline is a bounded fallback for missed notifications plus an
+    # unavailable/empty Server API response, not the primary renewal decision.
+    expired = expire_elapsed_entitlements(connection, now=effective_now)
     return {"expired": expired, "reconciled": reconciled, "failed": failed}

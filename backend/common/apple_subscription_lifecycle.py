@@ -20,6 +20,7 @@ from common.apple_subscription_logic import _configured_product_ids, _normalize_
 
 APPLE_NOTIFICATION_MAX_LENGTH = 262_144
 RECONCILIATION_SUCCESS_INTERVAL = timedelta(hours=6)
+EXPIRY_RECONCILIATION_FALLBACK_DELAY = timedelta(minutes=15)
 STATUS_BY_APPLE_VALUE = {
     1: "active",
     2: "expired",
@@ -362,7 +363,11 @@ def _entitled(status, purchase, renewal, now):
             and renewal.grace_period_expires_at > now
         )
     if status == "active":
-        return purchase.expires_at > now
+        # A verified App Store Server API status is authoritative. Around a
+        # renewal boundary Apple can still return the prior signed transaction
+        # while reporting the subscription active; the expiry worker applies
+        # the bounded fallback if that state remains unresolved.
+        return True
     return False
 
 
@@ -823,8 +828,22 @@ def process_notification(connection, signed_payload, *, now=None):
     return {**result, "notification_uuid": notification.notification_uuid, "duplicate": False}
 
 
-def expire_elapsed_entitlements(connection, *, now=None):
+def expire_elapsed_entitlements(
+    connection,
+    *,
+    now=None,
+    fallback_delay=EXPIRY_RECONCILIATION_FALLBACK_DELAY,
+):
+    """Expire locally elapsed access only after Apple had a delivery window.
+
+    The reconciliation worker calls Apple before this fallback. App Store
+    renewal notifications are asynchronous and can arrive shortly after the
+    transaction's previous expiry, especially in Sandbox. The delay prevents
+    a temporary Plus -> Free -> Plus transition while still bounding access if
+    both notifications and Server API reconciliation remain unavailable.
+    """
     effective_now = now or datetime.now(timezone.utc)
+    expiry_cutoff = effective_now - fallback_delay
     expired_count = 0
     with connection.cursor() as cursor:
         cursor.execute(
@@ -837,15 +856,15 @@ def expire_elapsed_entitlements(connection, *, now=None):
             JOIN "SkwshOrgSettings" AS o ON o.id = s.organization_id
             WHERE (
                     s.status = 'active'
-                    AND s.expires_at <= %(now)s
+                    AND s.expires_at <= %(expiry_cutoff)s
                   )
                OR (
                     s.status IN ('grace_period', 'billing_retry')
-                    AND COALESCE(s.grace_period_expires_at, s.expires_at) <= %(now)s
+                    AND COALESCE(s.grace_period_expires_at, s.expires_at) <= %(expiry_cutoff)s
                   )
             FOR UPDATE OF s, o
             """,
-            {"now": effective_now},
+            {"now": effective_now, "expiry_cutoff": expiry_cutoff},
         )
         rows = cursor.fetchall()
         for row in rows:
@@ -880,7 +899,7 @@ def expire_elapsed_entitlements(connection, *, now=None):
                     ) VALUES (
                         %(organization_id)s, %(username)s, 'personal_plus',
                         'personal_free', 'reconciliation',
-                        'verified_expiry_deadline_elapsed', %(now)s,
+                        'expiry_deadline_elapsed_after_reconciliation_window', %(now)s,
                         %(app_account_token)s, %(original_transaction_id)s,
                         %(transaction_id)s, 'system',
                         'subscription_expiry_worker', %(metadata)s::jsonb
@@ -897,6 +916,7 @@ def expire_elapsed_entitlements(connection, *, now=None):
                             {
                                 "previous_status": row["status"],
                                 "expires_at": row["expires_at"].isoformat(),
+                                "fallback_delay_seconds": int(fallback_delay.total_seconds()),
                                 "grace_period_expires_at": (
                                     row["grace_period_expires_at"].isoformat()
                                     if row.get("grace_period_expires_at")

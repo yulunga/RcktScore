@@ -128,8 +128,11 @@ Manager, never in the migration, SAM parameters, source control or Lambda logs.
 
 ## Reconciliation and operations
 
-- The EventBridge Scheduler runs hourly. It enforces locally known expiry/grace
-  deadlines even when Apple is unavailable, then reconciles due subscriptions.
+- The EventBridge Scheduler runs hourly. It prioritises elapsed active/grace/retry
+  subscriptions and reconciles them with Apple before changing entitlement. A
+  15-minute delivery/reconciliation window prevents delayed renewal notifications
+  from producing temporary Plus-to-Free-to-Plus changes; a local fallback then
+  enforces unresolved expiry/grace deadlines even when Apple is unavailable.
 - Call `Get All Subscription Statuses`; use transaction/refund history when the
   status is ambiguous. Apple also provides notification history for missed
   deliveries. See the [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi).

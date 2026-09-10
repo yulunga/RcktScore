@@ -1107,6 +1107,11 @@ struct DashboardView: View {
             guard !isPresented else { return }
             Task {
                 await container.purchaseService.refreshCurrentEntitlements()
+                // Apple cancellation normally changes renewal intent first and
+                // leaves access active until the paid period expires. Reload
+                // the server-authoritative plan whenever the management sheet
+                // closes so an expiry or revocation is reflected immediately.
+                await loadDashboard()
             }
         }
         .onDisappear {
@@ -3498,6 +3503,16 @@ struct DashboardView: View {
                     "scheduled=\(dashboard.scheduledMatches.count) " +
                     "recent=\(dashboard.recentMatches.count)"
                 )
+            }
+        } catch is CancellationError {
+            await MainActor.run {
+                // SwiftUI can cancel an in-flight refresh when the gesture or
+                // containing view ends. That is not a failed dashboard fetch.
+                isLoading = false
+            }
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            await MainActor.run {
+                isLoading = false
             }
         } catch {
             await MainActor.run {
