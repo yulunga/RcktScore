@@ -284,6 +284,7 @@ Common symptoms:
 - `Ping Us` returns `FEEDBACK_DELIVERY_FAILED` because SES rejected or could not accept the message
 - personal signup returns `PERSONAL_SIGNUP_CONFIGURATION_ERROR` when the password-setup URL is not configured
 - personal signup creates a pending owner membership until the emailed password is chosen; this is email verification, not manual root approval
+- root admin can manually verify an unverified account from **User Accounts → user profile → Profile**; this validates a matching personal registration and approves pending memberships for that email, but does not create a password, so use the separate Change Password control when a test account still needs credentials
 - personal signup returning `REGISTRATION_FAILED` with a `SkwshOrgSettings_interest_request_id_fkey` error indicates migration `017_platform_enabled_sports.sql` is missing and the old optional-table fallback rolled back the registration insert; apply migration 017 and deploy the current transaction-safe fallback
 - club requests remain pending enquiries and do not create accounts automatically
 - logged-in subscription enquiries require migration `022_club_subscription_enquiries.sql`; if the extended club fields fail to store, apply that migration before deploying the updated `register_interest` and root-admin interest-request functions

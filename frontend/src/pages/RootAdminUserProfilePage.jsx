@@ -11,6 +11,7 @@ import {
   getRootAdminUserProfile,
   updateRootAdminPersonalAccount,
   updateRootAdminUserPassword,
+  verifyRootAdminUserEmail,
 } from "../services/api";
 
 const PLAN_LABELS = {
@@ -173,6 +174,15 @@ export default function RootAdminUserProfilePage() {
     }
   }
 
+  async function handleVerifyEmail() {
+    if (!window.confirm(`Manually verify ${user.username}? This also approves any pending memberships attached to this email address.`)) return;
+    await runMutation(
+      "verify-email",
+      () => verifyRootAdminUserEmail(userId),
+      "Email verified and pending memberships approved.",
+    );
+  }
+
   const user = profile?.user || {};
   const activity = profile?.activity || {};
   const memberships = profile?.memberships || [];
@@ -217,6 +227,26 @@ export default function RootAdminUserProfilePage() {
                 <div><strong>Date Registered</strong><span>{formatDateTime(user.registered_at)}</span></div>
                 <div><strong>Last Activity</strong><span>{formatDateTime(user.last_activity_at)}</span></div>
               </div>
+              <section className={`root-admin-email-verification${user.email_verified ? " verified" : " unverified"}`}>
+                <div className="stack root-admin-email-verification-copy">
+                  <div className="root-admin-section-header">
+                    <h3>Email Verification</h3>
+                    <span className={`status-pill${user.email_verified ? "" : " warning"}`}>
+                      {user.email_verified ? "Verified" : "Not Verified"}
+                    </span>
+                  </div>
+                  <p className="helper-text">
+                    {user.email_verified
+                      ? `This email address is verified${user.email_verified_at ? ` as of ${formatDateTime(user.email_verified_at)}` : ""}.`
+                      : "This user has not completed email verification. Manual verification approves pending memberships for this email but does not set a password."}
+                  </p>
+                </div>
+                {!user.email_verified ? (
+                  <button disabled={savingKey === "verify-email"} type="button" onClick={handleVerifyEmail}>
+                    {savingKey === "verify-email" ? "Verifying..." : "Manually Verify Email"}
+                  </button>
+                ) : null}
+              </section>
               <form className="stack root-admin-password-form" onSubmit={handlePasswordChange}>
                 <div className="panel-heading">
                   <h3>Change Password</h3>

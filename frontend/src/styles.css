@@ -2735,6 +2735,39 @@ textarea {
   border-top: 1px solid #d9e2ec;
 }
 
+.root-admin-email-verification {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 18px;
+  border: 1px solid #f0b7c9;
+  border-radius: 16px;
+  background: #fff7fa;
+}
+
+.root-admin-email-verification.verified {
+  border-color: #9edbb4;
+  background: #f2fbf5;
+}
+
+.root-admin-email-verification-copy {
+  flex: 1;
+  gap: 6px;
+}
+
+.root-admin-email-verification-copy .root-admin-section-header {
+  justify-content: flex-start;
+}
+
+@media (max-width: 680px) {
+  .root-admin-email-verification {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .root-admin-plan-option {
   background: #d9e2ec;
   color: #334e68;

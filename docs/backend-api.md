@@ -192,6 +192,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /root_admin/users/{user_id}/memberships`
 - `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
 - `PUT /root_admin/users/{user_id}/password`
+- `PUT /root_admin/users/{user_id}/verify-email`
 - `GET /root_admin/notifications`
 - `POST /root_admin/notifications`
 - `GET /root_admin/subscriptions?organization_id=...`
@@ -199,7 +200,8 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 Current root-admin user-account behavior:
 
 - the user directory deduplicates organisation membership rows by case-insensitive username, reports `email_verified` and `unverified_membership_count`, and can filter Personal Free, Personal Plus, club, or unverified users (`account_type=unverified`)
-- user profiles return registration/contact details, latest session activity, personal and club associations, activated sports, match totals by sport, and recent attributable matches
+- user profiles return registration/contact details, email-verification state, latest session activity, personal and club associations, activated sports, match totals by sport, and recent attributable matches
+- manual email verification is root-admin-only and idempotent; it marks a matching personal registration as validated and approves pending memberships for that username without setting or changing the user's password
 - club match activity is attributed using the recorded referee username; every match in a personal tenant is attributed to that tenant's owner
 - adding a club membership creates a pending invitation, preserving the club approval workflow
 - deleting a membership is limited to club associations; it does not delete the user's personal account

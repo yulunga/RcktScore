@@ -319,6 +319,12 @@ export function updateRootAdminUserPassword(userId, payload) {
   });
 }
 
+export function verifyRootAdminUserEmail(userId) {
+  return apiRequest(`/root_admin/users/${userId}/verify-email`, {
+    method: "PUT",
+  });
+}
+
 export function createRootAdminOrganization(payload) {
   return apiRequest("/root_admin/organizations", {
     method: "POST",

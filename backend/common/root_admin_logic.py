@@ -1196,6 +1196,18 @@ def _serialize_root_admin_user_summary(username, membership_rows):
         for row in personal_registration_rows
     )
     email_verified = memberships_approved and personal_email_verified
+    verification_dates = [
+        row.get("email_validated_at")
+        for row in personal_registration_rows
+        if row.get("email_validated_at")
+    ]
+    if not personal_registration_rows:
+        verification_dates = [
+            row.get("approved_at")
+            for row in ordered_rows
+            if row.get("approved_at")
+        ]
+    email_verified_at = max(verification_dates, default=None) if email_verified else None
 
     account_types = []
     if personal_plan == "personal_free":
@@ -1218,6 +1230,7 @@ def _serialize_root_admin_user_summary(username, membership_rows):
         "membership_count": len(ordered_rows),
         "account_types": account_types,
         "email_verified": email_verified,
+        "email_verified_at": email_verified_at.isoformat() if email_verified_at else None,
         "unverified_membership_count": sum(
             (row.get("approval_status") or "approved") != "approved"
             for row in ordered_rows
@@ -1337,10 +1350,16 @@ def get_root_admin_user_profile(connection, user_id):
                 o.organization_name,
                 o.org_type,
                 o.plan,
-                o.enabled_sports
+                o.enabled_sports,
+                o.interest_request_id,
+                i.email_validated,
+                i.email_validated_at,
+                i.approved_by
             FROM "SkwshOrgUsers" AS u
             INNER JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
+            LEFT JOIN "HitnScoreInterestRequests" AS i
+                ON i.id = o.interest_request_id
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY
                 CASE WHEN o.org_type = 'personal' THEN 0 ELSE 1 END,
@@ -1628,6 +1647,56 @@ def update_root_admin_user_password(connection, user_id, password):
     revoke_active_sessions_for_username(connection, username, reason="password_reset_by_root_admin")
     connection.commit()
     return {"updated": True, "username": username.lower()}
+
+
+def verify_root_admin_user_email(connection, user_id, verified_by):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        raise LookupError("User not found")
+
+    verified_at = _utcnow()
+    actor = (verified_by or "").strip() or "Root Admin"
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET approval_status = 'approved',
+                approved_at = COALESCE(approved_at, %(verified_at)s)
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+              AND approval_status = 'pending'
+            """,
+            {"username": username, "verified_at": verified_at},
+        )
+        approved_memberships = cursor.rowcount
+
+        cursor.execute(
+            """
+            UPDATE "HitnScoreInterestRequests"
+            SET email_validated = true,
+                email_validated_at = COALESCE(email_validated_at, %(verified_at)s),
+                updated_at = %(verified_at)s,
+                approved_by = %(verified_by)s
+            WHERE LOWER(email) = LOWER(%(username)s)
+              AND use_type = 'personal'
+              AND email_validated IS NOT TRUE
+            """,
+            {
+                "username": username,
+                "verified_at": verified_at,
+                "verified_by": actor,
+            },
+        )
+        validated_registrations = cursor.rowcount
+
+    connection.commit()
+    return {
+        "verified": True,
+        "username": username.lower(),
+        "verified_at": verified_at.isoformat(),
+        "verified_by": actor,
+        "approved_memberships": approved_memberships,
+        "validated_registrations": validated_registrations,
+    }
 
 
 def search_root_admin_organizations(connection, query):
