@@ -18,6 +18,7 @@ test("dashboard redirects anonymous users back to login @smoke", async ({ page }
 test("help page opens password reset section @smoke", async ({ page }) => {
   await page.goto("/help");
 
+  await page.getByRole("button", { name: "Reset Password" }).click();
   await expect(page.getByRole("heading", { name: "Password Reset" })).toBeVisible();
   await expect(page.getByLabel("Account email")).toBeVisible();
 });

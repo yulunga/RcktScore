@@ -2,6 +2,10 @@
 
 This area is for browser automation using Playwright.
 
+The executable tests and configuration live under `frontend/e2e/` and
+`frontend/playwright.config.cjs` so Node resolves the pinned frontend test
+dependency without machine-specific path settings.
+
 ## Why Playwright
 
 It matches the automated testing plan well because it can:
@@ -16,9 +20,12 @@ It matches the automated testing plan well because it can:
 From the `frontend/` folder:
 
 ```bash
-npm install -D @playwright/test
+npm ci
 npx playwright install
 ```
+
+`@playwright/test` is pinned in `frontend/package-lock.json`, so every developer
+and CI run uses the same test-runner version.
 
 Then start the frontend app in one terminal:
 
@@ -54,4 +61,3 @@ E2E_BASE_URL=https://your-staging-url npm run test:e2e:smoke
 - match creation flow
 - match scoring and undo
 - admin permission boundaries
-

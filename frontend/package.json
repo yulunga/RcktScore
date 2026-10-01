@@ -7,17 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test -c ../testing/automated/web/playwright.config.js",
-    "test:e2e:smoke": "playwright test -c ../testing/automated/web/playwright.config.js --grep @smoke",
-    "test:e2e:headed": "playwright test -c ../testing/automated/web/playwright.config.js --headed"
+    "test:e2e": "playwright test -c playwright.config.cjs",
+    "test:e2e:smoke": "playwright test -c playwright.config.cjs --grep @smoke",
+    "test:e2e:headed": "playwright test -c playwright.config.cjs --headed"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.1"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.1"
+    "vite": "^6.4.3"
   }
 }

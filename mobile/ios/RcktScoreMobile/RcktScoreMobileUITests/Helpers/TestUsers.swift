@@ -6,20 +6,54 @@ struct TestUser {
     let tier: String
 }
 
-let testUsers: [TestUser] = [
-    TestUser(
-        username: "testclubess@hitnscore.com",
-        password: "P4ssw0rd901!!",
-        tier: "Club Essentials"
-    ),
-    TestUser(
-        username: "testpersonal@hitnscore.com",
-        password: "TestPassword123",
-        tier: "Personal"
-    ),
-    TestUser(
-        username: "testpersonalplus@hitnscore.com",
-        password: "TestPassword123",
-        tier: "Personal+"
-    )
-]
+enum TestCredentialsError: LocalizedError {
+    case missingEnvironmentVariables([String])
+
+    var errorDescription: String? {
+        switch self {
+        case .missingEnvironmentVariables(let names):
+            return "Missing UI-test credentials: \(names.joined(separator: ", ")). See RcktScoreMobileUITests/README.md."
+        }
+    }
+}
+
+extension TestUser {
+    static func loadFromEnvironment(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> [TestUser] {
+        let definitions = [
+            (
+                username: "HITNSCORE_UI_TEST_CLUB_ESSENTIALS_USERNAME",
+                password: "HITNSCORE_UI_TEST_CLUB_ESSENTIALS_PASSWORD",
+                tier: "Club Essentials"
+            ),
+            (
+                username: "HITNSCORE_UI_TEST_PERSONAL_USERNAME",
+                password: "HITNSCORE_UI_TEST_PERSONAL_PASSWORD",
+                tier: "Personal"
+            ),
+            (
+                username: "HITNSCORE_UI_TEST_PERSONAL_PLUS_USERNAME",
+                password: "HITNSCORE_UI_TEST_PERSONAL_PLUS_PASSWORD",
+                tier: "Personal+"
+            )
+        ]
+
+        let requiredNames = definitions.flatMap { [$0.username, $0.password] }
+        let missingNames = requiredNames.filter {
+            environment[$0]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        }
+
+        guard missingNames.isEmpty else {
+            throw TestCredentialsError.missingEnvironmentVariables(missingNames)
+        }
+
+        return definitions.map {
+            TestUser(
+                username: environment[$0.username]!,
+                password: environment[$0.password]!,
+                tier: $0.tier
+            )
+        }
+    }
+}

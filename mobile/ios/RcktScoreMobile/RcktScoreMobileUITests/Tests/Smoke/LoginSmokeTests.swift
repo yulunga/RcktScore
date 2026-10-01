@@ -4,7 +4,7 @@ final class LoginSmokeTests: HitnScoreBaseUITest {
 
     func testLoginSmokeTest_AllSubscriptionLevels() throws {
 
-        for user in testUsers {
+        for user in try TestUser.loadFromEnvironment() {
 
             runSmokeTest(
                 user: user,
