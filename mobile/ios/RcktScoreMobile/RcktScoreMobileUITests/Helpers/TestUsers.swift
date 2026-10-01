@@ -21,6 +21,17 @@ extension TestUser {
     static func loadFromEnvironment(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> [TestUser] {
+        func value(for name: String) -> String? {
+            let directValue = environment[name]?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if directValue?.isEmpty == false {
+                return directValue
+            }
+
+            let runnerValue = environment["TEST_RUNNER_\(name)"]?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return runnerValue?.isEmpty == false ? runnerValue : nil
+        }
+
         let definitions = [
             (
                 username: "HITNSCORE_UI_TEST_CLUB_ESSENTIALS_USERNAME",
@@ -40,9 +51,7 @@ extension TestUser {
         ]
 
         let requiredNames = definitions.flatMap { [$0.username, $0.password] }
-        let missingNames = requiredNames.filter {
-            environment[$0]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
-        }
+        let missingNames = requiredNames.filter { value(for: $0) == nil }
 
         guard missingNames.isEmpty else {
             throw TestCredentialsError.missingEnvironmentVariables(missingNames)
@@ -50,8 +59,8 @@ extension TestUser {
 
         return definitions.map {
             TestUser(
-                username: environment[$0.username]!,
-                password: environment[$0.password]!,
+                username: value(for: $0.username)!,
+                password: value(for: $0.password)!,
                 tier: $0.tier
             )
         }

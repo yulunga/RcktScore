@@ -20,6 +20,8 @@ design/
 DerivedData/
 *.xcuserstate
 **/xcuserdata/
+*.local.xctestplan
+mobile/ios/RcktScoreMobile/RcktScoreMobile Local Tests.xctestplan
 
 # Local credentials and secret build configuration
 screens/ESP-Small-ExtLCD/include/app_config.local.h

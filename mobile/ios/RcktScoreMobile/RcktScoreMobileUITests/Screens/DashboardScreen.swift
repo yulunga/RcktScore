@@ -43,8 +43,26 @@ struct DashboardScreen {
         XCTAssertTrue(startNewMatchButton.waitForExistence(timeout: timeout))
     }
 
-    func openSettings() {
-        settingsTab.tap()
+    func openSettings(timeout: TimeInterval = 8) {
+        let profileMenu = app.buttons["settings.menu.profile"]
+
+        for _ in 0..<3 {
+            guard settingsTab.waitForExistence(timeout: timeout / 3) else {
+                continue
+            }
+
+            if settingsTab.isHittable {
+                settingsTab.tap()
+            } else {
+                settingsTab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+
+            if profileMenu.waitForExistence(timeout: timeout / 3) {
+                return
+            }
+        }
+
+        XCTFail("Unable to open Settings from the dashboard")
     }
 
     func openStartNewMatch() {

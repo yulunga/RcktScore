@@ -61,7 +61,7 @@ struct LoginScreen {
         focusAndType(in: passwordField, text: user.password)
 
         signInButton.tap()
-        resolveSessionConflictIfNeeded()
+        waitForLoginToComplete()
     }
 
     private func focusAndType(in element: XCUIElement, text: String) {
@@ -92,9 +92,24 @@ struct LoginScreen {
         }
     }
 
-    private func resolveSessionConflictIfNeeded(timeout: TimeInterval = 3) {
-        if logoutOtherMobileSessionButton.waitForExistence(timeout: timeout) {
-            logoutOtherMobileSessionButton.tap()
+    private func waitForLoginToComplete(timeout: TimeInterval = 20) {
+        let dashboardSettingsTab = app.buttons["dashboard.tab.settings"]
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if dashboardSettingsTab.exists {
+                return
+            }
+
+            if logoutOtherMobileSessionButton.exists {
+                logoutOtherMobileSessionButton.tap()
+                XCTAssertTrue(dashboardSettingsTab.waitForExistence(timeout: timeout))
+                return
+            }
+
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         }
+
+        XCTFail("Login did not reach the dashboard or present a session-conflict choice")
     }
 }
