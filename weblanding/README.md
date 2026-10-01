@@ -21,5 +21,8 @@ This split means changes in `frontend/` do not alter the landing page unless you
 ## Current landing content
 
 - Hero section
-- Login button in the top-right (links to `https://app.hitnscore.com/login`)
-- "Help me" section
+- Primary navigation for plans, help, sign in, and free registration
+- Personal Free, Personal Plus, Club Essentials, and Club Pro comparison page
+- Personal Plus performance-value section and club onboarding journey
+- Plan FAQ and separate player/club calls to action
+- Help and feedback page
