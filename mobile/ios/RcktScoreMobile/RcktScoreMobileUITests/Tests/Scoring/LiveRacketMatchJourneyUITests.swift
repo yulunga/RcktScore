@@ -14,6 +14,7 @@ final class LiveRacketMatchJourneyUITests: HitnScoreBaseUITest {
         let settings = SettingsScreen(app: app)
 
         login.login(user: user)
+        dismissPasswordSavePromptIfPresent()
         dashboard.verifyLoaded()
         visualCheckpoint("Live-01-Logged-In")
 

@@ -101,6 +101,9 @@ Error:
 
 ## 3. Personal Signup and Club-Enquiry Flow
 
+The end-to-end entry, email, activation, login and first-match paths are shown
+in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/new-user-onboarding-walkthrough.md).
+
 ### Frontend entry
 
 - [frontend/src/pages/LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)

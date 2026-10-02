@@ -151,6 +151,13 @@ method. Its activity log and twelve screenshot attachments provide the saved
 evidence. A green diamond/tick means the complete journey passed; a red failure
 shows the exact step and retains the screenshots captured before that point.
 
+The first successful sign-in on a fresh Simulator may display Apple's
+**Save Password** prompt over the dashboard. The test automatically selects
+**Not Now** before it opens **Start New Match**. If an older build of the test
+stops with `dashboard.startNewMatchButton` reported as not hittable, select
+**Not Now** manually, rebuild the UI-test target, and rerun the method. Do not
+select **Save Password** for shared test-account credentials.
+
 If Xcode still launches a background Simulator clone, use the command-line
 runner below. It explicitly disables parallel testing while using the selected
 Simulator destination.
