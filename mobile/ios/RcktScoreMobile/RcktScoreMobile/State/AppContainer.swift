@@ -23,7 +23,9 @@ final class AppContainer: ObservableObject {
         self.uiTestLaunchOptions = resolvedLaunchOptions
         self.apiClient = apiClient ?? APIClient()
         self.sessionStore = sessionStore ?? SessionStore(uiTestLaunchOptions: resolvedLaunchOptions)
-        self.networkMonitor = networkMonitor ?? NetworkMonitor()
+        self.networkMonitor = networkMonitor ?? NetworkMonitor(
+            forcedOnlineState: resolvedLaunchOptions.runsRacketServiceSideScenario ? false : nil
+        )
         self.offlineMatchStore = offlineMatchStore ?? OfflineMatchStore()
         self.purchaseService = purchaseService ?? StoreKitPurchaseService()
         self.purchaseService.configure(
@@ -90,6 +92,12 @@ final class AppContainer: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        if resolvedLaunchOptions.runsRacketServiceSideScenario {
+            let fixture = RacketServiceSideUITestFixture.make()
+            self.sessionStore.save(fixture.session)
+            self.offlineMatchStore.cache(fixture.match, session: fixture.session)
+        }
     }
 
     func logout() {

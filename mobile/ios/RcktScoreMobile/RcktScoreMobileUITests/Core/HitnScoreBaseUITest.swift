@@ -20,7 +20,7 @@ class HitnScoreBaseUITest: XCTestCase {
 
     // MARK: - Launching
 
-    func launchApp(lightMode: Bool = true) {
+    func launchApp(lightMode: Bool = true, scenario: String? = nil) {
         if let app, app.state != .notRunning {
             app.terminate()
         }
@@ -30,6 +30,10 @@ class HitnScoreBaseUITest: XCTestCase {
         app.launchArguments = ["UITEST_MODE"]
 
         app.launchEnvironment["RESET_STATE"] = "1"
+
+        if let scenario {
+            app.launchEnvironment["UITEST_SCENARIO"] = scenario
+        }
 
         if lightMode {
 

@@ -1,9 +1,16 @@
 import SwiftUI
 
 struct UITestLaunchOptions {
+    static let racketServiceSideScenario = "racket-service-side-timeline"
+
     let isEnabled: Bool
     let resetState: Bool
     let preferredColorScheme: ColorScheme?
+    let scenario: String?
+
+    var runsRacketServiceSideScenario: Bool {
+        isEnabled && scenario == Self.racketServiceSideScenario
+    }
 
     static var current: UITestLaunchOptions {
         let processInfo = ProcessInfo.processInfo
@@ -25,7 +32,8 @@ struct UITestLaunchOptions {
         return UITestLaunchOptions(
             isEnabled: isEnabled,
             resetState: resetState,
-            preferredColorScheme: preferredColorScheme
+            preferredColorScheme: preferredColorScheme,
+            scenario: environment["UITEST_SCENARIO"]
         )
     }
 

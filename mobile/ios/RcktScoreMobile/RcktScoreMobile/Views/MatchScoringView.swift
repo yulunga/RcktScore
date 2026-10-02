@@ -877,6 +877,7 @@ struct MatchScoringView: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                     playerHeaderStrip(
+                        side: "player1",
                         firstName: match.player1Name,
                         surname: match.player1Surname,
                         isServing: live?.currentServerSide == "player1",
@@ -887,6 +888,7 @@ struct MatchScoringView: View {
                     )
 
                     playerHeaderStrip(
+                        side: "player2",
                         firstName: match.player2Name,
                         surname: match.player2Surname,
                         isServing: live?.currentServerSide == "player2",
@@ -1393,6 +1395,9 @@ struct MatchScoringView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                         .id(entry.id)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityIdentifier("scoring.pointRail.\(entry.displaySide).\(entry.displayScore)")
+                        .accessibilityLabel("\(entry.displaySideLabel)\(entry.displayScore)")
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -1616,6 +1621,7 @@ struct MatchScoringView: View {
 
     @ViewBuilder
     private func playerHeaderStrip(
+        side: String,
         firstName: String,
         surname: String?,
         isServing: Bool,
@@ -1655,6 +1661,7 @@ struct MatchScoringView: View {
                     .buttonStyle(.plain)
                     .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
                     .opacity(canToggleCurrentServeSide ? 1 : 0.72)
+                    .accessibilityIdentifier("scoring.serveSide.\(side)")
                 } else {
                     Capsule()
                         .fill(Color.clear)

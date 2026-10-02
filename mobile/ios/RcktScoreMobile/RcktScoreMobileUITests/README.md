@@ -49,3 +49,30 @@ loader accepts both the Test Plan names and their prefixed command-line form.
 
 The test fails with a list of missing variable names when its credentials have
 not been configured.
+
+## Saved racket service-side regression
+
+`RacketServiceSideTimelineUITests` is a deterministic, credential-free
+Simulator test for the squash/racketball point-rail regression reported during
+release testing. It opens the real scoring screen with a local fixture at
+`R2`, changes the serving side to Left and verifies that the same marker becomes
+`L2` rather than creating a duplicate. It then awards the server another point
+and verifies that the rail contains `L2` followed by `R3`.
+
+Run it from the repository root with:
+
+```bash
+testing/automated/mobile/run-racket-service-side-ui-test.sh
+```
+
+The runner uses the latest installed iOS runtime for the iPhone 17 Pro by
+default and saves the full Xcode result bundle, including three permanent
+screenshots, to `/tmp/RcktScore-RacketServiceSide.xcresult`. Set
+`RCKTSCORE_UI_RESULT_PATH` to a new path for each retained run, or
+`RCKTSCORE_UI_DESTINATION` to another installed Simulator destination.
+
+The scenario forces the app offline and uses local fixture data. It does not
+need the six login variables, call the live API, or modify production data. In
+Xcode it appears under
+`RcktScoreMobileUITests/Tests/Scoring/RacketServiceSideTimelineUITests` and can
+be rerun with the test diamond beside the method.

@@ -7,7 +7,11 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if container.sessionStore.isAuthenticated {
+            if container.uiTestLaunchOptions.runsRacketServiceSideScenario {
+                NavigationStack {
+                    MatchScoringView(matchID: RacketServiceSideUITestFixture.matchID)
+                }
+            } else if container.sessionStore.isAuthenticated {
                 if container.sessionStore.requiresBiometricUnlock {
                     biometricUnlockView
                 } else {

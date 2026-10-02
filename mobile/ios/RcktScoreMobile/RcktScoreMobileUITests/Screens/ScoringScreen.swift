@@ -13,11 +13,19 @@ struct ScoringScreen {
     }
 
     var player1ScoreCard: XCUIElement {
-        app.otherElements["scoring.scoreCard.player1"]
+        app.buttons["scoring.scoreCard.player1"]
     }
 
     var player2ScoreCard: XCUIElement {
-        app.otherElements["scoring.scoreCard.player2"]
+        app.buttons["scoring.scoreCard.player2"]
+    }
+
+    var player2ServeSideButton: XCUIElement {
+        app.buttons["scoring.serveSide.player2"]
+    }
+
+    func pointRailEntry(side: String, score: Int) -> XCUIElement {
+        app.descendants(matching: .any)["scoring.pointRail.\(side).\(score)"]
     }
 
     var timerButton: XCUIElement {
