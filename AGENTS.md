@@ -54,6 +54,7 @@ What is real and implemented:
 - native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native squash/racketball scoring also selects its compact presentation by available width, keeps point rails and warm-up actions within phone bounds, and presents a dedicated completed-match summary when the final point is scored
+- native squash/racketball point rails reconcile a manual service-box change into the existing current-score marker, so changing `R2` to `L2` replaces the marker rather than appending a duplicate; automated mobile and backend scenarios cover service transfers, successive server points, undo-style rollback, handedness defaults, game boundaries and exhaustive six-point sequences
 - native scoring keeps light shirt colours readable with adaptive dark score text, distinguishes a running timer with a light-green control, and uses a pink-accented in-place action sheet with explicit player names for stroke and let choices
 - native iOS can reopen a previously loaded active match without connectivity, score squash/racketball or tennis locally, retain queued actions across app restarts, and replay them in order when connectivity returns
 - native offline replay preserves actions added while an earlier request is still synchronising and reports the underlying API or network error when an online replay cannot complete
@@ -200,4 +201,5 @@ Additional checked-in test commands:
 pytest -c testing/automated/backend/pytest.ini testing/automated/backend
 cd frontend && npm run test:e2e:smoke
 testing/automated/mobile/run-tennis-scenarios.sh
+testing/automated/mobile/run-racket-point-rail-scenarios.sh
 ```

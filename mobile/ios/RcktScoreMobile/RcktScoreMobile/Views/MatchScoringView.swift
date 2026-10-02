@@ -46,15 +46,6 @@ private struct MatchTimerSnapshot: Codable {
     let updatedAt: TimeInterval
 }
 
-private struct PointRailEntry: Identifiable {
-    let id: String
-    let serverSide: String?
-    let displaySide: String
-    let displaySideLabel: String
-    let displayScore: String
-    let isCurrentServe: Bool
-}
-
 private enum MatchActionSelection {
     case letAwarded
     case strokeAgainst
@@ -246,36 +237,41 @@ struct MatchScoringView: View {
             && timerSeconds > 0
     }
 
-    private var pointRailEntries: [PointRailEntry] {
+    private var pointRailEntries: [RacketPointRailEntry] {
         guard let match else { return [] }
         let currentGameNumber = live?.currentGameNumber ?? 1
-        let pointEvents = (live?.events ?? []).filter { event in
-            guard ["score_point", "stroke"].contains(event.eventType) else {
-                return false
+        let historyEntries = (live?.events ?? []).reduce(into: [RacketPointRailEntry]()) { entries, event in
+            if ["score_point", "stroke"].contains(event.eventType),
+               event.payload?.gameNumber == currentGameNumber {
+                let winnerSide = event.payload?.scorer ?? event.payload?.playerSide
+                let serverSide = event.payload?.currentServerSide ?? winnerSide
+                let serviceSideLabel = String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased()
+                let winnerScore: String
+
+                if winnerSide == "player1" {
+                    winnerScore = String(event.payload?.gameResult?.player1Score ?? event.payload?.player1Score ?? 0)
+                } else {
+                    winnerScore = String(event.payload?.gameResult?.player2Score ?? event.payload?.player2Score ?? 0)
+                }
+
+                entries.append(
+                    RacketPointRailEntry(
+                        id: event.id,
+                        serverSide: serverSide,
+                        displaySide: winnerSide ?? serverSide ?? "player1",
+                        displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
+                        displayScore: winnerScore,
+                        isCurrentServe: false
+                    )
+                )
+            } else if event.eventType == "serve_side" {
+                let side = event.payload?.side ?? event.payload?.serviceSide ?? "Right"
+                entries = RacketPointRailReducer.replacingLatestServiceSide(
+                    in: entries,
+                    sideLabel: String(side.prefix(1)).uppercased(),
+                    eventID: event.id
+                )
             }
-            return event.payload?.gameNumber == currentGameNumber
-        }
-
-        let historyEntries = pointEvents.map { event in
-            let winnerSide = event.payload?.scorer ?? event.payload?.playerSide
-            let serverSide = event.payload?.currentServerSide ?? winnerSide
-            let serviceSideLabel = String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased()
-            let winnerScore: String
-
-            if winnerSide == "player1" {
-                winnerScore = String(event.payload?.gameResult?.player1Score ?? event.payload?.player1Score ?? 0)
-            } else {
-                winnerScore = String(event.payload?.gameResult?.player2Score ?? event.payload?.player2Score ?? 0)
-            }
-
-            return PointRailEntry(
-                id: event.id,
-                serverSide: serverSide,
-                displaySide: winnerSide ?? serverSide ?? "player1",
-                displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
-                displayScore: winnerScore,
-                isCurrentServe: false
-            )
         }
 
         let currentScore: String
@@ -285,7 +281,7 @@ struct MatchScoringView: View {
             currentScore = String(live?.player1Score ?? 0)
         }
 
-        let currentServe = PointRailEntry(
+        let currentServe = RacketPointRailEntry(
             id: "current-serve-\(match.id)-\(live?.currentServerSide ?? "player1")-\(live?.serviceSide ?? "Right")",
             serverSide: live?.currentServerSide,
             displaySide: live?.currentServerSide ?? "player1",
@@ -294,14 +290,10 @@ struct MatchScoringView: View {
             isCurrentServe: true
         )
 
-        if let lastEntry = historyEntries.last,
-           lastEntry.serverSide == currentServe.serverSide,
-           lastEntry.displaySideLabel == currentServe.displaySideLabel,
-           lastEntry.displayScore == currentServe.displayScore {
-            return historyEntries
-        }
-
-        return historyEntries + [currentServe]
+        return RacketPointRailReducer.reconcile(
+            history: historyEntries,
+            currentServe: currentServe
+        )
     }
 
     private var tennisTeamOneParticipants: [TennisParticipant] {
@@ -1426,7 +1418,7 @@ struct MatchScoringView: View {
     }
     @ViewBuilder
     private func pointRailLane(
-        entry: PointRailEntry,
+        entry: RacketPointRailEntry,
         targetSide: String,
         laneWidth: CGFloat,
         compact: Bool,

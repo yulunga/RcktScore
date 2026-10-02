@@ -483,6 +483,7 @@ Current behavior:
   - `3`
   - `5`
 - squash/racketball action types: `let`, `match_settings`, `stroke`, `server`, `serve_side`, `timer`
+- squash/racketball scoring preserves the previous server while calculating the next service box: the same server alternates boxes, while a service transfer selects the receiving player's handedness-derived default. Legacy compact point events are replayed with the same rule.
 - tennis action types: `match_settings`, `receiver_choice`, `server`, `timer`
 - new tennis point events preserve point-time fields separately from the next-point state: `point_server_side`, `point_server_participant_id`, `point_receiver_side`, `point_receiver_participant_id`, `point_service_side`, point score/labels, `tennis_game_completed`, `set_completed`, and completed-game number/score. `game_completed` now marks every completed tennis game rather than only a completed set
 - migration `021_tennis_scoring_formats.sql` adds the two persisted tennis format flags

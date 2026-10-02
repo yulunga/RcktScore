@@ -310,14 +310,16 @@ def _build_state(match_row, event_rows):
                     state["winner_name"] = payload.get("winner_name")
             else:
                 scorer = payload.get("scorer") or payload.get("player_side")
+                previous_server_side = state.get("current_server_side")
+                previous_service_side = state.get("service_side")
                 if scorer == "player1":
                     state["player1_score"] += 1
                     state["current_server"] = match_row["player1_name"]
                     state["current_server_side"] = "player1"
                     state["service_side"] = _next_service_side_after_point(
                         match_row,
-                        state.get("current_server_side"),
-                        state.get("service_side"),
+                        previous_server_side,
+                        previous_service_side,
                         "player1",
                     )
                 elif scorer == "player2":
@@ -326,8 +328,8 @@ def _build_state(match_row, event_rows):
                     state["current_server_side"] = "player2"
                     state["service_side"] = _next_service_side_after_point(
                         match_row,
-                        state.get("current_server_side"),
-                        state.get("service_side"),
+                        previous_server_side,
+                        previous_service_side,
                         "player2",
                     )
 
