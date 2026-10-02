@@ -25,23 +25,52 @@ xcodebuild test -project mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj \
 
 The real credentials file is ignored by Git.
 
-For runs started inside Xcode, first use **Product > Scheme > Manage Schemes**
-to duplicate `RcktScoreMobile`, rename the duplicate to
-`RcktScoreMobile Local Tests`, and make sure **Shared** is unchecked.
+## Configure credentials in Xcode
 
-With that local scheme selected:
+For runs started inside Xcode, keep credentials in an unshared local scheme and
+test plan. Do not add them to the shared `RcktScoreMobile` scheme.
 
-1. Choose **Product > Scheme > Edit Test Plan**.
-2. When Xcode asks where to save it, use a name ending in
-   `.local.xctestplan`, such as `RcktScoreMobile Local Tests.local.xctestplan`.
-   This repository ignores that suffix.
-3. Open the test plan's **Configurations** tab.
-4. Under **Environment Variables**, add the six unprefixed variable names
-   listed above and their rotated values.
-5. Confirm `RcktScoreMobileUITests` is included in the test plan, then run
-   **Product > Test**.
+### Create the local scheme and test plan
 
-Never place passwords in the shared scheme or a committed test plan.
+1. Open `mobile/ios/RcktScoreMobile/RcktScoreMobile.xcodeproj` in Xcode.
+2. Choose **Product > Scheme > Manage Schemes**.
+3. Select `RcktScoreMobile`, click **Duplicate Scheme**, and name the copy
+   `RcktScoreMobile Local Tests`. The existing local scheme may instead appear
+   as `Local Test RcktScoreMobile`; either name is suitable.
+4. Make sure **Shared** is unchecked for the local scheme, select it from the
+   scheme picker in Xcode's top toolbar, and close the schemes window.
+5. Choose **Product > Test Plan > New Test Plan**. If a local test plan already
+   exists, choose **Product > Test Plan** and select it instead.
+6. Save a new plan with a name ending in `.local.xctestplan`, for example
+   `RcktScoreMobile Local Tests.local.xctestplan`. This suffix is ignored by
+   this repository.
+7. Open **Product > Scheme > Edit Scheme**, select **Test**, and confirm the
+   local test plan is selected and marked as the default plan.
+
+### Add the environment variables
+
+1. Choose **Product > Test Plan > Edit Test Plan**.
+2. Select the **Configurations** tab, then select **Test Scheme Action** in the
+   left-hand column.
+3. Expand **Arguments** and click the **Environment Variables** row.
+4. In the environment-variable table that appears, click the small **+**
+   directly below that table. Do not use the **+** in the Project Navigator,
+   Supported Destinations, or test-target list.
+5. Add the six variable names listed at the top of this document without a
+   `TEST_RUNNER_` prefix. Put the current rotated credential in the **Value**
+   column and ensure the checkbox beside every row is enabled.
+6. The live Paul-versus-Mark journey only consumes the two `PERSONAL_PLUS`
+   variables, but retaining all six lets the other login tests use the same
+   local plan.
+
+If the variable table is not visible, hide Xcode's debug area with
+**View > Debug Area > Hide Debug Area** (`Shift-Command-Y`) and enlarge the test
+plan editor. Selecting the **Environment Variables** row again should reveal
+the table and its own **+** button.
+
+Never place passwords in the shared scheme or a committed test plan. Do not
+share an `.xcresult` until it has been checked for launch diagnostics that may
+contain environment values.
 
 For command-line and CI runs, Xcode forwards variables into the test runner
 using the `TEST_RUNNER_` prefix used by the example environment file. The test
@@ -90,14 +119,41 @@ This test creates a real completed match in the test account. It deliberately
 fails before creation if the Personal Plus account already has an active match,
 so it never ends unrelated work automatically.
 
-To watch it in Xcode:
+### Run and watch the live journey in Xcode
 
-1. Rotate any credential that has appeared in a console or result-bundle log.
-2. Put the current Personal Plus username and password in the ignored local
-   test plan described above.
-3. Select the `Local Test RcktScoreMobile` scheme and an iPhone Simulator.
-4. Open `LiveRacketMatchJourneyUITests.swift` and click the test diamond beside
-   `testPersonalPlusCreatesScoresCompletesAndLogsOut`.
+1. Rotate any credential that has appeared in a console or result-bundle log,
+   then update the ignored local test plan as described above.
+2. Make sure the Personal Plus test account has no active match. The test stops
+   before creating anything if it detects one.
+3. Select the local test scheme in Xcode's top toolbar.
+4. Select an installed iPhone Simulator, such as **iPhone 17 Pro**, from the
+   destination picker. Do not select a connected physical iPhone.
+5. Open the Simulator with **Xcode > Open Developer Tool > Simulator** and keep
+   it visible beside Xcode.
+6. In the test plan's **Tests** tab, select `RcktScoreMobileUITests` and disable
+   **Execute in Parallel** or **Parallelizable** if that option is displayed.
+   This prevents Xcode from putting the visual run in a background clone.
+7. In the Project Navigator open
+   `RcktScoreMobileUITests/Tests/Scoring/LiveRacketMatchJourneyUITests.swift`.
+8. Click the diamond in the editor gutter beside
+   `testPersonalPlusCreatesScoresCompletesAndLogsOut`. This runs only the live
+   journey; **Product > Test** may run the entire test plan.
+9. Watch the Simulator. The test logs in, creates Paul versus Mark, performs
+   the scoring checks, finishes 11-2, returns to the dashboard, and logs out.
+
+To slow the visual run, add `HITNSCORE_UI_TEST_STEP_DELAY` to the same local
+test plan and set its value to a number of seconds from `0` to `5`; `2` is a
+comfortable demonstration speed. The default is `0.8` seconds.
+
+After the run, open Xcode's **Report Navigator** (`Command-9`), select the most
+recent test report, expand `LiveRacketMatchJourneyUITests`, and select the test
+method. Its activity log and twelve screenshot attachments provide the saved
+evidence. A green diamond/tick means the complete journey passed; a red failure
+shows the exact step and retains the screenshots captured before that point.
+
+If Xcode still launches a background Simulator clone, use the command-line
+runner below. It explicitly disables parallel testing while using the selected
+Simulator destination.
 
 For the command line, populate the ignored
 `testing/automated/mobile/ui-test-credentials.env`, keep Simulator visible, and
