@@ -649,7 +649,7 @@ struct StartNewMatchView: View {
     private var formatCard: some View {
         VStack(spacing: 14) {
             if isTennisMatch {
-                selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5]) { value in
+                selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5], identifier: "startMatch.bestOfPicker") { value in
                     "Best of \(value)"
                 }
                 .onChange(of: formState.bestOf) {
@@ -674,11 +674,11 @@ struct StartNewMatchView: View {
                 )
             } else {
                 HStack(spacing: 12) {
-                    selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5]) { value in
+                    selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5], identifier: "startMatch.bestOfPicker") { value in
                         "Best of \(value)"
                     }
 
-                    selectionCard(title: "Game Format", value: $formState.scoreType, options: [11, 15]) { value in
+                    selectionCard(title: "Game Format", value: $formState.scoreType, options: [11, 15], identifier: "startMatch.scoreTypePicker") { value in
                         "PAR-\(value)"
                     }
                     .disabled(formState.handicapEnabled)
@@ -1167,6 +1167,7 @@ struct StartNewMatchView: View {
         title: String,
         value: Binding<Int>,
         options: [Int],
+        identifier: String,
         label: @escaping (Int) -> String
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1180,6 +1181,7 @@ struct StartNewMatchView: View {
                 }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier(identifier)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

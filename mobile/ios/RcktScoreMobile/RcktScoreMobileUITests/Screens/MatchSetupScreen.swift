@@ -58,6 +58,18 @@ struct MatchSetupScreen {
         app.buttons["startMatch.startButton"]
     }
 
+    var bestOfPicker: XCUIElement {
+        app.buttons["startMatch.bestOfPicker"]
+    }
+
+    var scoreTypePicker: XCUIElement {
+        app.buttons["startMatch.scoreTypePicker"]
+    }
+
+    var resumeActiveMatchButton: XCUIElement {
+        app.buttons["startMatch.resumeActiveMatchButton"]
+    }
+
     var singlesButton: XCUIElement {
         app.buttons["startMatch.matchType.singles"]
     }
@@ -109,5 +121,56 @@ struct MatchSetupScreen {
         }
 
         startMatchButton.tap()
+    }
+
+    func selectBestOfOneScoreToEleven() {
+        scrollToElement(bestOfPicker)
+        XCTAssertTrue(bestOfPicker.waitForExistence(timeout: 5))
+        bestOfPicker.tap()
+        app.buttons["Best of 1"].tap()
+
+        XCTAssertTrue(scoreTypePicker.waitForExistence(timeout: 5))
+        scoreTypePicker.tap()
+        app.buttons["PAR-11"].tap()
+    }
+
+    func enterPlayers(player1: String, player2: String) {
+        scrollToElement(player1FirstNameField)
+        replaceText(in: player1FirstNameField, with: player1)
+        scrollToElement(player2FirstNameField)
+        replaceText(in: player2FirstNameField, with: player2)
+        app.keyboards.buttons["Return"].firstMatch.tapIfExists()
+        scrollToElement(startMatchButton)
+    }
+
+    private func replaceText(in field: XCUIElement, with text: String) {
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        if let currentValue = field.value as? String, !currentValue.isEmpty, currentValue != field.placeholderValue {
+            field.press(forDuration: 0.8)
+            app.menuItems["Select All"].tapIfExists()
+            field.typeText(text)
+        } else {
+            field.typeText(text)
+        }
+    }
+
+    private func scrollToElement(_ element: XCUIElement, attempts: Int = 10) {
+        for _ in 0..<attempts where !element.isHittable {
+            if element.exists && element.frame.minY < 100 {
+                app.swipeDown()
+            } else {
+                app.swipeUp()
+            }
+        }
+        XCTAssertTrue(element.isHittable)
+    }
+}
+
+private extension XCUIElement {
+    func tapIfExists() {
+        if exists && isHittable {
+            tap()
+        }
     }
 }

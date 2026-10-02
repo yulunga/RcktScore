@@ -95,6 +95,21 @@ marker is replaced by `L2`, awards the server the next point and checks for
 `R3`. The runner saves an `.xcresult` containing the test log and three
 screenshots. Use a new `RCKTSCORE_UI_RESULT_PATH` for subsequent retained runs.
 
+The watchable credential-backed journey is deliberately separate:
+
+```bash
+RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LiveRacketMatch-$(date +%Y%m%d-%H%M%S).xcresult \
+  testing/automated/mobile/run-live-racket-match-ui-test.sh
+```
+
+It creates a real completed Paul-versus-Mark match in the Personal Plus test
+account and logs out. Keep Simulator open to watch it, or set
+`RCKTSCORE_UI_STEP_DELAY=2` to slow the actions. The account must not already
+have an active match. The script disables parallel testing to avoid invisible
+Simulator clones and removes credential-variable lines from console output.
+Never share a failed `.xcresult` until confirming that its launch diagnostics
+contain no secrets; rotate a test credential immediately if Xcode prints it.
+
 ## Current Debugging Mindset
 
 Start by deciding which of these layers is failing:
@@ -418,7 +433,7 @@ Important current truths:
 - native tennis scoring expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
 - at No-Ad deuce the receiver must choose Deuce or Ad court; that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
 - the squash/racketball scorer now selects compact widths on phone-sized screens, scrolls long game history horizontally, adapts warm-up actions when they cannot fit side by side, and shows a completed-match summary after the final point
-- changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage and `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the saved end-to-end Simulator regression with screenshot evidence
+- changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage, `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the credential-free Simulator regression, and the opt-in `testing/automated/mobile/run-live-racket-match-ui-test.sh` only when a completed match may be written to the Personal Plus test account
 - white, yellow, and pink scoring cards use dark foregrounds and a contrasting score inset; a running match clock is light green, a paused clock remains slate, and stroke/let player choices stay in the pink-accented Match Actions sheet with explicit player names
 - the shared iOS bottom navigation now compacts labels and icon sizing under larger Dynamic Type settings, but extremely aggressive accessibility sizes may still need further tab-bar simplification if new labels are added later
 

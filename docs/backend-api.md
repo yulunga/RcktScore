@@ -614,8 +614,11 @@ What is not fully protected today:
   lightweight native iOS UI test bundle are checked in. The native bundle now
   includes a deterministic, credential-free Simulator regression for the
   squash/racketball `R2` to `L2` to `R3` point-rail flow; it uses local fixture
-  state and deliberately makes no backend request. All three suites remain
-  early baselines and are not wired into a documented CI pipeline
+  state and deliberately makes no backend request. A separate opt-in live
+  journey uses the Personal Plus test credentials to create and complete a
+  real Paul-versus-Mark match through the API, then logs out; it is excluded
+  from credential-free baseline runs because it writes test data. All three
+  suites remain early baselines and are not wired into a documented CI pipeline
 - social profile settings are UI-only scaffolds right now
 - organisation-level handicap settings are UI scaffolds and are not persisted/enforced
 - WebSocket subscription persistence is not implemented

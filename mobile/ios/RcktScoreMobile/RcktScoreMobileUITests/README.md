@@ -76,3 +76,41 @@ need the six login variables, call the live API, or modify production data. In
 Xcode it appears under
 `RcktScoreMobileUITests/Tests/Scoring/RacketServiceSideTimelineUITests` and can
 be rerun with the test diamond beside the method.
+
+## Watchable live match journey
+
+`LiveRacketMatchJourneyUITests` uses the Personal Plus test account and the
+real backend. It signs in, creates a Squash match for Paul versus Mark as Best
+of 1 / PAR-11, skips warm-up, chooses Paul as first server, exercises service
+transfers, verifies the `R2` to `L2` replacement, records a let, verifies
+`L2`/`R3`, undoes and replays the point, completes the match 11-2, returns to
+the dashboard and signs out. Twelve retained screenshots document the journey.
+
+This test creates a real completed match in the test account. It deliberately
+fails before creation if the Personal Plus account already has an active match,
+so it never ends unrelated work automatically.
+
+To watch it in Xcode:
+
+1. Rotate any credential that has appeared in a console or result-bundle log.
+2. Put the current Personal Plus username and password in the ignored local
+   test plan described above.
+3. Select the `Local Test RcktScoreMobile` scheme and an iPhone Simulator.
+4. Open `LiveRacketMatchJourneyUITests.swift` and click the test diamond beside
+   `testPersonalPlusCreatesScoresCompletesAndLogsOut`.
+
+For the command line, populate the ignored
+`testing/automated/mobile/ui-test-credentials.env`, keep Simulator visible, and
+run:
+
+```bash
+RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LiveRacketMatch-$(date +%Y%m%d-%H%M%S).xcresult \
+  testing/automated/mobile/run-live-racket-match-ui-test.sh
+```
+
+The default pause is 0.8 seconds between visible checkpoints and scoring
+actions. Set `RCKTSCORE_UI_STEP_DELAY=2` for a slower demonstration. Parallel
+testing is disabled so Xcode uses the selected visible Simulator rather than a
+background clone. The runner filters credential-variable lines from Xcode's
+console diagnostics, but credentials must still be rotated immediately if they
+are ever printed or included in a shared result bundle.

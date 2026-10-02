@@ -24,6 +24,26 @@ struct ScoringScreen {
         app.buttons["scoring.serveSide.player2"]
     }
 
+    var player1FirstServerButton: XCUIElement {
+        app.buttons["scoring.firstServer.player1"]
+    }
+
+    var player2FirstServerButton: XCUIElement {
+        app.buttons["scoring.firstServer.player2"]
+    }
+
+    var completedReturnButton: XCUIElement {
+        app.buttons["scoring.completed.returnButton"]
+    }
+
+    var player1ActionButton: XCUIElement {
+        app.buttons["scoring.playerAction.player1"]
+    }
+
+    var player2ActionButton: XCUIElement {
+        app.buttons["scoring.playerAction.player2"]
+    }
+
     func pointRailEntry(side: String, score: Int) -> XCUIElement {
         app.descendants(matching: .any)["scoring.pointRail.\(side).\(score)"]
     }
@@ -86,5 +106,16 @@ struct ScoringScreen {
 
     func openActionMenu() {
         actionButton.tap()
+    }
+
+    func waitForScore(side: String, score: Int, timeout: TimeInterval = 15) {
+        let card = side == "player1" ? player1ScoreCard : player2ScoreCard
+        let predicate = NSPredicate(format: "value == %@", String(score))
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: card)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: timeout),
+            .completed,
+            "Expected \(side) score to become \(score), but the score card value is \(String(describing: card.value))."
+        )
     }
 }

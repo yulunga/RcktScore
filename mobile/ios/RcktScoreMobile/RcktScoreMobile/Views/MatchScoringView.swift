@@ -1086,6 +1086,7 @@ struct MatchScoringView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(isMutating)
+                        .accessibilityIdentifier("scoring.firstServer.player1")
 
                         Button {
                             Task { await chooseFirstServer("player2", using: match) }
@@ -1100,6 +1101,7 @@ struct MatchScoringView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(isMutating)
+                        .accessibilityIdentifier("scoring.firstServer.player2")
                     }
                 }
             }
@@ -1724,6 +1726,8 @@ struct MatchScoringView: View {
         .accessibilityElement()
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("scoring.scoreCard.\(side)")
+        .accessibilityLabel(side == "player1" ? "Player 1 score" : "Player 2 score")
+        .accessibilityValue(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
     }
 
     @ViewBuilder
