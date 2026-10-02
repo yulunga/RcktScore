@@ -2708,6 +2708,8 @@ struct DashboardView: View {
                     Text(liveScore)
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dashboardBrand)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
 
                     Text("Best of \(match.bestOf ?? match.state?.bestOf ?? 3)")
                         .font(.caption.weight(.semibold))
@@ -4280,9 +4282,9 @@ struct DashboardView: View {
     }
 
     private func currentScoreLine(for match: MatchSummary) -> String {
-        let player1Score = match.state?.player1Score ?? 0
-        let player2Score = match.state?.player2Score ?? 0
-        return "\(player1Score) - \(player2Score)"
+        let player1GamesWon = match.state?.player1GamesWon ?? 0
+        let player2GamesWon = match.state?.player2GamesWon ?? 0
+        return "\(player1GamesWon) - \(player2GamesWon)"
     }
 
     private func splitPlayerName(_ firstName: String, surname: String?) -> (firstName: String, surname: String) {
