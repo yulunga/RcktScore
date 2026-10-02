@@ -990,7 +990,6 @@ struct MatchScoringView: View {
                 )
         )
         .shadow(color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
-        .accessibilityIdentifier("scoring.bottomDock")
     }
 
     private func bottomTimerControl(compactLayout: Bool, isTabletLandscape: Bool) -> some View {

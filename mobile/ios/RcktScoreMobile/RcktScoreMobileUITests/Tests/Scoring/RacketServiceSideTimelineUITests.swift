@@ -16,6 +16,14 @@ final class RacketServiceSideTimelineUITests: HitnScoreBaseUITest {
         XCTAssertEqual(scoreTwo.label, "R2")
         captureScreenshot("Racket-Service-Side-01-Initial-R2")
 
+        XCTAssertTrue(scoring.actionButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(scoring.actionButton.isHittable)
+        scoring.openActionMenu()
+        XCTAssertTrue(scoring.letActionButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(scoring.closeActionMenuButton.isHittable)
+        scoring.closeActionMenuButton.tap()
+        XCTAssertTrue(scoring.actionButton.waitForExistence(timeout: 5))
+
         XCTAssertTrue(scoring.player2ServeSideButton.waitForExistence(timeout: 5))
         XCTAssertTrue(scoring.player2ServeSideButton.isEnabled)
         scoring.player2ServeSideButton.tap()

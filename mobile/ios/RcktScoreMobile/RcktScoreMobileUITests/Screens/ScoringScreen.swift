@@ -60,6 +60,10 @@ struct ScoringScreen {
         app.buttons["scoring.actionButton"]
     }
 
+    var closeActionMenuButton: XCUIElement {
+        app.buttons["Close match actions"]
+    }
+
     var undoActionButton: XCUIElement {
         app.buttons["scoring.action.undo"]
     }

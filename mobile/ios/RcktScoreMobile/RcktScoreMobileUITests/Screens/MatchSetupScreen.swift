@@ -137,15 +137,26 @@ struct MatchSetupScreen {
     func enterPlayers(player1: String, player2: String) {
         scrollToElement(player1FirstNameField)
         replaceText(in: player1FirstNameField, with: player1)
+        dismissKeyboard()
         scrollToElement(player2FirstNameField)
         replaceText(in: player2FirstNameField, with: player2)
-        app.keyboards.buttons["Return"].firstMatch.tapIfExists()
+        dismissKeyboard()
         scrollToElement(startMatchButton)
     }
 
     private func replaceText(in field: XCUIElement, with text: String) {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
+
+        if !waitForKeyboardFocus(on: field, timeout: 1.5) {
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
+        }
+
+        XCTAssertTrue(
+            waitForKeyboardFocus(on: field, timeout: 3),
+            "Unable to give keyboard focus to \(field.identifier)."
+        )
+
         if let currentValue = field.value as? String, !currentValue.isEmpty, currentValue != field.placeholderValue {
             field.press(forDuration: 0.8)
             app.menuItems["Select All"].tapIfExists()
@@ -153,6 +164,30 @@ struct MatchSetupScreen {
         } else {
             field.typeText(text)
         }
+    }
+
+    private func waitForKeyboardFocus(on field: XCUIElement, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate(format: "hasKeyboardFocus == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: field)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func dismissKeyboard() {
+        guard app.keyboards.firstMatch.exists else {
+            return
+        }
+
+        let returnButton = app.keyboards.buttons["Return"].firstMatch
+        if returnButton.exists && returnButton.isHittable {
+            returnButton.tap()
+        }
+
+        let keyboardGone = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(
+            predicate: keyboardGone,
+            object: app.keyboards.firstMatch
+        )
+        _ = XCTWaiter.wait(for: [expectation], timeout: 2)
     }
 
     private func scrollToElement(_ element: XCUIElement, attempts: Int = 10) {

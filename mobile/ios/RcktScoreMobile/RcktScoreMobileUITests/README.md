@@ -86,7 +86,9 @@ Simulator test for the squash/racketball point-rail regression reported during
 release testing. It opens the real scoring screen with a local fixture at
 `R2`, changes the serving side to Left and verifies that the same marker becomes
 `L2` rather than creating a duplicate. It then awards the server another point
-and verifies that the rail contains `L2` followed by `R3`.
+and verifies that the rail contains `L2` followed by `R3`. At the initial 2-2
+state it also verifies that the bottom-dock **Action** control keeps its own
+`scoring.actionButton` identity, is hittable and opens the Match Actions sheet.
 
 Run it from the repository root with:
 
@@ -115,16 +117,20 @@ transfers, verifies the `R2` to `L2` replacement, records a let, verifies
 `L2`/`R3`, undoes and replays the point, completes the match 11-2, returns to
 the dashboard and signs out. Twelve retained screenshots document the journey.
 
-This test creates a real completed match in the test account. It deliberately
-fails before creation if the Personal Plus account already has an active match,
-so it never ends unrelated work automatically.
+This test creates a real completed match in the dedicated Personal Plus test
+account. If an earlier test run left that personal account with an active
+match, the journey resumes it, selects **End Match Early**, waits for the
+completed state and returns to the dashboard before creating the fresh Paul
+versus Mark match. Two additional recovery screenshots are retained when this
+path is needed. Do not point these Personal Plus test variables at an account
+whose matches need to be preserved.
 
 ### Run and watch the live journey in Xcode
 
 1. Rotate any credential that has appeared in a console or result-bundle log,
    then update the ignored local test plan as described above.
-2. Make sure the Personal Plus test account has no active match. The test stops
-   before creating anything if it detects one.
+2. Use a dedicated Personal Plus test account. An active personal match left by
+   a failed run will be ended automatically before the new journey starts.
 3. Select the local test scheme in Xcode's top toolbar.
 4. Select an installed iPhone Simulator, such as **iPhone 17 Pro**, from the
    destination picker. Do not select a connected physical iPhone.

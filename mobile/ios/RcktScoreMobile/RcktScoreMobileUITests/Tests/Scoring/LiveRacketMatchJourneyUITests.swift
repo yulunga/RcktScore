@@ -23,10 +23,17 @@ final class LiveRacketMatchJourneyUITests: HitnScoreBaseUITest {
         setup.chooseSport(.squash)
         setup.verifySetupLoaded(timeout: 10)
 
-        XCTAssertFalse(
-            setup.resumeActiveMatchButton.exists,
-            "The Personal Plus test account already has an active match. Complete it before running this live journey so the test never ends an unrelated match."
-        )
+        if endExistingPersonalMatchIfNeeded(setup: setup, scoring: scoring) {
+            XCTAssertTrue(dashboard.startNewMatchButton.waitForExistence(timeout: 15))
+            dashboard.openStartNewMatch()
+            XCTAssertTrue(setup.squashSportButton.waitForExistence(timeout: 8))
+            setup.chooseSport(.squash)
+            setup.verifySetupLoaded(timeout: 10)
+            XCTAssertFalse(
+                setup.resumeActiveMatchButton.waitForExistence(timeout: 3),
+                "The previously active personal match was ended, but it is still being offered for resume."
+            )
+        }
 
         setup.selectBestOfOneScoreToEleven()
         setup.enterPlayers(player1: "Paul", player2: "Mark")
@@ -100,6 +107,40 @@ final class LiveRacketMatchJourneyUITests: HitnScoreBaseUITest {
         settings.logout()
         login.verifyLoaded()
         visualCheckpoint("Live-12-Logged-Out")
+    }
+
+    private func endExistingPersonalMatchIfNeeded(
+        setup: MatchSetupScreen,
+        scoring: ScoringScreen
+    ) -> Bool {
+        guard setup.resumeActiveMatchButton.waitForExistence(timeout: 3) else {
+            return false
+        }
+
+        visualCheckpoint("Live-Recovery-01-Existing-Personal-Match")
+        setup.resumeActiveMatchButton.tap()
+        scoring.verifyLoaded(timeout: 20)
+
+        XCTAssertTrue(
+            scoring.actionButton.waitForExistence(timeout: 10),
+            "The existing personal match opened, but its Action control was unavailable."
+        )
+        XCTAssertTrue(scoring.actionButton.isHittable)
+        scoring.openActionMenu()
+        XCTAssertTrue(
+            scoring.endMatchEarlyButton.waitForExistence(timeout: 8),
+            "The existing personal match could not expose End Match Early."
+        )
+        XCTAssertTrue(scoring.endMatchEarlyButton.isEnabled)
+        scoring.endMatchEarlyButton.tap()
+
+        XCTAssertTrue(
+            scoring.completedReturnButton.waitForExistence(timeout: 25),
+            "The existing personal match did not reach its completed state after End Match Early."
+        )
+        visualCheckpoint("Live-Recovery-02-Existing-Personal-Match-Ended")
+        scoring.completedReturnButton.tap()
+        return true
     }
 
     private func score(
