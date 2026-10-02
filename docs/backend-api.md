@@ -160,6 +160,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 
 ### Public and auth-adjacent routes
 
+- `GET /health`
 - `POST /login`
 - `POST /logout`
 - `POST /password_reset/request`
@@ -508,6 +509,14 @@ Current behavior:
 - feedback defaults to the verified `hello@hitnscore.com` sender and recipient; SES delivery failures return `503 FEEDBACK_DELIVERY_FAILED` in the normal API envelope instead of an unstructured Lambda error
 - after successful personal/club registration or feedback responses, the native iOS client replaces the relevant form with a confirmation and next-step screen; API errors leave the form available for correction or retry
 
+### Production health
+
+- `GET /health` is public and performs a lightweight `SELECT 1` through the configured Supabase transaction pooler.
+- a healthy response returns `200` with `data.status = "healthy"` and `data.checks.database = "healthy"`.
+- an unavailable database returns a generic `503 SERVICE_UNAVAILABLE`; connection details are logged server-side and are never returned to callers.
+- EventBridge Scheduler invokes the same Lambda every five minutes. Scheduled failures raise so CloudWatch records a Lambda `Errors` metric.
+- CloudWatch alarms cover API 5xx responses, sustained p95 latency, health-check errors/throttles, Apple notification/verification/reconciliation errors, and a missing hourly reconciliation invocation. Alarm and recovery actions publish to the stack's encrypted SNS production-alarm topic.
+
 ## Response Contract
 
 The backend uses one shared JSON envelope.
@@ -591,6 +600,7 @@ What is protected today:
 - dashboard, settings, personal-profile, lookup, and scoring routes enforce org-user session authorization
 - match routes are tenant-aware through backend authorization
 - root-admin routes and reused organisation-management routes enforce expiring root-admin sessions
+- the public health response exposes only a generic readiness result and never returns database identifiers, credentials, or exception messages
 
 What is not fully protected today:
 

@@ -409,7 +409,30 @@ Important current truths:
 - white, yellow, and pink scoring cards use dark foregrounds and a contrasting score inset; a running match clock is light green, a paused clock remains slate, and stroke/let player choices stay in the pink-accented Match Actions sheet with explicit player names
 - the shared iOS bottom navigation now compacts labels and icon sizing under larger Dynamic Type settings, but extremely aggressive accessibility sizes may still need further tab-bar simplification if new labels are added later
 
-## 10. Things That Are Not Bugs Right Now
+## 10. Production Health and Alarm Issues
+
+The production readiness endpoint is:
+
+```text
+GET https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod/health
+```
+
+- `200` with `data.status = "healthy"` confirms API Gateway, the health Lambda, the Supabase connection configuration and a minimal database query.
+- `503 SERVICE_UNAVAILABLE` means the database readiness query failed. Inspect `/aws/lambda/<HealthFunctionName>` in CloudWatch Logs; the HTTP response deliberately omits exception details.
+- no alarm email after deployment usually means the SNS confirmation email sent to `AlarmNotificationEmail` has not been accepted. Check that the subscription on `rcktscore-backend-production-alarms` is `Confirmed`.
+- `rcktscore-backend-health-check-errors` covers scheduled database failures; `rcktscore-backend-http-api-5xx` covers HTTP server responses.
+- `rcktscore-backend-apple-reconciliation-missing` enters ALARM when no hourly reconciliation invocation is observed for two hours. Check EventBridge Scheduler before invoking reconciliation manually.
+- use CloudWatch alarm history to distinguish a real failure from deployment transition noise before changing thresholds.
+
+Useful verification commands:
+
+```bash
+curl -fsS https://st3nn5zsm6.execute-api.eu-west-2.amazonaws.com/prod/health
+aws cloudwatch describe-alarms --alarm-name-prefix rcktscore-backend- --region eu-west-2
+aws sns list-subscriptions-by-topic --topic-arn <ProductionAlarmTopicArn> --region eu-west-2
+```
+
+## 11. Things That Are Not Bugs Right Now
 
 These are current product limitations, not accidental breakage:
 

@@ -58,6 +58,11 @@ Parameters:
   PasswordResetBaseUrl:
     Type: String
     Default: "https://app.hitnscore.com"
+  AlarmNotificationEmail:
+    Type: String
+    Default: hello@hitnscore.com
+    AllowedPattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+    Description: Email address that receives production CloudWatch alarm notifications.
   RootAdminSessionTtlHours:
     Type: Number
     Default: 8
@@ -120,6 +125,26 @@ Resources:
           - PUT
           - DELETE
           - OPTIONS
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/health/handler.lambda_handler
+      Timeout: 10
+      Events:
+        HealthApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /health
+            Method: GET
+        HealthSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            FlexibleTimeWindow:
+              Mode: "OFF"
+            Input: '{"source":"rcktscore.health-schedule"}'
 
   StartMatchFunction:
     Type: AWS::Serverless::Function
@@ -946,7 +971,206 @@ Resources:
     Properties:
       Handler: functions/websocket_broadcast/handler.lambda_handler
 
+  ProductionAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-production-alarms"
+      KmsMasterKeyId: alias/aws/sns
+
+  ProductionAlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AlarmNotificationEmail
+      TopicArn: !Ref ProductionAlarmTopic
+
+  HttpApiServerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-http-api-5xx"
+      AlarmDescription: Production HTTP API returned at least one server error in five minutes.
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref RcktScoreHttpApi
+        - Name: Stage
+          Value: !Ref StageName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  HttpApiLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-http-api-p95-latency"
+      AlarmDescription: Production HTTP API p95 latency exceeded three seconds for ten minutes.
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref RcktScoreHttpApi
+        - Name: Stage
+          Value: !Ref StageName
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 3000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  HealthCheckErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-health-check-errors"
+      AlarmDescription: The scheduled database-backed production health check failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref HealthFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  HealthCheckThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-health-check-throttles"
+      AlarmDescription: The production health check Lambda was throttled.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref HealthFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  AppleNotificationErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-apple-notification-errors"
+      AlarmDescription: App Store Server Notification processing failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AppleSubscriptionNotificationsFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  AppleVerificationErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-apple-verification-errors"
+      AlarmDescription: StoreKit transaction verification failed unexpectedly.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref VerifyAppleSubscriptionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  AppleReconciliationErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-apple-reconciliation-errors"
+      AlarmDescription: Hourly App Store subscription reconciliation failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReconcileAppleSubscriptionsFunction
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  AppleReconciliationMissingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-apple-reconciliation-missing"
+      AlarmDescription: No App Store subscription reconciliation invocation was observed for two hours.
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReconcileAppleSubscriptionsFunction
+      Statistic: Sum
+      Period: 7200
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
 Outputs:
   HttpApiUrl:
     Description: Base URL for the RcktScore HTTP API
     Value: !Sub "https://${RcktScoreHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
+  HealthUrl:
+    Description: Database-backed production readiness endpoint
+    Value: !Sub "https://${RcktScoreHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/health"
+  ProductionAlarmTopicArn:
+    Description: SNS topic used by production CloudWatch alarms
+    Value: !Ref ProductionAlarmTopic

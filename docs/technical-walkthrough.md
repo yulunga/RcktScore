@@ -446,7 +446,17 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 - offline history, offline match creation, and multi-match caching are not implemented; offline scoring is limited to one previously opened active match
 - release pipeline, realtime sync, and final signoff coverage are still partial
 
-## 16. Current Cross-Cutting Gaps
+## 16. Production Health and Alarm Flow
+
+1. `GET /health` invokes [backend/functions/health/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/health/handler.py).
+2. The handler opens a normal Supabase pooler connection and executes `SELECT 1`.
+3. Success returns the shared envelope with HTTP 200. Failure returns a generic HTTP 503 without leaking the connection error.
+4. EventBridge Scheduler invokes the handler every five minutes with the fixed `rcktscore.health-schedule` source.
+5. A scheduled failure raises, incrementing the Lambda `Errors` metric and activating the health-check alarm.
+6. API Gateway and Apple lifecycle Lambdas have separate error, latency and missed-reconciliation alarms. Alarm and recovery actions publish to the encrypted SNS topic created by the SAM stack.
+7. The address configured by `AlarmNotificationEmail` must confirm AWS's initial SNS subscription email before messages are delivered.
+
+## 17. Current Cross-Cutting Gaps
 
 - public-route rate limiting and wider security audit coverage are incomplete
 - WebSocket infrastructure is incomplete

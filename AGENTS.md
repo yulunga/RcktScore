@@ -76,6 +76,7 @@ What is real and implemented:
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
 - root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
+- a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 
 What is still partial or risky:
 
@@ -83,7 +84,7 @@ What is still partial or risky:
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting views
 - notifications currently use inbox polling; APNs push delivery and background notification badges are not implemented yet
-- the complete Apple lifecycle code is present, but production activation remains gated on applying migration `027`, storing an App Store Connect In-App Purchase key in Secrets Manager, deploying, configuring Apple Sandbox/Production V2 URLs and grace-period policy, and passing the documented lifecycle tests
+- Apple migration `027`, the Secrets Manager In-App Purchase key, Sandbox and Production V2 URLs, the three-day paid-to-paid grace policy, and `Sandbox,Production` backend routing are deployed; Sandbox V2 delivery is verified, while the Production App Store Server API smoke test remains a mandatory post-release check because Apple rejects it before the first live app release
 - Release StoreKit purchasing stays disabled until the verification endpoint has passed Sandbox/TestFlight testing; a local Xcode StoreKit transaction intentionally does not update `personal_plan`
 - the production Apple subscription architecture and release gates are documented in `docs/apple-subscription-production.md`; the implementation remains incomplete until its endpoint, notification, reconciliation, admin and audit checklists pass
 - native profile photos are still device-local only and are not stored centrally or shared across users/devices yet
