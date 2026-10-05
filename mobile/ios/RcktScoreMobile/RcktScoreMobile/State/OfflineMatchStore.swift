@@ -529,7 +529,7 @@ private enum OfflineScoringReducer {
         case .serveSide:
             summary = "Serve changed to \(action.side ?? "Right") (offline)"
         case .receiverChoice:
-            summary = "Receiver chose the \((action.side ?? "Right") == "Right" ? "Deuce" : "Ad") court (offline)"
+            summary = "Golden Point receiver selected: \(state.currentReceiver ?? "Receiver") (offline)"
         case .server:
             summary = "\(action.currentServer ?? "Player") selected to serve (offline)"
         case .timer:

@@ -199,12 +199,13 @@ these singles scoring paths:
 
 It then creates a Best of 3 doubles match for Paul/Peter versus Mark/Matt,
 enables **Golden Point** and **Timed breaks**, explicitly chooses the opening
-server and receiver, wins a deciding Golden Point after the receiver chooses
-the Deuce court, verifies and skips the changeover and set-break overlays,
-completes the match 6-0, 6-0, and logs out. Eleven retained screenshots record
-the major checkpoints. Like the squash journey, this test uses the real
-backend, creates two real completed matches, ends an existing active personal
-match during recovery, and must only use a dedicated disposable test account.
+server and receiver, verifies tennis Golden Point uses the normal 40-40 side
+without an additional receiver choice, wins the deciding point, verifies and
+skips the changeover and set-break overlays, completes the match 6-0, 6-0, and
+logs out. Eleven retained screenshots record the major checkpoints. Like the
+squash journey, this test uses the real backend, creates two real completed
+matches, ends an existing active personal match during recovery, and must only
+use a dedicated disposable test account.
 
 Run it from the repository root after configuring the ignored credentials
 file:
@@ -227,8 +228,8 @@ Padel must be enabled for the test account. It signs in and creates two
 four-player Best of 3 matches with timed breaks explicitly disabled. The first
 uses standard advantage scoring, exercises deuce and advantage, and finishes
 6-0, 6-0. The second enables Golden Point, reaches 40-40, verifies the receiver
-court choice, selects the Deuce court, and also finishes 6-0, 6-0 before the
-test signs out.
+player choice, selects the receiving team's second player, and also finishes
+6-0, 6-0 before the test signs out.
 
 Ten retained screenshots record the major checkpoints. This test uses the real
 backend, creates two real completed matches, ends an existing active personal

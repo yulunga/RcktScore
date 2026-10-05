@@ -7,8 +7,16 @@ import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchS
 import { useRootAdmin } from "../hooks/useRootAdmin";
 import {
   getRootAdminPlatformSports,
+  previewRootAdminPlatformSports,
   updateRootAdminPlatformSports,
 } from "../services/api";
+
+function sportList(values) {
+  if (!values.length) return "None";
+  return values
+    .map((value) => MATCH_SPORT_OPTIONS.find((sport) => sport.value === value)?.label || value)
+    .join(", ");
+}
 
 export default function RootAdminPlatformSportsPage() {
   const navigate = useNavigate();
@@ -17,6 +25,8 @@ export default function RootAdminPlatformSportsPage() {
   const [iosSports, setIosSports] = useState(() => normalizeEnabledSports());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [affectedOrganizationCount, setAffectedOrganizationCount] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -42,6 +52,7 @@ export default function RootAdminPlatformSportsPage() {
   }, []);
 
   function toggleSport(client, sportValue) {
+    setPreview(null);
     const setter = client === "ios" ? setIosSports : setWebSports;
     setter((current) => (
       current.includes(sportValue)
@@ -50,7 +61,33 @@ export default function RootAdminPlatformSportsPage() {
     ));
   }
 
+  async function showAffectedUsers() {
+    setPreviewLoading(true);
+    setMessage("");
+    setError("");
+    try {
+      const response = await previewRootAdminPlatformSports({
+        enabled_sports_web: webSports,
+        enabled_sports_ios: iosSports,
+      });
+      setPreview(response.platformSportsPreview || null);
+    } catch (requestError) {
+      setError(requestError.message || "Failed to preview affected users.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   async function savePlatformSports() {
+    const affectedText = preview
+      ? `${preview.user_count} users across ${preview.membership_count} memberships`
+      : "all user memberships";
+    const confirmed = window.confirm(
+      `Apply these settings to ${affectedText}?\n\nWeb: ${sportList(webSports)}\niOS: ${sportList(iosSports)}\n\nAll active user sessions will be signed out.`,
+    );
+    if (!confirmed) {
+      return;
+    }
     setSaving(true);
     setMessage("");
     setError("");
@@ -65,7 +102,8 @@ export default function RootAdminPlatformSportsPage() {
       setWebSports(normalizeEnabledSports(platformSports.enabled_sports_web ?? platformSports.enabled_sports));
       setIosSports(normalizeEnabledSports(platformSports.enabled_sports_ios ?? platformSports.enabled_sports));
       setAffectedOrganizationCount(platformSports.affected_organization_count || 0);
-      setMessage("Platform racket sports updated for all users and clubs.");
+      setPreview(null);
+      setMessage("Platform racket sports updated. Active user sessions were signed out so the new client access applies immediately.");
     } catch (requestError) {
       setError(requestError.message || "Failed to update platform racket sports.");
     } finally {
@@ -100,6 +138,9 @@ export default function RootAdminPlatformSportsPage() {
         <div className="root-admin-section-header">
           <h2>Platform Sports Controls</h2>
           <div className="button-row root-admin-actions">
+            <button type="button" className="secondary" onClick={showAffectedUsers} disabled={saving || loading || previewLoading}>
+              {previewLoading ? "Loading Users..." : "Preview Affected Users"}
+            </button>
             <button type="button" onClick={savePlatformSports} disabled={saving || loading}>
               {saving ? "Saving..." : "Save for All Users & Clubs"}
             </button>
@@ -118,7 +159,7 @@ export default function RootAdminPlatformSportsPage() {
         </div>
 
         <p className="helper-text">
-          Saving applies the web and iOS lists to every membership. Individual users can then be restricted further from their User Account profile.
+          Saving applies the web and iOS lists to every membership and signs out active users so the change takes effect immediately. Individual users can then be restricted further from their User Account profile.
         </p>
 
         {loading ? <div className="notice">Loading platform sport controls...</div> : null}
@@ -148,6 +189,39 @@ export default function RootAdminPlatformSportsPage() {
             );
           })}
         </div>
+
+        {preview ? (
+          <section className="stack root-admin-platform-sports-preview">
+            <div className="root-admin-section-header">
+              <div>
+                <h3>Affected Users</h3>
+                <p className="helper-text">
+                  {preview.user_count} users across {preview.membership_count} memberships will receive the selections shown below.
+                </p>
+              </div>
+              <button type="button" className="secondary" onClick={() => setPreview(null)}>Hide Preview</button>
+            </div>
+            <div className="dashboard-list">
+              {(preview.users || []).map((user) => (
+                <article className="dashboard-item" key={user.username}>
+                  <div className="dashboard-item-head">
+                    <strong>{[user.first_name, user.surname].filter(Boolean).join(" ") || user.username}</strong>
+                    <span>{user.username}</span>
+                  </div>
+                  {(user.memberships || []).map((membership) => (
+                    <div className="dashboard-item-meta" key={membership.id}>
+                      <span>{membership.organization_type === "personal" ? "Personal Account" : membership.organization_name}</span>
+                      <span>Web: {sportList(membership.enabled_sports_web || [])}</span>
+                      <span>iOS: {sportList(membership.enabled_sports_ios || [])}</span>
+                      <span>Status: {membership.status}</span>
+                    </div>
+                  ))}
+                </article>
+              ))}
+              {(preview.users || []).length === 0 ? <div className="dashboard-empty">No users will be affected.</div> : null}
+            </div>
+          </section>
+        ) : null}
       </section>
 
       <AppFooter />

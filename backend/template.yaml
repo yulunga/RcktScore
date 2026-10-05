@@ -304,6 +304,18 @@ Resources:
             Path: /root_admin/platform_sports
             Method: PUT
 
+  PreviewRootAdminPlatformSportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/preview_root_admin_platform_sports/handler.lambda_handler
+      Events:
+        PreviewRootAdminPlatformSports:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/platform_sports/preview
+            Method: POST
+
   GetRootAdminMatchesFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -368,8 +368,8 @@ def _event_summary(match_row, event_type, payload):
             return f"{match_row['player2_name']} selected to serve first"
         return f"{match_row['player1_name']} selected to serve first"
     if event_type == "receiver_choice":
-        court = "Deuce" if payload.get("side") == "Right" else "Ad"
-        return f"Receiver chose the {court} court for the No-Ad deciding point"
+        receiver = payload.get("current_receiver") or "Receiver"
+        return f"Golden Point receiver selected: {receiver}"
     if event_type == "serve_side":
         return f"Serve changed to {payload.get('side', 'Right')}"
     if event_type == "let":
@@ -1171,6 +1171,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     score_type = state["score_type"]
     current_server_side = state.get("current_server_side") or "player1"
     current_server_participant_id = state.get("current_server_participant_id") or _current_game_server_participant_id(state)
+    is_padel = str(match.get("sport") or "").strip().lower() == "padel"
     point_service_side = state.get("service_side") or "Right"
     point_receiver_side = state.get("current_receiver_side") or _opponent(current_server_side)
     point_receiver_participant_id = (
@@ -1186,14 +1187,22 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     final_set_match_tiebreak = bool(state.get("tennis_final_set_match_tiebreak"))
     no_ad_deciding_side = state.get("no_ad_deciding_side")
 
+    # Tennis Golden Point is always played from the normal 40-40 (Right/Deuce)
+    # service side. Padel instead pauses so the receiving team can choose which
+    # partner receives; that choice is represented by Right/Left below.
+    if no_ad_scoring and not is_padel and not is_tie_break and player1_score == 3 and player2_score == 3:
+        point_service_side = "Right"
+        point_receiver_participant_id = _receiver_for_side(state, point_receiver_side, point_service_side)
+
     if (
-        no_ad_scoring
+        is_padel
+        and no_ad_scoring
         and not is_tie_break
         and player1_score == 3
         and player2_score == 3
         and no_ad_deciding_side not in {"Right", "Left"}
     ):
-        raise ValueError("The receiver must choose the Deuce or Ad court before the No-Ad deciding point")
+        raise ValueError("The receiving team must choose the Golden Point receiver before the deciding point")
 
     if scorer_side == "player1":
         player1_score += 1
@@ -1375,7 +1384,9 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
                 next_service_side = "Right"
 
         if no_ad_scoring and not next_tie_break and player1_score == 3 and player2_score == 3:
-            next_no_ad_deciding_side = None
+            next_no_ad_deciding_side = None if is_padel else "Right"
+            if not is_padel:
+                next_service_side = "Right"
 
     if not match_completed:
         winner_side = None
@@ -1699,10 +1710,12 @@ def _prepare_receiver_choice(match, payload):
     state = match["state"]
     if match["status"] == "completed" or state.get("match_complete"):
         raise ValueError("Match is already complete")
+    if str(match.get("sport") or "").strip().lower() != "padel":
+        raise ValueError("Golden Point receiver choice is only available for padel")
     if not state.get("tennis_no_ad_scoring"):
-        raise ValueError("Receiver choice is only available when No-Ad scoring is enabled")
+        raise ValueError("Receiver choice is only available when Golden Point is enabled")
     if state.get("is_tie_break") or state.get("player1_score") != 3 or state.get("player2_score") != 3:
-        raise ValueError("Receiver choice is only available at a No-Ad deciding point")
+        raise ValueError("Receiver choice is only available at a Golden Point deciding point")
 
     side = payload.get("side")
     if side not in {"Right", "Left"}:

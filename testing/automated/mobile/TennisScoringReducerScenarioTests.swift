@@ -21,12 +21,25 @@ enum TennisScoringReducerScenarioTests {
         TennisScoringReducer.applyPoint(to: &advantage, scoringSide: "player2", match: match)
         check(advantage.player1ScoreLabel == "40" && advantage.player2ScoreLabel == "40", "return to deuce")
 
-        var noAd = MutableMatchState(makeState(player1Score: 3, player2Score: 3, noAd: true))
-        TennisScoringReducer.applyPoint(to: &noAd, scoringSide: "player1", match: match)
-        check(noAd.player1Score == 3, "No-Ad blocks scoring until receiver choice")
-        TennisScoringReducer.applyReceiverChoice(to: &noAd, side: "Left", match: match)
-        TennisScoringReducer.applyPoint(to: &noAd, scoringSide: "player1", match: match)
-        check(noAd.player1SetGames == 1 && noAd.player1Score == 0, "No-Ad deciding point wins game")
+        var goldenPoint = MutableMatchState(makeState(player1Score: 2, player2Score: 3, noAd: true))
+        TennisScoringReducer.applyPoint(to: &goldenPoint, scoringSide: "player1", match: match)
+        check(
+            goldenPoint.player1Score == 3
+                && goldenPoint.player2Score == 3
+                && goldenPoint.serviceSide == "Right"
+                && goldenPoint.noAdDecidingSide == "Right",
+            "tennis Golden Point automatically uses the 40-40 side"
+        )
+        TennisScoringReducer.applyPoint(to: &goldenPoint, scoringSide: "player1", match: match)
+        check(goldenPoint.player1SetGames == 1 && goldenPoint.player1Score == 0, "tennis Golden Point wins game")
+
+        let padelMatch = makeMatch(sport: "padel")
+        var padelGoldenPoint = MutableMatchState(makeState(player1Score: 3, player2Score: 3, noAd: true))
+        TennisScoringReducer.applyPoint(to: &padelGoldenPoint, scoringSide: "player1", match: padelMatch)
+        check(padelGoldenPoint.player1Score == 3, "padel Golden Point waits for receiving player choice")
+        TennisScoringReducer.applyReceiverChoice(to: &padelGoldenPoint, side: "Left", match: padelMatch)
+        TennisScoringReducer.applyPoint(to: &padelGoldenPoint, scoringSide: "player1", match: padelMatch)
+        check(padelGoldenPoint.player1SetGames == 1 && padelGoldenPoint.player1Score == 0, "padel Golden Point wins after receiver choice")
     }
 
     private static func testStandardAndLongTiebreak() {

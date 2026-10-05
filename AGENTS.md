@@ -42,8 +42,8 @@ What is real and implemented:
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and court CRUD
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
-- sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup with per-participant shirt colours, automatic singles receiver selection from the opening server, explicit doubles serve/receive selection, optional No-Ad deciding points, an optional final-set 10-point match tiebreak, and optional timed 90-second odd-game changeovers plus 120-second set breaks
-- padel uses an explicit doubles-only adapter over the mature tennis-style set engine, including advantage or Golden Point, 6-6 tiebreaks, serve/receive rotation, offline replay, undo and match completion; table tennis, badminton, and pickleball remain fail-safe placeholders
+- sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup with per-participant shirt colours, automatic singles receiver selection from the opening server, explicit doubles serve/receive selection, optional Golden Point played automatically from the 40-40/Right service side, an optional final-set 10-point match tiebreak, and optional timed 90-second odd-game changeovers plus 120-second set breaks
+- padel uses an explicit doubles-only adapter over the mature tennis-style set engine, including advantage or Golden Point where the receiving team selects which partner receives, 6-6 tiebreaks, serve/receive rotation, offline replay, undo and match completion; table tennis, badminton, and pickleball remain fail-safe placeholders
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - web and native Personal Plus performance views covering results, game/point and serve-point percentages, court time, close games/sets, streaks, opponents, scorelines, sport splits, and weekly/monthly progress
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
@@ -76,7 +76,7 @@ What is real and implemented:
 - root-admin User Accounts directory across personal and club memberships, with account-type and unverified-user summary filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports
 - root-admin user profiles show email-verification state and allow an authenticated root admin to manually verify an account and approve pending memberships for that email without changing its password
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
-- root-admin RacketSports controls for separate web and iOS sport lists, with a platform-wide apply-to-all action and per-membership client overrides from User Accounts
+- root-admin RacketSports controls for separate web and iOS sport lists, with an affected-user preview and confirmation-protected platform-wide apply-to-all action plus per-membership client overrides from User Accounts
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 - a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 

@@ -233,6 +233,13 @@ export function updateRootAdminPlatformSports(payload) {
   });
 }
 
+export function previewRootAdminPlatformSports(payload) {
+  return apiRequest("/root_admin/platform_sports/preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getRootAdminMatches(filters = {}) {
   const params = new URLSearchParams();
   if (filters.sport) {

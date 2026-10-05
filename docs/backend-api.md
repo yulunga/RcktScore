@@ -176,6 +176,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 
 - `GET /root_admin/dashboard`
 - `GET /root_admin/platform_sports`
+- `POST /root_admin/platform_sports/preview`
 - `PUT /root_admin/platform_sports`
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access`
 - `GET /root_admin/matches`
@@ -222,6 +223,7 @@ Current root-admin match-management behavior:
 Current root-admin platform-sport behavior:
 
 - `GET /root_admin/platform_sports` returns the umbrella list plus separate `enabled_sports_web` and `enabled_sports_ios` lists
+- `POST /root_admin/platform_sports/preview` accepts the proposed web and iOS lists and returns the affected users and memberships without changing data
 - `PUT /root_admin/platform_sports` applies separate web and iOS lists to every existing membership, updates the organisation umbrella list, and revokes active user sessions so clients reload authoritative access
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access` sets that membership's web and iOS lists; values remain capped by platform and organisation access and the user's active sessions are revoked
 - organisation-level and personal-account-level enabled-sport updates are now constrained to the currently allowed platform list
@@ -261,7 +263,7 @@ Current organisation-settings behavior:
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
 - the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
 - native tennis match creation can include optional team-format and lineup metadata for doubles, per-participant `team{1|2}_player{1|2}_shirt_color` values, `tennis_no_ad_scoring`, `tennis_final_set_match_tiebreak`, and `tennis_timed_breaks`; the last flag is stored in the match-start event and defaults to false, while the tennis `server` event path accepts opening serve/receive order metadata
-- at a No-Ad 40-40 score, `POST /event_action` must record `action_type: receiver_choice` with `side: Right` for the Deuce court or `side: Left` for the Ad court before the next point is accepted
+- at a tennis Golden Point 40-40 score, the next point is accepted immediately and is played from the normal 40-40/Right service side; padel instead requires `POST /event_action` with `action_type: receiver_choice` before the point, using `side: Right` or `side: Left` to identify the selected receiving partner's court
 
 ### Match and scoring routes
 

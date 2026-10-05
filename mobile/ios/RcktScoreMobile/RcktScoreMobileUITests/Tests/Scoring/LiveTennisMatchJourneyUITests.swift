@@ -38,6 +38,7 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         scoring.warmupSkipButton.tap()
         chooseSinglesOpeningOrder(scoring)
         scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 0)
+        scoring.waitForTennisTimedBreaks(enabled: false)
         checkpoint("Tennis-03-Match-Live")
 
         // Set one starts with a love hold, then a deuce game won by Mark.
@@ -115,6 +116,7 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         scoring.warmupSkipButton.tap()
         chooseDoublesOpeningOrder(scoring)
         scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 0)
+        scoring.waitForTennisTimedBreaks(enabled: true)
         checkpoint("Tennis-09-Doubles-Match-Live")
 
         completeGoldenPointGameForPlayer1(scoring: scoring)
@@ -198,12 +200,10 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
             scorePoint("player2", expectedPoints: points, games: 0, sets: 0, scoring: scoring)
         }
 
-        XCTAssertTrue(
-            scoring.tennisNoAdReceiverChoice.waitForExistence(timeout: 8),
-            "Golden Point should require the receiver to choose a court at 40-40."
+        XCTAssertFalse(
+            scoring.tennisNoAdReceiverChoice.exists,
+            "Tennis Golden Point should use the normal 40-40 side without asking for a receiver choice."
         )
-        XCTAssertTrue(scoring.tennisNoAdDeuceCourtButton.waitForExistence(timeout: 5))
-        scoring.tennisNoAdDeuceCourtButton.tap()
         scoring.tapTennisScoreCard(side: "player1")
         scoring.waitForTennisState(side: "player1", points: "0", games: 1, sets: 0)
     }

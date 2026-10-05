@@ -218,6 +218,7 @@ If a root-admin issue appears:
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every account on one client, check the matching platform client list and whether migration `028_client_sport_access.sql` has been applied
 - if only one user is affected, inspect `SkwshOrgUsers.enabled_sports_web` and `enabled_sports_ios` for each of their memberships; access changes intentionally revoke active sessions
+- if the affected-user preview fails, verify `POST /root_admin/platform_sports/preview` is deployed and the root-admin session is still valid; the preview is read-only and must not alter sport access
 - logout is idempotent and revokes the token through `POST /root_admin/logout`
 
 ## 4. Match Creation and Scoring Issues
@@ -239,7 +240,7 @@ Common symptoms:
 - a selected shirt colour is replaced by the default colour
 - tennis appears in setup but cannot be created
 - tennis score labels or server rotation look wrong during tie-breaks
-- No-Ad scoring reaches 40-40 but the next point cannot be recorded
+- Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
 
@@ -254,7 +255,7 @@ What to check:
 - whether the action used `score_point` or `event_action`
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
-- whether migration `021_tennis_scoring_formats.sql` is present, the match row contains the expected tennis flags, and a `receiver_choice` event exists before a No-Ad deciding point
+- whether migration `021_tennis_scoring_formats.sql` is present and the match row contains the expected tennis flags; tennis should accept the deciding point immediately from the Right service side, while padel must have a `receiver_choice` event identifying the selected receiving partner's court first
 
 Important current truths:
 
@@ -351,7 +352,7 @@ If behavior seems impossible:
 
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
-- for No-Ad and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
+- for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
@@ -433,7 +434,7 @@ Important current truths:
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
 - native tennis scoring automatically assigns the other singles player as receiver when the opening server is chosen; doubles still expects explicit opening serve/receive selections, and its lineup/order and per-participant shirt colours come from the native match-setup payload rather than from a dedicated participant table
 - optional tennis timed breaks come from `tennis_timed_breaks` in the `match_started` event; when enabled, there is no break after game 1, later odd games trigger 90 seconds, and a completed set triggers 120 seconds instead
-- at No-Ad deuce the receiver must choose Deuce or Ad court; that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
+- at tennis Golden Point the deciding point proceeds automatically from the 40-40/Right service side; in padel, the receiving team chooses which named partner receives and that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
 - the squash/racketball scorer now selects compact widths on phone-sized screens, scrolls long game history horizontally, adapts warm-up actions when they cannot fit side by side, and shows a completed-match summary after the final point
 - changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage, `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the credential-free Simulator regression, and the opt-in `testing/automated/mobile/run-live-racket-match-ui-test.sh` only when a completed match may be written to the Personal Plus test account
 - white, yellow, and pink scoring cards use dark foregrounds and a contrasting score inset; a running match clock is light green, a paused clock remains slate, and stroke/let player choices stay in the pink-accented Match Actions sheet with explicit player names

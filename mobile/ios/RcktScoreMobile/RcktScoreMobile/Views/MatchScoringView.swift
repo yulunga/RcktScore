@@ -94,6 +94,9 @@ struct MatchScoringView: View {
         ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
             || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
     }
+    private var isPadelMatch: Bool {
+        (match?.sport ?? "").lowercased() == "padel"
+    }
     private var isTennisDoublesMatch: Bool {
         isTennisMatch && (live?.teamFormat ?? "").lowercased() == "doubles"
     }
@@ -2564,7 +2567,7 @@ struct MatchScoringView: View {
 
     private func addPoint(for side: String) async {
         guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
-        guard !(isTennisMatch
+        guard !(isPadelMatch
             && live?.tennisNoAdScoring == true
             && live?.isTieBreak == false
             && live?.player1Score == 3
@@ -2712,6 +2715,13 @@ struct MatchScoringView: View {
         ) {
             match = cached
         }
+
+        // Reconcile interval state directly after the optimistic action and
+        // server response settle. The onChange observer remains useful for
+        // external/offline updates, but a fast online sync can coalesce those
+        // renders and otherwise miss the completed-game transition.
+        syncIntervalState()
+        syncTennisBreakState()
 
         if isOnline, container.offlineMatchStore.pendingActionCount > 0 {
             errorMessage = container.offlineMatchStore.lastSyncErrorMessage

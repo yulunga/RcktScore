@@ -48,8 +48,12 @@ struct ScoringScreen {
         app.descendants(matching: .any)["tennis.noAdReceiverChoice"]
     }
 
-    var tennisNoAdDeuceCourtButton: XCUIElement {
-        app.buttons["tennis.noAdReceiverChoice.Right"]
+    var padelGoldenPointTeam2Player1ReceiverButton: XCUIElement {
+        app.buttons["padel.goldenPointReceiver.team2_player1"]
+    }
+
+    var padelGoldenPointTeam2Player2ReceiverButton: XCUIElement {
+        app.buttons["padel.goldenPointReceiver.team2_player2"]
     }
 
     var player2ServeSideButton: XCUIElement {
@@ -204,6 +208,17 @@ struct ScoringScreen {
             XCTWaiter.wait(for: [expectation], timeout: timeout),
             .completed,
             "Expected tennis mode '\(expected)', but the format banner value is \(String(describing: tennisFormatBanner.value))."
+        )
+    }
+
+    func waitForTennisTimedBreaks(enabled: Bool, timeout: TimeInterval = 10) {
+        let expected = enabled ? "Timed breaks on" : "Timed breaks off"
+        let predicate = NSPredicate(format: "label CONTAINS[c] %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: tennisFormatBanner)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: timeout),
+            .completed,
+            "Expected the live match to report '\(expected)', but the format banner label is '\(tennisFormatBanner.label)'."
         )
     }
 }

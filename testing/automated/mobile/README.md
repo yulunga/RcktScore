@@ -26,9 +26,10 @@ real app and backend, creates a singles Best of 3 tennis match, tests a deuce
 game, reaches 6-6 in the first set, proves the tiebreak requires a two-point
 margin by completing it 8-6, wins the second set 6-0, verifies match
 completion, then creates a Best of 3 doubles match with **Golden Point** and
-**Timed breaks** enabled. The doubles journey exercises a deciding Golden
-Point with a receiver-court choice, verifies and skips changeover and set-break
-overlays, completes the match 6-0, 6-0, and signs out.
+**Timed breaks** enabled. Tennis Golden Point automatically uses the normal
+40-40 side without a receiver-choice prompt. The doubles journey wins that
+deciding point, verifies and skips changeover and set-break overlays, completes
+the match 6-0, 6-0, and signs out.
 
 The journey creates two real completed matches. If the account already has an
 active personal match, the test ends that match early before starting. Use a
@@ -54,8 +55,9 @@ disabled:
 
 - the first uses standard advantage scoring and exercises a deuce game before
   completing 6-0, 6-0;
-- the second enables Golden Point, reaches 40-40, selects the receiver's Deuce
-  court, wins the deciding point, and completes 6-0, 6-0.
+- the second enables Golden Point, reaches 40-40, verifies both receiving-team
+  players are offered, selects the second receiver, wins the deciding point,
+  and completes 6-0, 6-0.
 
 The journey creates two real completed matches and then signs out. If the
 account already has an active personal match, the test ends it early before

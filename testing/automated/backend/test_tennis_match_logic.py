@@ -5,7 +5,7 @@ import pytest
 from common import tennis_match_logic as tennis
 
 
-def make_match(**state_overrides):
+def make_match(sport="tennis", **state_overrides):
     row = {
         "id": "match-1",
         "tenant_id": 1,
@@ -13,7 +13,7 @@ def make_match(**state_overrides):
         "court_name": "Centre Court",
         "court_alias": None,
         "court_display_code": "",
-        "sport": "tennis",
+        "sport": sport,
         "player1_name": "Alex",
         "player2_name": "Blair",
         "best_of": 3,
@@ -74,23 +74,71 @@ def test_point_event_preserves_point_context_and_marks_regular_game_boundary():
     assert match["state"]["current_server_side"] == "player2"
 
 
-def test_no_ad_requires_receiver_choice_then_next_point_wins():
+def test_tennis_golden_point_uses_the_40_40_side_and_next_point_wins():
     match = make_match(
+        player1_score=2,
+        player2_score=3,
+        tennis_no_ad_scoring=True,
+        no_ad_deciding_side=None,
+        service_side="Left",
+    )
+    match, _ = point(match, "player1")
+    assert match["state"]["player1_score"] == 3
+    assert match["state"]["player2_score"] == 3
+    assert match["state"]["service_side"] == "Right"
+    assert match["state"]["no_ad_deciding_side"] == "Right"
+
+    match, _ = point(match, "player1")
+    assert match["state"]["player1_set_games"] == 1
+    assert match["state"]["player1_score"] == 0
+
+
+def test_padel_golden_point_requires_receiving_player_choice_then_next_point_wins():
+    match = make_match(
+        sport="padel",
         player1_score=3,
         player2_score=3,
         tennis_no_ad_scoring=True,
         no_ad_deciding_side=None,
     )
-    with pytest.raises(ValueError, match="receiver must choose"):
+    _, teams = tennis._build_tennis_teams({
+        "team_format": "doubles",
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "team1_player2_name": "Casey",
+        "team2_player2_name": "Drew",
+    })
+    match["state"].update(
+        team_format="doubles",
+        tennis_teams=teams,
+        receiver_deuce_order={"player1": "team1_player1", "player2": "team2_player1"},
+        current_server_side="player1",
+        current_server_participant_id="team1_player1",
+        current_receiver_side="player2",
+        current_receiver_participant_id="team2_player1",
+    )
+    with pytest.raises(ValueError, match="receiving team must choose"):
         point(match, "player1")
 
     payload, state = tennis._prepare_receiver_choice(match, {"side": "Left"})
     assert payload["side"] == "Left"
+    assert payload["current_receiver"] == "Drew"
+    assert payload["current_receiver_participant_id"] == "team2_player2"
     match["state"] = state
     match, _ = point(match, "player2")
     assert match["state"]["player2_set_games"] == 1
     assert match["state"]["player1_score"] == 0
     assert match["state"]["no_ad_deciding_side"] is None
+
+
+def test_tennis_rejects_padel_only_golden_point_receiver_choice():
+    match = make_match(
+        player1_score=3,
+        player2_score=3,
+        tennis_no_ad_scoring=True,
+    )
+    with pytest.raises(ValueError, match="only available for padel"):
+        tennis._prepare_receiver_choice(match, {"side": "Right"})
 
 
 def test_six_all_starts_seven_point_tiebreak_and_long_tiebreak_continues():

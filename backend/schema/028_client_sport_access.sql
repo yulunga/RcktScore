@@ -4,8 +4,7 @@ ALTER TABLE platform_settings
 
 UPDATE platform_settings
 SET enabled_sports_web = COALESCE(enabled_sports_web, enabled_sports),
-    enabled_sports_ios = COALESCE(enabled_sports_ios, enabled_sports)
-WHERE id = 'default';
+    enabled_sports_ios = COALESCE(enabled_sports_ios, enabled_sports);
 
 ALTER TABLE platform_settings
     ALTER COLUMN enabled_sports_web SET DEFAULT '["squash","racketball","tennis"]'::jsonb,

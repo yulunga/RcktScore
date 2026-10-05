@@ -18,11 +18,24 @@ struct TennisScoringPresentation: View {
     private let navy = Color(red: 28 / 255, green: 61 / 255, blue: 99 / 255)
 
     private var requiresReceiverChoice: Bool {
-        state.tennisNoAdScoring
+        isPadel
+            && state.tennisNoAdScoring
             && !state.isTieBreak
             && state.player1Score == 3
             && state.player2Score == 3
             && state.noAdDecidingSide == nil
+    }
+
+    private var isPadel: Bool {
+        (match.sport ?? "").lowercased() == "padel"
+    }
+
+    private var goldenPointReceivingSide: String {
+        state.currentReceiverSide ?? (state.currentServerSide == "player1" ? "player2" : "player1")
+    }
+
+    private var goldenPointReceivers: [TennisParticipant] {
+        state.tennisTeams?[goldenPointReceivingSide] ?? []
     }
 
     private var pointEvents: [MatchEvent] {
@@ -30,6 +43,29 @@ struct TennisScoringPresentation: View {
             ($0.eventType == "score_point" || $0.eventType == "stroke")
                 && ($0.payload?.scorer ?? $0.payload?.playerSide) != nil
         }
+    }
+
+    private var formatDescription: String {
+        if state.isMatchTiebreak {
+            return "Final-set match tiebreak • First to 10, win by 2"
+        }
+
+        return "Best of \(state.bestOf) sets • First to 6 games"
+            + (state.tennisNoAdScoring ? " • Golden Point" : "")
+            + (state.tennisTimedBreaks ? " • Timed breaks" : "")
+    }
+
+    private func isCompletedGame(_ event: MatchEvent) -> Bool {
+        event.payload?.tennisGameCompleted == true || event.payload?.gameCompleted == true
+    }
+
+    private var latestTimelineItemID: String? {
+        guard let event = pointEvents.last else { return nil }
+        return isCompletedGame(event) ? gameDividerID(for: event) : event.id
+    }
+
+    private func gameDividerID(for event: MatchEvent) -> String {
+        "\(event.id)-game-divider"
     }
 
     var body: some View {
@@ -112,20 +148,21 @@ struct TennisScoringPresentation: View {
                                 .id(event.id)
 
                             if let payload = event.payload,
-                               payload.tennisGameCompleted == true {
+                               isCompletedGame(event) {
                                 gameDivider(payload)
+                                    .id(gameDividerID(for: event))
                             }
                         }
                     }
                     .padding(.vertical, 2)
                 }
                 .onAppear {
-                    if let lastID = pointEvents.last?.id {
+                    if let lastID = latestTimelineItemID {
                         proxy.scrollTo(lastID, anchor: .bottom)
                     }
                 }
                 .onChange(of: pointEvents.count) {
-                    if let lastID = pointEvents.last?.id {
+                    if let lastID = latestTimelineItemID {
                         withAnimation(.easeOut(duration: 0.2)) {
                             proxy.scrollTo(lastID, anchor: .bottom)
                         }
@@ -153,12 +190,12 @@ struct TennisScoringPresentation: View {
         let pointScore = scorer == "player1"
             ? (payload?.pointPlayer1ScoreLabel ?? payload?.player1ScoreLabel ?? "•")
             : (payload?.pointPlayer2ScoreLabel ?? payload?.player2ScoreLabel ?? "•")
-        let score = payload?.tennisGameCompleted == true ? "Game" : pointScore
+        let score = isCompletedGame(event) ? "Game" : pointScore
 
         return HStack(spacing: 18) {
-            timelineMarker(score, visible: scorer == "player1", isGame: payload?.tennisGameCompleted == true)
+            timelineMarker(score, visible: scorer == "player1", isGame: isCompletedGame(event))
                 .frame(width: 70, alignment: .trailing)
-            timelineMarker(score, visible: scorer == "player2", isGame: payload?.tennisGameCompleted == true)
+            timelineMarker(score, visible: scorer == "player2", isGame: isCompletedGame(event))
                 .frame(width: 70, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -201,9 +238,7 @@ struct TennisScoringPresentation: View {
     private var formatBanner: some View {
         HStack(spacing: 8) {
             Circle().fill(activeGreen).frame(width: 9, height: 9)
-            Text(state.isMatchTiebreak
-                 ? "Final-set match tiebreak • First to 10, win by 2"
-                 : "Best of \(state.bestOf) sets • First to 6 games\(state.tennisNoAdScoring ? " • No-Ad" : "")")
+            Text(formatDescription)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(brandBlue)
                 .lineLimit(2)
@@ -216,6 +251,7 @@ struct TennisScoringPresentation: View {
         .padding(.horizontal, 6)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("tennis.formatBanner")
+        .accessibilityLabel("\(formatDescription). Timed breaks \(state.tennisTimedBreaks ? "on" : "off")")
         .accessibilityValue(state.isTieBreak ? "tiebreak set \(state.currentGameNumber)" : "standard set \(state.currentGameNumber)")
     }
 
@@ -280,15 +316,16 @@ struct TennisScoringPresentation: View {
 
     private var receiverChoice: some View {
         VStack(spacing: 10) {
-            Text("No-Ad Deciding Point")
+            Text("Golden Point Receiver")
                 .font(.headline)
-            Text("\(state.currentReceiver ?? "The receiver") chooses where to receive. The next point wins the game.")
+            Text("The receiving team chooses which player receives. The next point wins the game.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: 12) {
-                courtButton("Deuce Court", side: "Right")
-                courtButton("Ad Court", side: "Left")
+                ForEach(goldenPointReceivers, id: \.id) { receiver in
+                    receiverButton(receiver)
+                }
             }
         }
         .padding(14)
@@ -298,15 +335,19 @@ struct TennisScoringPresentation: View {
         .accessibilityIdentifier("tennis.noAdReceiverChoice")
     }
 
-    private func courtButton(_ title: String, side: String) -> some View {
-        Button(title) { onChooseReceiverCourt(side) }
+    private func receiverButton(_ receiver: TennisParticipant) -> some View {
+        let deuceReceiverID = state.receiverDeuceOrder?[goldenPointReceivingSide]
+            ?? goldenPointReceivers.first?.id
+        let side = receiver.id == deuceReceiverID ? "Right" : "Left"
+
+        return Button(receiver.displayName) { onChooseReceiverCourt(side) }
             .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
             .background(brandBlue)
             .foregroundStyle(.white)
             .clipShape(Capsule())
-            .accessibilityIdentifier("tennis.noAdReceiverChoice.\(side)")
+            .accessibilityIdentifier("padel.goldenPointReceiver.\(receiver.id)")
     }
 
     private func fill(for shirt: String) -> Color {

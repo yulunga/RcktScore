@@ -152,7 +152,9 @@ enum TennisBreakRules {
 enum TennisScoringReducer {
     static func applyPoint(to state: inout MutableMatchState, scoringSide: String, match: MatchDetail) {
         guard !state.matchComplete else { return }
-        if state.tennisNoAdScoring,
+        let isPadel = (match.sport ?? "").lowercased() == "padel"
+        if isPadel,
+           state.tennisNoAdScoring,
            !state.isTieBreak,
            state.player1Score == 3,
            state.player2Score == 3,
@@ -206,7 +208,10 @@ enum TennisScoringReducer {
         guard isComplete(state.player1Score, state.player2Score, target: 4, margin: requiredMargin) else {
             setServer(state: &state, participantID: currentServerID, fallbackSide: currentServerSide, match: match)
             if state.tennisNoAdScoring && state.player1Score == 3 && state.player2Score == 3 {
-                state.noAdDecidingSide = nil
+                state.noAdDecidingSide = isPadel ? nil : "Right"
+                if !isPadel {
+                    state.serviceSide = "Right"
+                }
             }
             updateReceiver(state: &state, match: match)
             updateLabels(state: &state)
@@ -254,7 +259,8 @@ enum TennisScoringReducer {
     }
 
     static func applyReceiverChoice(to state: inout MutableMatchState, side: String, match: MatchDetail) {
-        guard state.tennisNoAdScoring,
+        guard (match.sport ?? "").lowercased() == "padel",
+              state.tennisNoAdScoring,
               !state.isTieBreak,
               state.player1Score == 3,
               state.player2Score == 3,

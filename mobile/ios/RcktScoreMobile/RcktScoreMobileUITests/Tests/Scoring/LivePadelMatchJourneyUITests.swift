@@ -112,6 +112,7 @@ final class LivePadelMatchJourneyUITests: HitnScoreBaseUITest {
         scoring.warmupSkipButton.tap()
         chooseOpeningOrder(scoring)
         scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 0)
+        scoring.waitForTennisTimedBreaks(enabled: false)
     }
 
     private func chooseOpeningOrder(_ scoring: ScoringScreen) {
@@ -141,10 +142,11 @@ final class LivePadelMatchJourneyUITests: HitnScoreBaseUITest {
         reachFortyAll(scoring: scoring)
         XCTAssertTrue(
             scoring.tennisNoAdReceiverChoice.waitForExistence(timeout: 8),
-            "Golden Point should require the receiver to choose a court at 40-40."
+            "Padel Golden Point should require the receiving team to choose a player at 40-40."
         )
-        XCTAssertTrue(scoring.tennisNoAdDeuceCourtButton.waitForExistence(timeout: 5))
-        scoring.tennisNoAdDeuceCourtButton.tap()
+        XCTAssertTrue(scoring.padelGoldenPointTeam2Player1ReceiverButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(scoring.padelGoldenPointTeam2Player2ReceiverButton.waitForExistence(timeout: 5))
+        scoring.padelGoldenPointTeam2Player2ReceiverButton.tap()
         scoring.tapTennisScoreCard(side: "player1")
         scoring.waitForTennisState(side: "player1", points: "0", games: 1, sets: 0)
     }

@@ -341,6 +341,67 @@ def update_root_admin_platform_sports(
     return result
 
 
+def preview_root_admin_platform_sports(connection, enabled_sports_web, enabled_sports_ios):
+    web_sports = normalize_enabled_sports(enabled_sports_web)
+    ios_sports = normalize_enabled_sports(enabled_sports_ios)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                u.id AS membership_id,
+                u.clubusername,
+                u.first_name,
+                u.surname,
+                u.role,
+                u.approval_status,
+                o.id AS organization_id,
+                o.organization_name,
+                o.org_type
+            FROM "SkwshOrgUsers" AS u
+            INNER JOIN "SkwshOrgSettings" AS o
+                ON o.id = u.organization_id
+            ORDER BY LOWER(u.clubusername), o.organization_name, u.id
+            """
+        )
+        membership_rows = cursor.fetchall()
+
+    users_by_username = {}
+    for row in membership_rows:
+        username = (row.get("clubusername") or "").strip().lower()
+        if not username:
+            continue
+        user = users_by_username.setdefault(
+            username,
+            {
+                "username": username,
+                "first_name": row.get("first_name") or "",
+                "surname": row.get("surname") or "",
+                "memberships": [],
+            },
+        )
+        user["memberships"].append(
+            {
+                "id": row["membership_id"],
+                "organization_id": row["organization_id"],
+                "organization_name": row.get("organization_name") or f"Organisation {row['organization_id']}",
+                "organization_type": row.get("org_type") or "club",
+                "role": row.get("role") or "user",
+                "status": row.get("approval_status") or "approved",
+                "enabled_sports_web": web_sports,
+                "enabled_sports_ios": ios_sports,
+            }
+        )
+
+    users = list(users_by_username.values())
+    return {
+        "enabled_sports_web": web_sports,
+        "enabled_sports_ios": ios_sports,
+        "user_count": len(users),
+        "membership_count": len(membership_rows),
+        "users": users,
+    }
+
+
 def get_root_admin_matches(connection, sport=None, organization_id=None):
     requested_sport = (sport or "").strip().lower()
     requested_organization_id = None
