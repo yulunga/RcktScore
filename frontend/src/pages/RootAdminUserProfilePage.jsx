@@ -350,7 +350,13 @@ export default function RootAdminUserProfilePage() {
 
           {activeTab === "settings" ? (
             <section className="panel stack">
-              <div className="panel-heading"><h2>Scoring Sports Enabled</h2><p className="helper-text">Set each membership's web and iOS access independently. Platform and club settings remain the maximum allowed access.</p></div>
+              <div className="root-admin-section-header">
+                <div className="panel-heading">
+                  <h2>Scoring Sports Enabled</h2>
+                  <p className="helper-text">Set each membership's web and iOS access independently. If a sport is unavailable here, enable it for that client in Platform RacketSports first.</p>
+                </div>
+                <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/racket-sports")}>Open Platform RacketSports</button>
+              </div>
               {memberships.map((membership) => {
                 const webSports = normalizeEnabledSports(membership.enabled_sports_web, []);
                 const iosSports = normalizeEnabledSports(membership.enabled_sports_ios, []);
@@ -368,9 +374,10 @@ export default function RootAdminUserProfilePage() {
                         const webAvailable = availableWebSports.includes(sport.value);
                         const iosAvailable = availableIosSports.includes(sport.value);
                         const enabled = webEnabled || iosEnabled;
+                        const assignable = webAvailable || iosAvailable;
                         return (
                           <article className={`sport-option${enabled ? " active" : " disabled"}`} key={sport.value}>
-                            <strong>{sport.label}</strong><span>{organizationEnabled ? (enabled ? "Client access configured" : "Disabled for this user") : "Disabled by club/platform"}</span>
+                            <strong>{sport.label}</strong><span>{organizationEnabled ? (enabled ? "Client access configured" : "Disabled for this user") : (assignable && membership.organization_type === "personal" ? "Available to assign" : "Disabled by club/platform")}</span>
                             <div className="button-row">
                               <button disabled={!webAvailable || savingKey.startsWith(`sports-${membership.id}-`)} type="button" className={webEnabled ? "secondary" : ""} onClick={() => handleSportToggle(membership, "web", sport.value)}>Web: {webEnabled ? "On" : "Off"}</button>
                               <button disabled={!iosAvailable || savingKey.startsWith(`sports-${membership.id}-`)} type="button" className={iosEnabled ? "secondary" : ""} onClick={() => handleSportToggle(membership, "ios", sport.value)}>iOS: {iosEnabled ? "On" : "Off"}</button>

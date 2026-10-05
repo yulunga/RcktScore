@@ -223,8 +223,9 @@ Current root-admin match-management behavior:
 Current root-admin platform-sport behavior:
 
 - `GET /root_admin/platform_sports` returns the umbrella list plus separate `enabled_sports_web` and `enabled_sports_ios` lists
-- `POST /root_admin/platform_sports/preview` accepts the proposed web and iOS lists and returns the affected users and memberships without changing data
-- `PUT /root_admin/platform_sports` applies separate web and iOS lists to every existing membership, updates the organisation umbrella list, and revokes active user sessions so clients reload authoritative access
+- `POST /root_admin/platform_sports/preview` accepts the proposed web and iOS lists and returns the users and memberships that an optional bulk apply would affect, without changing data
+- `PUT /root_admin/platform_sports` saves the separate web and iOS platform-availability lists without changing organisation or membership access by default; send `apply_to_all: true` only for the explicit bulk action that updates every organisation and membership and revokes active user sessions
+- for a personal membership, a User Account sport-access update also maintains that personal organisation's umbrella sport list; club memberships remain capped by the club's own enabled-sports settings
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access` sets that membership's web and iOS lists; values remain capped by platform and organisation access and the user's active sessions are revoked
 - organisation-level and personal-account-level enabled-sport updates are now constrained to the currently allowed platform list
 

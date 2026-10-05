@@ -78,13 +78,14 @@ export default function RootAdminPlatformSportsPage() {
     }
   }
 
-  async function savePlatformSports() {
+  async function savePlatformSports(applyToAll) {
     const affectedText = preview
       ? `${preview.user_count} users across ${preview.membership_count} memberships`
       : "all user memberships";
-    const confirmed = window.confirm(
-      `Apply these settings to ${affectedText}?\n\nWeb: ${sportList(webSports)}\niOS: ${sportList(iosSports)}\n\nAll active user sessions will be signed out.`,
-    );
+    const confirmationMessage = applyToAll
+      ? `Apply these settings to ${affectedText}?\n\nWeb: ${sportList(webSports)}\niOS: ${sportList(iosSports)}\n\nAll active user sessions will be signed out.`
+      : `Save these platform availability settings?\n\nWeb: ${sportList(webSports)}\niOS: ${sportList(iosSports)}\n\nExisting club and user selections will not be changed.`;
+    const confirmed = window.confirm(confirmationMessage);
     if (!confirmed) {
       return;
     }
@@ -97,13 +98,16 @@ export default function RootAdminPlatformSportsPage() {
         enabled_sports_web: webSports,
         enabled_sports_ios: iosSports,
         updated_by: session?.username || "Root Admin",
+        apply_to_all: applyToAll,
       });
       const platformSports = response.platformSports || {};
       setWebSports(normalizeEnabledSports(platformSports.enabled_sports_web ?? platformSports.enabled_sports));
       setIosSports(normalizeEnabledSports(platformSports.enabled_sports_ios ?? platformSports.enabled_sports));
       setAffectedOrganizationCount(platformSports.affected_organization_count || 0);
       setPreview(null);
-      setMessage("Platform racket sports updated. Active user sessions were signed out so the new client access applies immediately.");
+      setMessage(applyToAll
+        ? "Platform availability was saved and applied to every club and user. Active sessions were signed out."
+        : "Platform availability was saved. Club and user access was not changed; assign sports from the relevant club or User Account page.");
     } catch (requestError) {
       setError(requestError.message || "Failed to update platform racket sports.");
     } finally {
@@ -139,10 +143,13 @@ export default function RootAdminPlatformSportsPage() {
           <h2>Platform Sports Controls</h2>
           <div className="button-row root-admin-actions">
             <button type="button" className="secondary" onClick={showAffectedUsers} disabled={saving || loading || previewLoading}>
-              {previewLoading ? "Loading Users..." : "Preview Affected Users"}
+              {previewLoading ? "Loading Users..." : "Preview Bulk Apply"}
             </button>
-            <button type="button" onClick={savePlatformSports} disabled={saving || loading}>
-              {saving ? "Saving..." : "Save for All Users & Clubs"}
+            <button type="button" className="secondary" onClick={() => savePlatformSports(true)} disabled={saving || loading}>
+              Apply to All Users & Clubs
+            </button>
+            <button type="button" onClick={() => savePlatformSports(false)} disabled={saving || loading}>
+              {saving ? "Saving..." : "Save Platform Availability"}
             </button>
           </div>
         </div>
@@ -153,13 +160,13 @@ export default function RootAdminPlatformSportsPage() {
             <div>{new Set([...webSports, ...iosSports]).size}</div>
           </div>
           <div className="meta-item">
-            <strong>Updated Clubs & Users</strong>
+            <strong>Clubs Updated by Last Bulk Apply</strong>
             <div>{affectedOrganizationCount}</div>
           </div>
         </div>
 
         <p className="helper-text">
-          Saving applies the web and iOS lists to every membership and signs out active users so the change takes effect immediately. Individual users can then be restricted further from their User Account profile.
+          Save Platform Availability changes only which sports may be assigned on each client. It does not grant access to any club or user. Assign access later from club settings or individual User Account profiles. Bulk apply remains available when every existing account should receive the same selection.
         </p>
 
         {loading ? <div className="notice">Loading platform sport controls...</div> : null}

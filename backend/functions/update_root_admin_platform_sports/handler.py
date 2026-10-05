@@ -20,6 +20,7 @@ def lambda_handler(event, context):
                 enabled_sports_web=payload.get("enabled_sports_web"),
                 enabled_sports_ios=payload.get("enabled_sports_ios"),
                 updated_by=root_admin_session["username"],
+                apply_to_all=payload.get("apply_to_all") is True,
             )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

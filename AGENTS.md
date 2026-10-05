@@ -76,7 +76,7 @@ What is real and implemented:
 - root-admin User Accounts directory across personal and club memberships, with account-type and unverified-user summary filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports
 - root-admin user profiles show email-verification state and allow an authenticated root admin to manually verify an account and approve pending memberships for that email without changing its password
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
-- root-admin RacketSports controls for separate web and iOS sport lists, with an affected-user preview and confirmation-protected platform-wide apply-to-all action plus per-membership client overrides from User Accounts
+- root-admin RacketSports controls for separate web and iOS availability lists; the default save changes only platform availability, while a separate affected-user preview and confirmation-protected apply-to-all action remains available, and individual access is assigned from User Accounts or club settings
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 - a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 

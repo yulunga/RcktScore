@@ -218,6 +218,7 @@ If a root-admin issue appears:
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every account on one client, check the matching platform client list and whether migration `028_client_sport_access.sql` has been applied
 - if only one user is affected, inspect `SkwshOrgUsers.enabled_sports_web` and `enabled_sports_ios` for each of their memberships; access changes intentionally revoke active sessions
+- saving Platform RacketSports availability alone must not enable the sport for existing users or clubs; enable the required client from the User Account page for personal users, or enable the club first and then select the club membership's client access
 - if the affected-user preview fails, verify `POST /root_admin/platform_sports/preview` is deployed and the root-admin session is still valid; the preview is read-only and must not alter sport access
 - logout is idempotent and revokes the token through `POST /root_admin/logout`
 

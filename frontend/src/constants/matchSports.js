@@ -20,7 +20,7 @@ export const MATCH_SPORT_OPTIONS = [
   {
     value: "padel",
     label: "Padel",
-    note: "Sport engine scaffolded but scoring is not live yet.",
+    note: "Doubles Padel setup and live scoring are available in the iOS app.",
     implemented: false,
   },
   {
