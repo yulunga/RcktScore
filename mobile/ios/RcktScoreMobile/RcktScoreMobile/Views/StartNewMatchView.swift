@@ -192,20 +192,40 @@ struct StartNewMatchFlowView: View {
                 LazyVGrid(columns: sportGridColumns, spacing: 14) {
                     ForEach(availableSports) { sport in
                         NavigationLink(value: sport) {
-                            VStack(spacing: 14) {
-                                sportGlyph(for: sport)
-                                    .frame(width: 68, height: 68)
-                                    .shadow(
-                                        color: Color.dashboardAccentPink.opacity(0.34),
-                                        radius: 10
+                            ZStack {
+                                SportCourtDiagram(sport: sport)
+                                    .stroke(
+                                        Color.sportSelectionCourtLine,
+                                        style: StrokeStyle(
+                                            lineWidth: 1.15,
+                                            lineCap: .round,
+                                            lineJoin: .round
+                                        )
                                     )
+                                    .padding(13)
 
-                                Text(sport.displayName)
-                                    .font(.title3.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.85)
+                                VStack(spacing: 8) {
+                                    ZStack {
+                                        SportSelectionLens()
+
+                                        sportGlyph(for: sport)
+                                            .frame(width: 54, height: 54)
+                                            .shadow(
+                                                color: Color.dashboardAccentPink.opacity(0.16),
+                                                radius: 5
+                                            )
+                                    }
+                                    .frame(width: 82, height: 82)
+
+                                    Text(sport.displayName)
+                                        .font(.title3.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.72)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.top, 8)
                             }
                             .frame(maxWidth: .infinity)
                             .aspectRatio(1, contentMode: .fit)
@@ -375,6 +395,168 @@ private struct TennisBallSeams: Shape {
     }
 }
 
+private struct SportCourtDiagram: Shape {
+    let sport: MatchSport
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRoundedRect(
+            in: rect,
+            cornerSize: CGSize(width: 1.5, height: 1.5)
+        )
+
+        switch sport {
+        case .squash, .racketball:
+            addLine(
+                to: &path,
+                from: point(x: 0, y: 0.47, in: rect),
+                to: point(x: 1, y: 0.47, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0, y: 0.63, in: rect),
+                to: point(x: 0.27, y: 0.63, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0.73, y: 0.63, in: rect),
+                to: point(x: 1, y: 0.63, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0.27, y: 0.47, in: rect),
+                to: point(x: 0.27, y: 0.63, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0.73, y: 0.47, in: rect),
+                to: point(x: 0.73, y: 0.63, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0.5, y: 0.47, in: rect),
+                to: point(x: 0.5, y: 0.72, in: rect)
+            )
+
+        case .tennis:
+            // Inner singles sidelines leave the doubles tramlines visible.
+            addLine(
+                to: &path,
+                from: point(x: 0.07, y: 0, in: rect),
+                to: point(x: 0.07, y: 1, in: rect)
+            )
+            addLine(
+                to: &path,
+                from: point(x: 0.93, y: 0, in: rect),
+                to: point(x: 0.93, y: 1, in: rect)
+            )
+            addCourtServiceBoxes(
+                to: &path,
+                in: rect,
+                serviceLineMinX: 0.07,
+                serviceLineMaxX: 0.93
+            )
+
+        case .padel:
+            // Padel has no tramlines; centre dividers exist only in the
+            // service boxes between each service line and the net.
+            addCourtServiceBoxes(to: &path, in: rect)
+
+        case .tableTennis, .pickleball, .badminton:
+            addLine(
+                to: &path,
+                from: point(x: 0, y: 0.5, in: rect),
+                to: point(x: 1, y: 0.5, in: rect)
+            )
+        }
+
+        return path
+    }
+
+    private func addCourtServiceBoxes(
+        to path: inout Path,
+        in rect: CGRect,
+        serviceLineMinX: CGFloat = 0,
+        serviceLineMaxX: CGFloat = 1
+    ) {
+        let upperServiceLine = 0.27
+        let net = 0.49
+        let lowerServiceLine = 0.70
+
+        addLine(
+            to: &path,
+            from: point(x: serviceLineMinX, y: upperServiceLine, in: rect),
+            to: point(x: serviceLineMaxX, y: upperServiceLine, in: rect)
+        )
+        addLine(
+            to: &path,
+            from: point(x: 0, y: net, in: rect),
+            to: point(x: 1, y: net, in: rect)
+        )
+        addLine(
+            to: &path,
+            from: point(x: serviceLineMinX, y: lowerServiceLine, in: rect),
+            to: point(x: serviceLineMaxX, y: lowerServiceLine, in: rect)
+        )
+        addLine(
+            to: &path,
+            from: point(x: 0.5, y: upperServiceLine, in: rect),
+            to: point(x: 0.5, y: net, in: rect)
+        )
+        addLine(
+            to: &path,
+            from: point(x: 0.5, y: net, in: rect),
+            to: point(x: 0.5, y: lowerServiceLine, in: rect)
+        )
+    }
+
+    private func point(x: CGFloat, y: CGFloat, in rect: CGRect) -> CGPoint {
+        CGPoint(
+            x: rect.minX + (rect.width * x),
+            y: rect.minY + (rect.height * y)
+        )
+    }
+
+    private func addLine(to path: inout Path, from start: CGPoint, to end: CGPoint) {
+        path.move(to: start)
+        path.addLine(to: end)
+    }
+}
+
+private struct SportSelectionLens: View {
+    var body: some View {
+        ZStack {
+            if #available(iOS 26.0, *) {
+                Color.clear
+                    .glassEffect(
+                        .clear.tint(Color.dashboardBrand.opacity(0.08)),
+                        in: Circle()
+                    )
+            } else {
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Color.dashboardBrand.opacity(0.035).clipShape(Circle()))
+            }
+        }
+        .overlay(
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.82),
+                            Color(red: 112 / 255, green: 182 / 255, blue: 1).opacity(0.82),
+                            Color.white.opacity(0.30)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.35
+                )
+        )
+        .shadow(color: Color.dashboardBrand.opacity(0.24), radius: 7)
+    }
+}
+
 private struct PadelRacketGlyph: View {
     let color: Color
 
@@ -424,9 +606,13 @@ private extension View {
     @ViewBuilder
     func sportSelectionGlass() -> some View {
         if #available(iOS 26.0, *) {
-            glassEffect(
+            background(
+                Color.sportSelectionCardBase,
+                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+            )
+            .glassEffect(
                 .regular
-                    .tint(Color.dashboardBrand.opacity(0.12))
+                    .tint(Color.dashboardBrand.opacity(0.10))
                     .interactive(),
                 in: RoundedRectangle(cornerRadius: 28, style: .continuous)
             )
@@ -436,7 +622,7 @@ private extension View {
                 in: RoundedRectangle(cornerRadius: 28, style: .continuous)
             )
             .background(
-                Color.dashboardBrand.opacity(0.08),
+                Color.sportSelectionCardBase,
                 in: RoundedRectangle(cornerRadius: 28, style: .continuous)
             )
         }
@@ -1796,6 +1982,8 @@ private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
+    static let sportSelectionCardBase = Color(red: 8 / 255, green: 25 / 255, blue: 48 / 255).opacity(0.72)
+    static let sportSelectionCourtLine = Color(red: 125 / 255, green: 176 / 255, blue: 232 / 255).opacity(0.43)
     static let dashboardBackgroundStart = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark
