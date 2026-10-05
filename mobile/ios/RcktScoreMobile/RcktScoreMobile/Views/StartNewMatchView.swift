@@ -685,8 +685,8 @@ struct StartNewMatchView: View {
                 )
 
                 checkboxOption(
-                    title: "Timed breaks",
-                    description: "No break after game 1, then 90 seconds after each odd-numbered game and 120 seconds between sets.",
+                    title: "Timed breaks between games and sets",
+                    description: "",
                     isOn: $formState.tennisTimedBreaks,
                     identifier: "startMatch.tennisTimedBreaksToggle"
                 )
@@ -770,10 +770,12 @@ struct StartNewMatchView: View {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text(description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 Spacer(minLength: 0)

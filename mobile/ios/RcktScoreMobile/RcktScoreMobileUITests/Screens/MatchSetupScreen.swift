@@ -225,7 +225,7 @@ struct MatchSetupScreen {
 
     private func scrollToElement(_ element: XCUIElement, attempts: Int = 12) {
         let visibleTop = app.frame.minY + 80
-        let visibleBottom = app.frame.maxY - 80
+        let visibleBottom = app.frame.maxY - 24
 
         for _ in 0..<attempts {
             if element.exists,
