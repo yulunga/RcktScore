@@ -25,7 +25,8 @@ This opt-in test uses the Personal Plus credentials from the ignored
 real app and backend, creates a singles Best of 3 tennis match, tests a deuce
 game, reaches 6-6 in the first set, proves the tiebreak requires a two-point
 margin by completing it 8-6, wins the second set 6-0, verifies match
-completion, and signs out.
+completion, and signs out. It explicitly leaves the **Timed breaks** setup
+option off so the scoring journey does not pause at changeovers or set breaks.
 
 The journey creates a real completed match. If the account already has an
 active personal match, the test ends that match early before starting. Use a

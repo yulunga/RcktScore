@@ -188,7 +188,8 @@ are ever printed or included in a shared result bundle.
 
 `LiveTennisMatchJourneyUITests` is the tennis-specific Personal Plus journey.
 It signs in, creates Paul versus Mark as singles Best of 3, selects Paul to
-serve and Mark to receive, and exercises these scoring paths:
+serve and Mark to receive, explicitly disables **Timed breaks**, and exercises
+these scoring paths:
 
 - a love service game;
 - a deuce game with advantage returning to deuce;
