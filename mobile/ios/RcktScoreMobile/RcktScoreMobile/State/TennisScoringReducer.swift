@@ -22,6 +22,7 @@ struct MutableMatchState {
     var isMatchTiebreak: Bool
     var tennisNoAdScoring: Bool
     var tennisFinalSetMatchTiebreak: Bool
+    var tennisTimedBreaks: Bool
     var noAdDecidingSide: String?
     var teamFormat: String?
     var tennisTeams: [String: [TennisParticipant]]?
@@ -63,6 +64,7 @@ struct MutableMatchState {
         isMatchTiebreak = state.isMatchTiebreak
         tennisNoAdScoring = state.tennisNoAdScoring
         tennisFinalSetMatchTiebreak = state.tennisFinalSetMatchTiebreak
+        tennisTimedBreaks = state.tennisTimedBreaks
         noAdDecidingSide = state.noAdDecidingSide
         teamFormat = state.teamFormat
         tennisTeams = state.tennisTeams
@@ -123,8 +125,24 @@ struct MutableMatchState {
             isMatchTiebreak: isMatchTiebreak,
             tennisNoAdScoring: tennisNoAdScoring,
             tennisFinalSetMatchTiebreak: tennisFinalSetMatchTiebreak,
+            tennisTimedBreaks: tennisTimedBreaks,
             noAdDecidingSide: noAdDecidingSide
         )
+    }
+}
+
+enum TennisBreakRules {
+    static func durationSeconds(
+        enabled: Bool,
+        completedGameNumber: Int,
+        setCompleted: Bool
+    ) -> Int? {
+        guard enabled else { return nil }
+        if setCompleted { return 120 }
+        guard completedGameNumber > 1, !completedGameNumber.isMultiple(of: 2) else {
+            return nil
+        }
+        return 90
     }
 }
 

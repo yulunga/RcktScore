@@ -183,3 +183,34 @@ testing is disabled so Xcode uses the selected visible Simulator rather than a
 background clone. The runner filters credential-variable lines from Xcode's
 console diagnostics, but credentials must still be rotated immediately if they
 are ever printed or included in a shared result bundle.
+
+## Live tennis match journey
+
+`LiveTennisMatchJourneyUITests` is the tennis-specific Personal Plus journey.
+It signs in, creates Paul versus Mark as singles Best of 3, selects Paul to
+serve and Mark to receive, and exercises these scoring paths:
+
+- a love service game;
+- a deuce game with advantage returning to deuce;
+- a first set that reaches 6-6;
+- a tiebreak that reaches 6-6 before Paul wins it 8-6; and
+- a 6-0 second set that completes the match 2-0.
+
+Eight retained screenshots record the major checkpoints. Like the squash
+journey, this test uses the real backend, creates a real completed match, ends
+an existing active personal match during recovery, and must only use a
+dedicated disposable test account.
+
+Run it from the repository root after configuring the ignored credentials
+file:
+
+```bash
+RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LiveTennisMatch-$(date +%Y%m%d-%H%M%S).xcresult \
+  testing/automated/mobile/run-live-tennis-match-ui-test.sh
+```
+
+In Xcode, run the test diamond beside
+`testPersonalPlusCompletesBestOfThreeWithFirstSetTiebreak` in
+`Tests/Scoring/LiveTennisMatchJourneyUITests.swift`. The command-line default
+pause is 0.2 seconds per completed game or screenshot checkpoint; set
+`RCKTSCORE_UI_STEP_DELAY` to make the visible journey slower.

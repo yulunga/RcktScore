@@ -117,6 +117,10 @@ private struct MatchSetupFormState {
     var player3Surname = ""
     var player4Name = ""
     var player4Surname = ""
+    var doublesPlayer1ShirtColor = "navy"
+    var doublesPlayer2ShirtColor = "white"
+    var doublesPlayer3ShirtColor = "blue"
+    var doublesPlayer4ShirtColor = "red"
     var refereeName = ""
     var scoreType = 15
     var bestOf = 5
@@ -128,6 +132,7 @@ private struct MatchSetupFormState {
     var player2Offset = 0
     var tennisNoAdScoring = false
     var tennisFinalSetMatchTiebreak = false
+    var tennisTimedBreaks = false
 
     var player1LookupQuery: String {
         [player1Name, player1Surname]
@@ -455,7 +460,8 @@ struct StartNewMatchView: View {
                         primarySurname: $formState.player1Surname,
                         secondaryFirstName: $formState.player2Name,
                         secondarySurname: $formState.player2Surname,
-                        shirtColor: $formState.player1ShirtColor,
+                        primaryShirtColor: $formState.doublesPlayer1ShirtColor,
+                        secondaryShirtColor: $formState.doublesPlayer2ShirtColor,
                         primaryNameFocus: .player1Name,
                         primarySurnameFocus: .player1Surname,
                         secondaryNameFocus: .player2Name,
@@ -470,7 +476,8 @@ struct StartNewMatchView: View {
                         primarySurname: $formState.player3Surname,
                         secondaryFirstName: $formState.player4Name,
                         secondarySurname: $formState.player4Surname,
-                        shirtColor: $formState.player2ShirtColor,
+                        primaryShirtColor: $formState.doublesPlayer3ShirtColor,
+                        secondaryShirtColor: $formState.doublesPlayer4ShirtColor,
                         primaryNameFocus: .player3Name,
                         primarySurnameFocus: .player3Surname,
                         secondaryNameFocus: .player4Name,
@@ -487,6 +494,8 @@ struct StartNewMatchView: View {
                         nameFocus: .player1Name,
                         surnameFocus: .player1Surname,
                         countryFocus: .player1Country,
+                        showsCountry: !isTennisMatch,
+                        showsHandedness: !isTennisMatch,
                         suggestions: activeLookupTarget == .player1 ? playerSuggestions : []
                     ) { suggestion in
                         applyPlayerSuggestion(.player1, suggestion: suggestion)
@@ -502,6 +511,8 @@ struct StartNewMatchView: View {
                         nameFocus: .player2Name,
                         surnameFocus: .player2Surname,
                         countryFocus: .player2Country,
+                        showsCountry: !isTennisMatch,
+                        showsHandedness: !isTennisMatch,
                         suggestions: activeLookupTarget == .player2 ? playerSuggestions : []
                     ) { suggestion in
                         applyPlayerSuggestion(.player2, suggestion: suggestion)
@@ -672,6 +683,13 @@ struct StartNewMatchView: View {
                     identifier: "startMatch.tennisFinalSetMatchTiebreakToggle",
                     isEnabled: formState.bestOf > 1
                 )
+
+                checkboxOption(
+                    title: "Timed breaks",
+                    description: "No break after game 1, then 90 seconds after each odd-numbered game and 120 seconds between sets.",
+                    isOn: $formState.tennisTimedBreaks,
+                    identifier: "startMatch.tennisTimedBreaksToggle"
+                )
             } else {
                 HStack(spacing: 12) {
                     selectionCard(title: "Match Format", value: $formState.bestOf, options: [1, 3, 5], identifier: "startMatch.bestOfPicker") { value in
@@ -769,6 +787,7 @@ struct StartNewMatchView: View {
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.5)
         .accessibilityIdentifier(identifier)
+        .accessibilityValue(isOn.wrappedValue ? "On" : "Off")
     }
 
     private var refereeCard: some View {
@@ -898,6 +917,8 @@ struct StartNewMatchView: View {
         nameFocus: MatchSetupFocusField,
         surnameFocus: MatchSetupFocusField,
         countryFocus: MatchSetupFocusField,
+        showsCountry: Bool,
+        showsHandedness: Bool,
         suggestions: [PlayerLookup],
         applySuggestion: @escaping (PlayerLookup) -> Void
     ) -> some View {
@@ -907,13 +928,6 @@ struct StartNewMatchView: View {
                     labeledField(title: "First Name *", placeholder: "First name", text: firstName, focus: nameFocus)
                     labeledField(title: "Surname", placeholder: "Surname", text: surname, focus: surnameFocus)
                 }
-
-                HStack(alignment: .top, spacing: 12) {
-                    handednessToggle(isLeftHanded: isLeftHanded)
-                    shirtColorPicker(selection: shirtColor)
-                }
-
-                countryField(text: country, focus: countryFocus)
 
                 if !suggestions.isEmpty {
                     suggestionList(suggestions, id: \.id) { suggestion in
@@ -928,6 +942,17 @@ struct StartNewMatchView: View {
                     }
                 }
 
+                HStack(alignment: .top, spacing: 12) {
+                    if showsHandedness {
+                        handednessToggle(isLeftHanded: isLeftHanded)
+                    }
+                    shirtColorPicker(selection: shirtColor)
+                }
+
+                if showsCountry {
+                    countryField(text: country, focus: countryFocus)
+                }
+
             }
         }
     }
@@ -940,7 +965,8 @@ struct StartNewMatchView: View {
         primarySurname: Binding<String>,
         secondaryFirstName: Binding<String>,
         secondarySurname: Binding<String>,
-        shirtColor: Binding<String>,
+        primaryShirtColor: Binding<String>,
+        secondaryShirtColor: Binding<String>,
         primaryNameFocus: MatchSetupFocusField,
         primarySurnameFocus: MatchSetupFocusField,
         secondaryNameFocus: MatchSetupFocusField,
@@ -952,6 +978,7 @@ struct StartNewMatchView: View {
                     title: primaryPlayerTitle,
                     firstName: primaryFirstName,
                     surname: primarySurname,
+                    shirtColor: primaryShirtColor,
                     nameFocus: primaryNameFocus,
                     surnameFocus: primarySurnameFocus
                 )
@@ -960,11 +987,10 @@ struct StartNewMatchView: View {
                     title: secondaryPlayerTitle,
                     firstName: secondaryFirstName,
                     surname: secondarySurname,
+                    shirtColor: secondaryShirtColor,
                     nameFocus: secondaryNameFocus,
                     surnameFocus: secondarySurnameFocus
                 )
-
-                shirtColorPicker(selection: shirtColor)
             }
         }
     }
@@ -1079,6 +1105,7 @@ struct StartNewMatchView: View {
         title: String,
         firstName: Binding<String>,
         surname: Binding<String>,
+        shirtColor: Binding<String>,
         nameFocus: MatchSetupFocusField,
         surnameFocus: MatchSetupFocusField
     ) -> some View {
@@ -1091,6 +1118,8 @@ struct StartNewMatchView: View {
                 labeledField(title: "First Name *", placeholder: "First name", text: firstName, focus: nameFocus)
                 labeledField(title: "Surname", placeholder: "Surname", text: surname, focus: surnameFocus)
             }
+
+            shirtColorPicker(selection: shirtColor)
         }
     }
 
@@ -1517,14 +1546,14 @@ struct StartNewMatchView: View {
             courtAlias: isPersonalAccount ? nil : formState.courtAlias,
             player1Name: player1Name,
             player1Surname: isTennisMatch && formState.isDoubles ? "" : formState.player1Surname.trimmingCharacters(in: .whitespacesAndNewlines),
-            player1Country: formState.player1Country.trimmingCharacters(in: .whitespacesAndNewlines),
-            player1Handedness: formState.player1IsLeftHanded ? "left" : "right",
-            player1ShirtColor: formState.player1ShirtColor,
+            player1Country: isTennisMatch ? "" : formState.player1Country.trimmingCharacters(in: .whitespacesAndNewlines),
+            player1Handedness: isTennisMatch ? "right" : (formState.player1IsLeftHanded ? "left" : "right"),
+            player1ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer1ShirtColor : formState.player1ShirtColor,
             player2Name: player2Name,
             player2Surname: isTennisMatch && formState.isDoubles ? "" : formState.player2Surname.trimmingCharacters(in: .whitespacesAndNewlines),
-            player2Country: formState.player2Country.trimmingCharacters(in: .whitespacesAndNewlines),
-            player2Handedness: formState.player2IsLeftHanded ? "left" : "right",
-            player2ShirtColor: formState.player2ShirtColor,
+            player2Country: isTennisMatch ? "" : formState.player2Country.trimmingCharacters(in: .whitespacesAndNewlines),
+            player2Handedness: isTennisMatch ? "right" : (formState.player2IsLeftHanded ? "left" : "right"),
+            player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer3ShirtColor : formState.player2ShirtColor,
             refereeName: isPersonalAccount ? "" : formState.refereeName.trimmingCharacters(in: .whitespacesAndNewlines),
             scoreType: formState.scoreType,
             bestOf: formState.bestOf,
@@ -1544,8 +1573,13 @@ struct StartNewMatchView: View {
             team2Player1Surname: isTennisMatch ? (formState.isDoubles ? formState.player3Surname.trimmingCharacters(in: .whitespacesAndNewlines) : formState.player2Surname.trimmingCharacters(in: .whitespacesAndNewlines)) : nil,
             team2Player2Name: (isTennisMatch && formState.isDoubles) ? formState.player4Name.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
             team2Player2Surname: (isTennisMatch && formState.isDoubles) ? formState.player4Surname.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+            team1Player1ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer1ShirtColor : nil,
+            team1Player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer2ShirtColor : nil,
+            team2Player1ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer3ShirtColor : nil,
+            team2Player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer4ShirtColor : nil,
             tennisNoAdScoring: isTennisMatch && formState.tennisNoAdScoring,
-            tennisFinalSetMatchTiebreak: isTennisMatch && formState.tennisFinalSetMatchTiebreak && formState.bestOf > 1
+            tennisFinalSetMatchTiebreak: isTennisMatch && formState.tennisFinalSetMatchTiebreak && formState.bestOf > 1,
+            tennisTimedBreaks: isTennisMatch && formState.tennisTimedBreaks
         )
 
         do {

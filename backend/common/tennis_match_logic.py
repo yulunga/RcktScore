@@ -49,11 +49,13 @@ def _build_tennis_teams(match_payload):
         "id": "team1_player1",
         "first_name": str(match_payload.get("team1_player1_name") or match_payload.get("player1_name") or "").strip(),
         "surname": str(match_payload.get("team1_player1_surname") or match_payload.get("player1_surname") or "").strip() or None,
+        "shirt_color": match_payload.get("team1_player1_shirt_color") or match_payload.get("player1_shirt_color"),
     }
     team2_primary = {
         "id": "team2_player1",
         "first_name": str(match_payload.get("team2_player1_name") or match_payload.get("player2_name") or "").strip(),
         "surname": str(match_payload.get("team2_player1_surname") or match_payload.get("player2_surname") or "").strip() or None,
+        "shirt_color": match_payload.get("team2_player1_shirt_color") or match_payload.get("player2_shirt_color"),
     }
 
     for player in (team1_primary, team2_primary):
@@ -69,11 +71,13 @@ def _build_tennis_teams(match_payload):
             "id": "team1_player2",
             "first_name": str(match_payload.get("team1_player2_name") or "").strip(),
             "surname": str(match_payload.get("team1_player2_surname") or "").strip() or None,
+            "shirt_color": match_payload.get("team1_player2_shirt_color") or match_payload.get("player1_shirt_color"),
         }
         team2_secondary = {
             "id": "team2_player2",
             "first_name": str(match_payload.get("team2_player2_name") or "").strip(),
             "surname": str(match_payload.get("team2_player2_surname") or "").strip() or None,
+            "shirt_color": match_payload.get("team2_player2_shirt_color") or match_payload.get("player2_shirt_color"),
         }
         team1_secondary["display_name"] = _display_name(team1_secondary["first_name"], team1_secondary["surname"])
         team2_secondary["display_name"] = _display_name(team2_secondary["first_name"], team2_secondary["surname"])
@@ -444,6 +448,7 @@ def _initial_state(match_row):
         "tiebreak_first_server_participant_id": None,
         "tennis_no_ad_scoring": _bool_value(match_row.get("tennis_no_ad_scoring")),
         "tennis_final_set_match_tiebreak": _bool_value(match_row.get("tennis_final_set_match_tiebreak")),
+        "tennis_timed_breaks": _bool_value(match_row.get("tennis_timed_breaks")),
         "no_ad_deciding_side": None,
         "score_display_mode": "tennis",
         "player1_score_label": player1_score_label,
@@ -530,6 +535,9 @@ def _build_state(match_row, event_rows):
                     "tennis_final_set_match_tiebreak",
                     state["tennis_final_set_match_tiebreak"],
                 )
+            )
+            state["tennis_timed_breaks"] = _bool_value(
+                payload.get("tennis_timed_breaks", state["tennis_timed_breaks"])
             )
             state["no_ad_deciding_side"] = payload.get("no_ad_deciding_side")
             state["tiebreak_first_server_side"] = payload.get("tiebreak_first_server_side")
@@ -878,6 +886,26 @@ def create_match(connection, payload, source="api"):
         match_payload.get("player2_shirt_color") if can_choose_shirt_colors else None,
         shared.DEFAULT_PLAYER_SHIRT_COLORS["player2"],
     )
+    match_payload.update({
+        "player1_shirt_color": player1_shirt_color,
+        "player2_shirt_color": player2_shirt_color,
+        "team1_player1_shirt_color": shared._shirt_color_value(
+            match_payload.get("team1_player1_shirt_color") if can_choose_shirt_colors else None,
+            player1_shirt_color,
+        ),
+        "team1_player2_shirt_color": shared._shirt_color_value(
+            match_payload.get("team1_player2_shirt_color") if can_choose_shirt_colors else None,
+            player1_shirt_color,
+        ),
+        "team2_player1_shirt_color": shared._shirt_color_value(
+            match_payload.get("team2_player1_shirt_color") if can_choose_shirt_colors else None,
+            player2_shirt_color,
+        ),
+        "team2_player2_shirt_color": shared._shirt_color_value(
+            match_payload.get("team2_player2_shirt_color") if can_choose_shirt_colors else None,
+            player2_shirt_color,
+        ),
+    })
 
     if requested_status == "active" and not is_personal_tenant:
         conflicting_match = shared._find_active_match_on_court(
@@ -1047,6 +1075,7 @@ def create_match(connection, payload, source="api"):
                     "games_to_win": games_to_win,
                     "tennis_no_ad_scoring": initial_state["tennis_no_ad_scoring"],
                     "tennis_final_set_match_tiebreak": initial_state["tennis_final_set_match_tiebreak"],
+                    "tennis_timed_breaks": initial_state["tennis_timed_breaks"],
                     "current_game_number": 1,
                     "player1_games_won": 0,
                     "player2_games_won": 0,
@@ -1348,6 +1377,12 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     if not match_completed:
         winner_side = None
         winner_name = None
+
+    if tennis_game_completed:
+        if scorer_side == "player1":
+            point_player1_score_label = "Game"
+        else:
+            point_player2_score_label = "Game"
 
     next_receiver_side = _opponent(next_server_side)
     next_receiver_participant_id = _receiver_for_side(state, next_receiver_side, next_service_side)

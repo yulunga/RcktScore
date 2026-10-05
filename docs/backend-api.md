@@ -257,7 +257,7 @@ Current organisation-settings behavior:
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
 - the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
-- native tennis match creation can include optional team-format and lineup metadata for doubles, `tennis_no_ad_scoring`, and `tennis_final_set_match_tiebreak`; the tennis `server` event path accepts opening serve/receive order metadata
+- native tennis match creation can include optional team-format and lineup metadata for doubles, per-participant `team{1|2}_player{1|2}_shirt_color` values, `tennis_no_ad_scoring`, `tennis_final_set_match_tiebreak`, and `tennis_timed_breaks`; the last flag is stored in the match-start event and defaults to false, while the tennis `server` event path accepts opening serve/receive order metadata
 - at a No-Ad 40-40 score, `POST /event_action` must record `action_type: receiver_choice` with `side: Right` for the Deuce court or `side: Left` for the Ad court before the next point is accepted
 
 ### Match and scoring routes

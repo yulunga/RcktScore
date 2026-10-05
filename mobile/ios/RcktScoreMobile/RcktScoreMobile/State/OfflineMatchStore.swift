@@ -495,7 +495,7 @@ private enum OfflineScoringReducer {
         let pointPlayer2Score = isTennisPoint
             ? previousState.player2Score + (scoringSide == "player2" ? 1 : 0)
             : nil
-        let pointLabels = pointPlayer1Score.flatMap { player1 in
+        let rawPointLabels = pointPlayer1Score.flatMap { player1 in
             pointPlayer2Score.map { player2 in
                 tennisPointLabels(player1: player1, player2: player2, isTieBreak: previousState.isTieBreak)
             }
@@ -504,6 +504,10 @@ private enum OfflineScoringReducer {
         let currentSetGames = state.player1SetGames + state.player2SetGames
         let tennisGameCompleted = isTennisPoint
             && (gameResult != nil || currentSetGames > previousSetGames)
+        let pointLabels: (String, String)? = rawPointLabels.map { labels in
+            guard tennisGameCompleted else { return labels }
+            return scoringSide == "player2" ? (labels.0, "Game") : ("Game", labels.1)
+        }
         let completedGamePlayer1Games = tennisGameCompleted
             ? (gameResult?.player1Score ?? state.player1SetGames)
             : nil
@@ -572,6 +576,7 @@ private enum OfflineScoringReducer {
                     isMatchTiebreak: state.isMatchTiebreak,
                     tennisNoAdScoring: state.tennisNoAdScoring,
                     tennisFinalSetMatchTiebreak: state.tennisFinalSetMatchTiebreak,
+                    tennisTimedBreaks: state.tennisTimedBreaks,
                     noAdDecidingSide: state.noAdDecidingSide,
                     player1ScoreLabel: state.player1ScoreLabel,
                     player2ScoreLabel: state.player2ScoreLabel,

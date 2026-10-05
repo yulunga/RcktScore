@@ -43,6 +43,7 @@ private struct MatchTimerSnapshot: Codable {
     let running: Bool
     let seconds: Int
     let matchDurationSeconds: Int
+    let intervalDurationSeconds: Int?
     let updatedAt: TimeInterval
 }
 
@@ -74,6 +75,8 @@ struct MatchScoringView: View {
     @State private var timerRunning = false
     @State private var bootstrappedMatchID: String?
     @State private var previousGameHistoryCount = 0
+    @State private var previousTennisGameCompletionSignature: String?
+    @State private var activeIntervalDurationSeconds = intervalSeconds
     @State private var durationSyncedMatchID: String?
     @State private var settingsAutoloaded = false
     @State private var selectedOpeningServerParticipantID: String?
@@ -95,6 +98,27 @@ struct MatchScoringView: View {
     }
     private var warmupDurationSeconds: Int {
         isTennisMatch ? 300 : defaultWarmupSeconds
+    }
+    private var latestTennisGameCompletionEvent: MatchEvent? {
+        live?.events.last(where: { $0.payload?.tennisGameCompleted == true })
+    }
+    private var latestTennisGameCompletionSignature: String? {
+        guard let payload = latestTennisGameCompletionEvent?.payload,
+              let setNumber = payload.gameNumber,
+              let gameNumber = payload.completedGameNumber else {
+            return nil
+        }
+
+        return [
+            String(setNumber),
+            String(gameNumber),
+            String(payload.completedGamePlayer1Games ?? 0),
+            String(payload.completedGamePlayer2Games ?? 0),
+            payload.setCompleted == true ? "set" : "game",
+        ].joined(separator: ":")
+    }
+    private var intervalObservationSignature: String {
+        "\(live?.gameHistory.count ?? 0)|\(latestTennisGameCompletionSignature ?? "none")"
     }
     private var isPersonalAccount: Bool { container.sessionStore.session?.isPersonalAccount ?? false }
     private var canChoosePlayerShirtColors: Bool {
@@ -161,9 +185,16 @@ struct MatchScoringView: View {
         case .warmupSideTwo:
             return "Warm-Up: Side 2"
         case .firstServer:
-            return isTennisMatch ? "Serve & Receive" : "First Server"
+            return isTennisMatch
+                ? (isTennisDoublesMatch ? "Serve & Receive" : "Opening Server")
+                : "First Server"
         case .interval:
-            return isTennisMatch ? "Set Break - 120s" : "Game Break - 90s"
+            if isTennisMatch {
+                return activeIntervalDurationSeconds == tennisSetIntervalSeconds
+                    ? "Set Break - 120s"
+                    : "Changeover - 90s"
+            }
+            return "Game Break - 90s"
         case .matchLive:
             return "Match Time"
         }
@@ -181,14 +212,21 @@ struct MatchScoringView: View {
             return "Warm-up starts when both players are ready."
         case .warmupSideOne, .warmupSideTwo:
             return isTennisMatch
-                ? "Warm-up runs for 5 minutes before the opening serve and receiver are confirmed."
+                ? "Warm-up runs for 5 minutes before the opening server is confirmed."
                 : "Warm-up runs for 60 seconds on each side of the court."
         case .firstServer:
             return isTennisMatch
-                ? "Choose the opening server and receiver to begin the live match clock."
+                ? (isTennisDoublesMatch
+                    ? "Choose the opening server and receiver to begin the live match clock."
+                    : "Choose the opening server to begin the live match clock.")
                 : "Choose the opening server to begin the live match clock."
         case .interval:
-            return isTennisMatch ? "120 second break between sets." : "90 second break between games."
+            if isTennisMatch {
+                return activeIntervalDurationSeconds == tennisSetIntervalSeconds
+                    ? "120 second break between sets."
+                    : "90 second changeover after this odd-numbered game."
+            }
+            return "90 second break between games."
         case .matchLive:
             return "Tap the clock to pause or resume the match."
         }
@@ -203,6 +241,22 @@ struct MatchScoringView: View {
         default:
             return nil
         }
+    }
+
+    private var intervalOverlayTitle: String {
+        guard isTennisMatch else { return "Game Break" }
+        return activeIntervalDurationSeconds == tennisSetIntervalSeconds
+            ? "Set Break"
+            : "Changeover"
+    }
+
+    private var intervalOverlayMessage: String {
+        guard isTennisMatch else {
+            return "90 second interval between games. Tap the clock to pause or resume if needed."
+        }
+        return activeIntervalDurationSeconds == tennisSetIntervalSeconds
+            ? "120 second break between sets. Tap the clock to pause or resume if needed."
+            : "90 second changeover after this odd-numbered game. Tap the clock to pause or resume if needed."
     }
 
     private var hasBootstrappedCurrentMatch: Bool {
@@ -664,8 +718,9 @@ struct MatchScoringView: View {
         .task(id: match?.id) {
             handleTimerBootstrapTask()
         }
-        .onChange(of: live?.gameHistory.count ?? 0) {
+        .onChange(of: intervalObservationSignature) {
             syncIntervalState()
+            syncTennisBreakState()
         }
         .onChange(of: isMatchComplete) {
             syncCompletedMatchTimer()
@@ -1057,12 +1112,18 @@ struct MatchScoringView: View {
     private var warmupOverlay: some View {
         if timerPhase == .firstServer, let match {
             VStack(alignment: .leading, spacing: 18) {
-                Text(isTennisMatch ? "Serve & Receive" : "First Server")
+                Text(
+                    isTennisMatch
+                        ? (isTennisDoublesMatch ? "Serve & Receive" : "Opening Server")
+                        : "First Server"
+                )
                     .font(.title2.weight(.bold))
 
                 Text(
                     isTennisMatch
-                        ? "Choose the opening server and the opening receiver. The match begins after this selection."
+                        ? (isTennisDoublesMatch
+                            ? "Choose the opening server and the opening receiver. The match begins after this selection."
+                            : "Choose the opening server. The other player will receive automatically.")
                         : "Choose which player starts serving. The match begins after this selection."
                 )
                     .font(.body)
@@ -1229,25 +1290,32 @@ struct MatchScoringView: View {
                     identifier: "scoring.tennisOpening.server.\(participant.id)"
                 ) {
                     selectedOpeningServerParticipantID = participant.id
-                    if let selectedReceiver = selectedOpeningReceiverParticipantID,
-                       !receivingParticipants.map(\.id).contains(selectedReceiver) {
-                        selectedOpeningReceiverParticipantID = nil
+                    let updatedReceivers = openingReceiverCandidates(for: participant.id, match: match)
+                    if isTennisDoublesMatch {
+                        if let selectedReceiver = selectedOpeningReceiverParticipantID,
+                           !updatedReceivers.map(\.id).contains(selectedReceiver) {
+                            selectedOpeningReceiverParticipantID = nil
+                        }
+                    } else {
+                        selectedOpeningReceiverParticipantID = updatedReceivers.first?.id
                     }
                 }
             }
 
-            Text("Opening Receiver")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .padding(.top, 4)
+            if isTennisDoublesMatch {
+                Text("Opening Receiver")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.top, 4)
 
-            ForEach(receivingParticipants, id: \.id) { participant in
-                selectionOverlayButton(
-                    title: participant.displayName,
-                    isSelected: selectedOpeningReceiverParticipantID == participant.id,
-                    identifier: "scoring.tennisOpening.receiver.\(participant.id)"
-                ) {
-                    selectedOpeningReceiverParticipantID = participant.id
+                ForEach(receivingParticipants, id: \.id) { participant in
+                    selectionOverlayButton(
+                        title: participant.displayName,
+                        isSelected: selectedOpeningReceiverParticipantID == participant.id,
+                        identifier: "scoring.tennisOpening.receiver.\(participant.id)"
+                    ) {
+                        selectedOpeningReceiverParticipantID = participant.id
+                    }
                 }
             }
 
@@ -1306,10 +1374,10 @@ struct MatchScoringView: View {
 
     private var intervalOverlay: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Game Break")
+            Text(intervalOverlayTitle)
                 .font(.title2.weight(.bold))
 
-            Text("90 second interval between games. Tap the clock to pause or resume if needed.")
+            Text(intervalOverlayMessage)
                 .font(.body)
                 .foregroundStyle(.secondary)
 
@@ -1335,6 +1403,7 @@ struct MatchScoringView: View {
             .background(Color.rcktSlate)
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .accessibilityIdentifier("scoring.interval.skipButton")
         }
         .padding(24)
         .frame(maxWidth: 420, alignment: .leading)
@@ -2012,7 +2081,7 @@ struct MatchScoringView: View {
         switch timerPhase {
         case .warmupReady:
             return isTennisMatch
-                ? "Start a single 5 minute warm-up, then confirm the opening server and receiver."
+                ? "Start a single 5 minute warm-up, then confirm the opening server."
                 : "Start 60 seconds on side 1, swap sides for another 60 seconds, then choose the first server."
         case .warmupSideTwo:
             return "Side 1 is complete. Players should change sides while the second warm-up runs."
@@ -2170,6 +2239,7 @@ struct MatchScoringView: View {
 
         bootstrappedMatchID = match.id
         previousGameHistoryCount = live?.gameHistory.count ?? 0
+        previousTennisGameCompletionSignature = latestTennisGameCompletionSignature
         durationSyncedMatchID = nil
 
         if let storedState = readStoredTimerState(matchID: match.id) {
@@ -2177,6 +2247,7 @@ struct MatchScoringView: View {
             timerPhase = advancedState.phase
             timerSeconds = advancedState.seconds
             matchDurationSeconds = advancedState.matchDurationSeconds
+            activeIntervalDurationSeconds = advancedState.intervalDurationSeconds ?? intervalSeconds
             timerRunning = advancedState.running
             return
         }
@@ -2216,15 +2287,47 @@ struct MatchScoringView: View {
         if currentCount > previousCount {
             previousGameHistoryCount = currentCount
 
-            if !isMatchComplete {
+            if !isTennisMatch && !isMatchComplete {
                 timerPhase = .interval
-                timerSeconds = isTennisMatch ? tennisSetIntervalSeconds : intervalSeconds
+                timerSeconds = intervalSeconds
+                activeIntervalDurationSeconds = intervalSeconds
                 timerRunning = true
             }
             return
         }
 
         previousGameHistoryCount = currentCount
+    }
+
+    private func syncTennisBreakState() {
+        guard let match, bootstrappedMatchID == match.id, isTennisMatch else {
+            return
+        }
+
+        let signature = latestTennisGameCompletionSignature
+        guard signature != previousTennisGameCompletionSignature else {
+            return
+        }
+        previousTennisGameCompletionSignature = signature
+
+        guard !isMatchComplete,
+              let payload = latestTennisGameCompletionEvent?.payload,
+              let completedGameNumber = payload.completedGameNumber else {
+            return
+        }
+
+        guard let duration = TennisBreakRules.durationSeconds(
+            enabled: live?.tennisTimedBreaks == true,
+            completedGameNumber: completedGameNumber,
+            setCompleted: payload.setCompleted == true
+        ) else {
+            return
+        }
+
+        timerPhase = .interval
+        timerSeconds = duration
+        activeIntervalDurationSeconds = duration
+        timerRunning = true
     }
 
     private func syncCompletedMatchTimer() {
@@ -2275,6 +2378,7 @@ struct MatchScoringView: View {
             running: timerRunning,
             seconds: timerSeconds,
             matchDurationSeconds: matchDurationSeconds,
+            intervalDurationSeconds: timerPhase == .interval ? activeIntervalDurationSeconds : nil,
             updatedAt: Date().timeIntervalSince1970
         )
         writeStoredTimerState(snapshot, matchID: match.id)
@@ -2953,6 +3057,7 @@ struct MatchScoringView: View {
             running: running,
             seconds: seconds,
             matchDurationSeconds: duration,
+            intervalDurationSeconds: snapshot.intervalDurationSeconds,
             updatedAt: Date().timeIntervalSince1970
         )
     }

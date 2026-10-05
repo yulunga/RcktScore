@@ -86,6 +86,10 @@ struct MatchSetupScreen {
         app.switches["startMatch.handicapToggle"]
     }
 
+    var tennisTimedBreaksToggle: XCUIElement {
+        app.buttons["startMatch.tennisTimedBreaksToggle"]
+    }
+
     func chooseSport(_ sport: Sport) {
         switch sport {
         case .squash:
@@ -132,6 +136,34 @@ struct MatchSetupScreen {
         XCTAssertTrue(scoreTypePicker.waitForExistence(timeout: 5))
         scoreTypePicker.tap()
         app.buttons["PAR-11"].tap()
+    }
+
+    func selectBestOfThreeTennis() {
+        scrollToElement(bestOfPicker)
+        XCTAssertTrue(bestOfPicker.waitForExistence(timeout: 5))
+        bestOfPicker.tap()
+        XCTAssertTrue(app.buttons["Best of 3"].waitForExistence(timeout: 5))
+        app.buttons["Best of 3"].tap()
+    }
+
+    func disableTennisTimedBreaks() {
+        scrollToElement(tennisTimedBreaksToggle)
+        XCTAssertTrue(tennisTimedBreaksToggle.waitForExistence(timeout: 5))
+
+        if (tennisTimedBreaksToggle.value as? String) == "On" {
+            tennisTimedBreaksToggle.tap()
+        }
+
+        let predicate = NSPredicate(format: "value == %@", "Off")
+        let expectation = XCTNSPredicateExpectation(
+            predicate: predicate,
+            object: tennisTimedBreaksToggle
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: 5),
+            .completed,
+            "Timed breaks must be disabled for the live tennis test."
+        )
     }
 
     func enterPlayers(player1: String, player2: String) {

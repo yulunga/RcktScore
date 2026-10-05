@@ -57,8 +57,11 @@ Current unreleased iOS build state:
 - the login landing page now places `Want In | Need Help` on one line; Personal registration creates an account immediately and emails password setup, while Club remains a managed enquiry
 - the shared native bottom navigation now compacts itself for larger Dynamic
   Type sizes on smaller iPhones
-- tennis setup now supports singles/doubles switching, and tennis live scoring
-  now uses a 5-minute warm-up followed by opening serve/receive selection
+- tennis setup supports singles/doubles switching without country or handedness,
+  gives each doubles participant a shirt colour, and tennis live scoring uses a
+  5-minute warm-up followed by automatic singles receiver or explicit doubles
+  receiver selection; an optional setup toggle adds 90-second changeovers after
+  odd games from game 3 onward and 120-second breaks between sets
 - one active match previously opened on the device is cached for offline scoring; squash/racketball and tennis update locally and queued actions survive app restarts
 - tennis offline transitions include games, sets, tie-breaks, singles/doubles server order, receiver order, and local event state
 - queued mutations replay automatically in order after reconnecting, with UUID receipts preventing duplicate points and actions

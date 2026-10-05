@@ -7,6 +7,7 @@ enum TennisScoringReducerScenarioTests {
         testStandardAndLongTiebreak()
         testFinalSetMatchTiebreakAndCompletion()
         testSinglesAndDoublesServiceRotation()
+        testOptionalTimedBreakRules()
         testUndoSnapshotAndOfflineReplay()
         print("TennisScoringReducer scenarios passed")
     }
@@ -87,6 +88,14 @@ enum TennisScoringReducerScenarioTests {
         check(projected.player1Score == 2 && projected.player2Score == 1, "offline replay applies actions in order")
         snapshots.removeLast()
         check(snapshots.last?.player1Score == 1 && snapshots.last?.player2Score == 1, "undo restores preceding snapshot")
+    }
+
+    private static func testOptionalTimedBreakRules() {
+        check(TennisBreakRules.durationSeconds(enabled: false, completedGameNumber: 3, setCompleted: false) == nil, "breaks default off")
+        check(TennisBreakRules.durationSeconds(enabled: true, completedGameNumber: 1, setCompleted: false) == nil, "no break after first game")
+        check(TennisBreakRules.durationSeconds(enabled: true, completedGameNumber: 2, setCompleted: false) == nil, "no break after even game")
+        check(TennisBreakRules.durationSeconds(enabled: true, completedGameNumber: 3, setCompleted: false) == 90, "odd-game changeover is 90 seconds")
+        check(TennisBreakRules.durationSeconds(enabled: true, completedGameNumber: 6, setCompleted: true) == 120, "set break is 120 seconds")
     }
 
     private static func makeMatch() -> MatchDetail {

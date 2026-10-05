@@ -20,6 +20,30 @@ struct ScoringScreen {
         app.buttons["scoring.scoreCard.player2"]
     }
 
+    var tennisPlayer1ScoreCard: XCUIElement {
+        app.buttons["tennis.scoreCard.player1"]
+    }
+
+    var tennisPlayer2ScoreCard: XCUIElement {
+        app.buttons["tennis.scoreCard.player2"]
+    }
+
+    var tennisFormatBanner: XCUIElement {
+        app.descendants(matching: .any)["tennis.formatBanner"]
+    }
+
+    var tennisOpeningPlayer1ServerButton: XCUIElement {
+        app.buttons["scoring.tennisOpening.server.team1_player1"]
+    }
+
+    var tennisOpeningPlayer2ReceiverButton: XCUIElement {
+        app.buttons["scoring.tennisOpening.receiver.team2_player1"]
+    }
+
+    var tennisBeginMatchButton: XCUIElement {
+        app.buttons["scoring.tennisOpening.beginMatchButton"]
+    }
+
     var player2ServeSideButton: XCUIElement {
         app.buttons["scoring.serveSide.player2"]
     }
@@ -54,6 +78,10 @@ struct ScoringScreen {
 
     var timerSkipButton: XCUIElement {
         app.buttons["scoring.timerSkipButton"]
+    }
+
+    var intervalSkipButton: XCUIElement {
+        app.buttons["scoring.interval.skipButton"]
     }
 
     var actionButton: XCUIElement {
@@ -120,6 +148,54 @@ struct ScoringScreen {
             XCTWaiter.wait(for: [expectation], timeout: timeout),
             .completed,
             "Expected \(side) score to become \(score), but the score card value is \(String(describing: card.value))."
+        )
+    }
+
+    func waitForTennisState(
+        side: String,
+        points: String,
+        games: Int,
+        sets: Int,
+        timeout: TimeInterval = 20
+    ) {
+        let card = side == "player1" ? tennisPlayer1ScoreCard : tennisPlayer2ScoreCard
+        let expected = "Points \(points), Games \(games), Sets \(sets)"
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: card)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: timeout),
+            .completed,
+            "Expected \(side) tennis state '\(expected)', but the score card value is \(String(describing: card.value))."
+        )
+    }
+
+    func tapTennisScoreCard(side: String, timeout: TimeInterval = 30) {
+        let card = side == "player1" ? tennisPlayer1ScoreCard : tennisPlayer2ScoreCard
+        XCTAssertTrue(card.waitForExistence(timeout: timeout))
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if card.isEnabled && card.isHittable {
+                card.tap()
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+
+        XCTFail(
+            "Timed out waiting for \(side) tennis score card to become enabled and hittable. "
+                + "enabled=\(card.isEnabled), hittable=\(card.isHittable), value=\(String(describing: card.value))"
+        )
+    }
+
+    func waitForTennisMode(_ mode: String, set: Int, timeout: TimeInterval = 20) {
+        let expected = "\(mode) set \(set)"
+        let predicate = NSPredicate(format: "value == %@", expected)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: tennisFormatBanner)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: timeout),
+            .completed,
+            "Expected tennis mode '\(expected)', but the format banner value is \(String(describing: tennisFormatBanner.value))."
         )
     }
 }

@@ -63,6 +63,8 @@ def test_point_event_preserves_point_context_and_marks_regular_game_boundary():
     assert payload["point_service_side"] == "Left"
     assert payload["point_player1_score"] == 4
     assert payload["point_player2_score"] == 0
+    assert payload["point_player1_score_label"] == "Game"
+    assert payload["point_player2_score_label"] == "0"
     assert payload["tennis_game_completed"] is True
     assert payload["game_completed"] is True
     assert payload["set_completed"] is False
@@ -151,6 +153,23 @@ def test_doubles_service_order_rotates_across_set_boundary():
     assert match["state"]["serve_order"][0] == "team1_player2"
 
 
+def test_doubles_lineup_preserves_each_players_shirt_colour():
+    _, teams = tennis._build_tennis_teams({
+        "team_format": "doubles",
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "team1_player2_name": "Casey",
+        "team2_player2_name": "Drew",
+        "team1_player1_shirt_color": "navy",
+        "team1_player2_shirt_color": "white",
+        "team2_player1_shirt_color": "blue",
+        "team2_player2_shirt_color": "red",
+    })
+
+    assert [player["shirt_color"] for player in teams["player1"]] == ["navy", "white"]
+    assert [player["shirt_color"] for player in teams["player2"]] == ["blue", "red"]
+
+
 def test_best_of_one_match_completes_when_first_set_is_won():
     match = make_match(
         best_of=1,
@@ -174,7 +193,13 @@ def test_event_rebuild_without_last_point_restores_pre_point_state_for_undo():
     started = {
         "id": "event-start",
         "event_type": "match_started",
-        "payload": {"sport": "tennis", "score_type": 6, "best_of": 3, "games_to_win": 2},
+        "payload": {
+            "sport": "tennis",
+            "score_type": 6,
+            "best_of": 3,
+            "games_to_win": 2,
+            "tennis_timed_breaks": True,
+        },
         "event_source": "test",
         "created_at": datetime.now(timezone.utc),
     }
@@ -188,4 +213,6 @@ def test_event_rebuild_without_last_point_restores_pre_point_state_for_undo():
     with_point = tennis._build_state(match, [started, scored])
     after_undo = tennis._build_state(match, [started])
     assert with_point["player1_score"] == 1
+    assert with_point["tennis_timed_breaks"] is True
     assert after_undo["player1_score"] == 0
+    assert after_undo["tennis_timed_breaks"] is True

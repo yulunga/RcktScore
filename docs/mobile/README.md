@@ -52,8 +52,11 @@ What the current app does:
   navigation compacts itself under larger Dynamic Type sizes on smaller iPhones
 - start-new-match now respects dark mode styling and allows personal-tier
   squash/racketball handicap setup
-- tennis match setup now supports singles/doubles switching, and the live tennis
-  scorer now runs a 5-minute warm-up before opening serve/receive selection
+- tennis match setup supports singles/doubles switching without country or
+  handedness fields, gives every doubles participant a shirt colour, and the
+  live scorer runs a 5-minute warm-up before automatic singles receiver or
+  explicit doubles receiver selection; optional timed breaks are off by default
+  and provide 90-second later odd-game changeovers plus 120-second set breaks
 - one previously opened active match can continue offline; local squash/racketball and tennis actions persist across restarts and replay in order after reconnection
 - each queued action uses a stable UUID backed by `match_action_receipts`, preventing duplicate scoring during retries
 

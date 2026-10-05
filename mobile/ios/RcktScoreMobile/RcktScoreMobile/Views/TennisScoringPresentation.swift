@@ -91,6 +91,7 @@ struct TennisScoringPresentation: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: requiresReceiverChoice)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var pointTimeline: some View {
@@ -135,67 +136,70 @@ struct TennisScoringPresentation: View {
                     }
                 }
             }
-            .frame(height: landscapeTablet ? 220 : (compact ? 120 : 150))
+            .frame(
+                minHeight: landscapeTablet ? 220 : (compact ? 120 : 150),
+                maxHeight: .infinity
+            )
+            .layoutPriority(1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.horizontal, compact ? 8 : 12)
+        .frame(maxHeight: .infinity, alignment: .top)
         .accessibilityIdentifier("tennis.pointTimeline")
     }
 
     private func timelinePoint(_ event: MatchEvent) -> some View {
         let payload = event.payload
         let scorer = payload?.scorer ?? payload?.playerSide ?? "player1"
-        let wonOnServe = payload?.pointServerSide.map { $0 == scorer }
-        let role = wonOnServe.map { $0 ? "Serve" : "Return" } ?? "Point"
-        let court = payload?.pointServiceSide.map { $0.lowercased() == "right" ? "Deuce" : "Ad" }
-        let detail = [role, court].compactMap { $0 }.joined(separator: " · ")
-        let score = scorer == "player1"
+        let pointScore = scorer == "player1"
             ? (payload?.pointPlayer1ScoreLabel ?? payload?.player1ScoreLabel ?? "•")
             : (payload?.pointPlayer2ScoreLabel ?? payload?.player2ScoreLabel ?? "•")
+        let score = payload?.tennisGameCompleted == true ? "Game" : pointScore
 
-        return HStack(spacing: 8) {
-            timelineMarker(score, visible: scorer == "player1")
-            Text(detail)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-            timelineMarker(score, visible: scorer == "player2")
+        return HStack(spacing: 18) {
+            timelineMarker(score, visible: scorer == "player1", isGame: payload?.tennisGameCompleted == true)
+                .frame(width: 70, alignment: .trailing)
+            timelineMarker(score, visible: scorer == "player2", isGame: payload?.tennisGameCompleted == true)
+                .frame(width: 70, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(scorer == "player1" ? match.player1Name : match.player2Name) \(score)")
     }
 
-    private func timelineMarker(_ score: String, visible: Bool) -> some View {
-        Text(visible ? score : "")
+    private func timelineMarker(_ score: String, visible: Bool, isGame: Bool) -> some View {
+        let color = isGame ? brandBlue : brandPink
+
+        return Text(visible ? score : "")
             .font(.caption.weight(.bold))
             .frame(width: 44, height: 28)
-            .background(visible ? brandPink.opacity(0.14) : Color.clear)
-            .foregroundStyle(brandPink)
+            .background(visible ? color.opacity(0.14) : Color.clear)
+            .foregroundStyle(color)
             .clipShape(Capsule())
     }
 
     private func gameDivider(_ payload: MatchEventPayload) -> some View {
-        let game = payload.completedGameNumber.map { "Game \($0)" } ?? "Game"
-        let score: String?
+        let score: String
         if let player1Games = payload.completedGamePlayer1Games,
            let player2Games = payload.completedGamePlayer2Games {
             score = "\(player1Games)–\(player2Games)"
         } else {
-            score = nil
+            score = "–"
         }
-        let label = [game, score].compactMap { $0 }.joined(separator: " · ")
 
         return HStack(spacing: 8) {
-            Rectangle().fill(brandPink.opacity(0.65)).frame(height: 2)
-            Text(label)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(brandPink)
+            Rectangle().fill(brandBlue.opacity(0.7)).frame(height: 2)
+            Text(score)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(brandBlue)
                 .fixedSize()
-            Rectangle().fill(brandPink.opacity(0.65)).frame(height: 2)
+            Rectangle().fill(brandBlue.opacity(0.7)).frame(height: 2)
         }
-        .padding(.vertical, 2)
-        .accessibilityLabel("\(label) completed")
+        .padding(.vertical, 4)
+        .accessibilityLabel("Game score \(score)")
     }
 
     private var formatBanner: some View {
@@ -214,6 +218,9 @@ struct TennisScoringPresentation: View {
         .background(brandBlue.opacity(0.12))
         .clipShape(Capsule())
         .padding(.horizontal, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("tennis.formatBanner")
+        .accessibilityValue(state.isTieBreak ? "tiebreak set \(state.currentGameNumber)" : "standard set \(state.currentGameNumber)")
     }
 
     private func scoreCard(
@@ -264,6 +271,7 @@ struct TennisScoringPresentation: View {
         .buttonStyle(.plain)
         .disabled(scoringDisabled || requiresReceiverChoice)
         .accessibilityIdentifier("tennis.scoreCard.\(side)")
+        .accessibilityValue("Points \(point), Games \(games), Sets \(sets)")
     }
 
     private func stat(_ label: String, _ value: Int) -> some View {

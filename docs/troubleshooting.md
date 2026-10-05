@@ -245,7 +245,7 @@ Common symptoms:
 What to check:
 
 - tenant plan and organisation type
-- the submitted `player1_shirt_color` and `player2_shirt_color` values (all personal and club plans may set them)
+- the submitted `player1_shirt_color` and `player2_shirt_color` values, plus all four `team{1|2}_player{1|2}_shirt_color` values for tennis doubles (all personal and club plans may set them)
 - `matches.sport` and the tenant `enabled_sports` list
 - court conflict behavior
 - latest `match_events` entries
@@ -430,7 +430,8 @@ Important current truths:
 - self-service deletion applies only to the authenticated owner of a personal account; club memberships remain club-admin managed, and deletion requires two client confirmations plus server-side ownership validation
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
-- native tennis scoring expects opening serve/receive selections after warm-up, and doubles lineup/order data comes from the native match-setup payload rather than from a dedicated participant table
+- native tennis scoring automatically assigns the other singles player as receiver when the opening server is chosen; doubles still expects explicit opening serve/receive selections, and its lineup/order and per-participant shirt colours come from the native match-setup payload rather than from a dedicated participant table
+- optional tennis timed breaks come from `tennis_timed_breaks` in the `match_started` event; when enabled, there is no break after game 1, later odd games trigger 90 seconds, and a completed set triggers 120 seconds instead
 - at No-Ad deuce the receiver must choose Deuce or Ad court; that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
 - the squash/racketball scorer now selects compact widths on phone-sized screens, scrolls long game history horizontally, adapts warm-up actions when they cannot fit side by side, and shows a completed-match summary after the final point
 - changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage, `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the credential-free Simulator regression, and the opt-in `testing/automated/mobile/run-live-racket-match-ui-test.sh` only when a completed match may be written to the Personal Plus test account

@@ -143,6 +143,7 @@ struct MatchState: Codable {
     let isMatchTiebreak: Bool
     let tennisNoAdScoring: Bool
     let tennisFinalSetMatchTiebreak: Bool
+    let tennisTimedBreaks: Bool
     let noAdDecidingSide: String?
     let teamFormat: String?
     let tennisTeams: [String: [TennisParticipant]]?
@@ -184,6 +185,7 @@ struct MatchState: Codable {
         case isMatchTiebreak = "is_match_tiebreak"
         case tennisNoAdScoring = "tennis_no_ad_scoring"
         case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
+        case tennisTimedBreaks = "tennis_timed_breaks"
         case noAdDecidingSide = "no_ad_deciding_side"
         case teamFormat = "team_format"
         case tennisTeams = "tennis_teams"
@@ -243,6 +245,7 @@ struct MatchState: Codable {
         isMatchTiebreak: Bool = false,
         tennisNoAdScoring: Bool = false,
         tennisFinalSetMatchTiebreak: Bool = false,
+        tennisTimedBreaks: Bool = false,
         noAdDecidingSide: String? = nil
     ) {
         self.player1Score = player1Score
@@ -266,6 +269,7 @@ struct MatchState: Codable {
         self.isMatchTiebreak = isMatchTiebreak
         self.tennisNoAdScoring = tennisNoAdScoring
         self.tennisFinalSetMatchTiebreak = tennisFinalSetMatchTiebreak
+        self.tennisTimedBreaks = tennisTimedBreaks
         self.noAdDecidingSide = noAdDecidingSide
         self.teamFormat = teamFormat
         self.tennisTeams = tennisTeams
@@ -309,6 +313,7 @@ struct MatchState: Codable {
         isMatchTiebreak = try container.decodeIfPresent(Bool.self, forKey: .isMatchTiebreak) ?? false
         tennisNoAdScoring = try container.decodeIfPresent(Bool.self, forKey: .tennisNoAdScoring) ?? false
         tennisFinalSetMatchTiebreak = try container.decodeIfPresent(Bool.self, forKey: .tennisFinalSetMatchTiebreak) ?? false
+        tennisTimedBreaks = try container.decodeIfPresent(Bool.self, forKey: .tennisTimedBreaks) ?? false
         noAdDecidingSide = try container.decodeIfPresent(String.self, forKey: .noAdDecidingSide)
         teamFormat = try container.decodeIfPresent(String.self, forKey: .teamFormat)
         tennisTeams = try container.decodeIfPresent([String: [TennisParticipant]].self, forKey: .tennisTeams)
@@ -335,12 +340,22 @@ struct TennisParticipant: Codable, Hashable {
     let firstName: String
     let surname: String?
     let displayName: String
+    let shirtColor: String?
+
+    init(id: String, firstName: String, surname: String?, displayName: String, shirtColor: String? = nil) {
+        self.id = id
+        self.firstName = firstName
+        self.surname = surname
+        self.displayName = displayName
+        self.shirtColor = shirtColor
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
         case firstName = "first_name"
         case surname
         case displayName = "display_name"
+        case shirtColor = "shirt_color"
     }
 }
 
@@ -435,6 +450,7 @@ struct MatchEventPayload: Codable {
     let isMatchTiebreak: Bool?
     let tennisNoAdScoring: Bool?
     let tennisFinalSetMatchTiebreak: Bool?
+    let tennisTimedBreaks: Bool?
     let noAdDecidingSide: String?
     let player1ScoreLabel: String?
     let player2ScoreLabel: String?
@@ -487,6 +503,7 @@ struct MatchEventPayload: Codable {
         case isMatchTiebreak = "is_match_tiebreak"
         case tennisNoAdScoring = "tennis_no_ad_scoring"
         case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
+        case tennisTimedBreaks = "tennis_timed_breaks"
         case noAdDecidingSide = "no_ad_deciding_side"
         case player1ScoreLabel = "player1_score_label"
         case player2ScoreLabel = "player2_score_label"
@@ -540,6 +557,7 @@ struct MatchEventPayload: Codable {
         isMatchTiebreak: Bool? = nil,
         tennisNoAdScoring: Bool? = nil,
         tennisFinalSetMatchTiebreak: Bool? = nil,
+        tennisTimedBreaks: Bool? = nil,
         noAdDecidingSide: String? = nil,
         player1ScoreLabel: String? = nil,
         player2ScoreLabel: String? = nil,
@@ -591,6 +609,7 @@ struct MatchEventPayload: Codable {
         self.isMatchTiebreak = isMatchTiebreak
         self.tennisNoAdScoring = tennisNoAdScoring
         self.tennisFinalSetMatchTiebreak = tennisFinalSetMatchTiebreak
+        self.tennisTimedBreaks = tennisTimedBreaks
         self.noAdDecidingSide = noAdDecidingSide
         self.player1ScoreLabel = player1ScoreLabel
         self.player2ScoreLabel = player2ScoreLabel
