@@ -134,8 +134,9 @@ Duplicate login behavior:
 - `POST /login` can also return `data.organizationSelection` for users with
   multiple approved memberships, so clients must handle both `session` and
   selection payloads
-- session and membership payloads now include `enabled_sports`, which is the
-  racket-sport visibility list for that organisation membership
+- session and membership payloads include the client-effective `enabled_sports`
+  list. It is derived from the platform client list, organisation list, and the
+  membership's `enabled_sports_web` or `enabled_sports_ios` override.
 - migration `019_offline_scoring_support.sql` adds `org_user_sessions.expires_at` and the reconnect-idempotency receipt table
 
 ### Root-admin users
@@ -176,6 +177,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /root_admin/dashboard`
 - `GET /root_admin/platform_sports`
 - `PUT /root_admin/platform_sports`
+- `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access`
 - `GET /root_admin/matches`
 - `PUT /root_admin/matches/{match_id}/archive`
 - `DELETE /root_admin/matches/{match_id}`
@@ -219,8 +221,9 @@ Current root-admin match-management behavior:
 
 Current root-admin platform-sport behavior:
 
-- `GET /root_admin/platform_sports` returns the current globally allowed racket-sport list
-- `PUT /root_admin/platform_sports` updates the platform default and applies the same enabled sport list across all existing clubs and personal accounts
+- `GET /root_admin/platform_sports` returns the umbrella list plus separate `enabled_sports_web` and `enabled_sports_ios` lists
+- `PUT /root_admin/platform_sports` applies separate web and iOS lists to every existing membership, updates the organisation umbrella list, and revokes active user sessions so clients reload authoritative access
+- `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access` sets that membership's web and iOS lists; values remain capped by platform and organisation access and the user's active sessions are revoked
 - organisation-level and personal-account-level enabled-sport updates are now constrained to the currently allowed platform list
 
 Current root-admin club-user behavior:
@@ -288,7 +291,7 @@ Current organisation-settings behavior:
 - returns `data.session` when there is exactly one approved membership
 - returns `data.organizationSelection` when the same email belongs to multiple approved organisations
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
-- successful session payloads include `enabled_sports`
+- successful session payloads include the effective `enabled_sports` for the login client (`web_app` or `mobile_app`)
 - successful session payloads include `session_expires_at`; clients must require a fresh login after that timestamp
 - session and membership payloads now also include `country` and `telephone` when those profile fields are populated
 
@@ -354,7 +357,7 @@ Current behavior:
 
 ### App Store subscription boundary
 
-- iOS can load and locally test `com.hitnscore.personalplus.monthly` and `com.hitnscore.personalplus.yearly` through StoreKit 2
+- iOS offers new Personal Plus purchases through `com.hitnscore.personalplus.yearly` only. The backend and transaction observer continue to recognize `com.hitnscore.personalplus.monthly` for restore, renewal, cancellation and expiry safety
 - the native subscription screen refreshes StoreKit current entitlements when it opens, when the app returns active, after transaction updates, and after closing subscription management, but the current account tier is derived from the latest backend dashboard/settings `organization.plan`; a local StoreKit transaction is not allowed to override that server tier
 - `GET /subscriptions/apple/context/{organization_id}` now requires an organisation-user bearer session, verifies that the caller is the personal-account owner, and returns that account's stable server-issued `appAccountToken`, configured monthly/yearly product IDs, current plan, and purchase-enabled flag
 - `POST /subscriptions/apple/verify` requires a valid organisation-user session plus `organization_id`, `signed_transaction`, and `signed_app_transaction`; it verifies both JWS values with Apple's server library and packaged Apple PKI roots, then validates ownership, account token, bundle, numeric app ID in Production, product, environment, expiry, upgrade and revocation state
@@ -474,17 +477,19 @@ Current behavior:
   - squash
   - racketball
   - tennis
-- additional engine files for `padel`, `table_tennis`, `badminton`, and `pickleball` are wired but currently raise a safe unsupported-sport error
+  - padel, as a doubles-only adapter over the tennis-style set engine
+- additional engine files for `table_tennis`, `badminton`, and `pickleball` are wired but currently raise a safe unsupported-sport error
 - supported score types by live engine:
   - squash/racketball: `11`, `15`
   - tennis: new native matches use `6`; `4` remains readable for historical short-set matches
+  - padel: `6`, with a seven-point tiebreak at 6-6
 - supported best-of values:
   - `1`
   - `3`
   - `5`
 - squash/racketball action types: `let`, `match_settings`, `stroke`, `server`, `serve_side`, `timer`
 - squash/racketball scoring preserves the previous server while calculating the next service box: the same server alternates boxes, while a service transfer selects the receiving player's handedness-derived default. Legacy compact point events are replayed with the same rule.
-- tennis action types: `match_settings`, `receiver_choice`, `server`, `timer`
+- tennis/padel action types: `match_settings`, `receiver_choice`, `server`, `timer`
 - new tennis point events preserve point-time fields separately from the next-point state: `point_server_side`, `point_server_participant_id`, `point_receiver_side`, `point_receiver_participant_id`, `point_service_side`, point score/labels, `tennis_game_completed`, `set_completed`, and completed-game number/score. `game_completed` now marks every completed tennis game rather than only a completed set
 - migration `021_tennis_scoring_formats.sql` adds the two persisted tennis format flags
 

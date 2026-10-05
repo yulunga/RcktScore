@@ -39,7 +39,7 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
         case .tennis:
             return "Use the shared racket-sport setup flow for tennis."
         case .padel:
-            return "Use the shared racket-sport setup flow for padel."
+            return "Set up a four-player Padel match with tennis-style set scoring."
         case .tableTennis:
             return "Use the shared racket-sport setup flow for table tennis."
         case .pickleball:
@@ -55,9 +55,9 @@ enum MatchSport: String, CaseIterable, Hashable, Identifiable {
 
     var isImplementedToday: Bool {
         switch self {
-        case .squash, .racketball, .tennis:
+        case .squash, .racketball, .tennis, .padel:
             return true
-        case .padel, .tableTennis, .pickleball, .badminton:
+        case .tableTennis, .pickleball, .badminton:
             return false
         }
     }
@@ -395,8 +395,9 @@ struct StartNewMatchView: View {
     }
 
     private var isPersonalAccount: Bool { organizationType == "personal" }
-    private var isTennisMatch: Bool { selectedSport == .tennis }
-    private var showsTennisDoublesToggle: Bool { isTennisMatch }
+    private var isPadelMatch: Bool { selectedSport == .padel }
+    private var isTennisMatch: Bool { selectedSport == .tennis || isPadelMatch }
+    private var showsTennisDoublesToggle: Bool { selectedSport == .tennis }
 
     private var enabledSportIDs: Set<String> {
         let source = loadedEnabledSports.isEmpty
@@ -670,14 +671,14 @@ struct StartNewMatchView: View {
                 }
 
                 checkboxOption(
-                    title: "No-Ad scoring",
-                    description: "At 40–40, the receiver chooses the Deuce or Ad court. The next point wins the game.",
+                    title: "Golden Point",
+                    description: "At 40–40 the next point wins the game",
                     isOn: $formState.tennisNoAdScoring,
                     identifier: "startMatch.tennisNoAdToggle"
                 )
 
                 checkboxOption(
-                    title: "Final-set 10-point match tiebreak",
+                    title: "Final Set 10-point tiebreak",
                     description: "When the match reaches a deciding final set, play one tiebreak to 10 points instead. The winner must lead by two.",
                     isOn: $formState.tennisFinalSetMatchTiebreak,
                     identifier: "startMatch.tennisFinalSetMatchTiebreakToggle",
@@ -1327,8 +1328,11 @@ struct StartNewMatchView: View {
             await MainActor.run {
                 availableCourts = settings.courts
                 loadedOrganizationType = settings.organization.organizationType
-                loadedEnabledSports = settings.organization.enabledSports
-                if !settings.organization.enabledSports.map({ $0.lowercased() }).contains(selectedSport.rawValue) {
+                let sessionSports = Set(session?.normalizedEnabledSports ?? [])
+                loadedEnabledSports = settings.organization.enabledSports.filter {
+                    sessionSports.contains($0.lowercased())
+                }
+                if !loadedEnabledSports.map({ $0.lowercased() }).contains(selectedSport.rawValue) {
                     errorMessage = "\(selectedSport.displayName) is not enabled for this account or club."
                 }
                 applyOrganizationDefaults()
@@ -1347,6 +1351,9 @@ struct StartNewMatchView: View {
         if isTennisMatch {
             formState.scoreType = 6
             formState.bestOf = [1, 3, 5].contains(formState.bestOf) ? formState.bestOf : 3
+            if isPadelMatch {
+                formState.isDoubles = true
+            }
             formState.handicapEnabled = false
             formState.player1Band = ""
             formState.player2Band = ""

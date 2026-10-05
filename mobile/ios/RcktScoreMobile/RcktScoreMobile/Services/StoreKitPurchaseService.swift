@@ -6,6 +6,8 @@ import StoreKit
 final class StoreKitPurchaseService: ObservableObject {
     static let monthlyProductID = "com.hitnscore.personalplus.monthly"
     static let yearlyProductID = "com.hitnscore.personalplus.yearly"
+    private static let purchasableProductIDs = [yearlyProductID]
+    private static let recognizedProductIDs = [monthlyProductID, yearlyProductID]
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var activeProductIDs: Set<String> = []
@@ -60,16 +62,15 @@ final class StoreKitPurchaseService: ObservableObject {
 
         do {
             let context = try await loadPurchaseContext(force: force)
-            let configuredProductIDs = [context.productIDs.monthly, context.productIDs.yearly]
-            guard Set(configuredProductIDs) == Set([Self.monthlyProductID, Self.yearlyProductID]) else {
+            guard context.productIDs.yearly == Self.yearlyProductID else {
                 throw StoreKitPurchaseError.productConfigurationMismatch
             }
-            let loadedProducts = try await Product.products(for: configuredProductIDs)
+            let loadedProducts = try await Product.products(for: Self.purchasableProductIDs)
             products = loadedProducts.sorted { productOrder($0.id) < productOrder($1.id) }
 
-            if products.count != 2 {
+            if products.count != Self.purchasableProductIDs.count {
                 let loadedIDs = Set(products.map(\.id))
-                let missingIDs = [Self.monthlyProductID, Self.yearlyProductID]
+                let missingIDs = Self.purchasableProductIDs
                     .filter { !loadedIDs.contains($0) }
                 errorMessage = missingProductMessage(for: missingIDs)
             }
@@ -83,7 +84,7 @@ final class StoreKitPurchaseService: ObservableObject {
             errorMessage = "Purchasing is disabled until backend App Store verification is deployed."
             return
         }
-        guard [Self.monthlyProductID, Self.yearlyProductID].contains(product.id) else {
+        guard Self.purchasableProductIDs.contains(product.id) else {
             errorMessage = "This subscription product is not supported."
             return
         }
@@ -144,7 +145,7 @@ final class StoreKitPurchaseService: ObservableObject {
             var restoredOnServer = false
             for await entitlement in Transaction.currentEntitlements {
                 guard case .verified(let transaction) = entitlement,
-                      [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID)
+                      Self.recognizedProductIDs.contains(transaction.productID)
                 else {
                     continue
                 }
@@ -176,7 +177,7 @@ final class StoreKitPurchaseService: ObservableObject {
         var currentProductIDs: Set<String> = []
         for await entitlement in Transaction.currentEntitlements {
             guard case .verified(let transaction) = entitlement,
-                  [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID),
+                  Self.recognizedProductIDs.contains(transaction.productID),
                   transaction.revocationDate == nil,
                   !transaction.isUpgraded,
                   transaction.expirationDate.map({ $0 > Date() }) ?? true
@@ -216,7 +217,7 @@ final class StoreKitPurchaseService: ObservableObject {
                 guard let self else { return }
                 do {
                     let transaction = try self.verified(update)
-                    guard [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID) else {
+                    guard Self.recognizedProductIDs.contains(transaction.productID) else {
                         continue
                     }
                     guard let context = try? await self.loadPurchaseContext(force: true) else {
@@ -294,7 +295,7 @@ final class StoreKitPurchaseService: ObservableObject {
         for await result in Transaction.unfinished {
             do {
                 let transaction = try verified(result)
-                guard [Self.monthlyProductID, Self.yearlyProductID].contains(transaction.productID) else {
+                guard Self.recognizedProductIDs.contains(transaction.productID) else {
                     continue
                 }
                 _ = try await submitToBackend(

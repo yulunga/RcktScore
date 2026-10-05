@@ -519,6 +519,18 @@ Resources:
             Path: /root_admin/users/{user_id}
             Method: GET
 
+  UpdateRootAdminUserSportAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_user_sport_access/handler.lambda_handler
+      Events:
+        UpdateRootAdminUserSportAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/users/{user_id}/memberships/{membership_id}/sport-access
+            Method: PUT
+
   AddRootAdminUserMembershipFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -24,7 +24,14 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, payload["tenant_id"], require_admin=False)
+            auth_context = authorize_organization_session(connection, event, payload["tenant_id"], require_admin=False)
+            requested_sport = str(payload.get("sport") or "squash").strip().lower()
+            if requested_sport not in auth_context["membership"].get("enabled_sports", []):
+                return error_response(
+                    403,
+                    "SPORT_CLIENT_ACCESS_DENIED",
+                    "This racket sport is not enabled for your account on this client.",
+                )
             if not is_personal_tenant(connection, payload["tenant_id"]):
                 missing_court_fields = require_fields(payload, ["court_id", "court_name"])
                 if missing_court_fields:

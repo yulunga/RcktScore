@@ -372,7 +372,7 @@ private enum OfflineScoringReducer {
         switch action.kind {
         case .scorePoint, .stroke:
             let scoringSide = action.scorer ?? action.playerSide ?? "player1"
-            if (match.sport ?? "squash").lowercased() == "tennis" {
+            if isCourtScoringSport(match.sport) {
                 TennisScoringReducer.applyPoint(to: &next, scoringSide: scoringSide, match: match)
             } else {
                 applyRacketPoint(to: &next, scoringSide: scoringSide, match: match)
@@ -478,6 +478,10 @@ private enum OfflineScoringReducer {
         return receiverHandedness?.lowercased() == "left" ? "Left" : "Right"
     }
 
+    private static func isCourtScoringSport(_ sport: String?) -> Bool {
+        ["tennis", "padel"].contains((sport ?? "squash").lowercased())
+    }
+
     private static func appendLocalEvent(
         _ action: OfflineQueuedMatchAction,
         to state: inout MutableMatchState,
@@ -487,7 +491,7 @@ private enum OfflineScoringReducer {
     ) {
         let gameResult = state.gameHistory.count > previousGameHistoryCount ? state.gameHistory.last : nil
         let scoringSide = action.scorer ?? action.playerSide
-        let isTennisPoint = (match.sport ?? "squash").lowercased() == "tennis"
+        let isTennisPoint = isCourtScoringSport(match.sport)
             && (action.kind == .scorePoint || action.kind == .stroke)
         let pointPlayer1Score = isTennisPoint
             ? previousState.player1Score + (scoringSide == "player1" ? 1 : 0)

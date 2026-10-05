@@ -10,7 +10,7 @@ lifecycle test below.
 
 | Area | Current state | Production gate |
 | --- | --- | --- |
-| Products | Monthly and yearly IDs are loaded in Debug | Confirm both are in one App Store Connect subscription group and cleared for sale |
+| Products | The yearly ID is offered for new purchases; monthly remains recognised for legacy restore/lifecycle safety | Keep both IDs in one subscription group, but make only yearly available for new purchase |
 | Purchase UI | StoreKit passes the server token and submits transaction/app JWS values | Deploy and pass Sandbox/TestFlight verification before enabling Release |
 | Persistence | Migrations `024`–`026` add lifecycle storage, stable tokens, verified transaction ledger, reconciliation metadata and entitlement audit | Deploy and verify all migrations in order |
 | Entitlement | `SkwshOrgSettings.plan` controls Free/Plus everywhere | Only a verified Apple lifecycle processor or explicit audited admin override may change it |
@@ -54,8 +54,9 @@ account. See [Apple's appAccountToken documentation](https://developer.apple.com
 - Require a valid organisation-user bearer session.
 - Require membership of the requested personal organisation.
 - Generate the UUID once and return the existing value thereafter.
-- Return server entitlement, monthly/yearly product IDs and whether purchasing
-  is currently enabled.
+- Return server entitlement, the recognised monthly/yearly product IDs and
+  whether purchasing is currently enabled. The iOS purchase catalogue exposes
+  only the yearly ID.
 - Never accept an account token supplied by the client as the account mapping.
 
 ### Authenticated purchase verification — implemented, deployment pending
@@ -183,7 +184,7 @@ continue linking customers to Apple's Manage Subscriptions screen.
    transition.
 
 - [ ] App Store Connect Paid Applications agreement, banking and tax are active.
-- [ ] Monthly/yearly products use their exact production IDs and one subscription group.
+- [ ] Monthly/yearly products use their exact production IDs and one subscription group; only yearly is available for new purchase.
 - [ ] In-App Purchase key created; issuer ID, key ID and `.p8` private key stored in Secrets Manager.
 - [ ] Apple root certificates packaged from Apple PKI and maintained with a documented rotation path.
 - [ ] Bundle ID and numeric Apple app ID configured separately for Sandbox/Production verification.
@@ -197,7 +198,7 @@ continue linking customers to Apple's Manage Subscriptions screen.
 ## Required test evidence
 
 - [ ] Invalid signature, wrong bundle/app/product/environment/token are rejected.
-- [ ] Initial monthly/yearly purchase upgrades the correct signed-in account only.
+- [ ] Initial yearly purchase upgrades the correct signed-in account only; a legacy monthly entitlement still restores to the correct account.
 - [ ] Duplicate purchase and duplicate notification are idempotent.
 - [ ] Out-of-order older events cannot overwrite a newer entitlement.
 - [ ] Renewal extends expiry; auto-renew cancellation keeps access until expiry.

@@ -7,6 +7,7 @@ enum TennisScoringReducerScenarioTests {
         testStandardAndLongTiebreak()
         testFinalSetMatchTiebreakAndCompletion()
         testSinglesAndDoublesServiceRotation()
+        testPadelDoublesCourtScoring()
         testOptionalTimedBreakRules()
         testUndoSnapshotAndOfflineReplay()
         print("TennisScoringReducer scenarios passed")
@@ -76,6 +77,24 @@ enum TennisScoringReducerScenarioTests {
         check(doubles.currentServerParticipantID == "team1_player2", "doubles service rotation crosses set boundary")
     }
 
+    private static func testPadelDoublesCourtScoring() {
+        let match = makeMatch(sport: "padel")
+        var padelState = makeState(player1Score: 3, player1SetGames: 5)
+        padelState = replacingTeams(
+            in: padelState,
+            teams: [
+                "player1": [participant("team1_player1", "Alex"), participant("team1_player2", "Casey")],
+                "player2": [participant("team2_player1", "Blair"), participant("team2_player2", "Drew")],
+            ],
+            order: ["team1_player1", "team2_player1", "team1_player2", "team2_player2"]
+        )
+        var padel = MutableMatchState(padelState)
+        TennisScoringReducer.applyPoint(to: &padel, scoringSide: "player1", match: match)
+        check(padel.player1GamesWon == 1, "Padel uses tennis-style set scoring")
+        check(padel.teamFormat == "doubles", "Padel remains a doubles match")
+        check(padel.currentServerParticipantID == "team1_player2", "Padel rotates through all four servers")
+    }
+
     private static func testUndoSnapshotAndOfflineReplay() {
         let match = makeMatch()
         let serverState = makeState()
@@ -98,10 +117,10 @@ enum TennisScoringReducerScenarioTests {
         check(TennisBreakRules.durationSeconds(enabled: true, completedGameNumber: 6, setCompleted: true) == 120, "set break is 120 seconds")
     }
 
-    private static func makeMatch() -> MatchDetail {
+    private static func makeMatch(sport: String = "tennis") -> MatchDetail {
         MatchDetail(
             id: "match-1", courtName: "Court 1", courtAlias: nil, courtDisplayCode: nil,
-            sport: "tennis", player1Name: "Alex", player1Surname: nil,
+            sport: sport, player1Name: "Alex", player1Surname: nil,
             player1Handedness: "right", player1ShirtColor: "navy",
             player2Name: "Blair", player2Surname: nil, player2Handedness: "right",
             player2ShirtColor: "white", refereeName: nil, scoreType: 6, bestOf: 3,

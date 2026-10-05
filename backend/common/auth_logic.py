@@ -1,10 +1,10 @@
 from werkzeug.security import check_password_hash
 
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
-from common.sport_config import normalize_enabled_sports
+from common.sport_config import client_sport_field, effective_enabled_sports, normalize_enabled_sports
 
 
-def _serialize_org_user(user_row):
+def _serialize_org_user(user_row, client_type="web_app"):
     user_json = user_row.get("user_json") or {}
     first_name = (
         user_json.get("first_name")
@@ -31,6 +31,11 @@ def _serialize_org_user(user_row):
     country = user_json.get("country") or ""
     telephone = user_json.get("telephone") or ""
 
+    client_field = client_sport_field(client_type)
+    organization_sports = user_row.get("enabled_sports")
+    platform_client_sports = user_row.get(f"platform_{client_field}")
+    membership_client_sports = user_row.get(client_field)
+
     return {
         "id": user_row["id"],
         "username": user_row["clubusername"],
@@ -39,7 +44,13 @@ def _serialize_org_user(user_row):
         "organization_name": user_row.get("organization_name"),
         "organization_type": user_row.get("org_type") or "club",
         "plan": user_row.get("plan") or "club_essentials",
-        "enabled_sports": normalize_enabled_sports(user_row.get("enabled_sports")),
+        "enabled_sports": effective_enabled_sports(
+            platform_client_sports if platform_client_sports is not None else organization_sports,
+            organization_sports,
+            membership_client_sports,
+        ),
+        "enabled_sports_web": normalize_enabled_sports(user_row.get("enabled_sports_web"), default=organization_sports),
+        "enabled_sports_ios": normalize_enabled_sports(user_row.get("enabled_sports_ios"), default=organization_sports),
         "status": user_row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": first_name,
         "surname": surname,
@@ -72,11 +83,17 @@ def get_org_users(connection, username):
                 o.org_type,
                 o.plan,
                 o.enabled_sports,
+                u.enabled_sports_web,
+                u.enabled_sports_ios,
+                platform.enabled_sports_web AS platform_enabled_sports_web,
+                platform.enabled_sports_ios AS platform_enabled_sports_ios,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
+            LEFT JOIN platform_settings AS platform
+                ON platform.id = 'default'
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY o.organization_name ASC, u.organization_id ASC, u.id ASC
             """,
@@ -99,7 +116,7 @@ def get_root_admin(connection, username):
         return cursor.fetchone()
 
 
-def authenticate_org_user_memberships(connection, username, password):
+def authenticate_org_user_memberships(connection, username, password, client_type="web_app"):
     user_rows = get_org_users(connection, username)
     if not user_rows:
         return {
@@ -114,7 +131,7 @@ def authenticate_org_user_memberships(connection, username, password):
             continue
 
         if check_password_hash(user_row["password_hash"], password):
-            serialized_user = _serialize_org_user(user_row)
+            serialized_user = _serialize_org_user(user_row, client_type=client_type)
             if serialized_user["status"] == USER_STATUS_APPROVED:
                 approved_memberships.append(serialized_user)
             else:

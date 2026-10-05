@@ -148,7 +148,7 @@ What to check:
 - `org_user_sessions` contains the expected current or revoked rows
 - `org_user_sessions.expires_at` is in the future; the default lifetime is 30 days and the iOS app will discard an expired cached session
 - the browser is actually sending `Authorization: Bearer <token>`
-- the returned session or membership payload contains the expected `enabled_sports` list for that club or personal account
+- the returned session or membership payload contains the expected client-effective `enabled_sports` list
 
 ## 2. Dashboard, History, and Settings Issues
 
@@ -178,7 +178,7 @@ What to check:
 - for Personal Free, confirm the dashboard returns no more than three readable completed matches and only a redacted `locked: true` fourth preview
 - for Personal Plus statistics, verify the registered first name and surname exactly match player details stored on completed matches; otherwise those matches appear in `unclassified_match_count`
 - if point or serving percentages are unexpectedly empty, inspect the retained `match_events` payloads because those figures come from scoring actions rather than the final score alone
-- the `enabled_sports` JSON on `SkwshOrgSettings` matches what the UI should expose
+- `platform_settings.enabled_sports_web` / `enabled_sports_ios`, the organisation `enabled_sports`, and the membership's matching client column all contain the sport
 - whether the UI control is real or scaffold-only
 
 Important current truth:
@@ -216,7 +216,8 @@ If a root-admin issue appears:
 - a root-admin password change updates every membership row sharing the username and revokes the user's active web/mobile sessions; the user must sign in again with the replacement password
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
-- if a sport disappears for every club and personal account at once, check the root-admin `platform_sports` setting and whether the bulk apply path updated `SkwshOrgSettings.enabled_sports`
+- if a sport disappears for every account on one client, check the matching platform client list and whether migration `028_client_sport_access.sql` has been applied
+- if only one user is affected, inspect `SkwshOrgUsers.enabled_sports_web` and `enabled_sports_ios` for each of their memberships; access changes intentionally revoke active sessions
 - logout is idempotent and revokes the token through `POST /root_admin/logout`
 
 ## 4. Match Creation and Scoring Issues
@@ -469,9 +470,10 @@ These are current product limitations, not accidental breakage:
 - reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
 - WebSocket infrastructure is partial
 - notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
-- StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal monthly/yearly, Restore Purchases, and Manage Subscription controls for 20 seconds
+- StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal the yearly purchase, Restore Purchases, and Manage Subscription controls for 20 seconds
 - the subscription page's green current-tier outline and pink Current badge follow the latest backend organisation plan, not a local StoreKit test transaction. If the UI disagrees with `SkwshOrgSettings.plan`, confirm `GET /dashboard/{organization_id}` returns the expected plan and that the app is online so it can replace its cached login-session plan
-- monthly and yearly purchase choices intentionally use the same neutral border; an old local StoreKit transaction must not make one purchase choice look like the current backend tier
+- new Personal Plus purchases are yearly-only. Monthly transactions remain recognized for restore and lifecycle processing; an old local StoreKit transaction must not make a purchase choice look like the current backend tier
+- Padel is doubles-only in the native app and requires four named participants. If it is missing from match setup, confirm `padel` is enabled in both Root Admin platform sports and the active account/club; the web Padel entry remains hidden until its four-player setup UI is complete
 - cancelling an Apple auto-renewable subscription normally disables renewal but retains Personal Plus through the paid `expires_at`; downgrade only after verified expiry or revocation. Local Xcode StoreKit transactions can be inspected or expired from Xcode's transaction manager
 - when the native Apple subscription-management sheet closes, the app refreshes StoreKit entitlements and reloads the server dashboard so a just-processed expiry or revocation replaces the cached plan. Cancelled SwiftUI/URL refresh tasks are ignored rather than shown as `Unable to fetch dashboard data`; genuine API, decoding, and network failures still surface that error
 - production subscription troubleshooting and verification gates are defined in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md); Release purchasing must remain disabled until its configuration and test checklists pass

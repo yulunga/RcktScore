@@ -306,6 +306,7 @@ struct TennisScoringPresentation: View {
             .background(brandBlue)
             .foregroundStyle(.white)
             .clipShape(Capsule())
+            .accessibilityIdentifier("tennis.noAdReceiverChoice.\(side)")
     }
 
     private func fill(for shirt: String) -> Color {

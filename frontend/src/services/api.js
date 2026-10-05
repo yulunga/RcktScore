@@ -312,6 +312,13 @@ export function deleteRootAdminUserMembership(userId, membershipId) {
   });
 }
 
+export function updateRootAdminUserSportAccess(userId, membershipId, payload) {
+  return apiRequest(`/root_admin/users/${userId}/memberships/${membershipId}/sport-access`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateRootAdminUserPassword(userId, payload) {
   return apiRequest(`/root_admin/users/${userId}/password`, {
     method: "PUT",

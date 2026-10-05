@@ -6,6 +6,7 @@ struct MatchSetupScreen {
         case squash
         case racketball
         case tennis
+        case padel
     }
 
     let app: XCUIApplication
@@ -20,6 +21,10 @@ struct MatchSetupScreen {
 
     var tennisSportButton: XCUIElement {
         app.buttons["startMatch.sport.tennis"]
+    }
+
+    var padelSportButton: XCUIElement {
+        app.buttons["startMatch.sport.padel"]
     }
 
     var setupCloseButton: XCUIElement {
@@ -90,6 +95,10 @@ struct MatchSetupScreen {
         app.buttons["startMatch.tennisTimedBreaksToggle"]
     }
 
+    var tennisGoldenPointToggle: XCUIElement {
+        app.buttons["startMatch.tennisNoAdToggle"]
+    }
+
     func chooseSport(_ sport: Sport) {
         switch sport {
         case .squash:
@@ -98,6 +107,8 @@ struct MatchSetupScreen {
             racketballSportButton.tap()
         case .tennis:
             tennisSportButton.tap()
+        case .padel:
+            padelSportButton.tap()
         }
     }
 
@@ -139,22 +150,78 @@ struct MatchSetupScreen {
     }
 
     func selectBestOfThreeTennis() {
+        selectTennisBestOf("Best of 3")
+    }
+
+    func selectBestOfOneTennis() {
+        selectTennisBestOf("Best of 1")
+    }
+
+    func chooseDoubles() {
+        scrollToElement(doublesButton)
+        XCTAssertTrue(doublesButton.waitForExistence(timeout: 5))
+        doublesButton.tap()
+        XCTAssertTrue(
+            player3FirstNameField.waitForExistence(timeout: 5),
+            "Selecting tennis doubles should show all four player fields."
+        )
+    }
+
+    private func selectTennisBestOf(_ value: String) {
         scrollToElement(bestOfPicker)
         XCTAssertTrue(bestOfPicker.waitForExistence(timeout: 5))
         bestOfPicker.tap()
-        XCTAssertTrue(app.buttons["Best of 3"].waitForExistence(timeout: 5))
-        app.buttons["Best of 3"].tap()
+        XCTAssertTrue(app.buttons[value].waitForExistence(timeout: 5))
+        app.buttons[value].tap()
     }
 
     func disableTennisTimedBreaks() {
+        setTennisTimedBreaks(enabled: false)
+    }
+
+    func enableTennisTimedBreaks() {
+        setTennisTimedBreaks(enabled: true)
+    }
+
+    func enableTennisGoldenPoint() {
+        setTennisGoldenPoint(enabled: true)
+    }
+
+    func disableTennisGoldenPoint() {
+        setTennisGoldenPoint(enabled: false)
+    }
+
+    private func setTennisGoldenPoint(enabled: Bool) {
+        scrollToElement(tennisGoldenPointToggle)
+        XCTAssertTrue(tennisGoldenPointToggle.waitForExistence(timeout: 5))
+
+        let desiredValue = enabled ? "On" : "Off"
+        if (tennisGoldenPointToggle.value as? String) != desiredValue {
+            tennisGoldenPointToggle.tap()
+        }
+
+        let updated = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", desiredValue),
+            object: tennisGoldenPointToggle
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [updated], timeout: 5),
+            .completed,
+            "Golden Point must be \(enabled ? "enabled" : "disabled") for this live match."
+        )
+        scrollToElement(startMatchButton)
+    }
+
+    private func setTennisTimedBreaks(enabled: Bool) {
         scrollToElement(tennisTimedBreaksToggle)
         XCTAssertTrue(tennisTimedBreaksToggle.waitForExistence(timeout: 5))
 
-        if (tennisTimedBreaksToggle.value as? String) == "On" {
+        let desiredValue = enabled ? "On" : "Off"
+        if (tennisTimedBreaksToggle.value as? String) != desiredValue {
             tennisTimedBreaksToggle.tap()
         }
 
-        let predicate = NSPredicate(format: "value == %@", "Off")
+        let predicate = NSPredicate(format: "value == %@", desiredValue)
         let expectation = XCTNSPredicateExpectation(
             predicate: predicate,
             object: tennisTimedBreaksToggle
@@ -162,7 +229,7 @@ struct MatchSetupScreen {
         XCTAssertEqual(
             XCTWaiter.wait(for: [expectation], timeout: 5),
             .completed,
-            "Timed breaks must be disabled for the live tennis test."
+            "Timed breaks must be \(enabled ? "enabled" : "disabled") for this live tennis match."
         )
         scrollToElement(startMatchButton)
     }
@@ -174,6 +241,28 @@ struct MatchSetupScreen {
         scrollToElement(player2FirstNameField)
         replaceText(in: player2FirstNameField, with: player2)
         dismissKeyboard()
+        scrollToElement(startMatchButton)
+    }
+
+    func enterDoublesPlayers(
+        team1Player1: String,
+        team1Player2: String,
+        team2Player1: String,
+        team2Player2: String
+    ) {
+        let players = [
+            (player1FirstNameField, team1Player1),
+            (player2FirstNameField, team1Player2),
+            (player3FirstNameField, team2Player1),
+            (player4FirstNameField, team2Player2),
+        ]
+
+        for (field, name) in players {
+            scrollToElement(field)
+            replaceText(in: field, with: name)
+            dismissKeyboard()
+        }
+
         scrollToElement(startMatchButton)
     }
 

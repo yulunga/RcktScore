@@ -10,6 +10,7 @@ import {
   deleteRootAdminUserMembership,
   getRootAdminUserProfile,
   updateRootAdminPersonalAccount,
+  updateRootAdminUserSportAccess,
   updateRootAdminUserPassword,
   verifyRootAdminUserEmail,
 } from "../services/api";
@@ -136,18 +137,19 @@ export default function RootAdminUserProfilePage() {
     );
   }
 
-  async function handleSportToggle(membership, sportValue) {
-    const currentSports = normalizeEnabledSports(membership.enabled_sports);
+  async function handleSportToggle(membership, client, sportValue) {
+    const field = client === "ios" ? "enabled_sports_ios" : "enabled_sports_web";
+    const currentSports = normalizeEnabledSports(membership[field], []);
     const nextSports = currentSports.includes(sportValue)
       ? currentSports.filter((value) => value !== sportValue)
       : [...currentSports, sportValue];
     await runMutation(
-      `sports-${membership.id}`,
-      () => updateRootAdminPersonalAccount(membership.organization_id, {
-        enabled_sports: nextSports,
-        updated_by: session?.username || "Root Admin",
+      `sports-${membership.id}-${client}`,
+      () => updateRootAdminUserSportAccess(userId, membership.id, {
+        enabled_sports_web: client === "web" ? nextSports : normalizeEnabledSports(membership.enabled_sports_web, []),
+        enabled_sports_ios: client === "ios" ? nextSports : normalizeEnabledSports(membership.enabled_sports_ios, []),
       }),
-      "Personal account sports updated.",
+      "User client sport access updated. Their active sessions were signed out so the change applies immediately.",
     );
   }
 
@@ -348,19 +350,31 @@ export default function RootAdminUserProfilePage() {
 
           {activeTab === "settings" ? (
             <section className="panel stack">
-              <div className="panel-heading"><h2>Scoring Sports Enabled</h2><p className="helper-text">Personal sports can be changed here. Club sports are controlled from the club settings page.</p></div>
+              <div className="panel-heading"><h2>Scoring Sports Enabled</h2><p className="helper-text">Set each membership's web and iOS access independently. Platform and club settings remain the maximum allowed access.</p></div>
               {memberships.map((membership) => {
-                const enabledSports = normalizeEnabledSports(membership.enabled_sports);
+                const webSports = normalizeEnabledSports(membership.enabled_sports_web, []);
+                const iosSports = normalizeEnabledSports(membership.enabled_sports_ios, []);
+                const organizationSports = normalizeEnabledSports(membership.enabled_sports);
+                const availableWebSports = normalizeEnabledSports(membership.available_sports_web, []);
+                const availableIosSports = normalizeEnabledSports(membership.available_sports_ios, []);
                 return (
                   <div className="stack root-admin-profile-sports-group" key={membership.id}>
-                    <div className="root-admin-section-header"><h3>{membership.organization_type === "personal" ? "Personal Account" : membership.organization_name}</h3><span className="helper-text">{membership.organization_type === "personal" ? "Editable" : "Managed by club"}</span></div>
+                    <div className="root-admin-section-header"><h3>{membership.organization_type === "personal" ? "Personal Account" : membership.organization_name}</h3><span className="helper-text">Per-user client access</span></div>
                     <div className="sport-grid">
                       {MATCH_SPORT_OPTIONS.map((sport) => {
-                        const enabled = enabledSports.includes(sport.value);
+                        const webEnabled = webSports.includes(sport.value);
+                        const iosEnabled = iosSports.includes(sport.value);
+                        const organizationEnabled = organizationSports.includes(sport.value);
+                        const webAvailable = availableWebSports.includes(sport.value);
+                        const iosAvailable = availableIosSports.includes(sport.value);
+                        const enabled = webEnabled || iosEnabled;
                         return (
                           <article className={`sport-option${enabled ? " active" : " disabled"}`} key={sport.value}>
-                            <strong>{sport.label}</strong><span>{enabled ? "Enabled" : "Disabled"}</span>
-                            {membership.organization_type === "personal" ? <button disabled={savingKey === `sports-${membership.id}`} type="button" className={enabled ? "secondary" : ""} onClick={() => handleSportToggle(membership, sport.value)}>{enabled ? "Disable" : "Enable"}</button> : null}
+                            <strong>{sport.label}</strong><span>{organizationEnabled ? (enabled ? "Client access configured" : "Disabled for this user") : "Disabled by club/platform"}</span>
+                            <div className="button-row">
+                              <button disabled={!webAvailable || savingKey.startsWith(`sports-${membership.id}-`)} type="button" className={webEnabled ? "secondary" : ""} onClick={() => handleSportToggle(membership, "web", sport.value)}>Web: {webEnabled ? "On" : "Off"}</button>
+                              <button disabled={!iosAvailable || savingKey.startsWith(`sports-${membership.id}-`)} type="button" className={iosEnabled ? "secondary" : ""} onClick={() => handleSportToggle(membership, "ios", sport.value)}>iOS: {iosEnabled ? "On" : "Off"}</button>
+                            </div>
                           </article>
                         );
                       })}

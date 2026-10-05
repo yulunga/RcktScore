@@ -44,6 +44,14 @@ struct ScoringScreen {
         app.buttons["scoring.tennisOpening.beginMatchButton"]
     }
 
+    var tennisNoAdReceiverChoice: XCUIElement {
+        app.descendants(matching: .any)["tennis.noAdReceiverChoice"]
+    }
+
+    var tennisNoAdDeuceCourtButton: XCUIElement {
+        app.buttons["tennis.noAdReceiverChoice.Right"]
+    }
+
     var player2ServeSideButton: XCUIElement {
         app.buttons["scoring.serveSide.player2"]
     }

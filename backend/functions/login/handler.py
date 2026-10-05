@@ -26,7 +26,7 @@ def lambda_handler(event, context):
     force_logout_other = bool(payload.get("force_logout_other"))
 
     with get_db_connection() as connection:
-        auth_result = authenticate_org_user_memberships(connection, username, password)
+        auth_result = authenticate_org_user_memberships(connection, username, password, client_type=client_type)
 
         memberships = auth_result["approved_memberships"]
         pending_memberships = auth_result["pending_memberships"]

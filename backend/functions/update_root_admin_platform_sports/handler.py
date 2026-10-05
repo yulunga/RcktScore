@@ -8,8 +8,8 @@ from common.utils import error_response, parse_body, success_response
 def lambda_handler(event, context):
     payload = parse_body(event)
 
-    if "enabled_sports" not in payload:
-        return error_response(400, "VALIDATION_ERROR", "enabled_sports is required")
+    if not any(key in payload for key in ("enabled_sports", "enabled_sports_web", "enabled_sports_ios")):
+        return error_response(400, "VALIDATION_ERROR", "At least one client sport list is required")
 
     try:
         with get_db_connection() as connection:
@@ -17,6 +17,8 @@ def lambda_handler(event, context):
             platform_sports = update_root_admin_platform_sports(
                 connection,
                 payload.get("enabled_sports"),
+                enabled_sports_web=payload.get("enabled_sports_web"),
+                enabled_sports_ios=payload.get("enabled_sports_ios"),
                 updated_by=root_admin_session["username"],
             )
     except SessionAuthError as auth_error:

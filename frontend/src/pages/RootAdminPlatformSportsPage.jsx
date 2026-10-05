@@ -13,7 +13,8 @@ import {
 export default function RootAdminPlatformSportsPage() {
   const navigate = useNavigate();
   const { session } = useRootAdmin();
-  const [enabledSports, setEnabledSports] = useState(() => normalizeEnabledSports());
+  const [webSports, setWebSports] = useState(() => normalizeEnabledSports());
+  const [iosSports, setIosSports] = useState(() => normalizeEnabledSports());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [affectedOrganizationCount, setAffectedOrganizationCount] = useState(0);
@@ -26,7 +27,8 @@ export default function RootAdminPlatformSportsPage() {
     try {
       const response = await getRootAdminPlatformSports();
       const platformSports = response.platformSports || {};
-      setEnabledSports(normalizeEnabledSports(platformSports.enabled_sports));
+      setWebSports(normalizeEnabledSports(platformSports.enabled_sports_web ?? platformSports.enabled_sports));
+      setIosSports(normalizeEnabledSports(platformSports.enabled_sports_ios ?? platformSports.enabled_sports));
       setAffectedOrganizationCount(platformSports.affected_organization_count || 0);
     } catch (requestError) {
       setError(requestError.message || "Failed to load platform racket sports.");
@@ -39,8 +41,9 @@ export default function RootAdminPlatformSportsPage() {
     loadPlatformSports();
   }, []);
 
-  function toggleSport(sportValue) {
-    setEnabledSports((current) => (
+  function toggleSport(client, sportValue) {
+    const setter = client === "ios" ? setIosSports : setWebSports;
+    setter((current) => (
       current.includes(sportValue)
         ? current.filter((value) => value !== sportValue)
         : [...current, sportValue]
@@ -53,11 +56,14 @@ export default function RootAdminPlatformSportsPage() {
     setError("");
     try {
       const response = await updateRootAdminPlatformSports({
-        enabled_sports: enabledSports,
+        enabled_sports: [...new Set([...webSports, ...iosSports])],
+        enabled_sports_web: webSports,
+        enabled_sports_ios: iosSports,
         updated_by: session?.username || "Root Admin",
       });
       const platformSports = response.platformSports || {};
-      setEnabledSports(normalizeEnabledSports(platformSports.enabled_sports));
+      setWebSports(normalizeEnabledSports(platformSports.enabled_sports_web ?? platformSports.enabled_sports));
+      setIosSports(normalizeEnabledSports(platformSports.enabled_sports_ios ?? platformSports.enabled_sports));
       setAffectedOrganizationCount(platformSports.affected_organization_count || 0);
       setMessage("Platform racket sports updated for all users and clubs.");
     } catch (requestError) {
@@ -103,7 +109,7 @@ export default function RootAdminPlatformSportsPage() {
         <div className="meta-grid root-admin-interest-summary">
           <div className="meta-item">
             <strong>Enabled Sports</strong>
-            <div>{enabledSports.length}</div>
+            <div>{new Set([...webSports, ...iosSports]).size}</div>
           </div>
           <div className="meta-item">
             <strong>Updated Clubs & Users</strong>
@@ -112,30 +118,32 @@ export default function RootAdminPlatformSportsPage() {
         </div>
 
         <p className="helper-text">
-          Saving here updates the platform default and applies the same allowed racket-sport list across every club and personal account.
+          Saving applies the web and iOS lists to every membership. Individual users can then be restricted further from their User Account profile.
         </p>
 
         {loading ? <div className="notice">Loading platform sport controls...</div> : null}
 
         <div className="sport-grid">
           {MATCH_SPORT_OPTIONS.map((sport) => {
-            const enabled = enabledSports.includes(sport.value);
+            const webEnabled = webSports.includes(sport.value);
+            const iosEnabled = iosSports.includes(sport.value);
+            const enabled = webEnabled || iosEnabled;
             return (
               <article
                 key={sport.value}
                 className={`sport-option${enabled ? " active" : " disabled"}`}
               >
                 <strong>{sport.label}</strong>
-                <span>{enabled ? "Enabled" : "Disabled"}</span>
+                <span>{enabled ? "Available on at least one client" : "Disabled everywhere"}</span>
                 <p>{sport.note}</p>
-                <button
-                  type="button"
-                  className={enabled ? "secondary" : ""}
-                  disabled={loading || saving}
-                  onClick={() => toggleSport(sport.value)}
-                >
-                  {enabled ? "Disable" : "Enable"}
-                </button>
+                <div className="button-row">
+                  <button type="button" className={webEnabled ? "secondary" : ""} disabled={loading || saving} onClick={() => toggleSport("web", sport.value)}>
+                    Web: {webEnabled ? "On" : "Off"}
+                  </button>
+                  <button type="button" className={iosEnabled ? "secondary" : ""} disabled={loading || saving} onClick={() => toggleSport("ios", sport.value)}>
+                    iOS: {iosEnabled ? "On" : "Off"}
+                  </button>
+                </div>
               </article>
             );
           })}

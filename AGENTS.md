@@ -43,12 +43,12 @@ What is real and implemented:
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup with per-participant shirt colours, automatic singles receiver selection from the opening server, explicit doubles serve/receive selection, optional No-Ad deciding points, an optional final-set 10-point match tiebreak, and optional timed 90-second odd-game changeovers plus 120-second set breaks
-- separate engine modules exist for padel, table tennis, badminton, and pickleball, and are wired through the dispatcher to fail safely until their scoring logic is implemented
+- padel uses an explicit doubles-only adapter over the mature tennis-style set engine, including advantage or Golden Point, 6-6 tiebreaks, serve/receive rotation, offline replay, undo and match completion; table tennis, badminton, and pickleball remain fail-safe placeholders
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - web and native Personal Plus performance views covering results, game/point and serve-point percentages, court time, close games/sets, streaks, opponents, scorelines, sport splits, and weekly/monthly progress
 - native iOS login now handles backend `organizationSelection` responses and lets users choose between multiple club/account memberships
 - native iOS login now includes a show/hide password toggle and can restore an unexpired, device-bound Keychain session with Face ID or Touch ID when enabled from settings, including from the login screen after local sign-out
-- native iOS match setup currently exposes the implemented and enabled sports only: squash, racketball, and tennis
+- native iOS match setup exposes the implemented and enabled sports only: squash, racketball, tennis, and doubles Padel; Padel remains hidden until it is enabled through the platform and account sport controls
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
 - native settings now use a plan-aware menu layout with About first, followed by Profile and Subscription, dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, personal-account deletion with two destructive confirmations, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
 - native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
@@ -68,7 +68,7 @@ What is real and implemented:
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 100 and receives performance analytics
-- native iOS StoreKit 2 purchasing loads the authenticated server context, passes the stable account UUID into StoreKit, submits Apple-signed transaction and app-transaction JWS values to the backend, and finishes server-enabled transactions only after backend acceptance; local Xcode StoreKit testing remains non-authoritative
+- native iOS StoreKit 2 purchasing offers new Personal Plus upgrades through the yearly product only, passes the stable account UUID into StoreKit, submits Apple-signed transaction and app-transaction JWS values to the backend, and finishes server-enabled transactions only after backend acceptance; monthly transactions remain recognized for restore and lifecycle safety, and local Xcode StoreKit testing remains non-authoritative
 - authenticated Apple purchase context/verification, App Store Server Notifications V2, renewal/cancellation/grace/refund/expiry processing, hourly App Store Server API reconciliation, automatic plan changes, root-admin subscription activity and append-only entitlement audit are implemented; elapsed subscriptions are reconciled with Apple before a bounded local-expiry fallback so delayed renewal notifications cannot cause temporary entitlement churn; migrations `025`–`027` provide their persistence model
 - native Subscription links for logged-in Club Essentials and Club Pro enquiries, capturing full club contact details in the root-admin queue and sending requester/admin acknowledgement emails
 - the native login help chooser is vertically centred with a 44-point circular close target; successful personal registration and Ping Us submissions replace their forms with confirmation and next-step screens; Ping Us maps SES delivery failures to a structured API error and uses the verified `hello@hitnscore.com` feedback identity by default
@@ -76,7 +76,7 @@ What is real and implemented:
 - root-admin User Accounts directory across personal and club memberships, with account-type and unverified-user summary filters, user search, visible email-verification warnings, and tabbed user profiles for registered details/last activity, password changes, subscriptions, club associations, scoring activity, and enabled sports
 - root-admin user profiles show email-verification state and allow an authenticated root admin to manually verify an account and approve pending memberships for that email without changing its password
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
-- root-admin platform-level RacketSports control that can apply a global allowed-sports list across all clubs and personal accounts
+- root-admin RacketSports controls for separate web and iOS sport lists, with a platform-wide apply-to-all action and per-membership client overrides from User Accounts
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 - a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 
@@ -108,7 +108,7 @@ What is still partial or risky:
 - `backend/`
   - Lambda handlers in `functions/*/handler.py`
   - shared backend logic in `common/*.py`
-  - sport engines currently split across `common/match_logic.py`, `common/squash_match_logic.py`, `common/tennis_match_logic.py`, plus placeholder engine files for `padel`, `table_tennis`, `badminton`, and `pickleball`
+  - sport engines currently split across `common/match_logic.py`, `common/squash_match_logic.py`, `common/tennis_match_logic.py`, a Padel adapter in `common/padel_match_logic.py`, plus placeholder engine files for `table_tennis`, `badminton`, and `pickleball`
   - schema migrations in `schema/*.sql`
   - SAM template in `template.yaml`
 - `mobile/`
@@ -175,7 +175,7 @@ See the backend/API reference for the exact route list.
 - org-user sessions expire after 30 days by default, configurable from one to 90 days, and cached native sessions cannot be reopened after their server-provided expiry
 - reconnect-safe scoring action UUIDs are recorded in `match_action_receipts`; duplicate retries return current match state without repeating the mutation
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
-- sport visibility is now enforced through organisation-level `enabled_sports` settings before match creation
+- sport visibility is enforced before match creation as the intersection of platform client access, organisation `enabled_sports`, and per-membership web/iOS access
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
 - the former `x-root-admin-request` trust-header bypass has been removed
 - root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain

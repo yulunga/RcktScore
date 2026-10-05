@@ -2,7 +2,7 @@ import XCTest
 
 final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
     @MainActor
-    func testPersonalPlusCompletesBestOfThreeWithFirstSetTiebreak() throws {
+    func testPersonalPlusCompletesSinglesAndDoublesJourneys() throws {
         let user = try TestUser.personalPlusFromEnvironment()
         launchApp(lightMode: false)
         rotatePortrait()
@@ -36,7 +36,7 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
 
         XCTAssertTrue(scoring.warmupSkipButton.waitForExistence(timeout: 20))
         scoring.warmupSkipButton.tap()
-        chooseOpeningOrder(scoring)
+        chooseSinglesOpeningOrder(scoring)
         scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 0)
         checkpoint("Tennis-03-Match-Live")
 
@@ -90,7 +90,68 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         scoring.tapTennisScoreCard(side: "player1")
 
         XCTAssertTrue(scoring.completedReturnButton.waitForExistence(timeout: 25))
-        checkpoint("Tennis-07-Match-Complete-2-0")
+        checkpoint("Tennis-07-Singles-Complete-2-0")
+        scoring.completedReturnButton.tap()
+
+        // Start a second match as doubles and exercise four-player setup,
+        // Golden Point, timed breaks, team scoring, and match completion.
+        XCTAssertTrue(dashboard.startNewMatchButton.waitForExistence(timeout: 12))
+        openTennisSetup(dashboard: dashboard, setup: setup)
+        setup.chooseDoubles()
+        setup.enterDoublesPlayers(
+            team1Player1: "Paul",
+            team1Player2: "Peter",
+            team2Player1: "Mark",
+            team2Player2: "Matt"
+        )
+        setup.selectBestOfThreeTennis()
+        setup.enableTennisGoldenPoint()
+        setup.enableTennisTimedBreaks()
+        checkpoint("Tennis-08-Doubles-Setup")
+        XCTAssertTrue(setup.startMatchButton.isEnabled)
+        setup.startMatchButton.tap()
+
+        XCTAssertTrue(scoring.warmupSkipButton.waitForExistence(timeout: 20))
+        scoring.warmupSkipButton.tap()
+        chooseDoublesOpeningOrder(scoring)
+        scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 0)
+        checkpoint("Tennis-09-Doubles-Match-Live")
+
+        completeGoldenPointGameForPlayer1(scoring: scoring)
+
+        for completedGames in 2...5 {
+            completeLoveGame(
+                winner: "player1",
+                games: (completedGames, 0),
+                sets: (0, 0),
+                scoring: scoring
+            )
+            if completedGames == 3 || completedGames == 5 {
+                skipDoublesTimedBreak(afterGame: completedGames, set: 1, scoring: scoring)
+            }
+        }
+        scoreFirstThreePoints("player1", games: (5, 0), sets: (0, 0), scoring: scoring)
+        scoring.tapTennisScoreCard(side: "player1")
+        scoring.waitForTennisState(side: "player1", points: "0", games: 0, sets: 1)
+        scoring.waitForTennisMode("standard", set: 2)
+        skipDoublesTimedBreak(afterGame: 6, set: 1, scoring: scoring)
+
+        for completedGames in 1...5 {
+            completeLoveGame(
+                winner: "player1",
+                games: (completedGames, 0),
+                sets: (1, 0),
+                scoring: scoring
+            )
+            if completedGames == 3 || completedGames == 5 {
+                skipDoublesTimedBreak(afterGame: completedGames, set: 2, scoring: scoring)
+            }
+        }
+        scoreFirstThreePoints("player1", games: (5, 0), sets: (1, 0), scoring: scoring)
+        scoring.tapTennisScoreCard(side: "player1")
+
+        XCTAssertTrue(scoring.completedReturnButton.waitForExistence(timeout: 25))
+        checkpoint("Tennis-10-Doubles-Complete-2-0")
         scoring.completedReturnButton.tap()
 
         XCTAssertTrue(dashboard.settingsTab.waitForExistence(timeout: 12))
@@ -98,7 +159,7 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         settings.verifyLoaded()
         settings.logout()
         login.verifyLoaded()
-        checkpoint("Tennis-08-Logged-Out")
+        checkpoint("Tennis-11-Logged-Out")
     }
 
     private func openTennisSetup(dashboard: DashboardScreen, setup: MatchSetupScreen) {
@@ -108,7 +169,7 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         setup.verifySetupLoaded(timeout: 10)
     }
 
-    private func chooseOpeningOrder(_ scoring: ScoringScreen) {
+    private func chooseSinglesOpeningOrder(_ scoring: ScoringScreen) {
         XCTAssertTrue(scoring.tennisOpeningPlayer1ServerButton.waitForExistence(timeout: 8))
         scoring.tennisOpeningPlayer1ServerButton.tap()
         XCTAssertFalse(
@@ -117,6 +178,52 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
         )
         XCTAssertTrue(scoring.tennisBeginMatchButton.isEnabled)
         scoring.tennisBeginMatchButton.tap()
+    }
+
+    private func chooseDoublesOpeningOrder(_ scoring: ScoringScreen) {
+        XCTAssertTrue(scoring.tennisOpeningPlayer1ServerButton.waitForExistence(timeout: 8))
+        scoring.tennisOpeningPlayer1ServerButton.tap()
+        XCTAssertTrue(
+            scoring.tennisOpeningPlayer2ReceiverButton.waitForExistence(timeout: 5),
+            "Doubles should require the receiving team to choose its opening receiver."
+        )
+        scoring.tennisOpeningPlayer2ReceiverButton.tap()
+        XCTAssertTrue(scoring.tennisBeginMatchButton.isEnabled)
+        scoring.tennisBeginMatchButton.tap()
+    }
+
+    private func completeGoldenPointGameForPlayer1(scoring: ScoringScreen) {
+        for points in ["15", "30", "40"] {
+            scorePoint("player1", expectedPoints: points, games: 0, sets: 0, scoring: scoring)
+            scorePoint("player2", expectedPoints: points, games: 0, sets: 0, scoring: scoring)
+        }
+
+        XCTAssertTrue(
+            scoring.tennisNoAdReceiverChoice.waitForExistence(timeout: 8),
+            "Golden Point should require the receiver to choose a court at 40-40."
+        )
+        XCTAssertTrue(scoring.tennisNoAdDeuceCourtButton.waitForExistence(timeout: 5))
+        scoring.tennisNoAdDeuceCourtButton.tap()
+        scoring.tapTennisScoreCard(side: "player1")
+        scoring.waitForTennisState(side: "player1", points: "0", games: 1, sets: 0)
+    }
+
+    private func skipDoublesTimedBreak(afterGame game: Int, set: Int, scoring: ScoringScreen) {
+        XCTAssertTrue(
+            scoring.intervalSkipButton.waitForExistence(timeout: 10),
+            "Expected a timed doubles break after game \(game) of set \(set)."
+        )
+        scoring.intervalSkipButton.tap()
+
+        let breakDismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: scoring.intervalSkipButton
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [breakDismissed], timeout: 5),
+            .completed,
+            "The timed doubles break after game \(game) of set \(set) did not dismiss."
+        )
     }
 
     private func completeLoveGame(

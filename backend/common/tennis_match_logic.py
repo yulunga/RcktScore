@@ -858,6 +858,9 @@ def create_match(connection, payload, source="api"):
     is_personal_tenant = shared._is_personal_tenant(tenant_id, tenant_plan)
     can_choose_shirt_colors = shared._can_choose_shirt_colors(tenant_plan, tenant_id)
     match_payload = {**payload}
+    engine_sport = str(match_payload.get("sport") or SPORT).strip().lower()
+    if engine_sport not in {"tennis", "padel"}:
+        engine_sport = SPORT
 
     if is_personal_tenant:
         active_match = shared._find_active_match_for_tenant(connection, tenant_id)
@@ -1010,7 +1013,7 @@ def create_match(connection, payload, source="api"):
                 "court_id": match_payload["court_id"],
                 "court_name": match_payload["court_name"],
                 "court_alias": match_payload.get("court_alias"),
-                "sport": SPORT,
+                "sport": engine_sport,
                 "player1_name": match_payload["player1_name"],
                 "player1_surname": match_payload.get("player1_surname"),
                 "player1_country": match_payload.get("player1_country"),
@@ -1069,7 +1072,7 @@ def create_match(connection, payload, source="api"):
                     "court_id": match_payload["court_id"],
                     "court_name": match_payload["court_name"],
                     "court_alias": match_payload.get("court_alias"),
-                    "sport": SPORT,
+                    "sport": engine_sport,
                     "score_type": score_type,
                     "best_of": best_of,
                     "games_to_win": games_to_win,

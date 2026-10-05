@@ -3,7 +3,14 @@ import secrets
 from common.mailer import send_email_message
 from common.notification_templates import render_notification_template
 from common.sport_config import SPORT_LABELS
-from common.sport_config import constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports
+from common.sport_config import (
+    constrain_enabled_sports,
+    constrain_user_enabled_sports,
+    effective_enabled_sports,
+    fetch_platform_client_enabled_sports,
+    fetch_platform_enabled_sports,
+    normalize_enabled_sports,
+)
 from psycopg.types.json import Jsonb
 from psycopg.errors import UndefinedTable
 from werkzeug.security import generate_password_hash
@@ -244,6 +251,8 @@ def get_root_admin_platform_sports(connection):
     enabled_sports = fetch_platform_enabled_sports(connection)
     return {
         "enabled_sports": enabled_sports,
+        "enabled_sports_web": fetch_platform_client_enabled_sports(connection, "web_app"),
+        "enabled_sports_ios": fetch_platform_client_enabled_sports(connection, "mobile_app"),
         "sports": [
             {
                 "value": sport_id,
@@ -254,21 +263,42 @@ def get_root_admin_platform_sports(connection):
     }
 
 
-def update_root_admin_platform_sports(connection, enabled_sports, updated_by=None):
-    normalized_enabled_sports = normalize_enabled_sports(enabled_sports)
+def update_root_admin_platform_sports(
+    connection,
+    enabled_sports=None,
+    enabled_sports_web=None,
+    enabled_sports_ios=None,
+    updated_by=None,
+):
+    fallback = normalize_enabled_sports(enabled_sports)
+    normalized_web_sports = normalize_enabled_sports(enabled_sports_web, default=fallback)
+    normalized_ios_sports = normalize_enabled_sports(enabled_sports_ios, default=fallback)
+    normalized_enabled_sports = [
+        sport
+        for sport in SPORT_LABELS
+        if sport in set(normalized_web_sports) | set(normalized_ios_sports)
+    ]
     now = _utcnow()
 
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO platform_settings (id, enabled_sports, updated_at)
-            VALUES ('default', %(enabled_sports)s, %(updated_at)s)
+            INSERT INTO platform_settings (
+                id, enabled_sports, enabled_sports_web, enabled_sports_ios, updated_at
+            )
+            VALUES (
+                'default', %(enabled_sports)s, %(enabled_sports_web)s, %(enabled_sports_ios)s, %(updated_at)s
+            )
             ON CONFLICT (id) DO UPDATE
             SET enabled_sports = EXCLUDED.enabled_sports,
+                enabled_sports_web = EXCLUDED.enabled_sports_web,
+                enabled_sports_ios = EXCLUDED.enabled_sports_ios,
                 updated_at = EXCLUDED.updated_at
             """,
             {
                 "enabled_sports": Jsonb(normalized_enabled_sports),
+                "enabled_sports_web": Jsonb(normalized_web_sports),
+                "enabled_sports_ios": Jsonb(normalized_ios_sports),
                 "updated_at": now,
             },
         )
@@ -280,12 +310,34 @@ def update_root_admin_platform_sports(connection, enabled_sports, updated_by=Non
             {"enabled_sports": Jsonb(normalized_enabled_sports)},
         )
         affected_organization_count = cursor.rowcount
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET enabled_sports_web = %(enabled_sports_web)s,
+                enabled_sports_ios = %(enabled_sports_ios)s
+            """,
+            {
+                "enabled_sports_web": Jsonb(normalized_web_sports),
+                "enabled_sports_ios": Jsonb(normalized_ios_sports),
+            },
+        )
+        affected_membership_count = cursor.rowcount
+        cursor.execute(
+            """
+            UPDATE org_user_sessions
+            SET revoked_at = COALESCE(revoked_at, %(revoked_at)s),
+                revoked_reason = COALESCE(revoked_reason, 'sport_access_updated')
+            WHERE revoked_at IS NULL
+            """,
+            {"revoked_at": now},
+        )
 
     connection.commit()
     result = get_root_admin_platform_sports(connection)
     result["updated_by"] = (updated_by or "").strip() or ""
     result["updated_at"] = now.isoformat()
     result["affected_organization_count"] = affected_organization_count
+    result["affected_membership_count"] = affected_membership_count
     return result
 
 
@@ -1351,6 +1403,10 @@ def get_root_admin_user_profile(connection, user_id):
                 o.org_type,
                 o.plan,
                 o.enabled_sports,
+                u.enabled_sports_web,
+                u.enabled_sports_ios,
+                platform.enabled_sports_web AS platform_enabled_sports_web,
+                platform.enabled_sports_ios AS platform_enabled_sports_ios,
                 o.interest_request_id,
                 i.email_validated,
                 i.email_validated_at,
@@ -1360,6 +1416,8 @@ def get_root_admin_user_profile(connection, user_id):
                 ON o.id = u.organization_id
             LEFT JOIN "HitnScoreInterestRequests" AS i
                 ON i.id = o.interest_request_id
+            LEFT JOIN platform_settings AS platform
+                ON platform.id = 'default'
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY
                 CASE WHEN o.org_type = 'personal' THEN 0 ELSE 1 END,
@@ -1453,6 +1511,7 @@ def get_root_admin_user_profile(connection, user_id):
     summary = _serialize_root_admin_user_summary(username.lower(), membership_rows)
     memberships = []
     for row in membership_rows:
+        organization_enabled_sports = normalize_enabled_sports(row.get("enabled_sports"))
         memberships.append(
             {
                 "id": row["membership_id"],
@@ -1462,7 +1521,27 @@ def get_root_admin_user_profile(connection, user_id):
                 "plan": row.get("plan") or ("personal_free" if row.get("org_type") == "personal" else "club_essentials"),
                 "role": row.get("role") or "user",
                 "status": row.get("approval_status") or "approved",
-                "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
+                "enabled_sports": organization_enabled_sports,
+                "enabled_sports_web": effective_enabled_sports(
+                    row.get("platform_enabled_sports_web"),
+                    organization_enabled_sports,
+                    row.get("enabled_sports_web"),
+                ),
+                "enabled_sports_ios": effective_enabled_sports(
+                    row.get("platform_enabled_sports_ios"),
+                    organization_enabled_sports,
+                    row.get("enabled_sports_ios"),
+                ),
+                "available_sports_web": effective_enabled_sports(
+                    row.get("platform_enabled_sports_web"),
+                    organization_enabled_sports,
+                    organization_enabled_sports,
+                ),
+                "available_sports_ios": effective_enabled_sports(
+                    row.get("platform_enabled_sports_ios"),
+                    organization_enabled_sports,
+                    organization_enabled_sports,
+                ),
                 "registered_at": row["created_at"].isoformat() if row.get("created_at") else None,
                 "invitation_sent_at": row["invitation_sent_at"].isoformat() if row.get("invitation_sent_at") else None,
                 "approved_at": row["approved_at"].isoformat() if row.get("approved_at") else None,
@@ -1524,6 +1603,85 @@ def get_root_admin_user_profile(connection, user_id):
             }
             for row in available_clubs
         ],
+    }
+
+
+def update_root_admin_user_sport_access(
+    connection,
+    user_id,
+    membership_id,
+    *,
+    enabled_sports_web,
+    enabled_sports_ios,
+):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, clubusername, organization_id
+            FROM "SkwshOrgUsers"
+            WHERE id = %(membership_id)s
+              AND LOWER(clubusername) = LOWER(%(username)s)
+            LIMIT 1
+            """,
+            {
+                "membership_id": int(membership_id),
+                "username": username,
+            },
+        )
+        membership = cursor.fetchone()
+
+    if not membership:
+        return None
+
+    web_sports = constrain_user_enabled_sports(
+        connection,
+        membership["organization_id"],
+        enabled_sports_web,
+        "web_app",
+    )
+    ios_sports = constrain_user_enabled_sports(
+        connection,
+        membership["organization_id"],
+        enabled_sports_ios,
+        "mobile_app",
+    )
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET enabled_sports_web = %(enabled_sports_web)s,
+                enabled_sports_ios = %(enabled_sports_ios)s
+            WHERE id = %(membership_id)s
+            """,
+            {
+                "membership_id": membership["id"],
+                "enabled_sports_web": Jsonb(web_sports),
+                "enabled_sports_ios": Jsonb(ios_sports),
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE org_user_sessions
+            SET revoked_at = COALESCE(revoked_at, %(revoked_at)s),
+                revoked_reason = COALESCE(revoked_reason, 'sport_access_updated')
+            WHERE LOWER(username) = LOWER(%(username)s)
+              AND revoked_at IS NULL
+            """,
+            {"username": username, "revoked_at": now},
+        )
+
+    connection.commit()
+    return {
+        "membership_id": membership["id"],
+        "organization_id": membership["organization_id"],
+        "enabled_sports_web": web_sports,
+        "enabled_sports_ios": ios_sports,
+        "sessions_revoked": True,
     }
 
 

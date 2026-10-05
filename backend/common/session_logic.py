@@ -227,6 +227,7 @@ def _get_session_row(connection, token, *, include_revoked=False):
                 created_at,
                 last_seen_at,
                 expires_at,
+                login_source,
                 revoked_at,
                 revoked_reason
             FROM org_user_sessions
@@ -289,6 +290,7 @@ def require_org_user_session(connection, event):
         "id": session_row["id"],
         "username": session_row["username"],
         "token": token,
+        "login_source": normalize_login_source(session_row.get("login_source")),
     }
 
 
@@ -305,11 +307,17 @@ def _get_membership_row(connection, username, organization_id):
                 o.org_type,
                 o.plan,
                 o.enabled_sports,
+                u.enabled_sports_web,
+                u.enabled_sports_ios,
+                platform.enabled_sports_web AS platform_enabled_sports_web,
+                platform.enabled_sports_ios AS platform_enabled_sports_ios,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
+            LEFT JOIN platform_settings AS platform
+                ON platform.id = 'default'
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
               AND u.organization_id = %(organization_id)s
             LIMIT 1
@@ -339,7 +347,7 @@ def authorize_organization_session(connection, event, organization_id, require_a
     if not membership_row:
         raise SessionAuthError(403, "SESSION_FORBIDDEN", "You do not have access to this organisation.")
 
-    membership = _serialize_org_user(membership_row)
+    membership = _serialize_org_user(membership_row, client_type=session.get("login_source"))
     if membership["status"] != USER_STATUS_APPROVED:
         raise SessionAuthError(403, "SESSION_FORBIDDEN", "Your organisation access is not approved.")
 
@@ -357,11 +365,11 @@ def authorize_personal_profile_session(connection, event, organization_id):
     return auth_context
 
 
-def _get_match_tenant_id(connection, match_id):
+def _get_match_access_context(connection, match_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT tenant_id
+            SELECT tenant_id, sport
             FROM matches
             WHERE id = %(match_id)s
             LIMIT 1
@@ -370,14 +378,23 @@ def _get_match_tenant_id(connection, match_id):
         )
         row = cursor.fetchone()
 
-    return (row or {}).get("tenant_id")
+    return row
 
 
 def authorize_match_session(connection, event, match_id):
-    tenant_id = _get_match_tenant_id(connection, match_id)
-    if tenant_id is None:
+    match_context = _get_match_access_context(connection, match_id)
+    if not match_context:
         raise SessionAuthError(404, "MATCH_NOT_FOUND", "Match not found")
 
+    tenant_id = match_context["tenant_id"]
     auth_context = authorize_organization_session(connection, event, tenant_id, require_admin=False)
+    sport = str(match_context.get("sport") or "squash").strip().lower()
+    if sport not in auth_context["membership"].get("enabled_sports", []):
+        raise SessionAuthError(
+            403,
+            "SPORT_CLIENT_ACCESS_DENIED",
+            "This racket sport is not enabled for your account on this client.",
+        )
     auth_context["tenant_id"] = tenant_id
+    auth_context["sport"] = sport
     return auth_context

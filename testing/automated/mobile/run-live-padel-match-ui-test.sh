@@ -3,7 +3,7 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/../../.." && pwd)"
 credentials_file="${RCKTSCORE_UI_CREDENTIALS_FILE:-$project_root/testing/automated/mobile/ui-test-credentials.env}"
-result_path="${RCKTSCORE_UI_RESULT_PATH:-/tmp/RcktScore-LiveTennisMatch.xcresult}"
+result_path="${RCKTSCORE_UI_RESULT_PATH:-/tmp/RcktScore-LivePadelMatch.xcresult}"
 destination="${RCKTSCORE_UI_DESTINATION:-platform=iOS Simulator,name=iPhone 17 Pro,OS=latest}"
 
 if [[ -f "$credentials_file" ]]; then
@@ -31,10 +31,10 @@ export TEST_RUNNER_HITNSCORE_UI_TEST_PERSONAL_PLUS_USERNAME="$username"
 export TEST_RUNNER_HITNSCORE_UI_TEST_PERSONAL_PLUS_PASSWORD="$password"
 export TEST_RUNNER_HITNSCORE_UI_TEST_STEP_DELAY="${RCKTSCORE_UI_STEP_DELAY:-0.2}"
 
-echo "LIVE TEST: this creates and completes singles and doubles tennis matches in the Personal Plus test account."
-echo "Set one reaches 6-6 and Paul wins the extended tiebreak 8-6; Paul then wins set two 6-0."
-echo "The journey then enables Golden Point and timed breaks and completes a Best of 3 doubles match 6-0, 6-0 before signing out."
-echo "Keep Simulator visible to watch the journey. Screenshots and logs will be saved to $result_path."
+echo "LIVE TEST: this creates and completes two Best of 3 padel matches in the Personal Plus test account."
+echo "Match one uses standard advantage scoring; match two enables and exercises Golden Point."
+echo "Timed breaks are disabled for both matches, which finish 6-0, 6-0 before logout."
+echo "Padel must be enabled for the test account. Screenshots and logs will be saved to $result_path."
 
 set +e
 xcodebuild test \
@@ -42,14 +42,14 @@ xcodebuild test \
     -scheme RcktScoreMobile \
     -destination "$destination" \
     -parallel-testing-enabled NO \
-    -only-testing:RcktScoreMobileUITests/LiveTennisMatchJourneyUITests/testPersonalPlusCompletesSinglesAndDoublesJourneys \
+    -only-testing:RcktScoreMobileUITests/LivePadelMatchJourneyUITests/testPersonalPlusCompletesStandardAndGoldenPointBestOfThreeJourneys \
     -resultBundlePath "$result_path" \
     2>&1 | sed -E '/"?(TEST_RUNNER_)?HITNSCORE_UI_TEST_[A-Z_]*(USERNAME|PASSWORD)"? =/d'
 test_status="${PIPESTATUS[0]}"
 set -e
 
 if [[ "$test_status" -ne 0 ]]; then
-    echo "Live tennis UI test failed. Inspect the redacted console output and $result_path." >&2
+    echo "Live padel UI test failed. Inspect the redacted console output and $result_path." >&2
     exit "$test_status"
 fi
 

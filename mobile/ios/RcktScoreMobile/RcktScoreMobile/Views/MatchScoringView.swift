@@ -91,7 +91,8 @@ struct MatchScoringView: View {
     }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var isTennisMatch: Bool {
-        (match?.sport ?? "").lowercased() == "tennis" || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
+        ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
+            || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
     }
     private var isTennisDoublesMatch: Bool {
         isTennisMatch && (live?.teamFormat ?? "").lowercased() == "doubles"

@@ -189,7 +189,7 @@ are ever printed or included in a shared result bundle.
 `LiveTennisMatchJourneyUITests` is the tennis-specific Personal Plus journey.
 It signs in, creates Paul versus Mark as singles Best of 3, selects Paul to
 serve and Mark to receive, explicitly disables **Timed breaks**, and exercises
-these scoring paths:
+these singles scoring paths:
 
 - a love service game;
 - a deuce game with advantage returning to deuce;
@@ -197,10 +197,14 @@ these scoring paths:
 - a tiebreak that reaches 6-6 before Paul wins it 8-6; and
 - a 6-0 second set that completes the match 2-0.
 
-Eight retained screenshots record the major checkpoints. Like the squash
-journey, this test uses the real backend, creates a real completed match, ends
-an existing active personal match during recovery, and must only use a
-dedicated disposable test account.
+It then creates a Best of 3 doubles match for Paul/Peter versus Mark/Matt,
+enables **Golden Point** and **Timed breaks**, explicitly chooses the opening
+server and receiver, wins a deciding Golden Point after the receiver chooses
+the Deuce court, verifies and skips the changeover and set-break overlays,
+completes the match 6-0, 6-0, and logs out. Eleven retained screenshots record
+the major checkpoints. Like the squash journey, this test uses the real
+backend, creates two real completed matches, ends an existing active personal
+match during recovery, and must only use a dedicated disposable test account.
 
 Run it from the repository root after configuring the ignored credentials
 file:
@@ -211,7 +215,33 @@ RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LiveTennisMatch-$(date +%Y%m%d-%H%M%S).x
 ```
 
 In Xcode, run the test diamond beside
-`testPersonalPlusCompletesBestOfThreeWithFirstSetTiebreak` in
+`testPersonalPlusCompletesSinglesAndDoublesJourneys` in
 `Tests/Scoring/LiveTennisMatchJourneyUITests.swift`. The command-line default
 pause is 0.2 seconds per completed game or screenshot checkpoint; set
 `RCKTSCORE_UI_STEP_DELAY` to make the visible journey slower.
+
+## Live padel match journey
+
+`LivePadelMatchJourneyUITests` is the padel-specific Personal Plus journey.
+Padel must be enabled for the test account. It signs in and creates two
+four-player Best of 3 matches with timed breaks explicitly disabled. The first
+uses standard advantage scoring, exercises deuce and advantage, and finishes
+6-0, 6-0. The second enables Golden Point, reaches 40-40, verifies the receiver
+court choice, selects the Deuce court, and also finishes 6-0, 6-0 before the
+test signs out.
+
+Ten retained screenshots record the major checkpoints. This test uses the real
+backend, creates two real completed matches, ends an existing active personal
+match during recovery, and must only use a dedicated disposable test account.
+
+Run it from the repository root after configuring the ignored credentials
+file:
+
+```bash
+RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LivePadelMatch-$(date +%Y%m%d-%H%M%S).xcresult \
+  testing/automated/mobile/run-live-padel-match-ui-test.sh
+```
+
+In Xcode, run the test diamond beside
+`testPersonalPlusCompletesStandardAndGoldenPointBestOfThreeJourneys` in
+`Tests/Scoring/LivePadelMatchJourneyUITests.swift`.
