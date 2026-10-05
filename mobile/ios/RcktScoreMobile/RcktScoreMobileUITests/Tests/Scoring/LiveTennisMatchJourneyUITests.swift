@@ -27,9 +27,9 @@ final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
             )
         }
 
+        setup.enterPlayers(player1: "Paul", player2: "Mark")
         setup.selectBestOfThreeTennis()
         setup.disableTennisTimedBreaks()
-        setup.enterPlayers(player1: "Paul", player2: "Mark")
         checkpoint("Tennis-02-Best-of-3-Setup")
         XCTAssertTrue(setup.startMatchButton.isEnabled)
         setup.startMatchButton.tap()

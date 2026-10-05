@@ -164,6 +164,7 @@ struct MatchSetupScreen {
             .completed,
             "Timed breaks must be disabled for the live tennis test."
         )
+        scrollToElement(startMatchButton)
     }
 
     func enterPlayers(player1: String, player2: String) {
@@ -222,15 +223,32 @@ struct MatchSetupScreen {
         _ = XCTWaiter.wait(for: [expectation], timeout: 2)
     }
 
-    private func scrollToElement(_ element: XCUIElement, attempts: Int = 10) {
-        for _ in 0..<attempts where !element.isHittable {
-            if element.exists && element.frame.minY < 100 {
+    private func scrollToElement(_ element: XCUIElement, attempts: Int = 12) {
+        let visibleTop = app.frame.minY + 80
+        let visibleBottom = app.frame.maxY - 80
+
+        for _ in 0..<attempts {
+            if element.exists,
+               element.isHittable,
+               element.frame.minY >= visibleTop,
+               element.frame.maxY <= visibleBottom {
+                return
+            }
+
+            if element.exists && element.frame.midY < app.frame.midY {
                 app.swipeDown()
             } else {
                 app.swipeUp()
             }
         }
-        XCTAssertTrue(element.isHittable)
+
+        XCTAssertTrue(
+            element.exists
+                && element.isHittable
+                && element.frame.minY >= visibleTop
+                && element.frame.maxY <= visibleBottom,
+            "Unable to scroll \(element.identifier) into a safely tappable position. Frame: \(element.frame)"
+        )
     }
 }
 
