@@ -45,7 +45,19 @@ struct LoginScreen {
     }
 
     var logoutOtherMobileSessionButton: XCUIElement {
-        app.buttons["Log Out Other Mobile Session"]
+        let identifiedButton = app.buttons["login.logoutOtherMobileSessionButton"]
+        if identifiedButton.exists {
+            return identifiedButton
+        }
+        return app.buttons["Log Out Other Mobile Session"]
+    }
+
+    var errorMessage: XCUIElement {
+        app.staticTexts["login.errorMessage"]
+    }
+
+    var organizationSelectionCard: XCUIElement {
+        app.descendants(matching: .any)["login.organizationSelectionCard"]
     }
 
     func verifyLoaded(timeout: TimeInterval = 10) {
@@ -61,7 +73,7 @@ struct LoginScreen {
         focusAndType(in: passwordField, text: user.password)
 
         signInButton.tap()
-        waitForLoginToComplete()
+        waitForLoginToComplete(user: user)
     }
 
     private func focusAndType(in element: XCUIElement, text: String) {
@@ -92,24 +104,61 @@ struct LoginScreen {
         }
     }
 
-    private func waitForLoginToComplete(timeout: TimeInterval = 20) {
+    private func waitForLoginToComplete(user: TestUser, timeout: TimeInterval = 20) {
         let dashboardSettingsTab = app.buttons["dashboard.tab.settings"]
         let deadline = Date().addingTimeInterval(timeout)
+        var handledSessionConflict = false
 
         while Date() < deadline {
             if dashboardSettingsTab.exists {
                 return
             }
 
-            if logoutOtherMobileSessionButton.exists {
+            if logoutOtherMobileSessionButton.exists,
+               logoutOtherMobileSessionButton.isEnabled,
+               !handledSessionConflict {
+                handledSessionConflict = true
                 logoutOtherMobileSessionButton.tap()
+                continue
+            }
+
+            if organizationSelectionCard.exists {
+                let membership = preferredMembershipButton(for: user)
+                XCTAssertTrue(
+                    membership.waitForExistence(timeout: 5),
+                    "Login requires an account choice, but no membership matching \(user.tier) was available."
+                )
+                membership.tap()
                 XCTAssertTrue(dashboardSettingsTab.waitForExistence(timeout: timeout))
+                return
+            }
+
+            if errorMessage.exists {
+                XCTFail("Login failed: \(errorMessage.label)")
                 return
             }
 
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         }
 
-        XCTFail("Login did not reach the dashboard or present a session-conflict choice")
+        XCTFail("Login did not reach the dashboard, present an account/session choice, or show an API error")
+    }
+
+    private func preferredMembershipButton(for user: TestUser) -> XCUIElement {
+        let planFragment: String
+        switch user.tier.lowercased() {
+        case "personal+", "personal plus":
+            planFragment = "personal_plus"
+        case "personal", "personal free":
+            planFragment = "personal_free"
+        case "club pro":
+            planFragment = "club_pro"
+        default:
+            planFragment = "club_essentials"
+        }
+
+        return app.buttons.matching(
+            NSPredicate(format: "identifier CONTAINS[c] %@", planFragment)
+        ).firstMatch
     }
 }

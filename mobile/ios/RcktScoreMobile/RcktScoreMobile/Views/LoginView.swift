@@ -138,6 +138,7 @@ struct LoginView: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("login.errorMessage")
             }
 
             signInButton
@@ -712,6 +713,7 @@ struct LoginView: View {
                     submit(forceLogoutOther: true)
                 }
                 .disabled(isLoading)
+                .accessibilityIdentifier("login.logoutOtherMobileSessionButton")
             }
         }
         .padding(24)
@@ -764,6 +766,12 @@ struct LoginView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(
+                        "login.organizationMembership.\(membership.organizationID).\(membership.plan ?? membership.organizationType ?? "unknown")"
+                    )
+                    .accessibilityLabel(
+                        "\(membership.organizationName), \(membership.plan.map { displayPlanName($0) } ?? displayPlanName(membership.organizationType == "personal" ? "personal_free" : "club_essentials"))"
+                    )
                 }
             }
         }
@@ -775,6 +783,7 @@ struct LoginView: View {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.loginBorder, lineWidth: 1)
         )
+        .accessibilityIdentifier("login.organizationSelectionCard")
     }
 
     private func overlayHeader(_ title: String) -> some View {
