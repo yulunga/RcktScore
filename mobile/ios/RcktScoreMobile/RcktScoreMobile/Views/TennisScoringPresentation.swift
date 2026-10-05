@@ -13,6 +13,7 @@ struct TennisScoringPresentation: View {
 
     private let brandBlue = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     private let brandPink = Color(red: 235 / 255, green: 77 / 255, blue: 159 / 255)
+    private let gameScoreMustard = Color(red: 247 / 255, green: 209 / 255, blue: 84 / 255)
     private let activeGreen = Color(red: 82 / 255, green: 205 / 255, blue: 120 / 255)
     private let navy = Color(red: 28 / 255, green: 61 / 255, blue: 99 / 255)
 
@@ -96,14 +97,9 @@ struct TennisScoringPresentation: View {
 
     private var pointTimeline: some View {
         VStack(spacing: 6) {
-            HStack {
-                Text(match.player1Name)
-                Spacer()
-                Text("Point timeline")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(match.player2Name)
-            }
+            Text("Point timeline")
+                .frame(maxWidth: .infinity, alignment: .center)
+                .foregroundStyle(.secondary)
             .font(.caption2.weight(.bold))
 
             Divider()
@@ -171,7 +167,7 @@ struct TennisScoringPresentation: View {
     }
 
     private func timelineMarker(_ score: String, visible: Bool, isGame: Bool) -> some View {
-        let color = isGame ? brandBlue : brandPink
+        let color = isGame ? gameScoreMustard : brandPink
 
         return Text(visible ? score : "")
             .font(.caption.weight(.bold))
