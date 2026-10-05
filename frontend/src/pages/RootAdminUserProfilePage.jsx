@@ -355,7 +355,9 @@ export default function RootAdminUserProfilePage() {
                   <h2>Scoring Sports Enabled</h2>
                   <p className="helper-text">Set each membership's web and iOS access independently. If a sport is unavailable here, enable it for that client in Platform RacketSports first.</p>
                 </div>
-                <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/racket-sports")}>Open Platform RacketSports</button>
+                <div className="button-row root-admin-actions">
+                  <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/racket-sports")}>Open Platform RacketSports</button>
+                </div>
               </div>
               {memberships.map((membership) => {
                 const webSports = normalizeEnabledSports(membership.enabled_sports_web, []);

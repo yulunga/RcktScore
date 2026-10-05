@@ -192,46 +192,50 @@ struct StartNewMatchFlowView: View {
                 LazyVGrid(columns: sportGridColumns, spacing: 14) {
                     ForEach(availableSports) { sport in
                         NavigationLink(value: sport) {
-                            VStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                        .fill(Color.dashboardAccentPink.opacity(0.95))
-                                        .frame(width: 54, height: 54)
-
-                                    sportGlyph(for: sport, isAvailable: true)
-                                }
+                            VStack(spacing: 14) {
+                                sportGlyph(for: sport)
+                                    .frame(width: 68, height: 68)
+                                    .shadow(
+                                        color: Color.dashboardAccentPink.opacity(0.34),
+                                        radius: 10
+                                    )
 
                                 Text(sport.displayName)
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(.primary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
                                     .minimumScaleFactor(0.85)
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 148)
-                            .padding(.horizontal, 10)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.dashboardBrand, Color.dashboardBrandDeep],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .aspectRatio(1, contentMode: .fit)
+                            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .sportSelectionGlass()
                             .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.dashboardBorder, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.42),
+                                                Color.dashboardBrand.opacity(0.72),
+                                                Color.white.opacity(0.10)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1.25
+                                    )
                             )
                             .shadow(
-                                color: Color.black.opacity(0.08),
-                                radius: 10,
+                                color: Color.dashboardBrand.opacity(0.18),
+                                radius: 14,
                                 x: 0,
-                                y: 6
+                                y: 8
                             )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(SportSelectionButtonStyle())
                         .accessibilityIdentifier("startMatch.sport.\(sport.rawValue)")
+                        .accessibilityLabel("Start a \(sport.displayName) match")
                     }
                 }
                 .frame(maxWidth: 360)
@@ -273,48 +277,43 @@ struct StartNewMatchFlowView: View {
     }
 
     @ViewBuilder
-    private func sportGlyph(for sport: MatchSport, isAvailable: Bool) -> some View {
-        let foreground = isAvailable ? Color.white : Color.secondary.opacity(0.72)
-
+    private func sportGlyph(for sport: MatchSport) -> some View {
+        let foreground = Color.dashboardAccentPink
         switch sport {
         case .squash:
             ZStack {
                 Circle()
-                    .stroke(foreground, lineWidth: 2.5)
-                    .frame(width: 20, height: 20)
+                    .stroke(foreground, lineWidth: 4)
+                    .frame(width: 50, height: 50)
                 Circle()
                     .fill(foreground)
-                    .frame(width: 5, height: 5)
-                    .offset(x: 4, y: -4)
+                    .frame(width: 11, height: 11)
+                    .offset(x: -9, y: -9)
+                Circle()
+                    .fill(foreground.opacity(0.88))
+                    .frame(width: 10, height: 10)
+                    .offset(x: 10, y: 10)
             }
         case .racketball:
             ZStack {
                 Circle()
                     .fill(foreground)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 50, height: 50)
                 Circle()
-                    .fill((isAvailable ? Color.dashboardAccentPink : Color.secondary.opacity(0.18)))
-                    .frame(width: 4, height: 4)
-                    .offset(x: -4, y: -4)
-                Circle()
-                    .fill((isAvailable ? Color.dashboardAccentPink : Color.secondary.opacity(0.18)))
-                    .frame(width: 4, height: 4)
-                    .offset(x: 4, y: 4)
+                    .fill(Color.black.opacity(0.28))
+                    .frame(width: 10, height: 10)
+                    .offset(x: 9, y: -10)
             }
-        case .tennis, .padel:
+        case .tennis:
             ZStack {
                 Circle()
-                    .stroke(foreground, lineWidth: 2.5)
-                    .frame(width: 22, height: 22)
-                Path { path in
-                    path.move(to: CGPoint(x: 18, y: 10))
-                    path.addQuadCurve(to: CGPoint(x: 18, y: 30), control: CGPoint(x: 10, y: 20))
-                    path.move(to: CGPoint(x: 30, y: 10))
-                    path.addQuadCurve(to: CGPoint(x: 30, y: 30), control: CGPoint(x: 22, y: 20))
-                }
-                .stroke(foreground, lineWidth: 2)
-                .frame(width: 40, height: 40)
+                    .stroke(foreground, lineWidth: 4)
+                TennisBallSeams()
+                    .stroke(foreground, style: StrokeStyle(lineWidth: 4, lineCap: .round))
             }
+            .frame(width: 52, height: 52)
+        case .padel:
+            PadelRacketGlyph(color: foreground)
         case .tableTennis:
             ZStack {
                 Circle()
@@ -353,6 +352,93 @@ struct StartNewMatchFlowView: View {
                     .fill(foreground)
                     .frame(width: 9, height: 9)
             }
+        }
+    }
+}
+
+private struct TennisBallSeams: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.width * 0.32, y: rect.height * 0.07))
+        path.addCurve(
+            to: CGPoint(x: rect.width * 0.32, y: rect.height * 0.93),
+            control1: CGPoint(x: rect.width * 0.03, y: rect.height * 0.28),
+            control2: CGPoint(x: rect.width * 0.03, y: rect.height * 0.72)
+        )
+        path.move(to: CGPoint(x: rect.width * 0.68, y: rect.height * 0.07))
+        path.addCurve(
+            to: CGPoint(x: rect.width * 0.68, y: rect.height * 0.93),
+            control1: CGPoint(x: rect.width * 0.97, y: rect.height * 0.28),
+            control2: CGPoint(x: rect.width * 0.97, y: rect.height * 0.72)
+        )
+        return path
+    }
+}
+
+private struct PadelRacketGlyph: View {
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color, lineWidth: 4)
+                .frame(width: 48, height: 48)
+                .offset(y: -8)
+
+            VStack(spacing: 7) {
+                HStack(spacing: 8) {
+                    hole
+                    hole
+                }
+                HStack(spacing: 8) {
+                    hole
+                    hole
+                }
+            }
+            .offset(y: -8)
+
+            Capsule()
+                .fill(color)
+                .frame(width: 9, height: 29)
+                .offset(y: 27)
+        }
+    }
+
+    private var hole: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 6, height: 6)
+    }
+}
+
+private struct SportSelectionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.965 : 1)
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func sportSelectionGlass() -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(
+                .regular
+                    .tint(Color.dashboardBrand.opacity(0.12))
+                    .interactive(),
+                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+            )
+        } else {
+            background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+            )
+            .background(
+                Color.dashboardBrand.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+            )
         }
     }
 }
