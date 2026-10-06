@@ -4,7 +4,7 @@ final class LivePadelMatchJourneyUITests: HitnScoreBaseUITest {
     @MainActor
     func testPersonalPlusCompletesStandardAndGoldenPointBestOfThreeJourneys() throws {
         let user = try TestUser.personalPlusFromEnvironment()
-        launchApp(lightMode: false)
+        launchApp(lightMode: true)
         rotatePortrait()
 
         let login = LoginScreen(app: app)

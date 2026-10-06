@@ -318,6 +318,7 @@ struct TennisScoringPresentation: View {
         VStack(spacing: 10) {
             Text("Golden Point Receiver")
                 .font(.headline)
+                .accessibilityIdentifier("tennis.noAdReceiverChoice")
             Text("The receiving team chooses which player receives. The next point wins the game.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -332,7 +333,6 @@ struct TennisScoringPresentation: View {
         .background(activeGreen.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .padding(.horizontal, 12)
-        .accessibilityIdentifier("tennis.noAdReceiverChoice")
     }
 
     private func receiverButton(_ receiver: TennisParticipant) -> some View {
