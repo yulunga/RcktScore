@@ -6,6 +6,8 @@ This document describes the current end-to-end request lifecycles in `RcktScore`
 It is written to help developers trace product behavior through the actual web app,
 Lambda handlers, and shared backend logic.
 
+The app entry document at `frontend/index.html` and the public landing homepage use the same browser title, `HitNScore | Every Point. Every Court.`, and the same public description metadata.
+
 For the route inventory and security posture, see [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md).
 For operational debugging, see [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md).
 

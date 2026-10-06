@@ -176,6 +176,8 @@ The public web login and `Want In` presentations omit package-version/build deta
 
 The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, is also client-only. Consolidating the former landing Help page into the app does not add or change an API route; password reset and feedback continue to use the endpoints listed above.
 
+The app shell and public landing homepage use the same browser title and description metadata. This is static client markup and has no backend API effect.
+
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`

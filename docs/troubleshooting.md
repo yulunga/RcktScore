@@ -6,6 +6,8 @@ This guide is the practical debugging companion to the API and lifecycle docs.
 It is intended to help future troubleshooting start from the current code paths,
 known failure modes, and useful verification commands.
 
+If the app browser title or search description differs from the public landing homepage, verify `frontend/index.html` contains the shared `HitNScore | Every Point. Every Court.` title and description, rebuild the frontend, and clear any hosting/CDN cache.
+
 Related docs:
 
 - [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
