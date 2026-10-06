@@ -1,22 +1,149 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import AppFooter from "../components/AppFooter";
 import { useAuth } from "../hooks/useAuth";
 import { confirmPasswordReset, requestPasswordReset } from "../services/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const HELP_SECTIONS = ["web-access", "ios-access", "reset", "terms", "privacy", "cookies"];
+
+function ApprovalSummary() {
+  return (
+    <div className="knowledge-approval-grid" aria-label="Approval summary">
+      <div><strong>Personal account</strong><span>No staff approval. Verify your email and set a password.</span></div>
+      <div><strong>Club enquiry</strong><span>The HitnScore team reviews the request before creating a club workspace.</span></div>
+      <div><strong>Club invitation</strong><span>Accept the emailed approval link, or ask a root administrator to approve it.</span></div>
+      <div><strong>Another organisation</strong><span>Accept the invitation, then choose the account when signing in.</span></div>
+    </div>
+  );
+}
+
+function WebAccessArticle() {
+  return (
+    <article className="knowledge-article help-copy">
+      <p className="knowledge-kicker">Web client guide</p>
+      <h1>Registering and signing in on the web</h1>
+      <p className="knowledge-lead">
+        Create a Personal account, register interest for a Club account, complete approval and sign in at app.hitnscore.com.
+      </p>
+
+      <h2>Register for a Personal account</h2>
+      <p>Personal accounts are created immediately and do not need approval from the HitnScore team.</p>
+      <ol>
+        <li>Open the HitnScore sign-in page and select <strong>Want In</strong>.</li>
+        <li>Enter your first name, surname and email address.</li>
+        <li>Choose <strong>Personal use</strong>, complete the human check and select <strong>Create Personal Account</strong>.</li>
+        <li>Open the account email, verify your address and choose a password.</li>
+        <li>Return to HitnScore and sign in using your email address and new password.</li>
+      </ol>
+      <p>The email step activates access. Check your spam or junk folder if the message does not appear.</p>
+
+      <h2>Register interest for a Club account</h2>
+      <p>Club accounts are set up with the HitnScore team and are not created automatically from the form.</p>
+      <ol>
+        <li>Open <strong>Want In</strong> and choose <strong>Club use</strong>.</li>
+        <li>Enter your contact details and club name, then complete the human check.</li>
+        <li>Select <strong>Register Club Interest</strong>.</li>
+        <li>Wait for the HitnScore team to review the enquiry and contact you about setup.</li>
+      </ol>
+      <p>
+        When the club is ready, each user receives an organisation invitation. Select <strong>Approve access</strong> in the email before signing in. Existing users keep their current password; new users receive their login details through club onboarding.
+      </p>
+
+      <h2>When is approval required?</h2>
+      <ApprovalSummary />
+
+      <h2>Sign in</h2>
+      <ol>
+        <li>Enter your account email in <strong>Username</strong>.</li>
+        <li>Enter your password and select <strong>Sign In</strong>.</li>
+        <li>If several approved accounts are linked to the email, choose the required organisation.</li>
+      </ol>
+      <p>
+        If another web session is active, HitnScore asks whether to keep it or sign it out and continue in the current browser. Web and iPhone sessions are managed separately.
+      </p>
+
+      <h2>Pending access or forgotten password</h2>
+      <p>
+        A pending-approval message means the organisation invitation has not been accepted. Open the invitation link or ask the club administrator to arrange manual approval.
+      </p>
+      <p>
+        For a forgotten password, return to the Help Centre, open <strong>Reset Password</strong>, enter the account email and follow the secure link sent to your inbox.
+      </p>
+    </article>
+  );
+}
+
+function IOSAccessArticle() {
+  return (
+    <article className="knowledge-article help-copy">
+      <p className="knowledge-kicker">iPhone app guide</p>
+      <h1>Registering and signing in on iPhone</h1>
+      <p className="knowledge-lead">
+        Register in the HitnScore app, complete any required approval, choose between linked accounts and optionally use Face ID or Touch ID.
+      </p>
+
+      <h2>Register for a Personal account</h2>
+      <p>Personal accounts are created immediately and do not require staff approval.</p>
+      <ol>
+        <li>Open the app and select <strong>Want In</strong>.</li>
+        <li>Choose <strong>Personal</strong> and enter your first name, surname and email address.</li>
+        <li>Complete the human check and select <strong>Create Personal Account</strong>.</li>
+        <li>Open the verification email, confirm your address and set your password.</li>
+        <li>Return to the app and sign in with your email address and new password.</li>
+      </ol>
+
+      <h2>Register interest for a Club account</h2>
+      <ol>
+        <li>Select <strong>Want In</strong>, then choose <strong>Club</strong>.</li>
+        <li>Enter your contact details and club name.</li>
+        <li>Complete the human check and select <strong>Register Club Interest</strong>.</li>
+        <li>Wait for the HitnScore team to review the enquiry and contact you.</li>
+      </ol>
+      <p>
+        Club users receive a separate organisation invitation. Select <strong>Approve access</strong> in that email before signing in. A root administrator can approve a pending membership manually when required.
+      </p>
+
+      <h2>When is approval required?</h2>
+      <ApprovalSummary />
+
+      <h2>Sign in on iPhone</h2>
+      <ol>
+        <li>Connect the device to the internet.</li>
+        <li>Enter your email address and password. Use the eye button to show or hide the password.</li>
+        <li>Select <strong>Sign In</strong>.</li>
+        <li>If several accounts are linked, choose the required organisation and plan.</li>
+      </ol>
+      <p>
+        If another mobile session is active, cancel to keep it or confirm the replacement to continue on this device. A web session can remain active at the same time.
+      </p>
+
+      <h2>Face ID or Touch ID</h2>
+      <p>
+        After a normal sign-in, biometric session unlock can be enabled in Settings. It reopens the saved, device-bound session and does not replace your password. It works only while that saved server session remains valid; an expired session requires a normal sign-in again.
+      </p>
+      <p>
+        A previously saved valid session can be reopened biometrically while offline. New registrations and password sign-in still require an internet connection.
+      </p>
+
+      <h2>Pending access or forgotten password</h2>
+      <p>
+        If access is pending, accept the organisation invitation or ask the club administrator for help. For a forgotten password, select <strong>Need Help</strong> on the app sign-in screen and follow the password-reset steps.
+      </p>
+    </article>
+  );
+}
 
 export default function HelpPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const resetToken = searchParams.get("token") || "";
   const requestedSection = searchParams.get("section");
   const canShowReset = !isAuthenticated;
   const defaultMode = canShowReset && (searchParams.get("mode") === "reset" || resetToken)
     ? "reset"
-    : ["terms", "privacy", "cookies"].includes(requestedSection)
+    : HELP_SECTIONS.includes(requestedSection)
       ? requestedSection
       : "overview";
   const policyYear = new Date().getFullYear();
@@ -27,7 +154,43 @@ export default function HelpPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const isPolicySection = ["terms", "privacy", "cookies"].includes(activeSection);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const knowledgeItems = [
+    {
+      id: "web-access",
+      icon: "W",
+      label: "Registering & Signing In on the Web",
+      description: "Personal registration, Club enquiries, approvals and web login.",
+      keywords: "web browser register registration login sign in approval club personal password",
+    },
+    {
+      id: "ios-access",
+      icon: "i",
+      label: "Registering & Signing In on iPhone",
+      description: "App registration, approvals, account selection and biometric access.",
+      keywords: "iphone ios app register registration login face id touch id approval club personal",
+    },
+  ];
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const visibleKnowledgeItems = normalizedSearch
+    ? knowledgeItems.filter((item) => `${item.label} ${item.description} ${item.keywords}`.toLowerCase().includes(normalizedSearch))
+    : knowledgeItems;
+
+  function openSection(section) {
+    setActiveSection(section);
+    setError("");
+    setMessage("");
+    if (section === "overview") {
+      setSearchParams({});
+    } else if (section === "reset") {
+      setSearchParams({ mode: "reset" });
+    } else {
+      setSearchParams({ section });
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function goBack() {
     if (window.history.length > 1) {
@@ -106,62 +269,103 @@ export default function HelpPage() {
   }
 
   return (
-    <main className="page-shell login-shell help-shell">
-      <div className="login-shell__content">
-        <section className="login-panel help-panel stack">
-          {isPolicySection ? (
-            <button className="page-close-button" type="button" aria-label="Back" onClick={goBack}>
-              ×
-            </button>
-          ) : null}
+    <div className="help-centre-shell">
+      <header className="help-centre-header">
+        <button className="help-centre-brand" type="button" onClick={() => navigate("/")} aria-label="HitnScore home">
+          <img src="/branding/logo/brand-logo.png" alt="" />
+          <span><b>Hit</b><i>n</i><b>Score</b></span>
+        </button>
+        <button
+          className="help-centre-primary-action"
+          type="button"
+          onClick={() => navigate(isAuthenticated ? "/dashboard" : "/login?interest=1#want-in")}
+        >
+          {isAuthenticated ? "Open dashboard" : "Start scoring"}
+        </button>
+      </header>
 
-          <div className="login-panel__top">
-            <div className="login-branding">
-              <img
-                className="login-branding__logo help-branding__logo"
-                src="/branding/logo/brand-logo.png"
-                alt="Hit n Score"
-              />
-              <h1 className="login-title login-title--wordmark" aria-label="HitnScore Help">
-                <span className="login-title__hit">Hit</span>
-                <span className="login-title__n">n</span>
-                <span className="login-title__score">Score</span>
-              </h1>
-            </div>
-          </div>
+      <main className="help-centre-main">
+        <section className={`help-centre-content ${activeSection === "overview" ? "" : "help-centre-content--detail"}`}>
+          {activeSection === "overview" ? (
+            <>
+              <div className="help-centre-intro">
+                <p className="knowledge-kicker">HitnScore knowledge base</p>
+                <h1>What can we help you with?</h1>
+                <p>Find straightforward guidance for using HitnScore as a player, scorer or club administrator.</p>
+                <label className="help-centre-search">
+                  <span aria-hidden="true">⌕</span>
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search the HitnScore knowledge base"
+                    aria-label="Search the HitnScore knowledge base"
+                  />
+                </label>
+              </div>
 
-          <div className="help-nav" aria-label="Help sections">
-            {canShowReset ? (
-              <button
-                className={activeSection === "reset" ? "active" : ""}
-                type="button"
-                onClick={() => setActiveSection("reset")}
-              >
-                Reset Password
-              </button>
-            ) : null}
-            <button
-              className={activeSection === "terms" ? "active" : ""}
-              type="button"
-              onClick={() => setActiveSection("terms")}
-            >
-              Terms
+              <div className="help-centre-menu-group">
+                <h2>Knowledge-base articles</h2>
+                <div className="help-centre-menu" aria-label="Knowledge-base articles">
+                  {visibleKnowledgeItems.map((item, index) => (
+                    <button
+                      className={index === 0 && !normalizedSearch ? "help-centre-menu-item help-centre-menu-item--featured" : "help-centre-menu-item"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => openSection(item.id)}
+                    >
+                      <span className="help-centre-menu-icon">{item.icon}</span>
+                      <span><strong>{item.label}</strong><small>{item.description}</small></span>
+                      <b aria-hidden="true">›</b>
+                    </button>
+                  ))}
+                  {visibleKnowledgeItems.length === 0 ? (
+                    <p className="help-centre-empty">No articles match that search yet.</p>
+                  ) : null}
+                  {canShowReset ? (
+                    <button className="help-centre-menu-item" type="button" onClick={() => openSection("reset")}>
+                      <span className="help-centre-menu-icon">↻</span>
+                      <span><strong>Reset Password</strong><small>Recover access to your HitnScore account.</small></span>
+                      <b aria-hidden="true">›</b>
+                    </button>
+                  ) : null}
+                  <button className="help-centre-menu-item" type="button" onClick={() => navigate("/ping")}>
+                    <span className="help-centre-menu-icon">?</span>
+                    <span><strong>Troubleshooting &amp; Contact</strong><small>Send feedback or ask the HitnScore team for help.</small></span>
+                    <b aria-hidden="true">›</b>
+                  </button>
+                </div>
+              </div>
+
+              <div className="help-centre-menu-group help-centre-menu-group--legal">
+                <h2>Legal &amp; privacy</h2>
+                <div className="help-centre-menu" aria-label="Legal and privacy pages">
+                  <button className="help-centre-menu-item" type="button" onClick={() => openSection("terms")}>
+                    <span className="help-centre-menu-icon">T</span>
+                    <span><strong>Terms &amp; Conditions</strong><small>The terms governing use of HitnScore.</small></span>
+                    <b aria-hidden="true">›</b>
+                  </button>
+                  <button className="help-centre-menu-item" type="button" onClick={() => openSection("privacy")}>
+                    <span className="help-centre-menu-icon">✓</span>
+                    <span><strong>Privacy Policy</strong><small>How account, club and match information is handled.</small></span>
+                    <b aria-hidden="true">›</b>
+                  </button>
+                  <button className="help-centre-menu-item" type="button" onClick={() => openSection("cookies")}>
+                    <span className="help-centre-menu-icon">◌</span>
+                    <span><strong>Cookie Policy</strong><small>Website cookies and privacy choices.</small></span>
+                    <b aria-hidden="true">›</b>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <button className="help-centre-back" type="button" onClick={() => openSection("overview")}>
+              ‹ Back to Help Centre
             </button>
-            <button
-              className={activeSection === "privacy" ? "active" : ""}
-              type="button"
-              onClick={() => setActiveSection("privacy")}
-            >
-              Privacy
-            </button>
-            <button
-              className={activeSection === "cookies" ? "active" : ""}
-              type="button"
-              onClick={() => setActiveSection("cookies")}
-            >
-              Cookies
-            </button>
-          </div>
+          )}
+
+          {activeSection === "web-access" ? <WebAccessArticle /> : null}
+          {activeSection === "ios-access" ? <IOSAccessArticle /> : null}
 
           {activeSection === "reset" && canShowReset ? (
             <section className="stack compact">
@@ -683,17 +887,14 @@ export default function HelpPage() {
             </section>
           ) : null}
 
-          <div className="help-login-link">
-            <button type="button" onClick={goBack}>
-              &lt; Back
-            </button>
-          </div>
         </section>
-      </div>
+      </main>
 
-      <div className="login-footer-wrap">
-        <AppFooter />
-      </div>
-    </main>
+      <footer className="help-centre-footer">
+        <span>HitnScore</span>
+        <span>Racket-sport scoring for players and clubs</span>
+        <button type="button" onClick={goBack}>Return to {isAuthenticated ? "dashboard" : "sign in"}</button>
+      </footer>
+    </div>
   );
 }
