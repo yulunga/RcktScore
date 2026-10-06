@@ -111,7 +111,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 ### Current path
 
 1. A visitor opens the `Want In` form on the login page.
-   - the web registration state hides the internal package-version/build footer shown on the standard login state
+   - both the standard web login and registration states omit internal package-version/build details
    - the native form introduces personal and multi-user club accounts and links to `https://www.hitnscore.com` for further product information
 2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
 3. The honeypot field is `company`.
@@ -137,6 +137,8 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 ### Frontend entry
 
 - [frontend/src/pages/HelpPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HelpPage.jsx)
+
+The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password reset retains the existing `?mode=reset` and token flow. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. The Help Centre footer deliberately mirrors the current public-homepage footer.
 
 ### Current path
 

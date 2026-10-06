@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import AppFooter from "../components/AppFooter";
 import { useAuth } from "../hooks/useAuth";
 import { registerInterest } from "../services/api";
 
@@ -515,11 +514,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-        </div>
-      ) : null}
-      {!showInterestForm ? (
-        <div className="login-footer-wrap">
-          <AppFooter />
         </div>
       ) : null}
     </main>

@@ -329,7 +329,9 @@ For subscription enquiries, verify `INTEREST_FROM_EMAIL` is an SES-verified iden
 
 On iOS, the Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
 
-On the web, package version/build details are intentionally hidden while the `Want In` registration form is open. If they still appear at `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
+On the web, package version/build details are intentionally absent from both the standard login and `Want In` registration states. If they still appear at `/` or `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
+
+The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct Help Centre section opens the overview instead, verify the `section` value against `web-access`, `ios-access`, `terms`, `privacy`, and `cookies` and deploy the current frontend bundle.
 
 The root-admin User Accounts `Unverified Users` card requests `GET /root_admin/users?account_type=unverified`. If its count is non-zero but selecting it does not filter the list, deploy the current root-admin users Lambda as well as the frontend; the card depends on backend support for that filter value.
 

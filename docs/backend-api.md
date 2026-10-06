@@ -172,7 +172,9 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /register_interest`
 - `POST /feedback`
 
-The web `Want In` presentation hides the package-version/build footer while its form is open; this is a client-only display rule and does not change the `POST /register_interest` contract.
+The public web login and `Want In` presentations omit package-version/build details. This is a client-only display rule and does not change the `POST /login` or `POST /register_interest` contracts.
+
+The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, is also client-only. Consolidating the former landing Help page into the app does not add or change an API route; password reset and feedback continue to use the endpoints listed above.
 
 ### Root-admin routes
 
