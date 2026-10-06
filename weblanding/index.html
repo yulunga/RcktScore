@@ -10,7 +10,34 @@
     <link rel="icon" href="./assets/icons/favicon.ico?v=20261006-2" sizes="any" />
     <link rel="preload" href="./assets/images/app/club-devices-v3.png" as="image" />
     <link rel="stylesheet" href="./assets/css/landing.css?v=20261006-11" />
-    <script src="./assets/js/landing.js?v=20261006-3" defer></script>
+
+    <!-- Google tag (gtag.js) — loaded only after optional analytics consent -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = window.gtag || function gtag(){ window.dataLayer.push(arguments); };
+      window.gtag("consent", "default", { analytics_storage: "denied" });
+
+      window.hitnscoreEnableAnalytics = function () {
+        window["ga-disable-G-30V1YTPY1F"] = false;
+        window.gtag("consent", "update", { analytics_storage: "granted" });
+        if (document.querySelector('script[data-hitnscore-google-tag]')) return;
+
+        var googleTag = document.createElement("script");
+        googleTag.async = true;
+        googleTag.src = "https://www.googletagmanager.com/gtag/js?id=G-30V1YTPY1F";
+        googleTag.dataset.hitnscoreGoogleTag = "true";
+        document.head.appendChild(googleTag);
+
+        window.gtag("js", new Date());
+        window.gtag("config", "G-30V1YTPY1F");
+      };
+
+      window.hitnscoreDisableAnalytics = function () {
+        window["ga-disable-G-30V1YTPY1F"] = true;
+        window.gtag("consent", "update", { analytics_storage: "denied" });
+      };
+    </script>
+    <script src="./assets/js/landing.js?v=20261006-4" defer></script>
   </head>
   <body>
     <header class="landing-header" id="landing-header">

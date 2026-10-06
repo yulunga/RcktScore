@@ -23,7 +23,10 @@
   window.addEventListener("scroll", updateHeader, { passive: true });
 
   try {
-    if (!window.localStorage.getItem(consentKey)) {
+    const storedConsent = window.localStorage.getItem(consentKey);
+    if (storedConsent === "all") {
+      window.hitnscoreEnableAnalytics?.();
+    } else if (!storedConsent) {
       window.setTimeout(showCookiePanel, 350);
     }
   } catch (_error) {
@@ -32,10 +35,16 @@
 
   document.querySelectorAll("[data-cookie-choice]").forEach((button) => {
     button.addEventListener("click", () => {
+      const choice = button.dataset.cookieChoice || "essential";
       try {
-        window.localStorage.setItem(consentKey, button.dataset.cookieChoice || "essential");
+        window.localStorage.setItem(consentKey, choice);
       } catch (_error) {
         // The preference still applies for this page view if storage is unavailable.
+      }
+      if (choice === "all") {
+        window.hitnscoreEnableAnalytics?.();
+      } else {
+        window.hitnscoreDisableAnalytics?.();
       }
       hideCookiePanel();
     });
