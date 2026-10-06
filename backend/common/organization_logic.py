@@ -6,7 +6,7 @@ from psycopg.types.json import Jsonb
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from common.mailer import send_email_message
-from common.notification_templates import render_notification_template
+from common.notification_templates import render_branded_email, render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
 from common.sport_config import constrain_enabled_sports, normalize_enabled_sports
 from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
@@ -129,7 +129,32 @@ def _send_organization_user_invitation_email(
     template_prefix = "org_user_invitation_existing" if existing_account else "org_user_invitation_new"
     subject = render_notification_template(f"{template_prefix}_subject.txt", template_context).strip()
     body_text = render_notification_template(f"{template_prefix}_body.txt", template_context).strip()
-    body_html = render_notification_template(f"{template_prefix}_body.html", template_context).strip()
+    if existing_account:
+        title = "New organisation access"
+        paragraphs = [
+            f"Your existing {APP_DISPLAY_NAME} account has been invited to join another organisation.",
+            "Confirm this association to add the organisation to your account.",
+        ]
+        follow_up = "Once approved, you can choose this organisation when you sign in and move between your linked clubs and accounts."
+    else:
+        title = "Welcome to HitnScore"
+        paragraphs = [
+            f"You have been invited to join {organization_name} on Hit n Score.",
+            "Confirm your email address to activate your organisation access.",
+        ]
+        follow_up = "Once approved, you can sign in and access live scoring, match history, and organisation tools available within your account."
+
+    body_html = render_branded_email(
+        title=title,
+        paragraphs=paragraphs,
+        action_label="Approve access",
+        action_url=approval_url,
+        detail_rows=[
+            ("Organisation", organization_name),
+            ("Sign-in email", username),
+        ],
+        notice=f"{follow_up} If you were not expecting this invitation, you can safely ignore this email.",
+    )
 
     send_email_message(
         destination_email=username,

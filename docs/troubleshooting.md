@@ -306,6 +306,7 @@ What to check:
 - for club-user invitation links, `USER_APPROVAL_BASE_URL` controls the public approval-link host/path and `USER_APPROVAL_LOGIN_URL` controls where the success page redirects after showing the confirmation message for three seconds
   - `USER_INVITATION_FROM_EMAIL`
   - `PASSWORD_RESET_FROM_EMAIL`
+  - `EMAIL_LOGO_URL` when the mascot does not load inside an HTML email; the URL must be public and use HTTPS
 - base URLs are configured correctly for invitation or reset links
 
 Common symptoms:

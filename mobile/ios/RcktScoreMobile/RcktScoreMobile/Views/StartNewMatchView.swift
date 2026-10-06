@@ -197,60 +197,74 @@ struct StartNewMatchFlowView: View {
                                     .stroke(
                                         Color.sportSelectionCourtLine,
                                         style: StrokeStyle(
-                                            lineWidth: 1.15,
+                                            lineWidth: 1.55,
                                             lineCap: .round,
                                             lineJoin: .round
                                         )
                                     )
-                                    .padding(13)
+                                    .padding(12)
 
-                                VStack(spacing: 8) {
-                                    ZStack {
-                                        SportSelectionLens()
+                                VStack(spacing: 0) {
+                                    Spacer(minLength: 16)
 
-                                        sportGlyph(for: sport)
-                                            .frame(width: 54, height: 54)
-                                            .shadow(
-                                                color: Color.dashboardAccentPink.opacity(0.16),
-                                                radius: 5
-                                            )
+                                    sportBall(for: sport)
+                                        .frame(width: 76, height: 76)
+                                        .shadow(
+                                            color: Color.black.opacity(0.22),
+                                            radius: 6,
+                                            x: 0,
+                                            y: 4
+                                        )
+
+                                    Spacer(minLength: 12)
+
+                                    HStack(spacing: 7) {
+                                        Circle()
+                                            .fill(Color.dashboardAccentPink)
+                                            .frame(width: 6, height: 6)
+
+                                        Text(sport.displayName)
+                                            .font(.headline.weight(.bold))
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.center)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.72)
                                     }
-                                    .frame(width: 82, height: 82)
-
-                                    Text(sport.displayName)
-                                        .font(.title3.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .multilineTextAlignment(.center)
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.72)
+                                    .padding(.horizontal, 11)
+                                    .padding(.vertical, 7)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.sportSelectionCourtLine.opacity(0.72), lineWidth: 1)
+                                    )
+                                    .padding(.bottom, 12)
                                 }
-                                .padding(.horizontal, 8)
-                                .padding(.top, 8)
+                                .padding(.horizontal, 10)
                             }
                             .frame(maxWidth: .infinity)
                             .aspectRatio(1, contentMode: .fit)
-                            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                             .sportSelectionGlass()
                             .overlay(
-                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
                                     .stroke(
                                         LinearGradient(
                                             colors: [
-                                                Color.white.opacity(0.42),
-                                                Color.dashboardBrand.opacity(0.72),
-                                                Color.white.opacity(0.10)
+                                                Color.dashboardBrand.opacity(0.78),
+                                                Color.dashboardAccentPink.opacity(0.32),
+                                                Color.dashboardBrand.opacity(0.28)
                                             ],
                                             startPoint: .topLeading,
                                             endPoint: .bottomTrailing
                                         ),
-                                        lineWidth: 1.25
+                                        lineWidth: 1.15
                                     )
                             )
                             .shadow(
-                                color: Color.dashboardBrand.opacity(0.18),
-                                radius: 14,
+                                color: Color.dashboardBrand.opacity(0.13),
+                                radius: 12,
                                 x: 0,
-                                y: 8
+                                y: 6
                             )
                         }
                         .buttonStyle(SportSelectionButtonStyle())
@@ -297,101 +311,31 @@ struct StartNewMatchFlowView: View {
     }
 
     @ViewBuilder
-    private func sportGlyph(for sport: MatchSport) -> some View {
-        let foreground = Color.dashboardAccentPink
+    private func sportBall(for sport: MatchSport) -> some View {
         switch sport {
         case .squash:
-            ZStack {
-                Circle()
-                    .stroke(foreground, lineWidth: 4)
-                    .frame(width: 50, height: 50)
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 11, height: 11)
-                    .offset(x: -9, y: -9)
-                Circle()
-                    .fill(foreground.opacity(0.88))
-                    .frame(width: 10, height: 10)
-                    .offset(x: 10, y: 10)
-            }
+            Image("SportBallSquash")
+                .resizable()
+                .scaledToFit()
         case .racketball:
-            ZStack {
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 50, height: 50)
-                Circle()
-                    .fill(Color.black.opacity(0.28))
-                    .frame(width: 10, height: 10)
-                    .offset(x: 9, y: -10)
-            }
+            Image("SportBallRacketball")
+                .resizable()
+                .scaledToFit()
         case .tennis:
-            ZStack {
-                Circle()
-                    .stroke(foreground, lineWidth: 4)
-                TennisBallSeams()
-                    .stroke(foreground, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-            }
-            .frame(width: 52, height: 52)
+            Image("SportBallTennis")
+                .resizable()
+                .scaledToFit()
         case .padel:
-            PadelRacketGlyph(color: foreground)
-        case .tableTennis:
-            ZStack {
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 16, height: 16)
-                    .offset(x: -2, y: -6)
-                Capsule()
-                    .fill(foreground)
-                    .frame(width: 8, height: 20)
-                    .offset(x: 6, y: 8)
-            }
-        case .pickleball:
-            ZStack {
-                Circle()
-                    .stroke(foreground, lineWidth: 2.2)
-                    .frame(width: 20, height: 20)
-                ForEach([(-4.0), 0.0, 4.0], id: \.self) { y in
-                    Circle()
-                        .fill(foreground)
-                        .frame(width: 3.5, height: 3.5)
-                        .offset(x: -3, y: y)
-                    Circle()
-                        .fill(foreground)
-                        .frame(width: 3.5, height: 3.5)
-                        .offset(x: 3, y: y)
-                }
-            }
-        case .badminton:
-            VStack(spacing: 2) {
-                HStack(spacing: 2) {
-                    Capsule().fill(foreground).frame(width: 4, height: 12).rotationEffect(.degrees(-20))
-                    Capsule().fill(foreground).frame(width: 4, height: 12)
-                    Capsule().fill(foreground).frame(width: 4, height: 12).rotationEffect(.degrees(20))
-                }
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 9, height: 9)
-            }
+            Image("SportBallPadel")
+                .resizable()
+                .scaledToFit()
+        case .tableTennis, .pickleball, .badminton:
+            Image(systemName: "circle.fill")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.dashboardAccentPink)
+                .padding(10)
         }
-    }
-}
-
-private struct TennisBallSeams: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.width * 0.32, y: rect.height * 0.07))
-        path.addCurve(
-            to: CGPoint(x: rect.width * 0.32, y: rect.height * 0.93),
-            control1: CGPoint(x: rect.width * 0.03, y: rect.height * 0.28),
-            control2: CGPoint(x: rect.width * 0.03, y: rect.height * 0.72)
-        )
-        path.move(to: CGPoint(x: rect.width * 0.68, y: rect.height * 0.07))
-        path.addCurve(
-            to: CGPoint(x: rect.width * 0.68, y: rect.height * 0.93),
-            control1: CGPoint(x: rect.width * 0.97, y: rect.height * 0.28),
-            control2: CGPoint(x: rect.width * 0.97, y: rect.height * 0.72)
-        )
-        return path
     }
 }
 
@@ -523,75 +467,6 @@ private struct SportCourtDiagram: Shape {
     }
 }
 
-private struct SportSelectionLens: View {
-    var body: some View {
-        ZStack {
-            if #available(iOS 26.0, *) {
-                Color.clear
-                    .glassEffect(
-                        .clear.tint(Color.dashboardBrand.opacity(0.08)),
-                        in: Circle()
-                    )
-            } else {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Color.dashboardBrand.opacity(0.035).clipShape(Circle()))
-            }
-        }
-        .overlay(
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.82),
-                            Color(red: 112 / 255, green: 182 / 255, blue: 1).opacity(0.82),
-                            Color.white.opacity(0.30)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.35
-                )
-        )
-        .shadow(color: Color.dashboardBrand.opacity(0.24), radius: 7)
-    }
-}
-
-private struct PadelRacketGlyph: View {
-    let color: Color
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(color, lineWidth: 4)
-                .frame(width: 48, height: 48)
-                .offset(y: -8)
-
-            VStack(spacing: 7) {
-                HStack(spacing: 8) {
-                    hole
-                    hole
-                }
-                HStack(spacing: 8) {
-                    hole
-                    hole
-                }
-            }
-            .offset(y: -8)
-
-            Capsule()
-                .fill(color)
-                .frame(width: 9, height: 29)
-                .offset(y: 27)
-        }
-    }
-
-    private var hole: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 6, height: 6)
-    }
-}
 
 private struct SportSelectionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -608,22 +483,22 @@ private extension View {
         if #available(iOS 26.0, *) {
             background(
                 Color.sportSelectionCardBase,
-                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
             )
             .glassEffect(
                 .regular
-                    .tint(Color.dashboardBrand.opacity(0.10))
+                    .tint(Color.dashboardBrand.opacity(0.07))
                     .interactive(),
-                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
             )
         } else {
             background(
                 .ultraThinMaterial,
-                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
             )
             .background(
                 Color.sportSelectionCardBase,
-                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
             )
         }
     }
@@ -2001,8 +1876,20 @@ private extension Color {
     static let dashboardBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
     static let dashboardBrandDeep = Color(red: 15 / 255, green: 87 / 255, blue: 194 / 255)
     static let dashboardAccentPink = Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
-    static let sportSelectionCardBase = Color(red: 8 / 255, green: 25 / 255, blue: 48 / 255).opacity(0.72)
-    static let sportSelectionCourtLine = Color(red: 125 / 255, green: 176 / 255, blue: 232 / 255).opacity(0.43)
+    static let sportSelectionCardBase = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 15 / 255, green: 31 / 255, blue: 55 / 255, alpha: 0.82)
+                : UIColor(red: 241 / 255, green: 247 / 255, blue: 255 / 255, alpha: 0.88)
+        }
+    )
+    static let sportSelectionCourtLine = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 120 / 255, green: 178 / 255, blue: 236 / 255, alpha: 0.68)
+                : UIColor(red: 39 / 255, green: 118 / 255, blue: 207 / 255, alpha: 0.52)
+        }
+    )
     static let dashboardBackgroundStart = Color(
         UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

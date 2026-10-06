@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HitnScore sport picker preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Arial, sans-serif; }
+    body {
+      margin: 0;
+      width: 1400px;
+      height: 920px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(18,116,208,.13), transparent 30%),
+        radial-gradient(circle at 82% 90%, rgba(236,94,168,.10), transparent 28%),
+        #e9edf3;
+      color: #10151d;
+    }
+    .showcase { display: flex; gap: 54px; align-items: center; }
+    .device {
+      width: 510px;
+      height: 820px;
+      border-radius: 46px;
+      padding: 24px 26px 30px;
+      box-shadow: 0 28px 70px rgba(18, 35, 55, .18);
+      border: 1px solid rgba(84, 112, 148, .28);
+      position: relative;
+    }
+    .device.light { background: linear-gradient(145deg, #e9f2fa, #f5f8fc); }
+    .device.dark { background: linear-gradient(145deg, #0e1621, #091018); color: #f6f8fc; border-color: #283a52; }
+    .mode {
+      position: absolute;
+      top: -25px;
+      left: 30px;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.85);
+      color: #4b5e74;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      box-shadow: 0 6px 18px rgba(0,0,0,.07);
+    }
+    .nav { height: 74px; display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; }
+    .nav h1 { margin: 0; text-align: center; font-size: 25px; line-height: 1; letter-spacing: -.6px; }
+    .close { justify-self: end; color: #1274d0; font-size: 17px; font-weight: 700; }
+    .dark .close { color: #7ab5f1; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; margin-top: 13px; }
+    .card {
+      aspect-ratio: 1;
+      position: relative;
+      overflow: hidden;
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(241,247,255,.88);
+      border: 1.5px solid rgba(18,116,208,.58);
+      box-shadow: 0 9px 24px rgba(18,116,208,.11);
+    }
+    .dark .card {
+      background: rgba(15,31,55,.86);
+      border-color: rgba(93,157,221,.62);
+      box-shadow: 0 10px 26px rgba(0,0,0,.22);
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(18,116,208,.13), transparent 52%, rgba(236,94,168,.08));
+    }
+    .court { position: absolute; inset: 13px; color: rgba(39,118,207,.54); z-index: 0; }
+    .dark .court { color: rgba(120,178,236,.67); }
+    .court * { vector-effect: non-scaling-stroke; }
+    .ball {
+      width: 86px;
+      height: 86px;
+      object-fit: contain;
+      position: relative;
+      z-index: 2;
+      transform: translateY(-10px);
+      filter: drop-shadow(0 6px 5px rgba(0,0,0,.25));
+    }
+    .label {
+      position: absolute;
+      z-index: 3;
+      bottom: 13px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 13px;
+      border-radius: 999px;
+      white-space: nowrap;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(39,118,207,.35);
+      box-shadow: 0 3px 12px rgba(30,55,84,.08);
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: -.25px;
+      backdrop-filter: blur(10px);
+    }
+    .dark .label { background: rgba(18,31,49,.78); border-color: rgba(120,178,236,.46); }
+    .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #ec5ea8; }
+    .hint { margin: 25px 10px 0; color: #607287; text-align: center; font-size: 14px; line-height: 1.45; }
+    .dark .hint { color: #9babc0; }
+  </style>
+</head>
+<body>
+  <main class="showcase">
+    <section class="device light">
+      <span class="mode">LIGHT</span>
+      <header class="nav"><span></span><h1>Choose Racket Sport</h1><span class="close">Close</span></header>
+      <div class="grid" data-theme="light"></div>
+      <p class="hint">Select a sport to continue setting up your match.</p>
+    </section>
+    <section class="device dark">
+      <span class="mode">DARK</span>
+      <header class="nav"><span></span><h1>Choose Racket Sport</h1><span class="close">Close</span></header>
+      <div class="grid" data-theme="dark"></div>
+      <p class="hint">Select a sport to continue setting up your match.</p>
+    </section>
+  </main>
+  <script>
+    const root = "file:///Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Assets.xcassets";
+    const sports = [
+      ["Squash", `${root}/SportBallSquash.imageset/sport-ball-squash@3x.png`, "racket"],
+      ["Racketball", `${root}/SportBallRacketball.imageset/sport-ball-racketball@3x.png`, "racket"],
+      ["Tennis", `${root}/SportBallTennis.imageset/sport-ball-tennis@3x.png`, "court"],
+      ["Padel", `${root}/SportBallPadel.imageset/sport-ball-padel@3x.png`, "court"]
+    ];
+    const racketCourt = `<svg class="court" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="98" height="98" rx="4"/><path d="M1 47H99M1 63H28V47M99 63H72V47M50 47V73"/></svg>`;
+    const longCourt = `<svg class="court" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="98" height="98" rx="4"/><path d="M1 27H99M1 49H99M1 70H99M50 27V70"/></svg>`;
+    document.querySelectorAll(".grid").forEach(grid => {
+      sports.forEach(([name, image, kind]) => {
+        grid.insertAdjacentHTML("beforeend", `<article class="card">${kind === "racket" ? racketCourt : longCourt}<img class="ball" src="${image}" alt=""><div class="label"><span class="dot"></span>${name}</div></article>`);
+      });
+    });
+  </script>
+</body>
+</html>

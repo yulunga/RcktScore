@@ -5,6 +5,7 @@ from aws_lambda_powertools import Logger
 from botocore.exceptions import BotoCoreError, ClientError
 
 from common.mailer import send_email_message
+from common.notification_templates import render_branded_email
 from common.utils import error_response, parse_body, require_fields, success_response
 
 
@@ -76,6 +77,23 @@ def lambda_handler(event, context):
             message,
         ]
     )
+    feedback_details = [
+        ("Category", category),
+        ("Name", name),
+        ("Email", email),
+        ("Username", (payload.get("username") or "").strip() or "Unknown"),
+        ("Organisation", (payload.get("organization_name") or "").strip() or "Unknown"),
+        ("Version", (payload.get("version") or "").strip() or "Unknown"),
+        ("Build", (payload.get("build") or "").strip() or "Unknown"),
+        ("Page URL", (payload.get("page_url") or "").strip() or "Unknown"),
+        ("User agent", user_agent),
+    ]
+    message_html = render_branded_email(
+        title="New feedback submission",
+        paragraphs=["A new HitnScore feedback submission has been received."],
+        detail_rows=feedback_details,
+        message=message,
+    )
 
     try:
         send_email_message(
@@ -84,6 +102,7 @@ def lambda_handler(event, context):
             reply_to_addresses=[email],
             subject=f"RcktScore: {category}",
             text_body=message_text,
+            html_body=message_html,
         )
     except (BotoCoreError, ClientError):
         logger.exception("Feedback email delivery failed")

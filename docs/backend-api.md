@@ -515,6 +515,8 @@ Current behavior:
 - personal signup requires `PASSWORD_RESET_BASE_URL` to be configured; the request origin is not used as a fallback
 - honeypot field is `company`
 - SES delivery must be configured correctly
+- all application-generated messages use a shared responsive HitnScore HTML presentation with a plain-text alternative; `EMAIL_LOGO_URL` controls the public HTTPS logo used in the HTML and defaults to the landing-site mascot asset
+- outbound SES messages use the friendly sender name `HitnScore` when the configured source is a bare email address; mailbox avatars remain controlled by the receiving provider and domain-level BIMI/profile configuration rather than the HTML body
 - feedback sends email but does not persist to a database table
 - feedback defaults to the verified `hello@hitnscore.com` sender and recipient; SES delivery failures return `503 FEEDBACK_DELIVERY_FAILED` in the normal API envelope instead of an unstructured Lambda error
 - after successful personal/club registration or feedback responses, the native iOS client replaces the relevant form with a confirmation and next-step screen; API errors leave the form available for correction or retry

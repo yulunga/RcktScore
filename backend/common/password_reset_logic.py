@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash
 
 from common.mailer import send_email_message
-from common.notification_templates import render_notification_template
+from common.notification_templates import render_branded_email, render_notification_template
 from common.organization_logic import APP_DISPLAY_NAME, is_valid_email_address, normalize_email_address
 from common.session_logic import revoke_active_sessions_for_username
 
@@ -32,12 +32,25 @@ def _send_password_reset_email(*, username, reset_url, source_email):
     }
     subject = render_notification_template("password_reset_subject.txt", context).strip()
     body_text = render_notification_template("password_reset_body.txt", context).strip()
+    body_html = render_branded_email(
+        title="Reset your password",
+        paragraphs=[
+            f"We received a request to reset the password for your {APP_DISPLAY_NAME} account.",
+        ],
+        action_label="Choose a new password",
+        action_url=reset_url,
+        notice=(
+            f"This secure link expires in {RESET_TOKEN_TTL_HOURS} hours. "
+            "If you did not request this, you can safely ignore this email. Your password will not change."
+        ),
+    )
 
     send_email_message(
         destination_email=username,
         source_email=source_email,
         subject=subject,
         text_body=body_text,
+        html_body=body_html,
     )
 
 

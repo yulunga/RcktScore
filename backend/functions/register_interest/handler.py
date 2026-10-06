@@ -7,7 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
-from common.notification_templates import render_notification_template
+from common.notification_templates import render_branded_email, render_notification_template
 from common.root_admin_logic import create_self_service_personal_account
 from common.session_logic import SessionAuthError, require_org_user_session, session_error_response
 from common.supabase_client import get_db_connection
@@ -165,12 +165,46 @@ def _send_interest_emails(*, payload, destination_email, source_email):
     user_body = render_notification_template("interest_confirmation_body.txt", template_context).strip()
     admin_subject = render_notification_template("interest_admin_subject.txt", template_context).strip()
     admin_body = render_notification_template("interest_admin_body.txt", template_context).strip()
+    request_details = [
+        ("Name", f"{template_context['first_name']} {template_context['surname']}"),
+        ("Email", template_context["email"]),
+        ("Use type", template_context["use_type"]),
+        ("Club", template_context["club_name"]),
+        ("Requested subscription", template_context["requested_plan"]),
+        ("Club address", template_context["club_address"]),
+        ("Club postcode", template_context["club_postcode"]),
+        ("Club email", template_context["club_email"]),
+        ("Club website", template_context["club_website"]),
+        ("Club telephone", template_context["club_telephone"]),
+    ]
+    user_html = render_branded_email(
+        title="Thanks for your club enquiry",
+        greeting=f"Hi {template_context['first_name']},",
+        paragraphs=[
+            "Thanks for your interest in using Hit n Score for your racket club.",
+            "Club and multi-user accounts are set up with our team. We have received your details and will be in touch.",
+        ],
+        detail_rows=request_details,
+        notice="We look forward to discussing the right setup for your club.",
+    )
+    admin_html = render_branded_email(
+        title="New club account enquiry",
+        paragraphs=["A new Hit n Score club account enquiry has been submitted."],
+        detail_rows=request_details
+        + [
+            ("Approval status", "Pending"),
+            ("Email validated", "No"),
+            ("Page URL", template_context["page_url"]),
+            ("User agent", template_context["user_agent"]),
+        ],
+    )
 
     send_email_message(
         source_email=source_email,
         destination_email=payload["email"],
         subject=user_subject,
         text_body=user_body,
+        html_body=user_html,
     )
     send_email_message(
         source_email=source_email,
@@ -178,6 +212,7 @@ def _send_interest_emails(*, payload, destination_email, source_email):
         reply_to_addresses=[payload["email"]],
         subject=admin_subject,
         text_body=admin_body,
+        html_body=admin_html,
     )
 
 

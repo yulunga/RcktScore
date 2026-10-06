@@ -1,7 +1,7 @@
 import secrets
 
 from common.mailer import send_email_message
-from common.notification_templates import render_notification_template
+from common.notification_templates import render_branded_email, render_notification_template
 from common.sport_config import SPORT_LABELS
 from common.sport_config import (
     constrain_enabled_sports,
@@ -648,12 +648,28 @@ def _send_personal_account_approved_email(*, account, set_password_url, source_e
     }
     subject = render_notification_template("personal_account_approved_subject.txt", context).strip()
     body_text = render_notification_template("personal_account_approved_body.txt", context).strip()
+    body_html = render_branded_email(
+        title="Set up your HitnScore account",
+        greeting=f"Hi {context['first_name']},",
+        paragraphs=[
+            "Welcome to Hit n Score. Your personal account has been created.",
+            "Verify your email address and choose a password to start scoring matches.",
+        ],
+        action_label="Choose your password",
+        action_url=set_password_url,
+        detail_rows=[("Username", context["username"])],
+        notice=(
+            f"This secure link expires in {RESET_TOKEN_TTL_HOURS} hours. "
+            "If you were not expecting this email, you can safely ignore it."
+        ),
+    )
 
     send_email_message(
         destination_email=account["username"],
         source_email=source_email,
         subject=subject,
         text_body=body_text,
+        html_body=body_html,
     )
 
 

@@ -32,6 +32,8 @@ def test_feedback_sends_email_and_returns_accepted(monkeypatch):
     assert body["data"]["accepted"] is True
     assert email_calls[0]["destination_email"] == "hello@hitnscore.com"
     assert email_calls[0]["reply_to_addresses"] == ["player@example.com"]
+    assert "New feedback submission" in email_calls[0]["html_body"]
+    assert "This is a feedback test." in email_calls[0]["html_body"]
 
 
 def test_feedback_maps_ses_rejection_to_api_error(monkeypatch):

@@ -13,6 +13,7 @@ Globals:
         SUPABASE_DB_URL: !Ref SupabaseDbUrl
         ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
         ORG_USER_SESSION_TTL_DAYS: !Ref OrgUserSessionTtlDays
+        EMAIL_LOGO_URL: !Ref EmailLogoUrl
         APPLE_PURCHASES_ENABLED: !Ref ApplePurchasesEnabled
         APPLE_PERSONAL_PLUS_MONTHLY_PRODUCT_ID: !Ref ApplePersonalPlusMonthlyProductId
         APPLE_PERSONAL_PLUS_YEARLY_PRODUCT_ID: !Ref ApplePersonalPlusYearlyProductId
@@ -58,6 +59,10 @@ Parameters:
   PasswordResetBaseUrl:
     Type: String
     Default: "https://app.hitnscore.com"
+  EmailLogoUrl:
+    Type: String
+    Default: "https://www.hitnscore.com/assets/images/brand-logo.png"
+    Description: Public HTTPS URL for the logo displayed in branded system emails.
   AlarmNotificationEmail:
     Type: String
     Default: hello@hitnscore.com

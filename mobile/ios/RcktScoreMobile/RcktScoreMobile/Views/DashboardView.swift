@@ -3465,43 +3465,13 @@ struct DashboardView: View {
 
         switch sport {
         case .squash:
-            ZStack {
-                Circle()
-                    .stroke(foreground, lineWidth: 2.2)
-                    .frame(width: 16, height: 16)
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 4, height: 4)
-                    .offset(x: 3, y: -3)
-            }
+            settingsSportBallImage(named: "SportBallSquash", isAvailable: isAvailable)
         case .racketball:
-            ZStack {
-                Circle()
-                    .fill(foreground)
-                    .frame(width: 16, height: 16)
-                Circle()
-                    .fill(Color.dashboardAccentPink)
-                    .frame(width: 3.5, height: 3.5)
-                    .offset(x: -3, y: -3)
-                Circle()
-                    .fill(Color.dashboardAccentPink)
-                    .frame(width: 3.5, height: 3.5)
-                    .offset(x: 3, y: 3)
-            }
-        case .tennis, .padel:
-            ZStack {
-                Circle()
-                    .stroke(foreground, lineWidth: 2.1)
-                    .frame(width: 18, height: 18)
-                Path { path in
-                    path.move(to: CGPoint(x: 14, y: 8))
-                    path.addQuadCurve(to: CGPoint(x: 14, y: 24), control: CGPoint(x: 8, y: 16))
-                    path.move(to: CGPoint(x: 26, y: 8))
-                    path.addQuadCurve(to: CGPoint(x: 26, y: 24), control: CGPoint(x: 20, y: 16))
-                }
-                .stroke(foreground, lineWidth: 1.8)
-                .frame(width: 34, height: 34)
-            }
+            settingsSportBallImage(named: "SportBallRacketball", isAvailable: isAvailable)
+        case .tennis:
+            settingsSportBallImage(named: "SportBallTennis", isAvailable: isAvailable)
+        case .padel:
+            settingsSportBallImage(named: "SportBallPadel", isAvailable: isAvailable)
         case .tableTennis:
             ZStack {
                 Circle()
@@ -3535,6 +3505,15 @@ struct DashboardView: View {
                     .frame(width: 7, height: 7)
             }
         }
+    }
+
+    private func settingsSportBallImage(named assetName: String, isAvailable: Bool) -> some View {
+        Image(assetName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 26, height: 26)
+            .opacity(isAvailable ? 1 : 0.48)
+            .shadow(color: Color.black.opacity(isAvailable ? 0.16 : 0.06), radius: 2, x: 0, y: 1)
     }
 
     private func syncSettingsDrafts(from settings: OrganizationSettings) {
