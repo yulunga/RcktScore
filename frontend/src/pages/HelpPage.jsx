@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
@@ -155,6 +155,17 @@ export default function HelpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+
+  useEffect(() => {
+    function updateHeader() {
+      setIsHeaderCompact(window.scrollY > 48);
+    }
+
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
 
   const knowledgeItems = [
     {
@@ -261,11 +272,11 @@ export default function HelpPage() {
 
   return (
     <div className="help-centre-shell">
-      <header className="help-centre-header">
-        <button className="help-centre-brand" type="button" onClick={() => navigate("/")} aria-label="HitnScore home">
+      <header className={`help-centre-header${isHeaderCompact ? " help-centre-header--compact" : ""}`}>
+        <a className="help-centre-brand" href="https://www.hitnscore.com/" aria-label="HitnScore landing page">
           <img src="/branding/logo/brand-logo.png" alt="" />
           <span><b>Hit</b><i>n</i><b>Score</b></span>
-        </button>
+        </a>
         <button
           className="help-centre-primary-action"
           type="button"

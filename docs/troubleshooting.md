@@ -335,6 +335,8 @@ On the web, package version/build details are intentionally absent from both the
 
 The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct Help Centre section opens the overview instead, verify the `section` value against `web-access`, `ios-access`, `terms`, `privacy`, and `cookies` and deploy the current frontend bundle.
 
+The Help Centre header should remain fixed and switch to `help-centre-header--compact` after scrolling beyond 48 pixels. If it does not shrink, check the scroll listener in `HelpPage.jsx` and the compact rules in `styles.css`. The Help Centre logo/wordmark should navigate to `https://www.hitnscore.com/`, not the app login route.
+
 The root-admin User Accounts `Unverified Users` card requests `GET /root_admin/users?account_type=unverified`. If its count is non-zero but selecting it does not filter the list, deploy the current root-admin users Lambda as well as the frontend; the card depends on backend support for that filter value.
 
 ## 7. Schema and Migration Issues

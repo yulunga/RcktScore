@@ -178,6 +178,8 @@ The public Help Centre and knowledge-base content at `/help`, including the dire
 
 The app shell and public landing homepage use the same browser title and description metadata. This is static client markup and has no backend API effect.
 
+The Help Centre header compacts on scroll and its brand link returns to the public landing homepage. Both behaviours are client-only and add no API contract.
+
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`

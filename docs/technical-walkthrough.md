@@ -140,7 +140,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 
 - [frontend/src/pages/HelpPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HelpPage.jsx)
 
-The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password reset retains the existing `?mode=reset` and token flow. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. The Help Centre footer deliberately mirrors the current public-homepage footer.
+The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password reset retains the existing `?mode=reset` and token flow. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. The Help Centre footer deliberately mirrors the current public-homepage footer. Its fixed header also follows the landing page by compacting after the user scrolls, while the brand logo and wordmark link back to `https://www.hitnscore.com/`.
 
 ### Current path
 
