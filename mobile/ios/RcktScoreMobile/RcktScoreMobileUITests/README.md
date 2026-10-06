@@ -246,3 +246,21 @@ RCKTSCORE_UI_RESULT_PATH=/tmp/RcktScore-LivePadelMatch-$(date +%Y%m%d-%H%M%S).xc
 In Xcode, run the test diamond beside
 `testPersonalPlusCompletesStandardAndGoldenPointBestOfThreeJourneys` in
 `Tests/Scoring/LivePadelMatchJourneyUITests.swift`.
+
+## Visible multi-device runs
+
+Xcode's test diamond runs a UI test on the currently selected destination. To
+repeat one live journey across different screen sizes and iOS versions while
+watching each Simulator, run the repository's sequential matrix runner:
+
+```bash
+testing/automated/mobile/run-live-multi-device-ui-test.sh tennis
+testing/automated/mobile/run-live-multi-device-ui-test.sh padel
+testing/automated/mobile/run-live-multi-device-ui-test.sh racket
+```
+
+It uses the ignored credentials file, disables parallel testing, boots and
+shows one Simulator at a time, and retains a separate `.xcresult` per device.
+Open any result bundle in Xcode to inspect its activity log and screenshots.
+See `testing/automated/mobile/README.md` for the default matrix and override
+options.

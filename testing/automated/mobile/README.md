@@ -66,3 +66,41 @@ starting. Use a dedicated test account whose match history can safely change.
 The default result bundle is `/tmp/RcktScore-LivePadelMatch.xcresult`. Override
 the Simulator, result path, credentials file, or visual pacing with the same
 `RCKTSCORE_UI_*` variables used by the tennis journey.
+
+# Visible multi-device UI journey
+
+Run one live journey sequentially across a small iPhone, a current-size iPhone,
+and an iPad:
+
+```bash
+testing/automated/mobile/run-live-multi-device-ui-test.sh tennis
+testing/automated/mobile/run-live-multi-device-ui-test.sh padel
+testing/automated/mobile/run-live-multi-device-ui-test.sh racket
+```
+
+The default matrix is:
+
+- iPhone 16e, iOS 18.6;
+- iPhone 17 Pro, iOS 26.5; and
+- iPad Pro 11-inch (M5), iOS 26.2.
+
+The installed iOS 17.0 simulators are intentionally excluded because the
+app's deployment target is iOS 17.6.
+
+The runner is intentionally sequential because the live journeys all mutate
+the same Personal Plus test account. It boots each exact Simulator, opens the
+Simulator app so the journey can be watched, disables parallel testing, and
+saves separate `.xcresult` and console-log files for every destination. The
+last Simulator remains booted after the run.
+
+Override the matrix with semicolon-separated `device|OS|label` entries:
+
+```bash
+RCKTSCORE_UI_DEVICE_MATRIX='iPhone 17 Pro|26.5|iphone-17-pro;iPad mini (A17 Pro)|26.2|ipad-mini' \
+  testing/automated/mobile/run-live-multi-device-ui-test.sh padel
+```
+
+Set `RCKTSCORE_UI_CONTINUE_ON_FAILURE=1` to continue to later destinations
+after a failure. Result bundles open directly in Xcode. Xcode's normal test
+diamond still runs only the currently selected destination; use this runner
+when one command should cover the whole visible device matrix.

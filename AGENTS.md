@@ -71,6 +71,7 @@ What is real and implemented:
 - system notifications are persisted in Postgres, can be published by root admin to all users or a specific plan, and share cross-device read state across web and iOS
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
+- the web `Want In` registration state omits the internal package-version/build footer while leaving it available on the standard login state
 - shared responsive HitnScore HTML branding across password reset, account setup, club invitations and enquiries, and feedback notifications, with plain-text fallbacks
 - one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 100 and receives performance analytics
 - native iOS StoreKit 2 purchasing offers new Personal Plus upgrades through the yearly product only, passes the stable account UUID into StoreKit, submits Apple-signed transaction and app-transaction JWS values to the backend, and finishes server-enabled transactions only after backend acceptance; monthly transactions remain recognized for restore and lifecycle safety, and local Xcode StoreKit testing remains non-authoritative

@@ -20,9 +20,12 @@ This split means changes in `frontend/` do not alter the landing page unless you
 
 ## Current landing content
 
-- Hero section
-- Primary navigation for plans, help, sign in, and free registration
-- Personal Free, Personal Plus, Club Essentials, and Club Pro comparison page
-- Personal Plus performance-value section and club onboarding journey
-- Plan FAQ and separate player/club calls to action
-- Help and feedback page
+- Single-page responsive marketing experience with no menu navigation
+- Large fixed white brand header that compacts after scrolling
+- Public personal-registration calls to action
+- High-resolution court imagery for squash, tennis, Padel, table tennis,
+  pickleball, and badminton
+- Responsive iPhone and iPad product mockups
+- Consent panel with all/essential choices and expandable details
+- Separate comparison and help pages retained for later release decisions, but
+  not linked from the main header

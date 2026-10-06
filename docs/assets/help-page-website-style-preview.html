@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HitnScore Help Page Preview</title>
+  <style>
+    :root {
+      --blue: #1675cf;
+      --blue-deep: #082b4b;
+      --blue-ink: #061f36;
+      --pink: #ee5eaa;
+      --mist: #f2f4ff;
+      --text: #102a43;
+      --muted: #536a7e;
+      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; color: var(--text); background: var(--mist); }
+    button, a { font: inherit; }
+    .site-header {
+      height: 116px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(32px, 5vw, 76px);
+      border-top: 4px solid var(--blue-ink);
+      background: #fff;
+      box-shadow: 0 1px 0 rgba(16,42,67,.07);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 15px;
+      color: inherit;
+      font-size: 42px;
+      font-weight: 600;
+      letter-spacing: -.045em;
+      text-decoration: none;
+    }
+    .brand img { width: 72px; height: 72px; object-fit: contain; }
+    .brand-blue { color: var(--blue); }
+    .brand-pink { color: var(--pink); }
+    .start-button {
+      display: inline-flex;
+      min-width: 158px;
+      min-height: 52px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: .85rem 1.65rem;
+      color: #fff;
+      background: linear-gradient(135deg,var(--pink),#cf3d8e);
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      font-weight: 750;
+      text-decoration: none;
+    }
+    main {
+      min-height: calc(100vh - 116px);
+      padding: 82px 24px 92px;
+      background:
+        radial-gradient(circle at 78% 12%, rgba(255,255,255,.97), transparent 31%),
+        radial-gradient(circle at 17% 86%, rgba(238,94,170,.09), transparent 27%),
+        var(--mist);
+    }
+    .page-intro { max-width: 790px; margin: 0 auto 32px; text-align: center; }
+    .kicker {
+      margin: 0 0 14px;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      color: var(--blue-deep);
+      font-size: clamp(52px, 5.2vw, 76px);
+      font-weight: 500;
+      line-height: .98;
+      letter-spacing: -.045em;
+    }
+    .intro-copy {
+      max-width: 620px;
+      margin: 24px auto 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.65;
+    }
+    .search-box {
+      width: min(100%, 720px);
+      min-height: 62px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 13px;
+      margin: 30px auto 0;
+      border: 1px solid #d5e3ef;
+      border-radius: 999px;
+      padding: 0 22px;
+      color: var(--blue);
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 12px 36px rgba(24,64,99,.09);
+      text-align: left;
+    }
+    .search-box span:first-child { font-size: 22px; }
+    .search-box span:last-child { color: #75899b; font-size: 16px; }
+    .section-label {
+      width: min(100%, 720px);
+      margin: 0 auto 13px;
+      color: var(--blue-deep);
+      font-size: 20px;
+      font-weight: 750;
+    }
+    .help-card {
+      width: min(100%, 720px);
+      margin: 0 auto;
+      border: 1px solid #dce7f1;
+      border-radius: 28px;
+      padding: 26px;
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 18px 48px rgba(24,64,99,.09);
+    }
+    .help-menu { display: grid; gap: 12px; }
+    .help-item {
+      width: 100%;
+      min-height: 78px;
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      align-items: center;
+      gap: 16px;
+      border: 1px solid #dce7f1;
+      border-radius: 18px;
+      padding: 14px 18px;
+      color: var(--text);
+      background: #fff;
+      text-align: left;
+    }
+    .help-item--active {
+      border-color: rgba(238,94,170,.5);
+      background: linear-gradient(135deg,#fff 55%,#fff5fa);
+    }
+    .item-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: var(--blue);
+      background: #e9f4ff;
+      font-size: 21px;
+      font-weight: 800;
+    }
+    .help-item--active .item-icon { color: #b52d7a; background: #ffebf5; }
+    .item-copy { display: grid; gap: 4px; }
+    .item-copy strong { color: var(--blue-deep); font-size: 17px; }
+    .item-copy small { color: var(--muted); font-size: 13px; }
+    .arrow { color: var(--blue); font-size: 25px; font-weight: 400; }
+    .back-link { margin: 25px 0 3px; text-align: center; }
+    .back-link a { color: var(--pink); font-size: 14px; font-weight: 800; text-decoration: none; }
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      border-top: 1px solid rgba(16,42,67,.08);
+      padding: 23px 24px;
+      color: #75899b;
+      background: #fff;
+      font-size: 12px;
+    }
+    .legal-section { margin-top: 34px; }
+    .legal-card { padding: 18px 26px; }
+    .legal-card .help-item { min-height: 68px; }
+    footer span + span::before { content: "•"; margin-right: 18px; color: #b5c1cc; }
+    @media (max-width: 680px) {
+      .site-header { height: 88px; padding: 0 20px; border-top-width: 3px; }
+      .brand { gap: 8px; font-size: 26px; }
+      .brand img { width: 54px; height: 54px; }
+      .start-button { min-width: 0; min-height: 46px; padding: .7rem 1rem; font-size: 13px; }
+      main { min-height: calc(100vh - 88px); padding: 54px 16px 70px; }
+      h1 { font-size: clamp(42px, 13vw, 58px); }
+      .intro-copy { font-size: 16px; }
+      .help-card { padding: 16px; border-radius: 22px; }
+      .help-item { grid-template-columns: 42px 1fr auto; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="HitnScore home">
+      <img src="../../weblanding/assets/images/brand-logo.png" alt="">
+      <span><span class="brand-blue">Hit</span><span class="brand-pink">n</span><span class="brand-blue">Score</span></span>
+    </a>
+    <a class="start-button" href="#">Start scoring</a>
+  </header>
+
+  <main>
+    <section class="page-intro">
+      <p class="kicker">HitnScore knowledge base</p>
+      <h1>What can we help you with?</h1>
+      <p class="intro-copy">Find straightforward guidance for using HitnScore as a player, scorer or club administrator.</p>
+      <div class="search-box"><span>⌕</span><span>Search the HitnScore knowledge base</span></div>
+    </section>
+
+    <h2 class="section-label">Browse help topics</h2>
+    <section class="help-card" aria-label="Help sections">
+      <nav class="help-menu">
+        <button class="help-item help-item--active" type="button">
+          <span class="item-icon">▶</span>
+          <span class="item-copy"><strong>Getting Started</strong><small>Create an account, sign in and set up your first match</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">＋</span>
+          <span class="item-copy"><strong>Scoring Matches</strong><small>Start, score, undo and complete racket-sport matches</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">≡</span>
+          <span class="item-copy"><strong>Matches &amp; History</strong><small>Understand current, scheduled and completed matches</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">↗</span>
+          <span class="item-copy"><strong>Analytics</strong><small>Learn what your scored-match and personal statistics mean</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">●</span>
+          <span class="item-copy"><strong>Account &amp; Subscription</strong><small>Profile, password reset, plans and subscription help</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">♢</span>
+          <span class="item-copy"><strong>Clubs &amp; Settings</strong><small>Manage club users, courts and available racket sports</small></span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="help-item" type="button">
+          <span class="item-icon">?</span>
+          <span class="item-copy"><strong>Troubleshooting &amp; Contact</strong><small>Fix common issues or send feedback to the HitnScore team</small></span>
+          <span class="arrow">›</span>
+        </button>
+      </nav>
+    </section>
+
+    <div class="legal-section">
+      <h2 class="section-label">Legal &amp; privacy</h2>
+      <section class="help-card legal-card" aria-label="Legal and privacy pages">
+        <nav class="help-menu">
+          <button class="help-item" type="button">
+            <span class="item-icon">T</span>
+            <span class="item-copy"><strong>Terms &amp; Conditions</strong><small>The terms governing use of HitnScore</small></span>
+            <span class="arrow">›</span>
+          </button>
+          <button class="help-item" type="button">
+            <span class="item-icon">✓</span>
+            <span class="item-copy"><strong>Privacy Policy</strong><small>How account, club and match information is handled</small></span>
+            <span class="arrow">›</span>
+          </button>
+          <button class="help-item" type="button">
+            <span class="item-icon">◌</span>
+            <span class="item-copy"><strong>Cookie Policy</strong><small>Website cookies and privacy choices</small></span>
+            <span class="arrow">›</span>
+          </button>
+        </nav>
+        <p class="back-link"><a href="#">‹ Back to sign in</a></p>
+      </section>
+    </div>
+  </main>
+
+  <footer><span>HitnScore</span><span>Racket-sport scoring for players and clubs</span><span>Help &amp; privacy</span></footer>
+</body>
+</html>

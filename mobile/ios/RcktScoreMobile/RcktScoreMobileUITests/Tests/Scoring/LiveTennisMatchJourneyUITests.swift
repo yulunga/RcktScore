@@ -1,5 +1,13 @@
 import XCTest
 
+// MARK: - Live Personal Plus Tennis Journey
+//
+// Logs in to the real backend and completes two Best-of-3 matches. The singles
+// match tests deuce/advantage, a 6-6 first set and an extended tiebreak. The
+// doubles match tests four-player setup, Golden Point and timed breaks. The
+// journey verifies match completion after each match and finishes by logging
+// out. It creates real completed matches in the Personal Plus test account.
+
 final class LiveTennisMatchJourneyUITests: HitnScoreBaseUITest {
     @MainActor
     func testPersonalPlusCompletesSinglesAndDoublesJourneys() throws {

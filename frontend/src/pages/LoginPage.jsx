@@ -517,9 +517,11 @@ export default function LoginPage() {
           </div>
         </div>
       ) : null}
-      <div className="login-footer-wrap">
-        <AppFooter />
-      </div>
+      {!showInterestForm ? (
+        <div className="login-footer-wrap">
+          <AppFooter />
+        </div>
+      ) : null}
     </main>
   );
 }
