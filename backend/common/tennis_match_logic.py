@@ -856,15 +856,24 @@ def create_match(connection, payload, source="api"):
     now = shared._utcnow()
     tenant_plan = shared._fetch_tenant_plan(connection, tenant_id)
     is_personal_tenant = shared._is_personal_tenant(tenant_id, tenant_plan)
+    can_schedule_personal = (
+        is_personal_tenant
+        and str((tenant_plan or {}).get("plan") or "").lower() == "personal_plus"
+    )
     can_choose_shirt_colors = shared._can_choose_shirt_colors(tenant_plan, tenant_id)
     match_payload = {**payload}
     engine_sport = str(match_payload.get("sport") or SPORT).strip().lower()
     if engine_sport not in {"tennis", "padel"}:
         engine_sport = SPORT
+    requested_status = (
+        _match_status_value(payload.get("status"))
+        if not is_personal_tenant or can_schedule_personal
+        else "active"
+    )
 
     if is_personal_tenant:
         active_match = shared._find_active_match_for_tenant(connection, tenant_id)
-        if active_match:
+        if active_match and requested_status == "active":
             raise ValueError("Personal accounts can only have one active match at a time")
 
         personal_court = shared._ensure_personal_match_court(connection, tenant_id)
@@ -878,7 +887,6 @@ def create_match(connection, payload, source="api"):
     best_of = _best_of_value(payload.get("best_of", 3))
     games_to_win = _games_to_win(best_of)
     score_type = _score_type_value(payload.get("score_type", 6))
-    requested_status = "active" if is_personal_tenant else _match_status_value(payload.get("status"))
     conflicting_match = None
     match_status = requested_status
     player1_shirt_color = shared._shirt_color_value(

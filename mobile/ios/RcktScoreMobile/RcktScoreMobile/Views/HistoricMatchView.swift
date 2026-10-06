@@ -16,6 +16,10 @@ struct HistoricMatchView: View {
     private var live: MatchState? { match?.state }
     private var player1GamesWon: Int { live?.player1GamesWon ?? 0 }
     private var player2GamesWon: Int { live?.player2GamesWon ?? 0 }
+    private var isTennisStyle: Bool {
+        ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
+            || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
+    }
     private var groupedTimeline: [HistoricGameTimeline] {
         guard let match else { return [] }
 
@@ -40,12 +44,16 @@ struct HistoricMatchView: View {
                     .map { event in
                         HistoricTimelineEntry(
                             id: event.id,
-                            title: event.summary ?? readableEventTitle(event.eventType),
+                            title: timelineTitle(for: event),
                             score: eventScoreLine(event),
                             timestamp: event.createdAt,
                             winnerSide: event.payload?.scorer ?? event.payload?.playerSide,
                             serverSide: event.payload?.currentServerSide,
-                            serviceSideLabel: String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased()
+                            serviceSideLabel: String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased(),
+                            tennisGameCompleted: event.payload?.tennisGameCompleted == true,
+                            setCompleted: event.payload?.setCompleted == true,
+                            completedGameScore: completedGameScore(event),
+                            matchCompleted: event.payload?.matchCompleted == true
                         )
                     }
             )
@@ -192,7 +200,8 @@ struct HistoricMatchView: View {
                 title: "Game Details",
                 value: gameDetailsLine(for: match)
             )
-            historicInfoRow(title: "Date", value: formatDateOnly(match.completedAt ?? match.updatedAt))
+            historicInfoRow(title: "Date", value: matchStartDate(match))
+            historicInfoRow(title: "Started", value: matchStartTime(match))
             historicInfoRow(title: "Court", value: [match.courtName, match.courtAlias].compactMap { value in
                 guard let value, !value.isEmpty else { return nil }
                 return value
@@ -245,7 +254,7 @@ struct HistoricMatchView: View {
                 ) {
                         ForEach(gameDurations) { game in
                             VStack(spacing: 3) {
-                                Text("Game \(game.gameNumber)")
+                                Text("\(isTennisStyle ? "Set" : "Game") \(game.gameNumber)")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                 Text(formatSeconds(game.seconds))
@@ -284,7 +293,7 @@ struct HistoricMatchView: View {
                     ForEach(groupedTimeline) { game in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
-                                Text("Game \(game.gameNumber)")
+                                Text("\(isTennisStyle ? "Set" : "Game") \(game.gameNumber)")
                                     .font(.subheadline.weight(.bold))
                                 Spacer()
                                 if let result = game.result {
@@ -307,38 +316,68 @@ struct HistoricMatchView: View {
                             .padding(.horizontal, 6)
 
                             ForEach(game.entries) { entry in
-                                HStack(alignment: .center, spacing: 12) {
-                                    historicTimelineSide(
-                                        playerSide: "player1",
-                                        entry: entry,
-                                        tint: Color.rcktBlue,
-                                        serveFirst: true
-                                    )
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                    VStack(spacing: 2) {
+                                if isTennisStyle {
+                                    VStack(spacing: 4) {
                                         Text(entry.title)
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.secondary)
+                                        Text(timelineWinnerName(entry, match: match))
+                                            .font(.subheadline.weight(.bold))
+                                            .multilineTextAlignment(.center)
+                                        if let score = entry.score {
+                                            Text(score)
+                                                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                                                .foregroundStyle(entry.winnerSide == "player2" ? Color.rcktSlate : Color.rcktBlue)
+                                        }
                                         if let timestamp = entry.timestamp {
                                             Text(formatTimeOnly(timestamp))
                                                 .font(.caption2)
                                                 .foregroundStyle(.secondary)
                                         }
                                     }
-                                    .frame(minWidth: 80)
-
-                                    historicTimelineSide(
-                                        playerSide: "player2",
-                                        entry: entry,
-                                        tint: Color.rcktSlate,
-                                        serveFirst: false
-                                    )
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(12)
+                                    .background(Color(.secondarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                } else {
+                                    HStack(alignment: .center, spacing: 12) {
+                                        historicTimelineSide(playerSide: "player1", entry: entry, tint: Color.rcktBlue, serveFirst: true)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        VStack(spacing: 2) {
+                                            Text(entry.title)
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.secondary)
+                                            Text(timelineWinnerName(entry, match: match))
+                                                .font(.caption.weight(.bold))
+                                                .multilineTextAlignment(.center)
+                                            if let timestamp = entry.timestamp {
+                                                Text(formatTimeOnly(timestamp)).font(.caption2).foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        .frame(minWidth: 82)
+                                        historicTimelineSide(playerSide: "player2", entry: entry, tint: Color.rcktSlate, serveFirst: false)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                    }
+                                    .padding(12)
+                                    .background(Color(.secondarySystemBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                 }
-                                .padding(12)
-                                .background(Color(.secondarySystemBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                                if isTennisStyle, entry.tennisGameCompleted {
+                                    completionBanner(
+                                        title: entry.matchCompleted ? "Game, Set and Match" : "Game",
+                                        winner: timelineWinnerName(entry, match: match),
+                                        score: entry.completedGameScore
+                                    )
+                                }
+
+                                if isTennisStyle, entry.setCompleted, !entry.matchCompleted {
+                                    completionBanner(
+                                        title: "Set",
+                                        winner: timelineWinnerName(entry, match: match),
+                                        score: game.result.map { "\($0.player1Score)-\($0.player2Score)" }
+                                    )
+                                }
                             }
                         }
                         .padding(.bottom, 6)
@@ -462,6 +501,10 @@ struct HistoricMatchView: View {
 
     private func gameDetailsLine(for match: MatchDetail) -> String {
         let bestOfValue = live?.bestOf ?? match.bestOf
+        if isTennisStyle {
+            let scoring = live?.tennisNoAdScoring == true ? "Golden Point" : "Advantage scoring"
+            return "Best of \(bestOfValue) sets • \(scoring)"
+        }
         let scoreTypeValue = live?.scoreType ?? match.scoreType
         let handicap = matchHandicapLine(for: match)
         return "\(handicap) • Best of \(bestOfValue) • PAR-\(scoreTypeValue)"
@@ -485,6 +528,16 @@ struct HistoricMatchView: View {
     }
 
     private func eventScoreLine(_ event: MatchEvent) -> String? {
+        if isTennisStyle {
+            if let player1 = event.payload?.pointPlayer1ScoreLabel,
+               let player2 = event.payload?.pointPlayer2ScoreLabel {
+                return "\(player1)-\(player2)"
+            }
+            if let player1 = event.payload?.pointPlayer1Score,
+               let player2 = event.payload?.pointPlayer2Score {
+                return tennisScoreLine(player1: player1, player2: player2, tieBreak: event.payload?.isTieBreak == true)
+            }
+        }
         let player1 = event.payload?.gameResult?.player1Score ?? event.payload?.player1Score
         let player2 = event.payload?.gameResult?.player2Score ?? event.payload?.player2Score
 
@@ -492,7 +545,70 @@ struct HistoricMatchView: View {
             return nil
         }
 
-        return "\(player1)|\(player2)"
+        return "\(player1)-\(player2)"
+    }
+
+    private func tennisScoreLine(player1: Int, player2: Int, tieBreak: Bool) -> String {
+        guard !tieBreak else { return "\(player1)-\(player2)" }
+        let labels = ["0", "15", "30", "40"]
+        if player1 >= 3 && player2 >= 3 {
+            if player1 == player2 { return "Deuce" }
+            return player1 > player2 ? "Advantage-40" : "40-Advantage"
+        }
+        return "\(labels[min(player1, 3)])-\(labels[min(player2, 3)])"
+    }
+
+    private func timelineTitle(for event: MatchEvent) -> String {
+        switch event.eventType {
+        case "stroke": return "S to"
+        case "let": return "L to"
+        default: return "Point to"
+        }
+    }
+
+    private func timelineWinnerName(_ entry: HistoricTimelineEntry, match: MatchDetail) -> String {
+        let side = entry.winnerSide ?? "player1"
+        if isTennisStyle,
+           (live?.teamFormat ?? "").lowercased() == "doubles",
+           let participants = live?.tennisTeams?[side], !participants.isEmpty {
+            return participants.map(\.displayName).joined(separator: " & ")
+        }
+        return side == "player2"
+            ? fullName(firstName: match.player2Name, surname: match.player2Surname)
+            : fullName(firstName: match.player1Name, surname: match.player1Surname)
+    }
+
+    private func completedGameScore(_ event: MatchEvent) -> String? {
+        guard let player1 = event.payload?.completedGamePlayer1Games,
+              let player2 = event.payload?.completedGamePlayer2Games else { return nil }
+        return "\(player1)-\(player2)"
+    }
+
+    private func matchStartTime(_ match: MatchDetail) -> String {
+        let startedAt = match.state?.events.first(where: { $0.eventType == "match_started" })?.createdAt ?? match.createdAt
+        return formatTimeOnly(startedAt)
+    }
+
+    private func matchStartDate(_ match: MatchDetail) -> String {
+        let startedAt = match.state?.events.first(where: { $0.eventType == "match_started" })?.createdAt ?? match.createdAt
+        return formatDateOnly(startedAt)
+    }
+
+    private func completionBanner(title: String, winner: String, score: String?) -> some View {
+        VStack(spacing: 4) {
+            Text(title.uppercased())
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(Color.rcktCompleted)
+            Text(winner).font(.subheadline.weight(.bold))
+            if let score {
+                Text(score).font(.title3.weight(.heavy)).foregroundStyle(Color.rcktBlue)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(12)
+        .background(Color.rcktCompleted.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.rcktCompleted.opacity(0.35), lineWidth: 1))
     }
 
     private func fullName(firstName: String, surname: String?) -> String {
@@ -585,6 +701,10 @@ private struct HistoricTimelineEntry: Identifiable {
     let winnerSide: String?
     let serverSide: String?
     let serviceSideLabel: String?
+    let tennisGameCompleted: Bool
+    let setCompleted: Bool
+    let completedGameScore: String?
+    let matchCompleted: Bool
 }
 
 private struct HistoricGameTimeline: Identifiable {

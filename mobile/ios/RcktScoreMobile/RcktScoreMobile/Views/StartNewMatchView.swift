@@ -667,6 +667,7 @@ struct StartNewMatchView: View {
     }
 
     private var isPersonalAccount: Bool { organizationType == "personal" }
+    private var isPersonalPlus: Bool { (session?.plan ?? "").lowercased() == "personal_plus" }
     private var isPadelMatch: Bool { selectedSport == .padel }
     private var isTennisMatch: Bool { selectedSport == .tennis || isPadelMatch }
     private var showsTennisDoublesToggle: Bool { selectedSport == .tennis }
@@ -679,7 +680,7 @@ struct StartNewMatchView: View {
     }
 
     private var personalActiveMatch: MatchSummary? {
-        isPersonalAccount ? activeMatches.first : nil
+        isPersonalAccount && !shouldScheduleMatch ? activeMatches.first : nil
     }
 
     private var selectedCourt: CourtSummary? {
@@ -691,7 +692,8 @@ struct StartNewMatchView: View {
     }
 
     private var shouldScheduleMatch: Bool {
-        !isPersonalAccount && (formState.scheduleMatch || activeCourtMatch != nil)
+        (formState.scheduleMatch && (!isPersonalAccount || isPersonalPlus))
+            || (!isPersonalAccount && activeCourtMatch != nil)
     }
 
     private var canSubmit: Bool {
@@ -758,7 +760,7 @@ struct StartNewMatchView: View {
                     )
                 } else {
                     playerCard(
-                        title: "Player 1",
+                        title: playerHeading(firstName: formState.player1Name, fallback: "Player 1"),
                         firstName: $formState.player1Name,
                         surname: $formState.player1Surname,
                         country: $formState.player1Country,
@@ -775,7 +777,7 @@ struct StartNewMatchView: View {
                     }
 
                     playerCard(
-                        title: "Player 2",
+                        title: playerHeading(firstName: formState.player2Name, fallback: "Player 2"),
                         firstName: $formState.player2Name,
                         surname: $formState.player2Surname,
                         country: $formState.player2Country,
@@ -980,6 +982,20 @@ struct StartNewMatchView: View {
                     Text("Handicap Match")
                         .font(.subheadline.weight(.semibold))
                 }
+
+                checkboxOption(
+                    title: "Golden Point",
+                    description: "At \(formState.scoreType - 1)-all, the next point wins the game",
+                    isOn: $formState.tennisNoAdScoring,
+                    identifier: "startMatch.racketGoldenPointToggle"
+                )
+
+                checkboxOption(
+                    title: "Timed breaks between games",
+                    description: "Use the sport warm-up and 90-second game-break timers.",
+                    isOn: $formState.tennisTimedBreaks,
+                    identifier: "startMatch.racketTimedBreaksToggle"
+                )
                 .tint(Color.dashboardBrand)
                 .accessibilityIdentifier("startMatch.handicapToggle")
                 .onChange(of: formState.handicapEnabled) {
@@ -994,7 +1010,7 @@ struct StartNewMatchView: View {
                     refreshSetupNotice()
                 }
 
-                if !isPersonalAccount {
+                if !isPersonalAccount || isPersonalPlus {
                     Toggle(isOn: $formState.scheduleMatch) {
                         Text("Schedule Match")
                             .font(.subheadline.weight(.semibold))
@@ -1004,7 +1020,7 @@ struct StartNewMatchView: View {
                 }
             }
 
-            if isTennisMatch && !isPersonalAccount {
+            if isTennisMatch && (!isPersonalAccount || isPersonalPlus) {
                 Toggle(isOn: $formState.scheduleMatch) {
                     Text("Schedule Match")
                         .font(.subheadline.weight(.semibold))
@@ -1126,7 +1142,7 @@ struct StartNewMatchView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text("Start Match")
+                        Text(shouldScheduleMatch ? "Schedule Match" : "Start Match")
                             .font(.headline.weight(.semibold))
                     }
                 }
@@ -1197,7 +1213,14 @@ struct StartNewMatchView: View {
         suggestions: [PlayerLookup],
         applySuggestion: @escaping (PlayerLookup) -> Void
     ) -> some View {
-        cardSection(title: title) {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(title)
+                    .font(.title3.weight(.bold))
+                Spacer()
+                shirtColorPicker(selection: shirtColor)
+            }
+
             VStack(spacing: 14) {
                 HStack(spacing: 12) {
                     labeledField(title: "First Name *", placeholder: "First name", text: firstName, focus: nameFocus)
@@ -1221,7 +1244,6 @@ struct StartNewMatchView: View {
                     if showsHandedness {
                         handednessToggle(isLeftHanded: isLeftHanded)
                     }
-                    shirtColorPicker(selection: shirtColor)
                 }
 
                 if showsCountry {
@@ -1230,6 +1252,11 @@ struct StartNewMatchView: View {
 
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(Color.dashboardCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
     }
 
     private func doublesTeamCard(
@@ -1385,17 +1412,25 @@ struct StartNewMatchView: View {
         surnameFocus: MatchSetupFocusField
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+            HStack {
+                Text(playerHeading(firstName: firstName.wrappedValue, fallback: title))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                shirtColorPicker(selection: shirtColor)
+            }
 
             HStack(spacing: 12) {
                 labeledField(title: "First Name *", placeholder: "First name", text: firstName, focus: nameFocus)
                 labeledField(title: "Surname", placeholder: "Surname", text: surname, focus: surnameFocus)
             }
 
-            shirtColorPicker(selection: shirtColor)
         }
+    }
+
+    private func playerHeading(firstName: String, fallback: String) -> String {
+        let trimmed = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
     }
 
     private func handednessToggle(isLeftHanded: Binding<Bool>) -> some View {
@@ -1415,42 +1450,26 @@ struct StartNewMatchView: View {
                 Button {
                     selection.wrappedValue = option.id
                 } label: {
-                    Label {
-                        Text(option.label + (selection.wrappedValue == option.id ? "  ✓" : ""))
-                    } icon: {
-                        shirtColorMenuIcon(for: option)
-                    }
+                    shirtColorMenuIcon(for: option)
                 }
                 .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
             }
         } label: {
-            HStack(spacing: 9) {
+            HStack(spacing: 0) {
                 let selectedOption = shirtColorOptions.first(where: { $0.id == selection.wrappedValue }) ?? shirtColorOptions[0]
 
                 Circle()
                     .fill(selectedOption.swatch)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 24, height: 24)
                     .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
-
-                Text(selectedOption.label)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                Spacer(minLength: 4)
-
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .background(Color.dashboardInnerCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
         }
         .accessibilityLabel("Shirt")
         .accessibilityValue(shirtColorOptions.first(where: { $0.id == selection.wrappedValue })?.label ?? "Navy")
         .accessibilityIdentifier("startMatch.shirtColorPicker")
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: 44, alignment: .trailing)
     }
 
     private func shirtColorMenuIcon(for option: ShirtColorOption) -> Image {
@@ -1858,9 +1877,9 @@ struct StartNewMatchView: View {
             team1Player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer2ShirtColor : nil,
             team2Player1ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer3ShirtColor : nil,
             team2Player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer4ShirtColor : nil,
-            tennisNoAdScoring: isTennisMatch && formState.tennisNoAdScoring,
+            tennisNoAdScoring: formState.tennisNoAdScoring,
             tennisFinalSetMatchTiebreak: isTennisMatch && formState.tennisFinalSetMatchTiebreak && formState.bestOf > 1,
-            tennisTimedBreaks: isTennisMatch && formState.tennisTimedBreaks
+            tennisTimedBreaks: formState.tennisTimedBreaks
         )
 
         do {

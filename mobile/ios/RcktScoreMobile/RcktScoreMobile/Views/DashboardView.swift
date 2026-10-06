@@ -60,6 +60,7 @@ struct DashboardView: View {
     @State private var notifications: [AppNotification] = []
     @State private var notificationErrorMessage: String?
     @State private var selectedMatchesCategory: MatchesCategory = .current
+    @State private var selectedAnalyticsCategory: AnalyticsCategory = .stats
     @State private var showsManageSubscriptions = false
     @State private var isPersonalPlusOptionsExpanded = false
     @State private var personalPlusCollapseTask: Task<Void, Never>?
@@ -198,10 +199,7 @@ struct DashboardView: View {
         dynamicTypeSize.isAccessibilitySize
     }
     private var availableDashboardTabs: [DashboardTab] {
-        if isPersonalPlus {
-            return [.home, .matches, .performance, .settings, .help]
-        }
-        return DashboardTab.allCases.filter { $0 != .performance }
+        [.home, .matches, .performance, .settings, .help]
     }
     private var bottomNavigationIconSize: CGFloat {
         usesCompactBottomNavigation ? 18 : 22
@@ -210,12 +208,7 @@ struct DashboardView: View {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        var items: [SettingsMenuItem] = [.about, .profile, .subscription, .association, .racketSports, .gameSettings]
-        if isPersonalPlus {
-            items.append(.reporting)
-        }
-        items.append(.helpFeedback)
-        return items
+        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .helpFeedback]
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
         [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .helpFeedback]
@@ -243,6 +236,17 @@ struct DashboardView: View {
 
         return Image(uiImage: uiImage)
     }
+    private var countrySuggestions: [String] {
+        let query = personalProfileDraft.country.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count >= 2 else { return [] }
+        return Self.countryNames
+            .filter { $0.localizedCaseInsensitiveContains(query) && $0.caseInsensitiveCompare(query) != .orderedSame }
+            .prefix(6)
+            .map { $0 }
+    }
+    private static let countryNames: [String] = Locale.Region.isoRegions
+        .compactMap { Locale.current.localizedString(forRegionCode: $0.identifier) }
+        .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
 
     var body: some View {
         NavigationStack {
@@ -510,41 +514,55 @@ struct DashboardView: View {
 
     private var matchesContent: some View {
         VStack(spacing: 18) {
-            if isPersonalPlus {
-                Picker("Match category", selection: $selectedMatchesCategory) {
-                    ForEach(MatchesCategory.allCases) { category in
-                        Text(category.title).tag(category)
+            Picker("Match category", selection: $selectedMatchesCategory) {
+                ForEach(MatchesCategory.allCases) { category in
+                    Text(category.title).tag(category)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(6)
+            .background(Color.dashboardCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityIdentifier("matches.categoryPicker")
+
+            if selectedMatchesCategory == .history {
+                historyContent
+            } else if selectedMatchesCategory == .scheduled {
+                if isPersonalAccount && !isPersonalPlus {
+                    scheduleUpgradeCard
+                } else {
+                    dashboardSection(title: "Scheduled Matches", systemImage: "calendar.badge.clock") {
+                        scheduledMatchesContent(matches: scheduledMatches)
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(6)
-                .background(Color.dashboardCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .accessibilityIdentifier("matches.categoryPicker")
-            }
-
-            if isPersonalPlus && selectedMatchesCategory == .history {
-                historyContent
             } else {
                 dashboardSection(
-                    title: "Matches",
-                    subtitle: isPersonalAccount
-                        ? "Your live and upcoming matches in one place."
-                        : "All active courts first, then scheduled matches below."
+                    title: "Current Matches",
+                    subtitle: isPersonalAccount ? "Your matches currently in progress." : "All active matches recorded under this club account."
                 ) {
-                    VStack(spacing: 18) {
-                        matchesSubsection(title: "Active Matches", icon: "dot.radiowaves.left.and.right") {
-                            activeMatchesContent(matches: activeMatches)
-                        }
-
-                        if !isPersonalAccount {
-                            matchesSubsection(title: "Scheduled Matches", icon: "calendar.badge.clock") {
-                                scheduledMatchesContent(matches: scheduledMatches)
-                            }
-                        }
-                    }
+                    activeMatchesContent(matches: activeMatches)
                 }
             }
+        }
+    }
+
+    private var scheduleUpgradeCard: some View {
+        dashboardSection(title: "Scheduled Matches", systemImage: "calendar.badge.clock") {
+            VStack(spacing: 12) {
+                Text("Scheduling is available with Personal Plus")
+                    .font(.headline.weight(.bold))
+                Text("Upgrade to prepare matches in advance and start them when you are ready.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("View Personal Plus") {
+                    selectedTab = .settings
+                    selectedSettingsSection = .subscription
+                    settingsNavigationItem = .subscription
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -579,13 +597,27 @@ struct DashboardView: View {
 
     private var performanceContent: some View {
         VStack(spacing: 18) {
+            if isPersonalPlus {
+                Picker("Analytics category", selection: $selectedAnalyticsCategory) {
+                    ForEach(AnalyticsCategory.allCases) { category in
+                        Text(category.title).tag(category)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(6)
+                .background(Color.dashboardCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
             dashboardSection(
-                title: "Performance",
+                title: selectedAnalyticsCategory == .personal && isPersonalPlus ? "Personal Analytics" : "Stats",
                 systemImage: "chart.xyaxis.line",
-                subtitle: "Results, court time, serving and progress across your sports."
+                subtitle: selectedAnalyticsCategory == .personal && isPersonalPlus
+                    ? "Your results, court time, serving and progress across your sports."
+                    : "A summary of the matches scored in this app."
             ) {
-                if !isPersonalPlus {
-                    upgradePerformanceCard
+                if selectedAnalyticsCategory == .stats || !isPersonalPlus {
+                    basicAnalyticsContent
                 } else if isLoading && performanceSummary == nil {
                     HStack {
                         ProgressView()
@@ -664,6 +696,44 @@ struct DashboardView: View {
                 } else {
                     emptyState("No completed matches are available for performance reporting yet.")
                 }
+            }
+        }
+    }
+
+    private var basicAnalyticsContent: some View {
+        let completedCount = organizationSummary?.completedMatchCount ?? recentMatches.filter { !$0.locked }.count
+        let recordedMatches = recentMatches.filter { !$0.locked }
+        let totalSeconds = recordedMatches.reduce(0) { $0 + ($1.matchDurationSeconds ?? $1.state?.matchDurationSeconds ?? 0) }
+        let longestSeconds = recordedMatches.map { $0.matchDurationSeconds ?? $0.state?.matchDurationSeconds ?? 0 }.max() ?? 0
+        let groupedSports = Dictionary(grouping: recordedMatches) { sportDisplayName($0.sport) }
+
+        return VStack(spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                performanceStatCard(title: "Matches scored", value: "\(completedCount)", detail: "Completed matches")
+                performanceStatCard(title: "Average duration", value: recordedMatches.isEmpty ? "—" : performanceDuration(totalSeconds / recordedMatches.count), detail: "Across available history")
+                performanceStatCard(title: "Longest match", value: longestSeconds > 0 ? performanceDuration(longestSeconds) : "—", detail: "Across available history")
+                performanceStatCard(title: "Sports played", value: "\(groupedSports.count)", detail: "Different racket sports")
+            }
+
+            if !groupedSports.isEmpty {
+                performanceGroup(title: "Scoring by sport") {
+                    ForEach(groupedSports.keys.sorted(), id: \.self) { sport in
+                        let matches = groupedSports[sport] ?? []
+                        let duration = matches.reduce(0) { $0 + ($1.matchDurationSeconds ?? $1.state?.matchDurationSeconds ?? 0) }
+                        performanceRow(
+                            title: sport,
+                            value: "\(matches.count)",
+                            detail: matches.isEmpty ? "No matches" : "Average \(performanceDuration(duration / matches.count))"
+                        )
+                        if sport != groupedSports.keys.sorted().last { Divider() }
+                    }
+                }
+            }
+
+            if !isPersonalPlus && isPersonalAccount {
+                Text("Personal Free stats use the completed matches available in your plan. Upgrade for personal win, serve, opponent and progress analytics.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -889,7 +959,9 @@ struct DashboardView: View {
     }
 
     private func settingsMenuRow(_ item: SettingsMenuItem, isLast: Bool) -> some View {
-        Button {
+        let isUnavailable = item == .gameSettings || item == .reporting
+        return Button {
+            guard !isUnavailable else { return }
             selectedSettingsSection = item.section
             settingsNavigationItem = item
         } label: {
@@ -898,7 +970,7 @@ struct DashboardView: View {
 
                 Text(item.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
 
                 Spacer(minLength: 12)
 
@@ -918,6 +990,8 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.plain)
+        .disabled(isUnavailable)
+        .opacity(isUnavailable ? 0.45 : 1)
         .accessibilityIdentifier("settings.menu.\(item.rawValue)")
     }
 
@@ -1390,6 +1464,29 @@ struct DashboardView: View {
             dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress, accessibilityIdentifier: "settings.profile.emailField")
             dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad, accessibilityIdentifier: "settings.profile.telephoneField")
             dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country, accessibilityIdentifier: "settings.profile.countryField")
+            if !countrySuggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(countrySuggestions, id: \.self) { country in
+                        Button {
+                            personalProfileDraft.country = country
+                        } label: {
+                            HStack {
+                                Text(country)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.plain)
+                        if country != countrySuggestions.last { Divider() }
+                    }
+                }
+                .background(Color.dashboardInputBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
+            }
 
             Button(currentSettingsButtonTitle(for: "profile-save", defaultTitle: "Save Profile")) {
                 savePersonalProfile()
@@ -1405,25 +1502,6 @@ struct DashboardView: View {
             .disabled(savingSettingsKey != nil)
             .opacity(savingSettingsKey != nil ? 0.7 : 1)
             .accessibilityIdentifier("settings.profile.saveButton")
-
-            VStack(spacing: 10) {
-                Button(isRequestingPasswordReset ? "Sending..." : "Password Reset") {
-                    resetEmail = personalProfileDraft.email.isEmpty ? (session?.email ?? resetEmail) : personalProfileDraft.email
-                    requestPasswordReset()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(Color.dashboardBrand.opacity(0.9))
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .opacity((isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.profile.passwordResetButton")
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 14)
 
             if container.sessionStore.canUseBiometricUnlock {
                 VStack(alignment: .leading, spacing: 10) {
@@ -1457,6 +1535,21 @@ struct DashboardView: View {
                 }
                 .padding(.top, 8)
             }
+
+            Button(isRequestingPasswordReset ? "Sending..." : "Password Reset") {
+                resetEmail = personalProfileDraft.email.isEmpty ? (session?.email ?? resetEmail) : personalProfileDraft.email
+                requestPasswordReset()
+            }
+            .font(.subheadline.weight(.bold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(Color.dashboardBrand.opacity(0.9))
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .buttonStyle(.plain)
+            .disabled(isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity((isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.7 : 1)
+            .accessibilityIdentifier("settings.profile.passwordResetButton")
 
             if isPersonalAccount {
                 Button {
@@ -2167,11 +2260,10 @@ struct DashboardView: View {
         VStack(spacing: 18) {
             dashboardSection(
                 title: "Need Help?",
-                subtitle: "Send feedback or request a password reset without leaving the app."
+                subtitle: "Send feedback or get help without leaving the app."
             ) {
                 VStack(spacing: 14) {
                     feedbackForm
-                    resetForm
                     privacyComplianceLinkCard
                 }
             }
@@ -2848,6 +2940,10 @@ struct DashboardView: View {
 
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
+                    Text(sportDisplayName(match.sport))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+
                     Text([player1.firstName, player1.surname].filter { !$0.isEmpty }.joined(separator: " "))
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardBrand)
@@ -2868,10 +2964,10 @@ struct DashboardView: View {
                 VStack(spacing: 0) {
                     Text("\(player1Games)")
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.dashboardBrand)
+                        .foregroundStyle(winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardBrand)
                     Text("\(player2Games)")
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.dashboardBrand)
+                        .foregroundStyle(winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardBrand)
                 }
 
                 Image(systemName: "chevron.right")
@@ -4287,6 +4383,18 @@ struct DashboardView: View {
         return "\(player1GamesWon) - \(player2GamesWon)"
     }
 
+    private func sportDisplayName(_ value: String?) -> String {
+        switch (value ?? "squash").lowercased() {
+        case "racketball": return "Racketball"
+        case "tennis": return "Tennis"
+        case "padel": return "Padel"
+        case "table_tennis": return "Table Tennis"
+        case "badminton": return "Badminton"
+        case "pickleball": return "Pickleball"
+        default: return "Squash"
+        }
+    }
+
     private func splitPlayerName(_ firstName: String, surname: String?) -> (firstName: String, surname: String) {
         ((firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Player" : firstName), surname ?? "")
     }
@@ -4610,7 +4718,7 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
         case .history:
             return "History"
         case .performance:
-            return "Performance"
+            return "Analytics"
         case .settings:
             return "Settings"
         case .help:
@@ -4638,10 +4746,25 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
 
 private enum MatchesCategory: String, CaseIterable, Identifiable {
     case current
+    case scheduled
     case history
 
     var id: String { rawValue }
-    var title: String { self == .current ? "Current Matches" : "Match History" }
+    var title: String {
+        switch self {
+        case .current: return "Current"
+        case .scheduled: return "Scheduled"
+        case .history: return "History"
+        }
+    }
+}
+
+private enum AnalyticsCategory: String, CaseIterable, Identifiable {
+    case stats
+    case personal
+
+    var id: String { rawValue }
+    var title: String { self == .stats ? "Stats" : "Personal" }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {

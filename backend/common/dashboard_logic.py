@@ -336,7 +336,7 @@ def get_dashboard_data(connection, organization_id, active_limit=12, recent_limi
             limit=active_limit,
         )
     scheduled_matches = []
-    if org_type != "personal" and active_limit and active_limit > 0:
+    if (org_type != "personal" or plan == "personal_plus") and active_limit and active_limit > 0:
         scheduled_matches = _safe_list_matches(
             connection,
             organization_id=organization_id,

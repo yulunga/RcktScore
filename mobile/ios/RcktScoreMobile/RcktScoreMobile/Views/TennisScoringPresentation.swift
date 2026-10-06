@@ -269,7 +269,7 @@ struct TennisScoringPresentation: View {
         } label: {
             VStack(spacing: compact ? 8 : 10) {
                 HStack(spacing: 6) {
-                    Text([name, surname].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
+                    Text(scoreDisplayName(side: side, name: name, surname: surname))
                         .font(compact ? .headline : .title3.weight(.bold))
                         .lineLimit(2)
                         .minimumScaleFactor(0.72)
@@ -312,6 +312,16 @@ struct TennisScoringPresentation: View {
             Text(label).font(.caption2.weight(.semibold))
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func scoreDisplayName(side: String, name: String, surname: String?) -> String {
+        let hasMatchingFirstNames = match.player1Name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(match.player2Name.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+        if hasMatchingFirstNames,
+           let initial = surname?.trimmingCharacters(in: .whitespacesAndNewlines).first {
+            return "\(name) \(String(initial).uppercased())."
+        }
+        return name
     }
 
     private var receiverChoice: some View {

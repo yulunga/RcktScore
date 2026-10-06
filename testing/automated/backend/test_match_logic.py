@@ -50,6 +50,12 @@ def test_game_completion_requires_target_and_two_point_margin():
     assert _is_game_complete(17, 15, 15) is True
 
 
+def test_golden_point_completes_on_the_next_point_at_target_all():
+    assert _is_game_complete(11, 10, 11, golden_point=True) is True
+    assert _is_game_complete(15, 14, 15, golden_point=True) is True
+    assert _is_game_complete(10, 10, 11, golden_point=True) is False
+
+
 def _active_match(**state_overrides):
     state = {
         "player1_score": 1,
@@ -90,6 +96,20 @@ def test_server_win_alternates_from_manually_selected_left_side():
     assert transition["state"]["current_server_side"] == "player1"
     assert transition["state"]["service_side"] == "Right"
     assert transition["payload"]["service_side"] == "Right"
+
+
+def test_racket_golden_point_ends_game_with_one_point_lead():
+    match = _active_match(
+        player1_score=10,
+        player2_score=10,
+        tennis_no_ad_scoring=True,
+    )
+
+    transition = _prepare_scoring_transition(match, "player1", "score_point", {"scorer": "player1"})
+
+    assert transition["payload"]["game_completed"] is True
+    assert transition["payload"]["game_result"]["player1_score"] == 11
+    assert transition["payload"]["game_result"]["player2_score"] == 10
 
 
 def test_service_transfer_uses_receivers_handedness_default():

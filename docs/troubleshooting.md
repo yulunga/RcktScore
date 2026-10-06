@@ -469,7 +469,8 @@ aws sns list-subscriptions-by-topic --topic-arn <ProductionAlarmTopicArn> --regi
 These are current product limitations, not accidental breakage:
 
 - organisation handicap toggle in settings is scaffold-only
-- reporting, stats, federation-style association links, and account-level game-settings sections in native settings are still mostly scaffold/placeholder surfaces
+- reporting and account-level game-settings rows remain visibly disabled placeholders in native settings; Analytics now contains working basic scored-match stats plus Personal Plus personal performance, while deeper federation-style association integrations remain incomplete
+- if squash/racketball Golden Point does not end a PAR-11 game at 11-10 or a PAR-15 game at 15-14, confirm `tennis_no_ad_scoring` is present on the match and match-start event; the shared field is intentionally reused for the racket Golden Point rule
 - WebSocket infrastructure is partial
 - notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
 - StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal the yearly purchase, Restore Purchases, and Manage Subscription controls for 20 seconds

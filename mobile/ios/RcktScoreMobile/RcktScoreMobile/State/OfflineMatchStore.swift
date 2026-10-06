@@ -440,7 +440,8 @@ private enum OfflineScoringReducer {
 
         let high = max(state.player1Score, state.player2Score)
         let low = min(state.player1Score, state.player2Score)
-        let gameComplete = high >= state.scoreType && high - low >= 2
+        let requiredLead = state.tennisNoAdScoring ? 1 : 2
+        let gameComplete = high >= state.scoreType && high - low >= requiredLead
         guard gameComplete else { return }
 
         let winnerName = state.player1Score > state.player2Score ? match.player1Name : match.player2Name

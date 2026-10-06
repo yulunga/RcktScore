@@ -7,6 +7,7 @@ struct MatchSummary: Decodable, Identifiable {
     let player2Name: String
     let player2Surname: String?
     let courtName: String?
+    let sport: String?
     let status: String
     let bestOf: Int?
     let scoreType: Int?
@@ -25,6 +26,7 @@ struct MatchSummary: Decodable, Identifiable {
         case player2Name = "player2_name"
         case player2Surname = "player2_surname"
         case courtName = "court_name"
+        case sport
         case status
         case bestOf = "best_of"
         case scoreType = "score_type"
@@ -45,6 +47,7 @@ struct MatchSummary: Decodable, Identifiable {
         player2Name = try container.decode(String.self, forKey: .player2Name)
         player2Surname = try container.decodeIfPresent(String.self, forKey: .player2Surname)
         courtName = try container.decodeIfPresent(String.self, forKey: .courtName)
+        sport = try container.decodeIfPresent(String.self, forKey: .sport)
         status = try container.decode(String.self, forKey: .status)
         bestOf = try container.decodeIfPresent(Int.self, forKey: .bestOf)
         scoreType = try container.decodeIfPresent(Int.self, forKey: .scoreType)

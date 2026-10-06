@@ -108,12 +108,14 @@ def _initial_scores(match_like):
     return (0, 0)
 
 
-def _is_game_complete(player1_score, player2_score, target):
+def _is_game_complete(player1_score, player2_score, target, golden_point=False):
     highest_score = max(player1_score, player2_score)
     lowest_score = min(player1_score, player2_score)
 
     if highest_score < target:
         return False
+    if golden_point:
+        return highest_score - lowest_score >= 1
     if lowest_score <= target - 2 and highest_score == target:
         return True
     return highest_score - lowest_score >= 2
@@ -221,6 +223,8 @@ def _initial_state(match_row):
         "current_server": match_row["player1_name"],
         "current_server_side": "player1",
         "service_side": _service_side_for_receiver(match_row, "player1"),
+        "tennis_no_ad_scoring": bool(match_row.get("tennis_no_ad_scoring")),
+        "tennis_timed_breaks": bool(match_row.get("tennis_timed_breaks")),
         "handicap": {
             "enabled": bool(match_row.get("handicap_enabled")),
             "player1_band": match_row.get("player1_band"),
@@ -266,6 +270,8 @@ def _build_state(match_row, event_rows):
                 payload.get("player2_shirt_color"),
                 state["player2_shirt_color"],
             )
+            state["tennis_no_ad_scoring"] = bool(payload.get("tennis_no_ad_scoring", state["tennis_no_ad_scoring"]))
+            state["tennis_timed_breaks"] = bool(payload.get("tennis_timed_breaks", state["tennis_timed_breaks"]))
             if payload.get("handicap_enabled"):
                 state["handicap"] = {
                     "enabled": True,
@@ -698,12 +704,21 @@ def create_match(connection, payload, source="api"):
     now = _utcnow()
     tenant_plan = _fetch_tenant_plan(connection, tenant_id)
     is_personal_tenant = _is_personal_tenant(tenant_id, tenant_plan)
+    can_schedule_personal = (
+        is_personal_tenant
+        and str((tenant_plan or {}).get("plan") or "").lower() == "personal_plus"
+    )
     can_choose_shirt_colors = _can_choose_shirt_colors(tenant_plan, tenant_id)
     match_payload = {**payload}
+    requested_status = (
+        _match_status_value(payload.get("status"))
+        if not is_personal_tenant or can_schedule_personal
+        else "active"
+    )
 
     if is_personal_tenant:
         active_match = _find_active_match_for_tenant(connection, tenant_id)
-        if active_match:
+        if active_match and requested_status == "active":
             raise ValueError("Personal accounts can only have one active match at a time")
 
         personal_court = _ensure_personal_match_court(connection, tenant_id)
@@ -716,7 +731,6 @@ def create_match(connection, payload, source="api"):
 
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
-    requested_status = "active" if is_personal_tenant else _match_status_value(payload.get("status"))
     conflicting_match = None
     match_status = requested_status
     handicap_enabled = False if is_personal_tenant else bool(payload.get("handicap_enabled"))
@@ -760,6 +774,8 @@ def create_match(connection, payload, source="api"):
                 player2_country,
                 player2_handedness,
                 player2_shirt_color,
+                tennis_no_ad_scoring,
+                tennis_timed_breaks,
                 referee_name,
                 score_type,
                 best_of,
@@ -800,6 +816,8 @@ def create_match(connection, payload, source="api"):
                 %(player2_country)s,
                 %(player2_handedness)s,
                 %(player2_shirt_color)s,
+                %(tennis_no_ad_scoring)s,
+                %(tennis_timed_breaks)s,
                 %(referee_name)s,
                 %(score_type)s,
                 %(best_of)s,
@@ -841,6 +859,8 @@ def create_match(connection, payload, source="api"):
                 "player2_country": match_payload.get("player2_country"),
                 "player2_handedness": str(match_payload.get("player2_handedness") or "right").lower(),
                 "player2_shirt_color": player2_shirt_color,
+                "tennis_no_ad_scoring": bool(match_payload.get("tennis_no_ad_scoring")),
+                "tennis_timed_breaks": bool(match_payload.get("tennis_timed_breaks")),
                 "referee_name": match_payload.get("referee_name"),
                 "score_type": int(match_payload.get("score_type", 15)),
                 "best_of": best_of,
@@ -886,6 +906,8 @@ def create_match(connection, payload, source="api"):
                     "service_side": _service_side_for_receiver(match_payload, "player1"),
                     "player1_shirt_color": player1_shirt_color,
                     "player2_shirt_color": player2_shirt_color,
+                    "tennis_no_ad_scoring": bool(match_payload.get("tennis_no_ad_scoring")),
+                    "tennis_timed_breaks": bool(match_payload.get("tennis_timed_breaks")),
                     "player1_score": player1_offset,
                     "player2_score": player2_offset,
                     "handicap_enabled": handicap_enabled,
@@ -1028,7 +1050,12 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     winner_side = None
     winner_name = None
 
-    if _is_game_complete(player1_score, player2_score, match["score_type"]):
+    if _is_game_complete(
+        player1_score,
+        player2_score,
+        match["score_type"],
+        golden_point=bool(state.get("tennis_no_ad_scoring")),
+    ):
         winner_side, winner_name = _winner_from_scores(match, player1_score, player2_score)
         if winner_side == "player1":
             player1_games_won += 1

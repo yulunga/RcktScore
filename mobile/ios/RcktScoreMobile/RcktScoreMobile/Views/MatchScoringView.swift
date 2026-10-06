@@ -83,6 +83,7 @@ struct MatchScoringView: View {
     @State private var selectedOpeningReceiverParticipantID: String?
     @State private var showActionMenu = false
     @State private var pendingActionSelection: MatchActionSelection?
+    @State private var showEndMatchConfirmation = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -101,7 +102,9 @@ struct MatchScoringView: View {
         isTennisMatch && (live?.teamFormat ?? "").lowercased() == "doubles"
     }
     private var warmupDurationSeconds: Int {
-        isTennisMatch ? 300 : defaultWarmupSeconds
+        if isTennisMatch { return 300 }
+        if (match?.sport ?? "").lowercased() == "racketball" { return 150 }
+        return 120
     }
     private var latestTennisGameCompletionEvent: MatchEvent? {
         live?.events.last(where: { $0.payload?.tennisGameCompleted == true })
@@ -505,7 +508,7 @@ struct MatchScoringView: View {
                         border: .rcktDanger
                     ) {
                         showActionMenu = false
-                        Task { await endMatchEarly() }
+                        showEndMatchConfirmation = true
                     }
                     .accessibilityIdentifier("scoring.action.endEarly")
                     .disabled(isMutating || isMatchComplete)
@@ -766,6 +769,14 @@ struct MatchScoringView: View {
             pendingActionSelection = nil
         }) {
             matchActionSheet
+        }
+        .alert("End Match Early?", isPresented: $showEndMatchConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("End Match", role: .destructive) {
+                Task { await endMatchEarly() }
+            }
+        } message: {
+            Text("Are you sure you want to end this match? You can cancel and resume scoring.")
         }
     }
 
@@ -1672,7 +1683,7 @@ struct MatchScoringView: View {
                         LazyVStack(alignment: .leading, spacing: 10) {
                             ForEach(Array((live?.events ?? []).reversed())) { event in
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(event.summary ?? event.eventType.replacingOccurrences(of: "_", with: " ").capitalized)
+                                    Text(liveTimelineTitle(event, match: match))
                                         .font(.subheadline.weight(.semibold))
                                     if let createdAt = event.createdAt {
                                         Text(formatDate(createdAt))
@@ -1706,7 +1717,7 @@ struct MatchScoringView: View {
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
         VStack(spacing: compact ? 8 : 10) {
-            Text(fullName(firstName: firstName, surname: surname))
+            Text(scoringDisplayName(side: side, firstName: firstName, surname: surname))
                 .font(.system(size: landscapeTablet ? 24 : (compact ? 19 : 21), weight: .bold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
@@ -2291,7 +2302,7 @@ struct MatchScoringView: View {
         if currentCount > previousCount {
             previousGameHistoryCount = currentCount
 
-            if !isTennisMatch && !isMatchComplete {
+            if !isTennisMatch && !isMatchComplete && live?.tennisTimedBreaks == true {
                 timerPhase = .interval
                 timerSeconds = intervalSeconds
                 activeIntervalDurationSeconds = intervalSeconds
@@ -2818,6 +2829,29 @@ struct MatchScoringView: View {
         }
 
         return "\(firstName) \(surname)"
+    }
+
+    private func liveTimelineTitle(_ event: MatchEvent, match: MatchDetail) -> String {
+        let side = event.payload?.playerSide ?? event.payload?.scorer
+        let playerName = side == "player2"
+            ? scoringDisplayName(side: "player2", firstName: match.player2Name, surname: match.player2Surname)
+            : scoringDisplayName(side: "player1", firstName: match.player1Name, surname: match.player1Surname)
+        switch event.eventType {
+        case "stroke": return "S to \(playerName)"
+        case "let": return "L to \(playerName)"
+        default: return event.summary ?? event.eventType.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func scoringDisplayName(side: String, firstName: String, surname: String?) -> String {
+        guard let match,
+              match.player1Name.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(
+                match.player2Name.trimmingCharacters(in: .whitespacesAndNewlines)
+              ) == .orderedSame,
+              let initial = surname?.trimmingCharacters(in: .whitespacesAndNewlines).first else {
+            return firstName
+        }
+        return "\(firstName) \(String(initial).uppercased())."
     }
 
     private func tennisParticipantDisplayName(_ participantID: String, match: MatchDetail) -> String {
