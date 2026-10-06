@@ -333,6 +333,8 @@ On iOS, the Want In and Ping Us forms are replaced by their confirmation screens
 
 On the web, package version/build details are intentionally absent from both the standard login and `Want In` registration states. If they still appear at `/` or `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
 
+The login logo and HitnScore wordmark should link to `https://www.hitnscore.com/`. If they do not, verify the `.login-branding` anchor in `LoginPage.jsx` and deploy the current frontend bundle.
+
 The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct Help Centre section opens the overview instead, verify the `section` value against `web-access`, `ios-access`, `terms`, `privacy`, and `cookies` and deploy the current frontend bundle.
 
 The Help Centre header should remain fixed and switch to `help-centre-header--compact` after scrolling beyond 48 pixels. If it does not shrink, check the scroll listener in `HelpPage.jsx` and the compact rules in `styles.css`. The Help Centre logo/wordmark should navigate to `https://www.hitnscore.com/`, not the app login route.

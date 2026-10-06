@@ -180,6 +180,8 @@ The app shell and public landing homepage use the same browser title and descrip
 
 The Help Centre header compacts on scroll and its brand link returns to the public landing homepage. Both behaviours are client-only and add no API contract.
 
+The public login logo and wordmark also link to the public landing homepage. This is client-only navigation and does not change authentication APIs.
+
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`

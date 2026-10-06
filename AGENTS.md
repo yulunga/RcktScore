@@ -74,6 +74,7 @@ What is real and implemented:
 - the public web login and `Want In` registration states omit internal package-version/build details
 - the responsive app `/help` route is the single public Help Centre and knowledge base, with web and iPhone registration/sign-in guides, password reset, legal pages, and a footer matching the public website; public landing-page help, privacy, and cookie links route into it rather than maintaining a duplicate landing Help page
 - the app Help Centre uses the same fixed, scroll-compacting header behaviour as the public landing page, and its logo/wordmark returns to `https://www.hitnscore.com/`
+- the public web login logo and HitnScore wordmark link back to `https://www.hitnscore.com/`
 - the app client and public landing homepage share the `HitNScore | Every Point. Every Court.` browser title and the same public description metadata
 - shared responsive HitnScore HTML branding across password reset, account setup, club invitations and enquiries, and feedback notifications, with plain-text fallbacks
 - one authoritative personal entitlement contract is enforced server-side: Personal Free can read its latest three completed matches, while Personal Plus can read its latest 100 and receives performance analytics

@@ -114,6 +114,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 
 1. A visitor opens the `Want In` form on the login page.
    - both the standard web login and registration states omit internal package-version/build details
+   - the login logo and HitnScore wordmark return to `https://www.hitnscore.com/`
    - the native form introduces personal and multi-user club accounts and links to `https://www.hitnscore.com` for further product information
 2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
 3. The honeypot field is `company`.

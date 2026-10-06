@@ -228,18 +228,18 @@ export default function LoginPage() {
         <div className="login-panel-wrap">
           <section className="login-panel stack">
             <div className="login-panel__top">
-              <div className="login-branding">
+              <a className="login-branding" href="https://www.hitnscore.com/" aria-label="HitnScore landing page">
                 <img
                   className="login-branding__logo"
                   src="/branding/logo/brand-logo.png"
-                  alt="Hit n Score"
+                  alt=""
                 />
-                <h1 className="login-title login-title--wordmark" aria-label="HitnScore">
+                <h1 className="login-title login-title--wordmark" aria-hidden="true">
                   <span className="login-title__hit">Hit</span>
                   <span className="login-title__n">n</span>
                   <span className="login-title__score">Score</span>
                 </h1>
-              </div>
+              </a>
             </div>
             {requiresOrganizationSelection ? (
               <div className="stack">
