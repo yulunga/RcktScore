@@ -1,0 +1,2 @@
+"""Tournament Manager domain package."""
+

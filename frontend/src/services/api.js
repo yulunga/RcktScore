@@ -346,6 +346,13 @@ export function createRootAdminOrganization(payload) {
   });
 }
 
+export function updateRootAdminTournamentFeature(organizationId, webEnabled) {
+  return apiRequest(`/root_admin/organizations/${organizationId}/tournament-feature`, {
+    method: "PUT",
+    body: JSON.stringify({ web_enabled: Boolean(webEnabled) }),
+  });
+}
+
 export function searchRootAdminOrganizations(query) {
   const params = new URLSearchParams({ q: query });
   return apiRequest(`/root_admin/organizations/search?${params.toString()}`);
@@ -374,6 +381,29 @@ export function approveRootAdminOrganizationUser(userId, payload) {
 
 export function getOrganizationSettings(organizationId, options = {}) {
   return apiRequest(`/organization_settings/${organizationId}`, options);
+}
+
+export function getTournaments(organizationId) {
+  return apiRequest(`/organizations/${organizationId}/tournaments`);
+}
+
+export function createTournament(organizationId, payload) {
+  return apiRequest(`/organizations/${organizationId}/tournaments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getTournament(tournamentId, organizationId) {
+  const params = new URLSearchParams({ organization_id: String(organizationId) });
+  return apiRequest(`/tournaments/${tournamentId}?${params.toString()}`);
+}
+
+export function createTournamentEntry(tournamentId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/entries`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function searchMatchSetupLookup(organizationId, query) {

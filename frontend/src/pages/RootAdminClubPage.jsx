@@ -14,6 +14,7 @@ import {
   updateOrganizationCourt,
   updateOrganizationDetails,
   updateRootAdminOrganizationUserRole,
+  updateRootAdminTournamentFeature,
 } from "../services/api";
 
 const emptyOrganizationForm = {
@@ -192,6 +193,15 @@ export default function RootAdminClubPage() {
       "enabled-sports",
       () => updateOrganizationDetails(organizationId, { enabled_sports: enabledSports }, ROOT_ADMIN_REQUEST_OPTIONS),
       "Enabled racket sports updated.",
+    );
+  }
+
+  async function handleTournamentFeatureChange() {
+    const currentlyEnabled = Boolean(settings?.organization?.features?.tournament_manager?.web_enabled);
+    await runMutation(
+      "tournament-feature",
+      () => updateRootAdminTournamentFeature(organizationId, !currentlyEnabled),
+      `Tournament Manager ${currentlyEnabled ? "disabled" : "enabled"} for this club.`,
     );
   }
 
@@ -724,6 +734,30 @@ export default function RootAdminClubPage() {
               {savingSection === "enabled-sports" ? "Saving..." : "Save Racket Sports"}
             </button>
           </div>
+
+          <div className="panel-heading panel-heading--subsection">
+            <h3>Tournament Manager</h3>
+            <p className="helper-text">
+              Enable the web-only tournament workspace for this club. Disabling it hides club access but retains tournament data.
+            </p>
+          </div>
+          <article className={`sport-option ${settings?.organization?.features?.tournament_manager?.web_enabled ? "active" : "disabled"}`}>
+            <strong>Web Tournament Manager</strong>
+            <span>{settings?.organization?.features?.tournament_manager?.web_enabled ? "Enabled" : "Disabled"}</span>
+            <p>Club administrators will find the entry point in their Settings page.</p>
+            <button
+              className={settings?.organization?.features?.tournament_manager?.web_enabled ? "secondary" : ""}
+              disabled={savingSection === "tournament-feature"}
+              type="button"
+              onClick={handleTournamentFeatureChange}
+            >
+              {savingSection === "tournament-feature"
+                ? "Saving..."
+                : settings?.organization?.features?.tournament_manager?.web_enabled
+                  ? "Disable Tournament Manager"
+                  : "Enable Tournament Manager"}
+            </button>
+          </article>
         </section>
       ) : null}
 

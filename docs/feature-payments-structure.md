@@ -23,6 +23,8 @@ Current code supports:
 - public single-match display route
 - event-sourced match history through `matches` and `match_events`
 - organisation and personal-account sport visibility control through `enabled_sports`
+- a web-only, per-club gated Tournament Manager foundation for draft events and
+  singles entry capture
 
 ### Match operations
 
@@ -112,6 +114,8 @@ Currently represented in code:
 - clubs can create and manage courts and users
 - clubs can use shirt colours
 - clubs can use active and scheduled matches
+- selected clubs can be granted the web Tournament Manager foundation by root
+  admin; it currently covers draft events, reusable player identities and entries
 
 Currently not enforced as hard limits:
 
@@ -142,6 +146,8 @@ These are safe to describe as implemented today:
 - dedicated player registry/CRM
 - advanced analytics and reporting
 - exports/downloadable reports
+- tournament draw generation, fixtures, scheduling, public draws and linked
+  scoring-match progression
 - hard plan guardrails for club scale
 - live padel, table tennis, badminton, or pickleball scoring
 

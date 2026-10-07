@@ -1013,6 +1013,66 @@ Resources:
       Endpoint: !Ref AlarmNotificationEmail
       TopicArn: !Ref ProductionAlarmTopic
 
+  UpdateRootAdminTournamentFeatureFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_tournament_feature/handler.lambda_handler
+      Events:
+        UpdateRootAdminTournamentFeature:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/organizations/{organization_id}/tournament-feature
+            Method: PUT
+
+  ListTournamentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/list_tournaments/handler.lambda_handler
+      Events:
+        ListTournaments:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organizations/{organization_id}/tournaments
+            Method: GET
+
+  CreateTournamentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_tournament/handler.lambda_handler
+      Events:
+        CreateTournament:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organizations/{organization_id}/tournaments
+            Method: POST
+
+  GetTournamentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_tournament/handler.lambda_handler
+      Events:
+        GetTournament:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}
+            Method: GET
+
+  CreateTournamentEntryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/create_tournament_entry/handler.lambda_handler
+      Events:
+        CreateTournamentEntry:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/entries
+            Method: POST
+
   HttpApiServerErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:

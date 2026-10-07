@@ -54,6 +54,7 @@ What is real and implemented:
 - native iOS match setup exposes the implemented and enabled sports only: squash, racketball, tennis, and doubles Padel; Padel remains hidden until it is enabled through the platform and account sport controls
 - native iOS sport selection uses clean brand-blue court diagrams with photo-style, transparent ball artwork for squash, racketball, tennis, and Padel, with adaptive light/dark card surfaces; the Settings Racket Sports rows reuse compact versions of the same ball artwork without changing their menu layout
 - native iOS gives Personal Free and Personal Plus the same Home, Matches, Analytics, Settings and Need Help navigation; Matches is split into Current, Scheduled and History, with Personal Free seeing an upgrade gate for scheduling, while Analytics exposes basic scored-match stats to both tiers and adds personal performance reporting for Personal Plus
+- the signed-in web header is full-width within the page shell and remains sticky while scrolling; it has no dashboard description, contains compact Matches, Analytics and Settings navigation beneath the account controls, and reduces only its height on scroll while replacing those labels with iOS-style icons. The dashboard Start New Match control remains below the header as a brand-blue action
 - web and native completed matches use dedicated read-only historic-match views with sport-specific game/set terminology, match start time and duration, per-game/set timing, and grouped point timelines; tennis and Padel use tennis point labels plus separate game and set completion dividers and omit squash-style service-side markers
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
 - native settings now use a plan-aware menu layout with About first, followed by Profile and Subscription, dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, personal-account deletion with two destructive confirmations, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
@@ -93,6 +94,7 @@ What is real and implemented:
 - root-admin user profiles show email-verification state and allow an authenticated root admin to manually verify an account and approve pending memberships for that email without changing its password
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
 - root-admin RacketSports controls for separate web and iOS availability lists; the default save changes only platform availability, while a separate affected-user preview and confirmation-protected apply-to-all action remains available, and individual access is assigned from User Accounts or club settings
+- a web-only Tournament Manager foundation for selectively enabled clubs: root admin can enable or disable access per club, enabled club admins can create draft events and add singles entries, a canonical `users` identity links repeated organisation memberships, and reusable `players` identities distinguish linked members from non-authenticating guest players; draw generation, fixtures, scheduling and scoring-match linkage are not implemented yet
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 - a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 
@@ -121,6 +123,7 @@ What is still partial or risky:
   - match state in `src/context/MatchContext.jsx`
   - HTTP client in `src/services/api.js`
   - browser WebSocket client in `src/services/websocket.js`
+  - Tournament Manager web feature in `src/features/tournaments/`
 - `backend/`
   - Lambda handlers in `functions/*/handler.py`
   - shared backend logic in `common/*.py`
@@ -152,6 +155,8 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/performance`
 - `/settings`
 - `/settings/users/:userId`
+- `/tournaments`
+- `/tournaments/:tournamentId`
 - `/ping`
 - `/match/new`
 - `/match/new/setup`
@@ -183,6 +188,7 @@ Defined in [backend/template.yaml](/Users/glennrowe/Development/Projects/RcktSco
 - user and court administration
 - match setup lookup
 - match lifecycle and scoring
+- web Tournament Manager feature access, draft events and entries
 
 See the backend/API reference for the exact route list.
 
@@ -193,6 +199,7 @@ See the backend/API reference for the exact route list.
 - reconnect-safe scoring action UUIDs are recorded in `match_action_receipts`; duplicate retries return current match state without repeating the mutation
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is enforced before match creation as the intersection of platform client access, organisation `enabled_sports`, and per-membership web/iOS access
+- Tournament Manager access is club-only, requires an explicit `tournament_organization_features.web_enabled` record and is enforced by the backend in addition to conditional web navigation
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
 - the former `x-root-admin-request` trust-header bypass has been removed
 - root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain

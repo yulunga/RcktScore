@@ -46,11 +46,12 @@ const EMPTY_TIMED_BREAK_DEFAULTS = {
   tennis: false,
   padel: false,
 };
-const adminTabs = [
+const SETTINGS_TABS = [
   { id: "organisation", label: "Organisation" },
   { id: "courts", label: "Courts" },
   { id: "users", label: "Users" },
   { id: "game-social", label: "Game & Social" },
+  { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
 
 function formatDate(value) {
@@ -94,13 +95,19 @@ export default function OrganisationSettingsPage() {
   const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
-    adminTabs.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
+    SETTINGS_TABS.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
   );
 
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
   const isPersonalSession = session?.organization_type === "personal";
   const isPersonalAccount = isPersonalSession || settings?.organization?.org_type === "personal";
+  const tournamentManagerEnabled = !isPersonalAccount
+    && Boolean(settings?.organization?.features?.tournament_manager?.web_enabled);
+  const visibleAdminTabs = useMemo(
+    () => SETTINGS_TABS.filter((tab) => !tab.requiresTournament || tournamentManagerEnabled),
+    [tournamentManagerEnabled],
+  );
   const scoreboardUrl = useMemo(() => {
     if (typeof window === "undefined") {
       return "/scoreboard";
@@ -203,11 +210,17 @@ export default function OrganisationSettingsPage() {
   }, [loadSettings]);
 
   useEffect(() => {
-    const requestedTab = searchParams.get("tab");
-    if (requestedTab && adminTabs.some((tab) => tab.id === requestedTab) && requestedTab !== activeTab) {
-      setActiveTab(requestedTab);
+    if (!settings) {
+      return;
     }
-  }, [activeTab, searchParams]);
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab && visibleAdminTabs.some((tab) => tab.id === requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    } else if (requestedTab === "tournament-manager" && !tournamentManagerEnabled) {
+      setActiveTab("organisation");
+      setSearchParams({ tab: "organisation" }, { replace: true });
+    }
+  }, [activeTab, searchParams, setSearchParams, settings, tournamentManagerEnabled, visibleAdminTabs]);
 
   async function runMutation(section, task, successMessage) {
     setSavingSection(section);
@@ -758,7 +771,7 @@ export default function OrganisationSettingsPage() {
                 <path d="M4.75 10.25L12 4.75L19.25 10.25V18.25H14.75V13.75H9.25V18.25H4.75V10.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            {adminTabs.map((tab) => (
+            {visibleAdminTabs.map((tab) => (
               <button
                 key={tab.id}
                 className={`root-admin-tab ${activeTab === tab.id ? "active" : ""}`}
@@ -769,6 +782,30 @@ export default function OrganisationSettingsPage() {
               </button>
             ))}
           </section>
+
+          {activeTab === "tournament-manager" && tournamentManagerEnabled ? (
+            <section className="panel stack tournament-settings-card">
+              <div className="panel-heading">
+                <h2>Tournament Manager</h2>
+                <p className="helper-text">
+                  Create tournament events, register club members and visiting players, and prepare entries for draws and scheduling.
+                </p>
+              </div>
+              <div className="dashboard-item">
+                <div className="dashboard-item-head">
+                  <strong>Web Tournament Manager</strong>
+                  <span className="status-pill active">Enabled</span>
+                </div>
+                <div className="dashboard-item-meta">
+                  <span>Available only while signed in to this club.</span>
+                  <span>Visiting players are stored as guests without receiving club account access.</span>
+                </div>
+              </div>
+              <div className="button-row">
+                <button type="button" onClick={() => navigate("/tournaments")}>Open Tournament Manager</button>
+              </div>
+            </section>
+          ) : null}
 
           {activeTab === "organisation" ? (
             <section className="club-admin-overview-grid">

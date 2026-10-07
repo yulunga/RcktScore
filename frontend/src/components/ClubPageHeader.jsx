@@ -80,6 +80,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const { session, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
   const accountSubline = organizationType === "personal"
@@ -87,6 +88,26 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
     : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
   const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
+  const headerMenuItems = [
+    {
+      label: "Matches",
+      icon: "matches",
+      onClick: () => navigate("/matches"),
+      isActive: location.pathname === "/matches" || location.pathname === "/history" || location.pathname.startsWith("/match/"),
+    },
+    {
+      label: "Analytics",
+      icon: "history",
+      onClick: () => navigate("/performance"),
+      isActive: location.pathname === "/performance",
+    },
+    {
+      label: "Settings",
+      icon: "settings",
+      onClick: () => navigate("/settings"),
+      isActive: location.pathname.startsWith("/settings"),
+    },
+  ];
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
     {
@@ -95,9 +116,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       onClick: () => navigate("/matches"),
       isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
     },
-    ...(isPersonalPlus ? [{ label: "Performance", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" }] : [
-      { label: "History", icon: "history", onClick: () => navigate("/history"), isActive: location.pathname === "/history" },
-    ]),
+    { label: "Analytics", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" },
     { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
     { label: "Need Help?", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping", accent: true },
   ];
@@ -105,6 +124,16 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    function updateHeader() {
+      setIsHeaderCompact(window.scrollY > 48);
+    }
+
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,7 +156,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
 
   return (
     <>
-      <section className={`hero-card club-page-header ${className}`.trim()}>
+      <section className={`hero-card club-page-header${isHeaderCompact ? " club-page-header--compact" : ""} ${className}`.trim()}>
         <div className="club-page-header__top">
           <div className="club-page-header__branding">
             <div className="club-page-header__brand-row">
@@ -195,6 +224,24 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               <span className="club-page-header__username">{session?.username || "Operator"}</span>
             </div>
             <span className="club-page-header__organization-name">{accountSubline}</span>
+            <nav className="club-page-header__menu" aria-label="Primary navigation">
+              {headerMenuItems.map((item) => (
+                <button
+                  aria-current={item.isActive ? "page" : undefined}
+                  aria-label={item.label}
+                  className={`club-page-header__menu-item${item.isActive ? " club-page-header__menu-item--active" : ""}`}
+                  key={item.label}
+                  title={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                >
+                  <span className="club-page-header__menu-icon" aria-hidden="true">
+                    <MobileMenuIcon name={item.icon} />
+                  </span>
+                  <span className="club-page-header__menu-label">{item.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
 

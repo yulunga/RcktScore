@@ -79,6 +79,12 @@ durations, sport terminology, the grouped scoring timeline, and separate
 tennis game/set dividers. Completed-match cards should navigate to
 `/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
 
+Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
+compact after a vertical scroll. The check confirms that the outer width does
+not change, the header remains sticky, Matches/Analytics/Settings labels become
+icons, the removed dashboard description stays absent, and Start New Match
+remains a separate blue action.
+
 ### iOS project inventory
 
 ```bash
@@ -544,3 +550,24 @@ When a new recurring failure mode appears, update this file with:
 - the likely layer
 - the key files
 - the fastest verification step
+## Tournament Manager
+
+If Tournament Manager does not appear in club Settings:
+
+- confirm the current association is a club rather than a personal account
+- confirm the signed-in membership role is `admin`
+- inspect `organization.features.tournament_manager.web_enabled` from
+  `GET /organization_settings/{organization_id}`
+- confirm `tournament_organization_features.web_enabled` is true for that club
+- use the root-admin club Game Settings tab to enable or disable the feature
+
+Direct calls return `TOURNAMENT_FEATURE_DISABLED` while the club feature is off.
+Disabling the feature retains its tournament and player data.
+
+The migration-created `demouser@democlub.com` account has no known initial
+password. Set one through Root Admin → User Accounts before using the demo login.
+
+If adding an entrant unexpectedly creates or reuses an identity, inspect
+`players.email`, `registered_username`, and `claim_status`. Email is
+the current strong deduplication key; name-only duplicate review and merge tooling
+is not implemented yet.

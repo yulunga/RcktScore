@@ -95,6 +95,17 @@ Current runtime path:
   - these sport-engine modules are wired into the dispatcher but currently fail safely until scoring rules are implemented
 - [common/match_setup_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_setup_logic.py)
   - player/referee lookup for match setup
+- `common/tournament/`
+  - per-club Tournament Manager feature enforcement
+  - draft tournament creation/listing
+  - reusable product-wide registered or claimable player identities
+  - member/guest player affiliations and tournament entries
+
+Migration `030_tournament_foundation.sql` also introduces a canonical `users`
+identity table keyed by normalized email and links existing/future
+`SkwshOrgUsers` membership rows through `user_id`. Authentication remains on
+`SkwshOrgUsers` during this compatibility phase; the new identity table does not
+hold passwords or independently grant access.
 
 ### Email-related logic
 
@@ -207,6 +218,7 @@ The public login logo and wordmark also link to the public landing homepage. Thi
 - `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
 - `PUT /root_admin/users/{user_id}/password`
 - `PUT /root_admin/users/{user_id}/verify-email`
+- `PUT /root_admin/organizations/{organization_id}/tournament-feature`
 - `GET /root_admin/notifications`
 - `POST /root_admin/notifications`
 - `GET /root_admin/subscriptions?organization_id=...`
@@ -229,6 +241,25 @@ Current root-admin match-management behavior:
 - archived matches are excluded from standard club/user match views and from the root-admin match directory by default
 - `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
 - `DELETE /root_admin/matches/{match_id}` permanently removes the match row and cascades `match_events`
+
+Current root-admin Tournament Manager behavior:
+
+- Tournament Manager is web-only and disabled for clubs without an explicit enabled record
+- `PUT /root_admin/organizations/{organization_id}/tournament-feature` accepts `web_enabled` and changes access without deleting tournament data
+- personal organisations cannot be enabled
+- migration `031_tournament_demo_club.sql` creates an enabled Demo Club and an approved, password-disabled `demouser@democlub.com`; a root administrator must set its password before login
+
+### Tournament Manager routes
+
+- `GET /organizations/{organization_id}/tournaments`
+- `POST /organizations/{organization_id}/tournaments`
+- `GET /tournaments/{tournament_id}?organization_id=...`
+- `POST /tournaments/{tournament_id}/entries`
+
+All current tournament routes require an approved club-admin session and an
+enabled `tournament_organization_features.web_enabled` record. The first slice
+supports draft events and singles entries; draw generation, scheduling, fixtures,
+linked scoring matches and public tournament access are not implemented yet.
 
 Current root-admin platform-sport behavior:
 

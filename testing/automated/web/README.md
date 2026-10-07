@@ -113,6 +113,20 @@ npm run test:e2e:history
 npm run test:e2e:history:watch
 ```
 
+## Signed-in header journey
+
+The header journey opens an API-mocked club dashboard, verifies the embedded
+Matches, Analytics and Settings menu, and scrolls the page to exercise the
+sticky compact state. It confirms that the header keeps the same outer width,
+shrinks vertically, replaces labels with iOS-style icons, omits the former
+dashboard description, and leaves Start New Match as a separate blue action.
+
+```bash
+cd frontend
+npm run test:e2e:header
+npm run test:e2e:header:watch
+```
+
 No Python virtual environment is needed for web tests. Playwright and its
 browser driver are pinned by `frontend/package-lock.json`; Python virtual
 environments remain appropriate for the backend pytest suite only.

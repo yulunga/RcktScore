@@ -26,6 +26,8 @@ import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
 import RootAdminSubscriptionsPage from "./pages/RootAdminSubscriptionsPage";
 import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
 import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
+import TournamentDetailPage from "./features/tournaments/pages/TournamentDetailPage";
+import TournamentListPage from "./features/tournaments/pages/TournamentListPage";
 
 export default function App() {
   return (
@@ -159,6 +161,22 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <OrganisationUserPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/tournaments"
+        element={(
+          <ProtectedRoute>
+            <TournamentListPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/tournaments/:tournamentId"
+        element={(
+          <ProtectedRoute>
+            <TournamentDetailPage />
           </ProtectedRoute>
         )}
       />

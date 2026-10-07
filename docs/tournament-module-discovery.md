@@ -2,14 +2,18 @@
 
 ## Status
 
-This document is an architectural discovery note, not a statement that the
-tournament feature is implemented or available.
+This document began as an architectural discovery note. The first web-only
+foundation is now implemented: per-club feature access, draft tournament CRUD,
+product-wide player identities, guest/member affiliations and singles entry capture.
+Draw generation, fixtures, scheduling, live tournament views and iOS support are
+not implemented yet.
 
 The intended initial release posture is:
 
 - club organisations only
-- disabled globally and for every organisation by default
+- disabled for each organisation by default
 - selectively enabled by a root administrator for development and beta clubs
+- enabled for the seeded `Demo Club` test organisation
 - no tournament entry point in the normal web or iOS navigation while disabled
 - the existing HitNScore match-scoring experience remains the primary product
 
@@ -91,14 +95,14 @@ handled as an ordinary silent recalculation.
 There is no current player registry, ranking import, draw export, print layout or
 tournament history export.
 
-## Recommended Feature Gating
+## Implemented Feature Gating
 
-A single organisation boolean is too limited for a safe rollout. Use two levels:
+A club-level `tournament_organization_features` record currently controls web
+access. Missing records mean disabled. Root admin can enable or disable the
+feature from the existing club administration screen. iOS remains unavailable.
 
-1. A platform feature record with rollout mode `off`, `allowlist` or `all` and
-   separate web/iOS client availability where needed.
-2. An organisation feature record that explicitly enables Tournament Manager for
-   a club.
+A future platform rollout mode (`off`, `allowlist` or `all`) can be added before
+broad commercial release if a second kill switch is required.
 
 Effective access should require all of the following:
 
@@ -108,39 +112,43 @@ Effective access should require all of the following:
 - its club plan is entitled once commercial packaging is decided
 - the requesting membership has the required operation permission
 
-Initial data should set rollout mode to `off` and create no enabled organisation
-records. Root admin should be able to move the feature to `allowlist` and enable a
-specific test club. Disabling access must hide new entry points without deleting
-tournament data.
+Initial data creates no enabled records for existing clubs. Migration `031`
+creates an enabled Demo Club. Disabling access hides the entry point and rejects
+direct API access without deleting tournament data.
 
 Feature checks must be enforced in the backend. Hiding a web or iOS menu item is
 not an entitlement boundary.
 
 ## Recommended Domain Model
 
-Names below are conceptual; exact migration names can be finalised during the
-implementation design.
+The initial tables below are implemented in migration `030`; later draw and
+scheduling tables remain conceptual.
 
 ### Feature control
 
-- `platform_features`: feature key, rollout mode, web/iOS availability and audit
+- `tournament_organization_features`: organisation, web-enabled state and audit
   timestamps
-- `organization_features`: organisation, feature key, enabled state, configuration
-  and who changed it
 
 ### People and entries
 
-- `organization_participants`: stable club-scoped person record, optional linked
+- `users`: canonical signed-up identity keyed by normalized email; the existing
+  `SkwshOrgUsers` rows remain organisation memberships/credentials and are linked
+  through `user_id` during the compatibility migration
+- `players`: product-wide stable person record, optional linked
   membership, display identity, contact/privacy fields and external ranking IDs
-- `tournament_entries`: an entry in a division, with status, seed, rating,
+- `tournament_entries`: an entry in an event, with status, seed,
   registration source and waitlist position
-- `tournament_entry_members`: one member for singles or multiple ordered members
-  for doubles/mixed pairs
+- `player_organization_affiliations`: non-authentication member/guest relationship
+  between a reusable player and the host club
 - participant and entry snapshots so a later profile edit does not rewrite a
   published historic draw
 
 Partner changes should create a revised entry membership record and audit event.
 They should not mutate completed fixture history.
+
+The first slice links registered emails to `users` but does not yet attach player
+IDs to ordinary `matches`. That scoring/history migration is a later identity
+phase and must cover tennis/Padel doubles as well as singles.
 
 ### Event structure
 
@@ -355,15 +363,18 @@ The supplied scope also needs decisions on:
 
 ## Recommended Delivery Sequence
 
-### Phase 0: contracts and disabled foundation
+### Phase 0: contracts and disabled foundation — implemented baseline
 
 - agree lifecycle states, permissions, scoring-profile contract and plan policy
-- add two-level feature gating, defaulted off
-- add root-admin read/update endpoints and admin controls for rollout/allowlisting
-- add the participant, tournament, division, entry, stage, round, fixture, match
-  link, draw-version and audit tables
-- add backend authorization helpers and CRUD for draft tournaments
-- keep all club-facing web and iOS navigation hidden
+- add club-level feature gating, defaulted off
+- add a root-admin per-club web enable/disable control
+- add reusable players, player affiliations, events, entries, tournament roles and
+  audit tables
+- add backend authorization helpers and CRUD for draft tournaments and entries
+- expose the web entry point only in Settings for an enabled club; keep iOS hidden
+
+The remaining structural tables for divisions, stages, rounds, fixtures, match
+links and immutable draw versions move into Phase 1 with the draw engine.
 
 This is the safest pre-launch backend/database target.
 

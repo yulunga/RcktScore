@@ -59,6 +59,11 @@ def _serialize_organization(row):
         "available_plan_entitlements": personal_plan_contract() if org_type == "personal" else None,
         "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
         "timed_break_defaults": normalize_timed_break_defaults(row.get("timed_break_defaults")),
+        "features": {
+            "tournament_manager": {
+                "web_enabled": bool(row.get("tournament_manager_web_enabled")),
+            },
+        },
         "is_hidden": bool(row.get("is_hidden")),
         "social_profiles": {
             "facebook": "",
@@ -321,10 +326,13 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 org_type,
                 plan,
                 enabled_sports,
-                timed_break_defaults,
-                is_hidden
-            FROM "SkwshOrgSettings"
-            WHERE id = %(organization_id)s
+                o.timed_break_defaults,
+                o.is_hidden,
+                COALESCE(tournament_feature.web_enabled, false) AS tournament_manager_web_enabled
+            FROM "SkwshOrgSettings" AS o
+            LEFT JOIN tournament_organization_features AS tournament_feature
+                ON tournament_feature.organization_id = o.id
+            WHERE o.id = %(organization_id)s
             LIMIT 1
             """,
             {"organization_id": org_id},

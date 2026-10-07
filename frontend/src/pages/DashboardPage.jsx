@@ -299,43 +299,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     ? "View live and scheduled matches for your organisation in one scrolling list."
     : screenMode === "history"
       ? "Search completed matches by player name, surname, or date."
-      : isPersonalAccount
-        ? "Score matches, resume active games, and review your personal match history."
-        : "Manage live scoring, keep an eye on active courts, and review recent matches.";
-  const dashboardActions = screenMode === "dashboard"
-    ? [
-      {
-        label: "Start New Match",
-        onClick: handleOpenSportOverlay,
-      },
-    ]
-    : [];
-
-  if (screenMode === "dashboard" && isPersonalPlus) {
-    dashboardActions.push(
-      { label: "Matches", onClick: () => navigate("/matches") },
-      { label: "Performance", onClick: () => navigate("/performance") },
-    );
-  }
-
-  if (screenMode === "dashboard" && !isPersonalAccount) {
-    dashboardActions.push({
-      label: "Match History",
-      onClick: () => {
-        document.getElementById("match-history-section")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      },
-    });
-  }
-
-  if (screenMode === "dashboard" && (session?.role === "admin" || isPersonalAccount)) {
-    dashboardActions.push({
-      label: "Settings",
-      onClick: () => navigate("/settings"),
-    });
-  }
+      : "";
 
   const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 12, 12);
   const historyMatches = recentMatches.slice(0, historyPreviewLimit);
@@ -615,7 +579,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   return (
     <main className="page-shell stack">
       <ClubPageHeader
-        actions={dashboardActions}
         subtitle={dashboardSubtitle}
         title={
           showMatchesOnly
