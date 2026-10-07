@@ -116,10 +116,11 @@ npm run test:e2e:history:watch
 ## Signed-in header journey
 
 The header journey opens an API-mocked club dashboard, verifies the embedded
-Matches, Analytics and Settings menu, and scrolls the page to exercise the
-sticky compact state. It confirms that the header keeps the same outer width,
-shrinks vertically, replaces labels with iOS-style icons, omits the former
-dashboard description, and leaves Start New Match as a separate blue action.
+Home, blue new-match `+`, Matches, Analytics, Settings and Help menu, and scrolls
+the page to exercise the sticky compact state. It confirms that the header keeps
+the same outer width, shrinks vertically, replaces labels with iOS-style icons,
+omits account/club details, the former dashboard description and shared footer,
+and leaves Start New Match as a separate blue action.
 
 ```bash
 cd frontend

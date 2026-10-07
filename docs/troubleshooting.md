@@ -81,9 +81,10 @@ tennis game/set dividers. Completed-match cards should navigate to
 
 Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
 compact after a vertical scroll. The check confirms that the outer width does
-not change, the header remains sticky, Matches/Analytics/Settings labels become
-icons, the removed dashboard description stays absent, and Start New Match
-remains a separate blue action.
+not change, the header remains sticky, Home and the blue new-match `+` precede
+Matches/Analytics/Settings/Help, labels become icons, account and club details
+stay absent, the removed dashboard description and footer stay absent, and
+Start New Match remains a separate blue action.
 
 ### iOS project inventory
 

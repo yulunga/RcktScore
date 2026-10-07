@@ -12,19 +12,6 @@ function inferOrganizationType(session) {
   return Number(session?.organization_id) >= 50000 ? "personal" : "club";
 }
 
-function planLabel(plan) {
-  if (plan === "personal_plus") {
-    return "Personal+";
-  }
-  if (plan === "personal_free") {
-    return "Personal Free";
-  }
-  if (plan === "club_pro") {
-    return "Club Pro";
-  }
-  return "Club Essentials";
-}
-
 function MobileMenuIcon({ name }) {
   if (name === "home") {
     return (
@@ -83,12 +70,24 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
-  const accountSubline = organizationType === "personal"
-    ? planLabel(session?.plan || "personal_free")
-    : organizationName || "Club";
   const pageTitle = title && title !== organizationName ? title : "";
   const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
   const headerMenuItems = [
+    {
+      label: "Home",
+      icon: "home",
+      iconOnly: true,
+      onClick: () => navigate("/dashboard"),
+      isActive: location.pathname === "/dashboard",
+    },
+    {
+      label: "Start New Match",
+      icon: "add",
+      iconOnly: true,
+      isPrimary: true,
+      onClick: () => navigate("/match/new"),
+      isActive: location.pathname.startsWith("/match/new"),
+    },
     {
       label: "Matches",
       icon: "matches",
@@ -107,9 +106,16 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       onClick: () => navigate("/settings"),
       isActive: location.pathname.startsWith("/settings"),
     },
+    {
+      label: "Help",
+      icon: "help",
+      onClick: () => navigate("/ping"),
+      isActive: location.pathname === "/ping" || location.pathname === "/help",
+    },
   ];
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
+    { label: "Start New Match", icon: "add", onClick: () => navigate("/match/new"), isActive: location.pathname.startsWith("/match/new"), accent: true },
     {
       label: "Matches",
       icon: "matches",
@@ -171,8 +177,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   <span className="club-page-header__wordmark-n">n</span>
                   <span className="club-page-header__wordmark-score">Score</span>
                 </h1>
-                <span className="club-page-header__mobile-username">{session?.username || "Operator"}</span>
-                <span className="club-page-header__mobile-plan">{accountSubline}</span>
               </div>
             </div>
             {pageTitle ? <p className="club-page-header__page-title">{pageTitle}</p> : null}
@@ -182,7 +186,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               <button
                 className={`club-page-header__notification-button${hasUnreadNotifications ? " club-page-header__notification-button--unread" : ""}`}
                 type="button"
-                aria-label="Notifications"
+                aria-label="Messages"
                 onClick={() => navigate("/notifications")}
               >
                 <svg
@@ -218,27 +222,22 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               >
                 Logout
               </button>
-              <span className="club-page-header__divider" aria-hidden="true">
-                |
-              </span>
-              <span className="club-page-header__username">{session?.username || "Operator"}</span>
             </div>
-            <span className="club-page-header__organization-name">{accountSubline}</span>
             <nav className="club-page-header__menu" aria-label="Primary navigation">
               {headerMenuItems.map((item) => (
                 <button
                   aria-current={item.isActive ? "page" : undefined}
                   aria-label={item.label}
-                  className={`club-page-header__menu-item${item.isActive ? " club-page-header__menu-item--active" : ""}`}
+                  className={`club-page-header__menu-item${item.iconOnly ? " club-page-header__menu-item--icon-only" : ""}${item.isPrimary ? " club-page-header__menu-item--primary" : ""}${item.isActive ? " club-page-header__menu-item--active" : ""}`}
                   key={item.label}
                   title={item.label}
                   type="button"
                   onClick={item.onClick}
                 >
                   <span className="club-page-header__menu-icon" aria-hidden="true">
-                    <MobileMenuIcon name={item.icon} />
+                    {item.icon === "add" ? <span className="club-page-header__plus-icon">+</span> : <MobileMenuIcon name={item.icon} />}
                   </span>
-                  <span className="club-page-header__menu-label">{item.label}</span>
+                  {!item.iconOnly ? <span className="club-page-header__menu-label">{item.label}</span> : null}
                 </button>
               ))}
             </nav>
@@ -300,7 +299,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   onClick={item.onClick}
                 >
                   <span className="mobile-fab-menu-sheet__icon" aria-hidden="true">
-                    <MobileMenuIcon name={item.icon} />
+                    {item.icon === "add" ? <span className="club-page-header__plus-icon">+</span> : <MobileMenuIcon name={item.icon} />}
                   </span>
                   <span className="mobile-fab-menu-sheet__label">{item.label}</span>
                 </button>
