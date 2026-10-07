@@ -126,6 +126,23 @@ test("Personal Plus schedules a match and starts it later from Matches @scheduli
     schedule_match: true,
   });
   await expect(page).toHaveURL(/\/matches#scheduled-matches-section$/);
+  await expect(page.getByText("View live and scheduled matches for your organisation in one scrolling list.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Matches", { exact: true })).toHaveCount(1);
+  const matchTabs = page.getByRole("tablist", { name: "Match category" });
+  const currentTab = matchTabs.getByRole("tab", { name: "Current", exact: true });
+  const scheduledTab = matchTabs.getByRole("tab", { name: "Scheduled", exact: true });
+  const historyTab = matchTabs.getByRole("tab", { name: "History", exact: true });
+  await expect(currentTab).toBeVisible();
+  await expect(scheduledTab).toHaveAttribute("aria-selected", "true");
+  await expect(historyTab).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scheduled Matches" })).toBeVisible();
+  await currentTab.click();
+  await expect(page.getByRole("heading", { name: "Active Matches" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scheduled Matches" })).toHaveCount(0);
+  await historyTab.click();
+  await expect(page.getByRole("heading", { name: "Match History" })).toBeVisible();
+  await expect(page.getByPlaceholder("Search player name, surname, or date")).toBeVisible();
+  await scheduledTab.click();
   await expect(page.getByRole("heading", { name: "Scheduled Matches" })).toBeVisible();
   await page.getByRole("button", { name: "Start", exact: true }).click();
 

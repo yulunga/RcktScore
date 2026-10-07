@@ -195,6 +195,20 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, []);
 
   useEffect(() => {
+    if (screenMode !== "matches") {
+      return;
+    }
+
+    if (location.hash === "#scheduled-matches-section") {
+      setMatchesCategory("scheduled");
+    } else if (location.hash === "#match-history-section") {
+      setMatchesCategory("history");
+    } else if (location.hash === "#active-matches-section") {
+      setMatchesCategory("current");
+    }
+  }, [location.hash, screenMode]);
+
+  useEffect(() => {
     if (!location.hash) {
       return;
     }
@@ -296,7 +310,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     ? "Played Matches"
     : (isPersonalAccount ? "Match History" : "Played Matches");
   const dashboardSubtitle = screenMode === "matches"
-    ? "View live and scheduled matches for your organisation in one scrolling list."
+    ? ""
     : screenMode === "history"
       ? "Search completed matches by player name, surname, or date."
       : "";
@@ -306,8 +320,9 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const normalizedHistorySearch = historySearch.trim().toLowerCase();
   const showMatchesOnly = screenMode === "matches";
   const showHistoryOnly = screenMode === "history";
-  const showCombinedHistory = isPersonalPlus && showMatchesOnly && matchesCategory === "history";
-  const showingHistory = showHistoryOnly || showCombinedHistory;
+  const showCurrentSection = screenMode === "dashboard" || (showMatchesOnly && matchesCategory === "current");
+  const showScheduledSection = screenMode === "dashboard" || (showMatchesOnly && matchesCategory === "scheduled");
+  const showingHistory = showHistoryOnly || (showMatchesOnly && matchesCategory === "history");
   const historyCollection = showingHistory ? recentMatches : historyMatches;
   const filteredHistoryMatches = useMemo(() => {
     if (!normalizedHistorySearch) {
@@ -325,7 +340,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const historyPages = chunkItems(filteredHistoryMatches);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
   const hasHistoryCarousel = historyPages.length > 1;
-  const showHistoryViewAll = screenMode !== "history" && filteredHistoryMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
+  const showHistoryViewAll = screenMode === "dashboard" && filteredHistoryMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
 
   const activePages = chunkItems(activeMatches);
   const visibleActivePage = activePages[clampPageIndex(activePage, activePages.length)] || [];
@@ -582,7 +597,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         subtitle={dashboardSubtitle}
         title={
           showMatchesOnly
-            ? "Matches"
+            ? ""
             : showHistoryOnly
               ? "History"
               : (isPersonalAccount ? "" : organization.name || session?.organization_name || "Club Dashboard")
@@ -610,15 +625,16 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
-      {isPersonalPlus && showMatchesOnly ? (
+      {showMatchesOnly ? (
         <div className="matches-category-switch" role="tablist" aria-label="Match category">
-          <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current Matches</button>
-          <button className={matchesCategory === "history" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "history"} onClick={() => setMatchesCategory("history")}>Match History</button>
+          <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current</button>
+          <button className={matchesCategory === "scheduled" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "scheduled"} onClick={() => setMatchesCategory("scheduled")}>Scheduled</button>
+          <button className={matchesCategory === "history" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "history"} onClick={() => setMatchesCategory("history")}>History</button>
         </div>
       ) : null}
 
       <section className="dashboard-grid">
-        {!showingHistory ? (
+        {showCurrentSection ? (
         <section className="panel stack" id="active-matches-section">
           <div className="panel-heading">
             <h2 className="dashboard-active-heading">
@@ -661,7 +677,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         </section>
         ) : null}
 
-        {(!isPersonalAccount || isPersonalPlus) && !showingHistory ? (
+        {showScheduledSection && (!isPersonalAccount || isPersonalPlus) ? (
           <section className="panel stack" id="scheduled-matches-section">
             <div className="panel-heading">
               <h2 className="dashboard-scheduled-heading">
@@ -704,7 +720,20 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           </section>
         ) : null}
 
-        {(!showMatchesOnly || showCombinedHistory) ? (
+        {showMatchesOnly && matchesCategory === "scheduled" && isPersonalAccount && !isPersonalPlus ? (
+          <section className="panel stack" id="scheduled-matches-section">
+            <div className="panel-heading">
+              <h2 className="dashboard-scheduled-heading">Scheduled Matches</h2>
+            </div>
+            <div className="performance-upgrade-panel stack compact">
+              <strong>Scheduling is available with Personal+</strong>
+              <span>Upgrade to arrange matches now and start them later from any device.</span>
+              <button type="button" onClick={() => navigate("/settings")}>View Personal+</button>
+            </div>
+          </section>
+        ) : null}
+
+        {(!showMatchesOnly || showingHistory) ? (
         <section className="panel stack" id="match-history-section">
           <div className="panel-heading panel-heading--with-action">
             <h2 className="dashboard-history-heading">
