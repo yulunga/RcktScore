@@ -1341,7 +1341,7 @@ textarea {
 .club-page-header__menu-item--primary,
 .club-page-header__menu-item--primary:hover,
 .club-page-header__menu-item--primary.club-page-header__menu-item--active {
-  border: 2px solid #1274d0;
+  border: 1px solid #7aa5d8;
   background: transparent;
   color: #1274d0;
 }
