@@ -17,16 +17,7 @@ export default function MatchSportSelectionPage() {
 
   return (
     <main className="page-shell stack">
-      <ClubPageHeader
-        actions={[
-          {
-            label: "Back to Dashboard",
-            onClick: () => navigate("/dashboard"),
-          },
-        ]}
-        subtitle="Choose the racket sport first, then continue into the correct match setup flow."
-        title="Choose Racket Sport"
-      />
+      <ClubPageHeader />
 
       <section className="panel stack">
         <div className="section-heading stack compact">

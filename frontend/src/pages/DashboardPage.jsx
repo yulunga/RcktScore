@@ -743,7 +743,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             <div className="dashboard-empty">Completed matches will appear here once they are ended.</div>
           ) : (
             <>
-              <div className="dashboard-list dashboard-list--desktop">
+              <div className="dashboard-list dashboard-list--desktop dashboard-list--history">
                 {(showingHistory
                   ? filteredHistoryMatches
                   : (showAllHistory ? filteredHistoryMatches : filteredHistoryMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE))

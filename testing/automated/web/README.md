@@ -120,7 +120,8 @@ Home, blue new-match `+`, Matches, Analytics, Settings and Help menu, and scroll
 the page to exercise the sticky compact state. It confirms that the header keeps
 the same outer width, shrinks vertically, replaces labels with iOS-style icons,
 omits account/club details, the former dashboard description and shared footer,
-and leaves Start New Match as a separate blue action.
+leaves Start New Match as a separate blue action, and verifies that Played
+Matches forms a two-column grid on the desktop profile.
 
 ```bash
 cd frontend

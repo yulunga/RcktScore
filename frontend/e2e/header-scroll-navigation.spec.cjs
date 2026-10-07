@@ -10,6 +10,33 @@ const session = {
   session_token: "playwright-header-session",
 };
 
+const completedMatches = [
+  {
+    id: 901,
+    player1_name: "Alex",
+    player1_surname: "Andrews",
+    player2_name: "Jamie",
+    player2_surname: "Jones",
+    winner_side: "player1",
+    player1_games_won: 3,
+    player2_games_won: 1,
+    updated_at: "2026-10-06T18:30:00Z",
+    state: { game_history: [{ player1_score: 11, player2_score: 7 }] },
+  },
+  {
+    id: 902,
+    player1_name: "Robin",
+    player1_surname: "Reed",
+    player2_name: "Morgan",
+    player2_surname: "Miles",
+    winner_side: "player2",
+    player1_games_won: 1,
+    player2_games_won: 3,
+    updated_at: "2026-10-05T17:15:00Z",
+    state: { game_history: [{ player1_score: 8, player2_score: 11 }] },
+  },
+];
+
 function envelope(data) {
   return { success: true, data };
 }
@@ -26,7 +53,7 @@ test.beforeEach(async ({ page }) => {
       organization: { id: 42, name: "Header Test Club", type: "club", plan: "club_essentials", enabled_sports: ["squash"] },
       active_matches: [],
       scheduled_matches: [],
-      recent_matches: [],
+      recent_matches: completedMatches,
     } }) });
   });
 });
@@ -69,6 +96,15 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     initialHomeBox = await homeButton.boundingBox();
   }
 
+  if (viewport.width >= 1100) {
+    const historyCards = page.locator(".dashboard-list--history.dashboard-list--desktop .dashboard-history-card");
+    await expect(historyCards).toHaveCount(2);
+    const firstHistoryCard = await historyCards.nth(0).boundingBox();
+    const secondHistoryCard = await historyCards.nth(1).boundingBox();
+    expect(Math.abs(firstHistoryCard.y - secondHistoryCard.y)).toBeLessThanOrEqual(1);
+    expect(secondHistoryCard.x).toBeGreaterThan(firstHistoryCard.x + firstHistoryCard.width);
+  }
+
   const initialBox = await header.boundingBox();
   expect(initialBox.y).toBeLessThanOrEqual(4);
   await page.evaluate(() => {
@@ -104,6 +140,9 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(header).not.toHaveClass(/club-page-header--compact/);
     await primaryNavigation.getByRole("button", { name: "Start New Match" }).click();
     await expect(page).toHaveURL(/\/match\/new$/);
+    await expect(page.getByRole("button", { name: "Back to Dashboard" })).toHaveCount(0);
+    await expect(page.getByText("Choose Racket Sport", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Choose the racket sport first, then continue into the correct match setup flow.", { exact: true })).toHaveCount(0);
   }
 
   await page.evaluate(() => window.__headerObserver?.disconnect());
