@@ -57,9 +57,14 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(header.getByRole("button", { name: "Analytics" })).toBeVisible();
     await expect(header.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(header.getByRole("button", { name: "Help" })).toBeVisible();
-    await expect(newMatchButton).toHaveCSS("background-color", "rgb(18, 116, 208)");
+    await expect(newMatchButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(newMatchButton).toHaveCSS("color", "rgb(18, 116, 208)");
     await expect(newMatchButton).toHaveCSS("border-top-style", "solid");
+    await expect(newMatchButton).toHaveCSS("border-top-width", "2px");
     await expect(primaryNavigation.getByRole("button")).toHaveCount(6);
+    const logoutBox = await header.getByRole("button", { name: "Logout" }).boundingBox();
+    const helpLabelBox = await header.getByRole("button", { name: "Help" }).locator(".club-page-header__menu-label").boundingBox();
+    expect(Math.abs((logoutBox.x + logoutBox.width) - (helpLabelBox.x + helpLabelBox.width))).toBeLessThanOrEqual(1);
     initialHomeBox = await homeButton.boundingBox();
   }
 

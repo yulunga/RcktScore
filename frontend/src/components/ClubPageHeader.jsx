@@ -235,7 +235,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   onClick={item.onClick}
                 >
                   <span className="club-page-header__menu-icon" aria-hidden="true">
-                    {item.icon === "add" ? <span className="club-page-header__plus-icon">+</span> : <MobileMenuIcon name={item.icon} />}
+                    {item.icon === "add" ? <span className="club-page-header__plus-icon" /> : <MobileMenuIcon name={item.icon} />}
                   </span>
                   {!item.iconOnly ? <span className="club-page-header__menu-label">{item.label}</span> : null}
                 </button>
@@ -299,7 +299,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   onClick={item.onClick}
                 >
                   <span className="mobile-fab-menu-sheet__icon" aria-hidden="true">
-                    {item.icon === "add" ? <span className="club-page-header__plus-icon">+</span> : <MobileMenuIcon name={item.icon} />}
+                    {item.icon === "add" ? <span className="club-page-header__plus-icon" /> : <MobileMenuIcon name={item.icon} />}
                   </span>
                   <span className="mobile-fab-menu-sheet__label">{item.label}</span>
                 </button>
