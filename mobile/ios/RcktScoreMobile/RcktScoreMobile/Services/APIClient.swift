@@ -814,7 +814,8 @@ final class APIClient {
                 organizationTelephone: draft.organizationTelephone,
                 organizationEmail: draft.organizationEmail,
                 organizationWebAddress: draft.organizationWebAddress,
-                enabledSports: nil
+                enabledSports: nil,
+                timedBreakDefaults: nil
             )
         )
         return try await unwrapOrganizationSettingsResponse(request)
@@ -835,7 +836,30 @@ final class APIClient {
                 organizationTelephone: nil,
                 organizationEmail: nil,
                 organizationWebAddress: nil,
-                enabledSports: enabledSports
+                enabledSports: enabledSports,
+                timedBreakDefaults: nil
+            )
+        )
+        return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func updateOrganizationTimedBreakDefaults(
+        organizationID: Int,
+        timedBreakDefaults: [String: Bool]
+    ) async throws -> OrganizationSettings {
+        let request = try makeRequest(
+            path: "/organization_details/\(organizationID)",
+            method: "PUT",
+            body: UpdateOrganizationDetailsRequest(
+                organizationName: nil,
+                organizationAddress: nil,
+                organizationPostcode: nil,
+                organizationContact: nil,
+                organizationTelephone: nil,
+                organizationEmail: nil,
+                organizationWebAddress: nil,
+                enabledSports: nil,
+                timedBreakDefaults: timedBreakDefaults
             )
         )
         return try await unwrapOrganizationSettingsResponse(request)

@@ -18,7 +18,10 @@ def lambda_handler(event, context):
     try:
         with get_db_connection() as connection:
             authorize_match_session(connection, event, match_id)
-            match = activate_scheduled_match(connection, match_id)
+            try:
+                match = activate_scheduled_match(connection, match_id)
+            except ValueError as exc:
+                return error_response(409, "ACTIVE_MATCH_EXISTS", str(exc))
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
 

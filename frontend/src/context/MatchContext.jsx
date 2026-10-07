@@ -20,6 +20,10 @@ import { createScoreSocket } from "../services/websocket";
 
 export const MatchContext = createContext(null);
 
+function actionId() {
+  return globalThis.crypto?.randomUUID?.();
+}
+
 function mergeMatchPayload(previousMatch, nextMatch) {
   if (!nextMatch) {
     return nextMatch;
@@ -97,7 +101,7 @@ export function MatchProvider({ children }) {
 
   const scorePoint = useCallback(async (matchId, scorer) => {
     return runMatchMutation(() =>
-      scorePointRequest({ match_id: matchId, scorer }),
+      scorePointRequest({ match_id: matchId, scorer, client_action_id: actionId() }),
     );
   }, [runMatchMutation]);
 
@@ -106,19 +110,21 @@ export function MatchProvider({ children }) {
       sendEventActionRequest({
         match_id: matchId,
         action_type: actionType,
+        client_action_id: actionId(),
         ...payload,
       }),
     );
   }, [runMatchMutation]);
 
   const undoLastAction = useCallback(async (matchId) => {
-    return runMatchMutation(() => undoActionRequest({ match_id: matchId }));
+    return runMatchMutation(() => undoActionRequest({ match_id: matchId, client_action_id: actionId() }));
   }, [runMatchMutation]);
 
   const endMatch = useCallback(async (matchId, payload = {}) => {
     return runMatchMutation(() =>
       endMatchRequest({
         match_id: matchId,
+        client_action_id: actionId(),
         ...payload,
       }),
     );

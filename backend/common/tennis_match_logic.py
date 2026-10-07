@@ -1144,6 +1144,8 @@ def activate_scheduled_match(connection, match_id):
     if match_row["status"] != "scheduled":
         return get_match(connection, match_id)
 
+    shared.ensure_scheduled_activation_available(connection, match_row)
+
     with connection.cursor() as cursor:
         cursor.execute(
             """

@@ -38,6 +38,7 @@ struct DashboardView: View {
     @State private var courtDrafts: [Int: CourtDraft] = [:]
     @State private var personalProfileDraft = PersonalProfileDraft()
     @State private var enabledSportsDraft: [String] = []
+    @State private var timedBreakDefaultsDraft: [String: Bool] = [:]
     @State private var savingSettingsKey: String?
     @State private var historySearch = ""
     @State private var feedbackName = ""
@@ -1660,14 +1661,50 @@ struct DashboardView: View {
             Text("Game Settings")
                 .font(.headline.weight(.semibold))
 
-            Text("Match format controls remain tied to the sport and setup flow you choose when starting a new match. Broader account presets will live here as the settings model expands.")
+            Text("Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+
+            ForEach(availableSportOptions.filter { $0.isImplementedToday && enabledSportIDs.contains($0.rawValue) }) { sport in
+                Toggle(isOn: timedBreakDefaultBinding(for: sport)) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(sport.displayName)
+                            .font(.subheadline.weight(.semibold))
+                        Text("Timer default \((timedBreakDefaultsDraft[sport.rawValue] ?? false) ? "on" : "off")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(Color.dashboardBrand)
+                .disabled((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil)
+                .accessibilityIdentifier("settings.gameSettings.\(sport.rawValue).timerDefault")
+            }
+
+            Button(currentSettingsButtonTitle(for: "timer-defaults-save", defaultTitle: "Save Timer Defaults")) {
+                saveTimedBreakDefaults()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil)
+            .opacity(((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil) ? 0.7 : 1)
+            .accessibilityIdentifier("settings.gameSettings.saveTimerDefaults")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func timedBreakDefaultBinding(for sport: MatchSport) -> Binding<Bool> {
+        Binding(
+            get: { timedBreakDefaultsDraft[sport.rawValue] ?? false },
+            set: { timedBreakDefaultsDraft[sport.rawValue] = $0 }
+        )
     }
 
     private var aboutSettingsCard: some View {
@@ -3538,6 +3575,7 @@ struct DashboardView: View {
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
         enabledSportsDraft = settings.organization.enabledSports
+        timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
         personalProfileDraft = PersonalProfileDraft(user: profileUser, fallbackSession: session)
         normalizeSelectedSettingsMenuItem()
     }
@@ -3892,6 +3930,36 @@ struct DashboardView: View {
             } catch {
                 await MainActor.run {
                     settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update sport access."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func saveTimedBreakDefaults() {
+        guard let organizationID = session?.organizationID else {
+            return
+        }
+
+        savingSettingsKey = "timer-defaults-save"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+
+        Task {
+            do {
+                let settings = try await container.apiClient.updateOrganizationTimedBreakDefaults(
+                    organizationID: organizationID,
+                    timedBreakDefaults: timedBreakDefaultsDraft
+                )
+                await MainActor.run {
+                    organizationSettings = settings
+                    syncSettingsDrafts(from: settings)
+                    settingsSuccessMessage = "Per-sport timer defaults updated."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update timer defaults."
                     savingSettingsKey = nil
                 }
             }

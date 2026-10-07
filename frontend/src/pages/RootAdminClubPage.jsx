@@ -83,7 +83,6 @@ export default function RootAdminClubPage() {
   const [courtDrafts, setCourtDrafts] = useState({});
   const [userRoleDrafts, setUserRoleDrafts] = useState({});
   const [enabledSports, setEnabledSports] = useState(() => normalizeEnabledSports());
-  const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState("club-details");
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
@@ -681,31 +680,8 @@ export default function RootAdminClubPage() {
           <div className="panel-heading">
             <h2>Game Settings</h2>
             <p className="helper-text">
-              Launch controls for organisation-specific scoring behaviour and future racket sports.
+              Manage which racket sports this club can use.
             </p>
-          </div>
-
-          <div className="game-settings-grid">
-            <div className="field checkbox-field">
-              <label className="checkbox-label" htmlFor="org_handicap_scoring">
-                <input
-                  checked={handicapScoringEnabled}
-                  id="org_handicap_scoring"
-                  name="org_handicap_scoring"
-                  type="checkbox"
-                  onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
-                />
-                Enable Handicap Scoring
-              </label>
-              <p className="helper-text">
-                Controls whether handicap match setup should be available for this organisation.
-              </p>
-            </div>
-
-            <div className="dashboard-empty">
-              This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
-              will be added in a later backend pass.
-            </div>
           </div>
 
           <div className="panel-heading">

@@ -6,6 +6,7 @@ import RootAdminProtectedRoute from "./components/RootAdminProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
 import DashboardPage from "./pages/DashboardPage";
 import HelpPage from "./pages/HelpPage";
+import HistoricMatchPage from "./pages/HistoricMatchPage";
 import LoginPage from "./pages/LoginPage";
 import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
 import MatchScreen from "./pages/MatchScreen";
@@ -182,6 +183,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <NewMatch />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/match/:matchId/history"
+        element={(
+          <ProtectedRoute>
+            <HistoricMatchPage />
           </ProtectedRoute>
         )}
       />

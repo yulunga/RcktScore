@@ -20,8 +20,8 @@ export const MATCH_SPORT_OPTIONS = [
   {
     value: "padel",
     label: "Padel",
-    note: "Doubles Padel setup and live scoring are available in the iOS app.",
-    implemented: false,
+    note: "Use the doubles Padel setup and tennis-style live scoring flow.",
+    implemented: true,
   },
   {
     value: "table_tennis",

@@ -40,6 +40,12 @@ const emptyCourtForm = {
   court_alias: "",
 };
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMPTY_TIMED_BREAK_DEFAULTS = {
+  squash: false,
+  racketball: false,
+  tennis: false,
+  padel: false,
+};
 const adminTabs = [
   { id: "organisation", label: "Organisation" },
   { id: "courts", label: "Courts" },
@@ -78,7 +84,7 @@ export default function OrganisationSettingsPage() {
   const [courtForm, setCourtForm] = useState(emptyCourtForm);
   const [courtDrafts, setCourtDrafts] = useState({});
   const [enabledSports, setEnabledSports] = useState(() => normalizeEnabledSports());
-  const [handicapScoringEnabled, setHandicapScoringEnabled] = useState(true);
+  const [timedBreakDefaults, setTimedBreakDefaults] = useState(EMPTY_TIMED_BREAK_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
@@ -168,6 +174,10 @@ export default function OrganisationSettingsPage() {
       ),
     );
     setEnabledSports(normalizeEnabledSports(nextSettings?.organization?.enabled_sports));
+    setTimedBreakDefaults({
+      ...EMPTY_TIMED_BREAK_DEFAULTS,
+      ...(nextSettings?.organization?.timed_break_defaults || {}),
+    });
   }, []);
 
   const loadSettings = useCallback(async () => {
@@ -227,6 +237,58 @@ export default function OrganisationSettingsPage() {
       "enabled-sports",
       () => updateOrganizationDetails(organizationId, { enabled_sports: enabledSports }),
       "Enabled racket sports updated.",
+    );
+  }
+
+  function toggleTimedBreakDefault(sportValue) {
+    setTimedBreakDefaults((current) => ({
+      ...current,
+      [sportValue]: !current[sportValue],
+    }));
+  }
+
+  async function handleTimedBreakDefaultsSave() {
+    await runMutation(
+      "timed-break-defaults",
+      () => updateOrganizationDetails(organizationId, { timed_break_defaults: timedBreakDefaults }),
+      "Per-sport timer defaults updated.",
+    );
+  }
+
+  function renderTimedBreakDefaults() {
+    const sports = MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value));
+    return (
+      <>
+        <div className="panel-heading">
+          <h2>Timer Defaults</h2>
+          <p className="helper-text">
+            Choose which sports preselect timed warm-ups and breaks when a new match is created. A disabled default can still be enabled for an individual match.
+          </p>
+        </div>
+        <div className="sport-grid">
+          {sports.map((sport) => (
+            <article className={`sport-option${timedBreakDefaults[sport.value] ? " active" : " disabled"}`} key={`timer-${sport.value}`}>
+              <strong>{sport.label}</strong>
+              <span>{timedBreakDefaults[sport.value] ? "Timer default on" : "Timer default off"}</span>
+              <button
+                className={timedBreakDefaults[sport.value] ? "secondary" : ""}
+                disabled={(!isAdmin && !isPersonalAccount) || savingSection === "timed-break-defaults"}
+                type="button"
+                onClick={() => toggleTimedBreakDefault(sport.value)}
+              >
+                {timedBreakDefaults[sport.value] ? "Default Off" : "Default On"}
+              </button>
+            </article>
+          ))}
+        </div>
+        {(isAdmin || isPersonalAccount) ? (
+          <div className="button-row">
+            <button disabled={savingSection === "timed-break-defaults"} type="button" onClick={handleTimedBreakDefaultsSave}>
+              {savingSection === "timed-break-defaults" ? "Saving..." : "Save Timer Defaults"}
+            </button>
+          </div>
+        ) : null}
+      </>
     );
   }
 
@@ -678,6 +740,10 @@ export default function OrganisationSettingsPage() {
               </article>
             </div>
           </section>
+
+          <section className="panel stack">
+            {renderTimedBreakDefaults()}
+          </section>
         </section>
       ) : (
         <>
@@ -1030,33 +1096,11 @@ export default function OrganisationSettingsPage() {
                 <div className="panel-heading">
                   <h2>Game Settings</h2>
                   <p className="helper-text">
-                    Launch controls for organisation-specific scoring behaviour and future racket sports.
+                    Set the defaults used when players create matches for this organisation.
                   </p>
                 </div>
 
-                <div className="game-settings-grid">
-                  <div className="field checkbox-field">
-                    <label className="checkbox-label" htmlFor="org_handicap_scoring">
-                      <input
-                        checked={handicapScoringEnabled}
-                        disabled={!isAdmin}
-                        id="org_handicap_scoring"
-                        name="org_handicap_scoring"
-                        type="checkbox"
-                        onChange={(event) => setHandicapScoringEnabled(event.target.checked)}
-                      />
-                      Enable Handicap Scoring
-                    </label>
-                    <p className="helper-text">
-                      Controls whether handicap match setup should be available for this organisation.
-                    </p>
-                  </div>
-
-                  <div className="dashboard-empty">
-                    This setting is scaffolded in the UI for now. Organisation-level persistence and enforcement
-                    will be added in a later backend pass.
-                  </div>
-                </div>
+                {renderTimedBreakDefaults()}
 
                 <div className="panel-heading">
                   <h3>Racket Sports</h3>

@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 from itertools import product
 
+import pytest
+
+import common.squash_match_logic as squash_match_logic
 from common.squash_match_logic import (
     _build_state,
     _best_of_value,
@@ -12,6 +15,32 @@ from common.squash_match_logic import (
     _score_type_value,
     _shirt_color_value,
 )
+
+
+class _RecordingCursor:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        self.connection.executions.append((query, params or {}))
+
+
+class _RecordingConnection:
+    def __init__(self):
+        self.executions = []
+        self.committed = False
+
+    def cursor(self):
+        return _RecordingCursor(self)
+
+    def commit(self):
+        self.committed = True
 
 
 def test_best_of_value_only_allows_supported_options():
@@ -42,6 +71,134 @@ def test_shirt_colors_are_available_to_both_personal_plans_and_clubs():
     assert _can_choose_shirt_colors({"org_type": "personal", "plan": "personal_free"}, 50001) is True
     assert _can_choose_shirt_colors({"org_type": "personal", "plan": "personal_plus"}, 50002) is True
     assert _can_choose_shirt_colors({"org_type": "club", "plan": "club_essentials"}, 1) is True
+
+
+@pytest.mark.parametrize("personal_plan", ["personal_free", "personal_plus"])
+def test_personal_match_creation_preserves_handicap_offsets(monkeypatch, personal_plan):
+    connection = _RecordingConnection()
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_fetch_tenant_plan",
+        lambda _connection, _tenant_id: {"org_type": "personal", "plan": personal_plan},
+    )
+    monkeypatch.setattr(squash_match_logic, "_find_active_match_for_tenant", lambda *_args: None)
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_ensure_personal_match_court",
+        lambda *_args: {"id": 91, "court_name": "Personal Match", "court_alias": "Personal Match"},
+    )
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *_args: {"id": "created-match"})
+
+    result = squash_match_logic.create_match(connection, {
+        "tenant_id": "50002",
+        "sport": "squash",
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "score_type": 15,
+        "best_of": 3,
+        "handicap_enabled": True,
+        "player1_band": "A",
+        "player2_band": "D",
+        "player1_offset": -3,
+        "player2_offset": 3,
+        "tennis_no_ad_scoring": True,
+        "tennis_timed_breaks": True,
+    })
+
+    match_insert = next(params for query, params in connection.executions if "INSERT INTO matches" in query)
+    assert match_insert["handicap_enabled"] is True
+    assert match_insert["player1_offset"] == -3
+    assert match_insert["player2_offset"] == 3
+    assert match_insert["tennis_no_ad_scoring"] is True
+    assert match_insert["tennis_timed_breaks"] is True
+    assert connection.committed is True
+    assert result == {"id": "created-match"}
+
+
+@pytest.mark.parametrize("club_plan", ["club_essentials", "club_pro"])
+def test_club_match_creation_preserves_handicap_offsets(monkeypatch, club_plan):
+    connection = _RecordingConnection()
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_fetch_tenant_plan",
+        lambda _connection, _tenant_id: {"org_type": "club", "plan": club_plan},
+    )
+    monkeypatch.setattr(squash_match_logic, "_find_active_match_on_court", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *_args: {"id": "created-club-match"})
+
+    result = squash_match_logic.create_match(connection, {
+        "tenant_id": "42",
+        "court_id": "7",
+        "court_name": "Court 1",
+        "sport": "racketball",
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "score_type": 15,
+        "best_of": 3,
+        "handicap_enabled": True,
+        "player1_offset": -5,
+        "player2_offset": 1,
+    })
+
+    match_insert = next(params for query, params in connection.executions if "INSERT INTO matches" in query)
+    assert match_insert["handicap_enabled"] is True
+    assert match_insert["player1_offset"] == -5
+    assert match_insert["player2_offset"] == 1
+    assert connection.committed is True
+    assert result == {"id": "created-club-match"}
+
+
+def test_personal_scheduled_match_cannot_start_while_another_match_is_active(monkeypatch):
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_fetch_tenant_plan",
+        lambda _connection, _tenant_id: {"org_type": "personal", "plan": "personal_plus"},
+    )
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_find_active_match_for_tenant",
+        lambda *_args: {"id": "already-active"},
+    )
+
+    with pytest.raises(ValueError, match="End the current personal match"):
+        squash_match_logic.ensure_scheduled_activation_available(
+            object(),
+            {"id": "scheduled-match", "tenant_id": "50002"},
+        )
+
+
+def test_personal_plus_can_create_scheduled_match_while_another_match_is_active(monkeypatch):
+    connection = _RecordingConnection()
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_fetch_tenant_plan",
+        lambda _connection, _tenant_id: {"org_type": "personal", "plan": "personal_plus"},
+    )
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_find_active_match_for_tenant",
+        lambda *_args: {"id": "already-active"},
+    )
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_ensure_personal_match_court",
+        lambda *_args: {"id": 91, "court_name": "Personal Match", "court_alias": "Personal Match"},
+    )
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *_args: {"id": "scheduled-match", "status": "scheduled"})
+
+    result = squash_match_logic.create_match(connection, {
+        "tenant_id": "50002",
+        "sport": "squash",
+        "status": "scheduled",
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "score_type": 11,
+        "best_of": 3,
+    })
+
+    match_insert = next(params for query, params in connection.executions if "INSERT INTO matches" in query)
+    assert match_insert["status"] == "scheduled"
+    assert result == {"id": "scheduled-match", "status": "scheduled"}
 
 
 def test_game_completion_requires_target_and_two_point_margin():

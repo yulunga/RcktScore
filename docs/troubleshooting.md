@@ -50,6 +50,35 @@ cd frontend
 npm run test:e2e:smoke
 ```
 
+### Visible web tennis journey
+
+Run `npm run test:e2e:tennis:watch` from `frontend/`. Playwright starts or
+reuses the local Vite server and opens a visible Chromium window with a short
+delay between actions. The journey is API-mocked and does not alter live data.
+
+If the browser runtime is missing after a fresh checkout, run `npm ci` followed
+by `npx playwright install chromium`. A Python virtual environment is not used
+for the React/Playwright suite. On failure, inspect `frontend/playwright-report/`
+and `frontend/test-results/` for the HTML report, screenshots, video, and trace.
+Use `npm run test:e2e:padel:watch` to watch only the doubles Padel and Golden
+Point receiver-choice scenario.
+
+Use `npm run test:e2e:racket:watch` to watch the API-mocked Squash/Racketball
+journeys. They verify Golden Point and handicap payloads for Personal Free and
+Personal Plus, the saved per-sport timer default, and that an untimed match
+opens directly on scoring.
+
+Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
+a match and start it later from Matches. The mocked setup begins with another
+active match to verify that scheduling remains available; activation happens
+only after the active match has cleared.
+
+Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
+Tennis views. The fixtures verify match start time and duration, game/set
+durations, sport terminology, the grouped scoring timeline, and separate
+tennis game/set dividers. Completed-match cards should navigate to
+`/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
+
 ### iOS project inventory
 
 ```bash
@@ -185,7 +214,7 @@ What to check:
 
 Important current truth:
 
-- organisation-level handicap settings are not persisted yet
+- Squash/Racketball handicap scoring is available to Personal Free, Personal Plus, and club accounts; there is intentionally no organisation-level handicap entitlement switch
 - racket-sport visibility settings are persisted through `enabled_sports`
 - social profile fields are not persisted yet
 
@@ -479,15 +508,17 @@ aws sns list-subscriptions-by-topic --topic-arn <ProductionAlarmTopicArn> --regi
 
 These are current product limitations, not accidental breakage:
 
-- organisation handicap toggle in settings is scaffold-only
-- reporting and account-level game-settings rows remain visibly disabled placeholders in native settings; Analytics now contains working basic scored-match stats plus Personal Plus personal performance, while deeper federation-style association integrations remain incomplete
+- handicap setup is intentionally shown only for Squash/Racketball, but it is available on every account tier for those sports
+- per-sport timer defaults in Game Settings are persisted by migration `029_timed_break_defaults.sql`; if a setup toggle has the wrong initial value, inspect `organization.timed_break_defaults` from `GET /organization_settings/{organization_id}`. The setting preselects timing but never prevents a per-match override
+- Personal Plus scheduling is available on web and iOS. If `Start` is disabled with “Finish active match first,” end the current personal match first; direct activation correctly returns `409 ACTIVE_MATCH_EXISTS`. Personal Free does not receive the scheduling control
+- reporting rows remain placeholders in native settings; Analytics now contains working basic scored-match stats plus Personal Plus personal performance, while deeper federation-style association integrations remain incomplete
 - if squash/racketball Golden Point does not end a PAR-11 game at 11-10 or a PAR-15 game at 15-14, confirm `tennis_no_ad_scoring` is present on the match and match-start event; the shared field is intentionally reused for the racket Golden Point rule
 - WebSocket infrastructure is partial
 - notification inbox delivery and cross-device read state are implemented, but APNs push delivery and background badge refresh remain unimplemented
 - StoreKit purchase buttons appear only in Debug builds until backend Apple verification is connected; tap the Personal Plus plan to reveal the yearly purchase, Restore Purchases, and Manage Subscription controls for 20 seconds
 - the subscription page's green current-tier outline and pink Current badge follow the latest backend organisation plan, not a local StoreKit test transaction. If the UI disagrees with `SkwshOrgSettings.plan`, confirm `GET /dashboard/{organization_id}` returns the expected plan and that the app is online so it can replace its cached login-session plan
 - new Personal Plus purchases are yearly-only. Monthly transactions remain recognized for restore and lifecycle processing; an old local StoreKit transaction must not make a purchase choice look like the current backend tier
-- Padel is doubles-only in the native app and requires four named participants. If it is missing from match setup, confirm `padel` is enabled in both Root Admin platform sports and the active account/club; the web Padel entry remains hidden until its four-player setup UI is complete
+- Padel is doubles-only in both clients and requires four named participants. If it is missing from match setup, confirm `padel` is enabled in both Root Admin platform sports and the active account/club
 - cancelling an Apple auto-renewable subscription normally disables renewal but retains Personal Plus through the paid `expires_at`; downgrade only after verified expiry or revocation. Local Xcode StoreKit transactions can be inspected or expired from Xcode's transaction manager
 - when the native Apple subscription-management sheet closes, the app refreshes StoreKit entitlements and reloads the server dashboard so a just-processed expiry or revocation replaces the cached plan. Cancelled SwiftUI/URL refresh tasks are ignored rather than shown as `Unable to fetch dashboard data`; genuine API, decoding, and network failures still surface that error
 - production subscription troubleshooting and verification gates are defined in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md); Release purchasing must remain disabled until its configuration and test checklists pass

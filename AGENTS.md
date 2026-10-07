@@ -43,6 +43,9 @@ What is real and implemented:
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup with per-participant shirt colours, automatic singles receiver selection from the opening server, explicit doubles serve/receive selection, optional Golden Point played automatically from the 40-40/Right service side, an optional final-set 10-point match tiebreak, and optional timed 90-second odd-game changeovers plus 120-second set breaks
+- the React web tennis setup supports the same singles/doubles lineup metadata, four participant shirt colours, Golden Point, final-set match tiebreak and timed-break flags, plus named opening server/receiver selection and doubles serve/receive order over the existing backend contract
+- the React web client also exposes Padel when it is enabled for the platform/account, forces its setup to doubles, reuses the four-participant lineup and timed-break flow, and requires the receiving team to choose its Right- or Left-court partner at Golden Point
+- web tennis and Padel live scoring use a dedicated tennis-style scoreboard rather than squash/racketball controls: backend-authored `0`/`15`/`30`/`40`/`Ad` or numeric tiebreak points, games, sets, named server/receiver, Deuce/Ad court, point timeline, game/set dividers, completion summary, and 90-/120-second break overlays are presented directly from the shared engine state
 - padel uses an explicit doubles-only adapter over the mature tennis-style set engine, including advantage or Golden Point where the receiving team selects which partner receives, 6-6 tiebreaks, serve/receive rotation, offline replay, undo and match completion; table tennis, badminton, and pickleball remain fail-safe placeholders
 - native iOS client for org-user login, dashboard/matches/history/settings/help, native match setup, historic-match viewing, and live scoring
 - web and native Personal Plus performance views covering results, game/point and serve-point percentages, court time, close games/sets, streaks, opponents, scorelines, sport splits, and weekly/monthly progress
@@ -51,11 +54,14 @@ What is real and implemented:
 - native iOS match setup exposes the implemented and enabled sports only: squash, racketball, tennis, and doubles Padel; Padel remains hidden until it is enabled through the platform and account sport controls
 - native iOS sport selection uses clean brand-blue court diagrams with photo-style, transparent ball artwork for squash, racketball, tennis, and Padel, with adaptive light/dark card surfaces; the Settings Racket Sports rows reuse compact versions of the same ball artwork without changing their menu layout
 - native iOS gives Personal Free and Personal Plus the same Home, Matches, Analytics, Settings and Need Help navigation; Matches is split into Current, Scheduled and History, with Personal Free seeing an upgrade gate for scheduling, while Analytics exposes basic scored-match stats to both tiers and adds personal performance reporting for Personal Plus
-- native historic tennis and Padel timelines use tennis point labels, set terminology and separate game/set completion cards, include match start time, and omit squash-style service-side markers
+- web and native completed matches use dedicated read-only historic-match views with sport-specific game/set terminology, match start time and duration, per-game/set timing, and grouped point timelines; tennis and Padel use tennis point labels plus separate game and set completion dividers and omit squash-style service-side markers
 - organisation and root-admin controls for enabling which racket sports are visible to a club or personal account
 - native settings now use a plan-aware menu layout with About first, followed by Profile and Subscription, dedicated per-section pages, self-profile editing, password-reset access, optional local biometric session unlock, personal-account deletion with two destructive confirmations, association switching between available memberships, sign-out access, and club-admin access to organisation, user, court, and racket-sport visibility controls
-- native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports personal-tier squash/racketball handicap setup
+- native match setup now respects dark mode styling, uses compact sport-specific headings and dropdown shirt selection for both personal tiers, and supports squash/racketball handicap setup for Personal Free, Personal Plus, and club accounts
 - native match setup uses live player-name headings with compact colour-dot menus, disambiguates matching first names in score cards with surname initials, offers squash/racketball Golden Point and optional timed game breaks, and asks for confirmation before ending a live match early
+- web and native Squash/Racketball setup both expose Golden Point, handicap configuration for Personal Free, Personal Plus, and club accounts, and optional timed warm-ups plus 90-second game breaks; when timing is off a fresh match opens directly on live scoring, including handicap matches whose initial scores are non-zero. Handicap scoring is a sport capability rather than a plan entitlement, so there is no organisation-level enable/disable setting
+- Settings → Game Settings persists a per-sport timer default for Squash, Racketball, Tennis and Padel. The saved value only preselects the per-match timing option and can still be overridden during match creation
+- Personal Plus can schedule matches from both web and iOS, including while another personal match is active. Scheduled matches appear in Matches and may be activated later; both clients and the backend prevent activation until the existing personal match has ended
 - native iOS bottom navigation and scoring controls now compact themselves under large Dynamic Type settings to better fit smaller iPhone screens
 - native squash/racketball scoring also selects its compact presentation by available width, keeps point rails and warm-up actions within phone bounds, and presents a dedicated completed-match summary when the final point is scored
 - native squash/racketball point rails reconcile a manual service-box change into the existing current-score marker, so changing `R2` to `L2` replaces the marker rather than appending a duplicate; automated mobile and backend scenarios cover service transfers, successive server points, undo-style rollback, handedness defaults, game boundaries and exhaustive six-point sequences, a saved credential-free XCUITest verifies the visible `R2` to `L2` to `R3` flow in an Apple Simulator, and an opt-in credential-backed journey creates, completes and logs out from a real Personal Plus test match
@@ -150,6 +156,7 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/match/new`
 - `/match/new/setup`
 - `/match/:matchId`
+- `/match/:matchId/history`
 - `/scoreboard`
 - `/display`
 - `/rckscoreAdmin`
@@ -215,4 +222,6 @@ testing/automated/mobile/run-tennis-scenarios.sh
 testing/automated/mobile/run-racket-point-rail-scenarios.sh
 testing/automated/mobile/run-racket-service-side-ui-test.sh
 testing/automated/mobile/run-live-racket-match-ui-test.sh
+cd frontend && npm run test:e2e:racket
+cd frontend && npm run test:e2e:scheduling
 ```

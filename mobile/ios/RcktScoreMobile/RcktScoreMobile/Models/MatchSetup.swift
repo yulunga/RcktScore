@@ -31,6 +31,7 @@ struct OrganizationProfile: Decodable {
     let organizationType: String
     let plan: String?
     let enabledSports: [String]
+    let timedBreakDefaults: [String: Bool]
     let isHidden: Bool
     let entitlements: PersonalPlanEntitlements?
     let availablePlanEntitlements: [String: PersonalPlanEntitlements]
@@ -47,6 +48,7 @@ struct OrganizationProfile: Decodable {
         case organizationType = "org_type"
         case plan
         case enabledSports = "enabled_sports"
+        case timedBreakDefaults = "timed_break_defaults"
         case isHidden = "is_hidden"
         case entitlements
         case availablePlanEntitlements = "available_plan_entitlements"
@@ -65,6 +67,7 @@ struct OrganizationProfile: Decodable {
         organizationType = try container.decodeIfPresent(String.self, forKey: .organizationType) ?? "club"
         plan = try container.decodeIfPresent(String.self, forKey: .plan)
         enabledSports = try container.decodeIfPresent([String].self, forKey: .enabledSports) ?? ["squash", "racketball", "tennis"]
+        timedBreakDefaults = try container.decodeIfPresent([String: Bool].self, forKey: .timedBreakDefaults) ?? [:]
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
         entitlements = try container.decodeIfPresent(PersonalPlanEntitlements.self, forKey: .entitlements)
         availablePlanEntitlements = try container.decodeIfPresent([String: PersonalPlanEntitlements].self, forKey: .availablePlanEntitlements) ?? [:]
@@ -277,6 +280,7 @@ struct UpdateOrganizationDetailsRequest: Encodable {
     let organizationEmail: String?
     let organizationWebAddress: String?
     let enabledSports: [String]?
+    let timedBreakDefaults: [String: Bool]?
 
     enum CodingKeys: String, CodingKey {
         case organizationName = "organization_name"
@@ -287,6 +291,7 @@ struct UpdateOrganizationDetailsRequest: Encodable {
         case organizationEmail = "org_email"
         case organizationWebAddress = "org_webaddress"
         case enabledSports = "enabled_sports"
+        case timedBreakDefaults = "timed_break_defaults"
     }
 }
 

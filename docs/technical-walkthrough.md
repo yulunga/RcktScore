@@ -211,6 +211,7 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - `users`
    - `courts`
    - `organization.enabled_sports`
+   - `organization.timed_break_defaults`
 4. The frontend renders:
    - organisation details
    - personal profile
@@ -218,11 +219,12 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - court admin
    - map preview
    - persisted racket-sport visibility controls
+   - persisted per-sport timer defaults under Game Settings
    - scaffold-only social profile fields
 
 ### Current limitation
 
-The organisation-level handicap setting and social-profile fields are still UI scaffolds and are not persisted/enforced.
+Social-profile fields are still UI scaffolds and are not persisted/enforced. There is intentionally no organisation-level handicap setting: Squash/Racketball handicap scoring is available to Personal Free, Personal Plus, and club accounts.
 
 ## 7. Personal Profile Update Flow
 
@@ -312,6 +314,33 @@ The root-admin club page marks these shared calls as root-admin requests in the 
 
 ## 11. Match Creation Flow
 
+The React tennis setup mirrors the native lineup contract: singles or doubles,
+four named doubles participants with individual shirt colours, Golden Point, an
+optional final-set 10-point match tiebreak, and timed 90-second odd-game
+changeovers plus 120-second set breaks. Before play begins, the web scorer asks
+for a named opening server and receiver and submits the same participant IDs,
+alternating serve order, and Deuce-court receiver map used by the native client.
+These are client additions over the existing backend tennis event contract; no
+new route is involved.
+
+The same web flow now exposes enabled Padel accounts as doubles-only, omits the
+tennis-only final-set match-tiebreak option, and uses the Padel adapter over the
+shared tennis-style engine. At Golden Point the receiving team must choose its
+Right- or Left-court partner before the deciding point is submitted.
+
+Live tennis and Padel matches render through
+`frontend/src/components/TennisScoreboard.jsx`, separately from the generic
+squash/racketball `Scoreboard`. The component displays the backend engine's
+tennis point labels, set games, sets won, tiebreak mode, named participant-level
+server and receiver, Deuce/Ad court, completed sets, point timeline and final
+result. It intentionally omits Stroke, Let and manual service-box controls.
+`MatchScreen.jsx` retains shared loading, mutation, undo, match timer and network
+plumbing and starts a 90-second break only after an odd completed game, or a
+120-second break after a completed set, when `tennis_timed_breaks` is enabled.
+Every web scoring mutation also sends a client-generated UUID through the
+existing `client_action_id` contract so a retried browser request cannot apply
+the same action twice.
+
 ### Frontend entry
 
 - [frontend/src/pages/NewMatch.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/NewMatch.jsx)
@@ -320,14 +349,14 @@ The root-admin club page marks these shared calls as root-admin requests in the 
 
 ### Current path
 
-1. The operator submits player, court, referee, sport, score type, best-of, and optional handicap data.
+1. The operator submits player, court, referee, sport, score type, best-of, optional handicap data, Golden Point, and the per-match timing choice. Both clients initialise timing from `organization.timed_break_defaults` for the selected sport, but the operator may override it before starting.
 2. The frontend calls `POST /start_match`.
 3. [backend/functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py) authorizes the org-user session.
 4. [backend/common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py):
    - normalizes the requested sport
    - rejects sports outside the session membership's client-effective list, which intersects platform, organisation, and per-membership web/iOS access
    - dispatches match creation to the correct sport engine
-   - allows live match creation today for squash, racketball, and tennis
+   - allows live match creation today for squash, racketball, tennis, and doubles Padel
    - fails safely for sport engines that are wired but not yet implemented
    - blocks personal accounts from having more than one active match
    - can auto-schedule a club match if the chosen court already has an active match
@@ -335,6 +364,13 @@ The root-admin club page marks these shared calls as root-admin requests in the 
    - writes a `match_started` event
 5. The API returns `data.match` and `data.broadcast`.
 6. The frontend navigates to the match screen unless the match is left as scheduled.
+
+For Personal Plus, web and iOS expose an explicit schedule option. A scheduled
+match does not consume the personal account's one-active-match allowance, so it
+can be prepared while another match is live. The dashboard/Matches view lists
+it and calls `POST /start_scheduled_match` later. Activation is disabled in the
+web UI and rejected server-side with `ACTIVE_MATCH_EXISTS` until the current
+personal match has ended.
 
 ## 12. Match Load and Scoring Flow
 
@@ -361,7 +397,7 @@ The root-admin club page marks these shared calls as root-admin requests in the 
 
 Current live sport engines:
 
-- squash and racketball share [backend/common/squash_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/squash_match_logic.py)
+- squash and racketball share [backend/common/squash_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/squash_match_logic.py), including Golden Point and handicap offsets for Personal Free, Personal Plus, and club accounts without a plan entitlement gate
 - tennis uses [backend/common/tennis_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/tennis_match_logic.py)
 - tennis supports normal advantage scoring or Golden Point scoring from the automatic 40-40/Right service side, regular seven-point tiebreaks at 6-6, an optional deciding-set replacement played as a 10-point match tiebreak, and optional timed breaks with no break after game 1, 90-second changeovers after later odd-numbered games, and 120 seconds between sets; all tiebreaks require a two-point margin
 - padel uses [backend/common/padel_match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/padel_match_logic.py) as a doubles-only adapter over the same set-scoring engine, with four named participants, games to six, a seven-point tiebreak at 6-6, and optional Golden Point where the receiving team selects which partner receives before the deciding point
@@ -439,9 +475,9 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 6. [SessionStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/SessionStore.swift) tracks session expiry and whether local biometric unlock is available and enabled. When the user opts in, the unexpired session is also stored in the device-bound iOS Keychain behind the current biometric enrolment. Face ID or Touch ID can unlock it at cold launch or restore it from the login screen after local sign-out, including offline. A successful authentication remains valid across brief interruptions and the app only relocks after five continuous minutes in the background; transient `.inactive` states such as system overlays and the biometric prompt do not relock it. Biometrics are not a second backend login method and an expired or server-rejected session is removed.
 7. The native About page reads the installed app version and build directly from the iOS bundle metadata on device; it does not rely on a backend route.
 8. The native association page now uses the locally persisted membership list from login to let multi-club users switch the active organisation without signing out. That switch refreshes dashboard and settings data against the selected membership.
-9. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. Its sport picker combines adaptive light/dark cards, brand-blue court linework, pink accents, and transparent photo-style ball assets for squash, racketball, tennis, and Padel; compact versions of those same assets appear in the Settings Racket Sports rows while retaining their existing layout and controls. Player headings update as first names are entered and shirt choice is a compact colour-dot menu. Tennis setup omits country and handedness, supports singles/doubles with one shirt colour per participant, best-of sets, Golden Point, an optional final-set 10-point match tiebreak, and timed breaks that are off by default. Squash/racketball can opt into Golden Point at 10-all or 14-all and timed 90-second game breaks; the warm-up uses two 120-second squash halves or two 150-second racketball halves. Padel uses the same court-scoring presentation but requires two named players on each team and defaults to best of three.
+9. [StartNewMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/StartNewMatchView.swift) uses `GET /organization_settings/{organization_id}`, `GET /match_setup_lookup/{organization_id}`, and `POST /start_match` for the native match-setup flow. Its sport picker combines adaptive light/dark cards, brand-blue court linework, pink accents, and transparent photo-style ball assets for squash, racketball, tennis, and Padel; compact versions of those same assets appear in the Settings Racket Sports rows while retaining their existing layout and controls. Player headings update as first names are entered and shirt choice is a compact colour-dot menu. Tennis setup omits country and handedness, supports singles/doubles with one shirt colour per participant, best-of sets, Golden Point, an optional final-set 10-point match tiebreak, and timed breaks. Squash/racketball can opt into Golden Point at 10-all or 14-all, handicap scoring on Personal Free, Personal Plus, or club accounts, and timed 90-second game breaks; the warm-up uses two 120-second squash halves or two 150-second racketball halves. Padel uses the same court-scoring presentation but requires two named players on each team and defaults to best of three. Every sport's timing toggle is initially set from its saved Game Settings default. When timing is not selected, Squash/Racketball opens directly on live scoring while Tennis/Padel proceeds directly to the required opening serve/receive choice.
 10. [MatchScoringView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/MatchScoringView.swift) owns common loading, timers, networking, and controls. Its squash/racketball presentation selects compact geometry from the available width as well as height, uses an adaptive vertical fallback for warm-up actions, keeps game history horizontally scrollable, and replaces the live board with a completed-match summary after the final point. [RacketPointRailReducer.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/RacketPointRailReducer.swift) reconciles the live serving marker with the latest point: when the server manually changes box without changing score, the existing marker is replaced (`R2` becomes `L2`) instead of duplicated. The saved `RacketServiceSideTimelineUITests` fixture starts this real screen offline at `R2`, verifies the visible replacement with `L2`, scores the next server point and verifies `R3`; `testing/automated/mobile/run-racket-service-side-ui-test.sh` runs it in an Apple Simulator and retains screenshots in the `.xcresult`. The separate opt-in `LiveRacketMatchJourneyUITests` signs into the real Personal Plus test account, creates Paul versus Mark as Best of 1 / PAR-11, checks the same side correction plus let and undo behavior, completes the match and signs out; it writes a real completed test match and therefore never runs as part of the credential-free baseline. Light shirt colours use dark foregrounds and a visible score inset, the running match timer is light green while its paused state remains slate, and the custom pink-accented action sheet names both players and keeps player selection within the same sheet. [TennisScoringPresentation.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/TennisScoringPresentation.swift) owns the tennis/padel scoreboard and an available-height scrolling score timeline with scores pulled towards the centre. Tennis Golden Point proceeds automatically from the 40-40/Right service side; padel instead presents the two receiving players by name and maps the selected partner to their established receiving court before allowing the deciding point. The visible timeline shows only point scores, labels a game-winning point as `Game` in mustard, and follows it immediately with a larger blue score-only divider. Backend and offline point events still record the actual server, receiver and Deuce/Ad court before the point as well as its score and game/set boundary for future statistics, rather than relying on the next-point serving state. When enabled, `TennisBreakRules` drives a 90-second interval after odd games from game 3 onward and a 120-second interval after a completed set. [OfflineMatchStore.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/OfflineMatchStore.swift) retains the ordered action queue, while [TennisScoringReducer.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/State/TennisScoringReducer.swift) mirrors backend tennis transitions offline. Reconnection replays UUID-tagged actions in order, preserves actions appended during an in-flight request, adopts each authoritative server response, and exposes the actual replay error while keeping failed actions queued.
-11. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) reloads the same match payload and renders grouped historic point/event data for completed matches.
+11. [HistoricMatchView.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Views/HistoricMatchView.swift) and [HistoricMatchPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HistoricMatchPage.jsx) reload the same authenticated match payload and render a separate read-only experience for completed matches. Both show sport-specific game/set terminology, match start time, recorded total duration, durations derived from the first and last scoring event in each game/set, and grouped point history. Tennis and Padel retain tennis score labels and insert distinct game and set completion dividers. Web history cards navigate to `/match/{match_id}/history`; `/match/{match_id}` remains the live-scoring route.
 12. Offline scope is deliberately limited to a match previously opened on that device. Creating matches, activating scheduled matches, loading history, changing settings, account deletion, and opening uncached matches still require connectivity.
 13. Help & Feedback includes a native privacy/data page covering account, match, device, offline and biometric handling. [PrivacyInfo.xcprivacy](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/PrivacyInfo.xcprivacy) declares the app's required-reason UserDefaults access. App Store Connect privacy answers and the public policy URL must still be maintained for each release.
 14. [StoreKitPurchaseService.swift](/Users/glennrowe/Development/Projects/RcktScore/mobile/ios/RcktScoreMobile/RcktScoreMobile/Services/StoreKitPurchaseService.swift) loads the authenticated purchase context and offers the yearly Personal Plus product for new purchases, displays Apple's localised price, passes `.appAccountToken`, observes updates, restores purchases, and supports Apple's manage-subscriptions sheet. Monthly transactions remain recognized for restore and server lifecycle handling so earlier purchases are not orphaned. For server-enabled purchasing it submits both the transaction JWS and signed `AppTransaction` JWS, finishes only after backend acceptance, and refreshes the server-authoritative dashboard plan. Debug local StoreKit tests remain non-authoritative while the deployment gate is off.

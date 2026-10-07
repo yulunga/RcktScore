@@ -8,6 +8,7 @@ export default function MatchControls({
   onUndo,
   onEndMatch,
   onOpenSettings,
+  showRacketActions = true,
 }) {
   const matchComplete = match?.state?.match_complete || match?.status === "completed";
   const [showEndMatchConfirm, setShowEndMatchConfirm] = useState(false);
@@ -52,27 +53,27 @@ export default function MatchControls({
       ) : null}
 
       <div className="match-control-grid">
-        <button
+        {showRacketActions ? <button
           className="secondary match-control-grid__stroke-left"
           disabled={disabled || matchComplete}
           onClick={() => onEventAction("stroke", { player_side: "player1" })}
         >
           Stroke P1
-        </button>
-        <button
+        </button> : null}
+        {showRacketActions ? <button
           className="secondary match-control-grid__let"
           disabled={disabled || matchComplete}
           onClick={() => onEventAction("let", { note: "General let" })}
         >
           Let
-        </button>
-        <button
+        </button> : null}
+        {showRacketActions ? <button
           className="secondary match-control-grid__stroke-right"
           disabled={disabled || matchComplete}
           onClick={() => onEventAction("stroke", { player_side: "player2" })}
         >
           Stroke P2
-        </button>
+        </button> : null}
         <button
           className="danger match-control-grid__undo"
           disabled={disabled || undoDisabled}

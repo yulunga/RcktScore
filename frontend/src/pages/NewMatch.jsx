@@ -63,6 +63,12 @@ const initialFormState = {
   player2_country: "",
   player2_handedness: "right",
   player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
+  player3_name: "",
+  player3_surname: "",
+  player3_shirt_color: "blue",
+  player4_name: "",
+  player4_surname: "",
+  player4_shirt_color: "red",
   referee_name: "",
   score_type: 15,
   best_of: 5,
@@ -73,6 +79,10 @@ const initialFormState = {
   player2_band: "",
   player1_offset: 0,
   player2_offset: 0,
+  team_format: "singles",
+  tennis_no_ad_scoring: false,
+  tennis_final_set_match_tiebreak: false,
+  tennis_timed_breaks: false,
 };
 
 function inferOrganizationType(session) {
@@ -102,9 +112,7 @@ export default function NewMatch() {
   const [activeCountryLookupField, setActiveCountryLookupField] = useState("");
   const [activeCountryOptionIndex, setActiveCountryOptionIndex] = useState(-1);
   const [organizationType, setOrganizationType] = useState(() => inferOrganizationType(session));
-  const [organizationPlan, setOrganizationPlan] = useState(
-    () => session?.plan || (inferOrganizationType(session) === "personal" ? "personal_free" : "club_essentials"),
-  );
+  const [organizationPlan, setOrganizationPlan] = useState(() => String(session?.plan || "").toLowerCase());
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { startMatch, loading, error } = useMatch();
@@ -114,10 +122,16 @@ export default function NewMatch() {
   const playableSports = useMemo(() => getPlayableMatchSports(session?.enabled_sports), [session?.enabled_sports]);
   const selectedSportIsAvailable = playableSports.some((sport) => sport.value === selectedSport);
   const isTennisMatch = selectedSport === "tennis";
-  const visibleScoreTypeOptions = isTennisMatch ? tennisScoreTypeOptions : scoreTypeOptions;
+  const isPadelMatch = selectedSport === "padel";
+  const isTennisStyleMatch = isTennisMatch || isPadelMatch;
+  const isTennisDoubles = isTennisStyleMatch && (isPadelMatch || formState.team_format === "doubles");
+  const visibleScoreTypeOptions = isTennisStyleMatch ? tennisScoreTypeOptions : scoreTypeOptions;
   const isPersonalAccount = organizationType === "personal";
-  const canChooseShirtColors = !isPersonalAccount || organizationPlan === "personal_plus";
-  const personalActiveMatch = isPersonalAccount ? activeMatches[0] : null;
+  const isPersonalPlus = isPersonalAccount && organizationPlan === "personal_plus";
+  const canScheduleMatch = !isPersonalAccount || isPersonalPlus;
+  const requestedScheduledMatch = canScheduleMatch && Boolean(formState.schedule_match);
+  const canChooseShirtColors = true;
+  const personalActiveMatch = isPersonalAccount && !requestedScheduledMatch ? activeMatches[0] : null;
   const usesMatrixHandicap = formState.handicap_enabled && formState.handicap_mode === "matrix";
   const usesCustomHandicap = formState.handicap_enabled && formState.handicap_mode === "custom";
   const hasValidHandicapSetup = !formState.handicap_enabled
@@ -129,6 +143,7 @@ export default function NewMatch() {
     (isPersonalAccount || (formState.court_id.trim() && formState.court_name.trim())) &&
     formState.player1_name.trim() &&
     formState.player2_name.trim() &&
+    (!isTennisDoubles || (formState.player3_name.trim() && formState.player4_name.trim())) &&
     hasValidHandicapSetup;
   const handicapSummary =
     usesMatrixHandicap && formState.player1_band && formState.player2_band
@@ -177,7 +192,7 @@ export default function NewMatch() {
 
     return COUNTRIES.filter((country) => country.toLowerCase().includes(query)).slice(0, 8);
   }, [activeCountryLookupField, playerCountryQueries]);
-  const shouldScheduleMatch = !isPersonalAccount && Boolean(formState.schedule_match || activeCourtMatch);
+  const shouldScheduleMatch = requestedScheduledMatch || (!isPersonalAccount && Boolean(activeCourtMatch));
   const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
 
   function handleChange(name, value) {
@@ -285,7 +300,7 @@ export default function NewMatch() {
   }
 
   function handleHandicapToggle(checked) {
-    if (isPersonalAccount || isTennisMatch) {
+    if (isTennisStyleMatch) {
       return;
     }
 
@@ -306,33 +321,30 @@ export default function NewMatch() {
   }
 
   useEffect(() => {
-    if (!isPersonalAccount && !isTennisMatch) {
+    if (!isPersonalAccount && !isTennisStyleMatch) {
       return;
     }
 
     setFormState((current) => {
-      if (!current.schedule_match && !current.handicap_enabled) {
-        return current;
-      }
-
       return {
         ...current,
-        schedule_match: false,
-        handicap_enabled: false,
-        handicap_mode: "custom",
-        player1_band: "",
-        player2_band: "",
-        player1_offset: 0,
-        player2_offset: 0,
+        schedule_match: isPersonalAccount && !isPersonalPlus ? false : current.schedule_match,
+        handicap_enabled: isTennisStyleMatch ? false : current.handicap_enabled,
+        handicap_mode: isTennisStyleMatch ? "custom" : current.handicap_mode,
+        player1_band: isTennisStyleMatch ? "" : current.player1_band,
+        player2_band: isTennisStyleMatch ? "" : current.player2_band,
+        player1_offset: isTennisStyleMatch ? 0 : current.player1_offset,
+        player2_offset: isTennisStyleMatch ? 0 : current.player2_offset,
       };
     });
-  }, [isPersonalAccount, isTennisMatch]);
+  }, [isPersonalAccount, isPersonalPlus, isTennisStyleMatch]);
 
   useEffect(() => {
     setFormState((current) => {
-      if (isTennisMatch) {
+      if (isTennisStyleMatch) {
         return {
           ...current,
+          team_format: isPadelMatch ? "doubles" : current.team_format,
           score_type: tennisScoreTypeOptions.some((option) => option.value === current.score_type) ? current.score_type : 6,
           best_of: [1, 3, 5].includes(current.best_of) ? current.best_of : 3,
           handicap_enabled: false,
@@ -349,12 +361,12 @@ export default function NewMatch() {
         score_type: scoreTypeOptions.some((option) => option.value === current.score_type) ? current.score_type : 15,
       };
     });
-  }, [isTennisMatch]);
+  }, [isPadelMatch, isTennisStyleMatch]);
 
   useEffect(() => {
     const nextOrganizationType = inferOrganizationType(session);
     setOrganizationType(nextOrganizationType);
-    setOrganizationPlan(session?.plan || (nextOrganizationType === "personal" ? "personal_free" : "club_essentials"));
+    setOrganizationPlan(String(session?.plan || "").toLowerCase());
   }, [session]);
 
   useEffect(() => {
@@ -381,13 +393,16 @@ export default function NewMatch() {
         const response = await getOrganizationSettings(organizationId);
         const organizationSettings = response?.organizationSettings || {};
         const courts = organizationSettings?.courts || [];
+        const timedBreakDefaults = organizationSettings?.organization?.timed_break_defaults || {};
         const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);
-        const nextOrganizationPlan = organizationSettings?.organization?.plan
-          || session?.plan
-          || (nextOrganizationType === "personal" ? "personal_free" : "club_essentials");
+        const nextOrganizationPlan = organizationSettings?.organization?.plan || session?.plan || "";
         setAvailableCourts(courts);
         setOrganizationType(nextOrganizationType);
-        setOrganizationPlan(nextOrganizationPlan);
+        setOrganizationPlan(String(nextOrganizationPlan).toLowerCase());
+        setFormState((current) => ({
+          ...current,
+          tennis_timed_breaks: Boolean(timedBreakDefaults[selectedSport]),
+        }));
 
         if (nextOrganizationType === "personal") {
           const personalCourt = courts[0];
@@ -418,7 +433,7 @@ export default function NewMatch() {
     }
 
     loadCourts();
-  }, [organizationId, session?.organization_type]);
+  }, [organizationId, selectedSport, session?.organization_type]);
 
   useEffect(() => {
     setPlayerCountryQueries({
@@ -660,6 +675,36 @@ export default function NewMatch() {
     );
   }
 
+  function renderAdditionalTennisPlayer(playerKey, label) {
+    return (
+      <section className="panel stack compact tennis-participant-card" data-testid={`${playerKey}-card`}>
+        <div className="panel-heading"><h3>{label}</h3></div>
+        <div className="field-grid">
+          <div className="field">
+            <label htmlFor={`${playerKey}_name`}>First Name<span className="required-mark"> *</span></label>
+            <input
+              id={`${playerKey}_name`}
+              name={`${playerKey}_name`}
+              required={isTennisDoubles}
+              value={formState[`${playerKey}_name`]}
+              onChange={(event) => handleChange(`${playerKey}_name`, event.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={`${playerKey}_surname`}>Surname</label>
+            <input
+              id={`${playerKey}_surname`}
+              name={`${playerKey}_surname`}
+              value={formState[`${playerKey}_surname`]}
+              onChange={(event) => handleChange(`${playerKey}_surname`, event.target.value)}
+            />
+          </div>
+        </div>
+        {renderShirtColorField(playerKey, `${label} Shirt`)}
+      </section>
+    );
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!selectedSport) {
@@ -682,23 +727,57 @@ export default function NewMatch() {
       return;
     }
 
+    const tennisTeamOneName = isTennisDoubles
+      ? [formState.player1_name, formState.player2_name].filter(Boolean).join(" / ")
+      : formState.player1_name;
+    const tennisTeamTwoName = isTennisDoubles
+      ? [formState.player3_name, formState.player4_name].filter(Boolean).join(" / ")
+      : formState.player2_name;
     const response = await startMatch({
       ...formState,
+      player1_name: isTennisStyleMatch ? tennisTeamOneName : formState.player1_name,
+      player1_surname: isTennisDoubles ? "" : formState.player1_surname,
+      player2_name: isTennisStyleMatch ? tennisTeamTwoName : formState.player2_name,
+      player2_surname: isTennisDoubles ? "" : formState.player2_surname,
       player1_shirt_color: canChooseShirtColors
         ? formState.player1_shirt_color
         : DEFAULT_PLAYER_SHIRT_COLORS.player1,
       player2_shirt_color: canChooseShirtColors
         ? formState.player2_shirt_color
         : DEFAULT_PLAYER_SHIRT_COLORS.player2,
-      handicap_enabled: isPersonalAccount ? false : formState.handicap_enabled,
-      schedule_match: isPersonalAccount ? false : formState.schedule_match,
-      player1_band: isPersonalAccount ? "" : formState.player1_band,
-      player2_band: isPersonalAccount ? "" : formState.player2_band,
-      player1_offset: isPersonalAccount ? 0 : formState.player1_offset,
-      player2_offset: isPersonalAccount ? 0 : formState.player2_offset,
+      handicap_enabled: formState.handicap_enabled,
+      schedule_match: canScheduleMatch ? formState.schedule_match : false,
+      player1_band: formState.player1_band,
+      player2_band: formState.player2_band,
+      player1_offset: formState.player1_offset,
+      player2_offset: formState.player2_offset,
       sport: selectedSport,
       status: shouldScheduleMatch ? "scheduled" : "active",
       tenant_id: organizationId,
+      team_format: isTennisStyleMatch ? (isPadelMatch ? "doubles" : formState.team_format) : undefined,
+      team1_player1_name: isTennisStyleMatch ? formState.player1_name.trim() : undefined,
+      team1_player1_surname: isTennisStyleMatch ? formState.player1_surname.trim() : undefined,
+      team1_player2_name: isTennisDoubles ? formState.player2_name.trim() : undefined,
+      team1_player2_surname: isTennisDoubles ? formState.player2_surname.trim() : undefined,
+      team2_player1_name: isTennisStyleMatch
+        ? (isTennisDoubles ? formState.player3_name.trim() : formState.player2_name.trim())
+        : undefined,
+      team2_player1_surname: isTennisStyleMatch
+        ? (isTennisDoubles ? formState.player3_surname.trim() : formState.player2_surname.trim())
+        : undefined,
+      team2_player2_name: isTennisDoubles ? formState.player4_name.trim() : undefined,
+      team2_player2_surname: isTennisDoubles ? formState.player4_surname.trim() : undefined,
+      team1_player1_shirt_color: isTennisStyleMatch ? formState.player1_shirt_color : undefined,
+      team1_player2_shirt_color: isTennisDoubles ? formState.player2_shirt_color : undefined,
+      team2_player1_shirt_color: isTennisStyleMatch
+        ? (isTennisDoubles ? formState.player3_shirt_color : formState.player2_shirt_color)
+        : undefined,
+      team2_player2_shirt_color: isTennisDoubles ? formState.player4_shirt_color : undefined,
+      tennis_no_ad_scoring: formState.tennis_no_ad_scoring,
+      tennis_final_set_match_tiebreak: isTennisMatch
+        && formState.best_of > 1
+        && formState.tennis_final_set_match_tiebreak,
+      tennis_timed_breaks: formState.tennis_timed_breaks,
     });
     if (response?.match?.auto_scheduled && response?.match?.auto_schedule_reason) {
       setSetupNotice(response.match.auto_schedule_reason);
@@ -740,9 +819,38 @@ export default function NewMatch() {
         {courtError ? <div className="notice error">{courtError}</div> : null}
         {setupNotice ? <div className="notice">{setupNotice}</div> : null}
 
+        {isTennisMatch ? (
+          <section className="panel stack compact tennis-format-card">
+            <div className="panel-heading">
+              <h2>Players</h2>
+              <p className="helper-text">Choose singles or doubles before entering the line-up.</p>
+            </div>
+            <div className="tennis-format-options" role="radiogroup" aria-label="Tennis match type">
+              <button
+                aria-checked={formState.team_format === "singles"}
+                className={formState.team_format === "singles" ? "secondary active" : "secondary"}
+                role="radio"
+                type="button"
+                onClick={() => handleChange("team_format", "singles")}
+              >Singles</button>
+              <button
+                aria-checked={formState.team_format === "doubles"}
+                className={formState.team_format === "doubles" ? "secondary active" : "secondary"}
+                role="radio"
+                type="button"
+                onClick={() => handleChange("team_format", "doubles")}
+              >Doubles</button>
+            </div>
+          </section>
+        ) : null}
+
+        {isPadelMatch ? (
+          <div className="notice">Padel is doubles-only. Enter two players for each team.</div>
+        ) : null}
+
         <div className="match-setup-grid">
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">Player 1</div>
+            <div className="match-setup-section-title">{isTennisDoubles ? "Team 1 · Player 1" : "Player 1"}</div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -862,7 +970,7 @@ export default function NewMatch() {
           ) : null}
 
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">Player 2</div>
+            <div className="match-setup-section-title">{isTennisDoubles ? "Team 1 · Player 2" : "Player 2"}</div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -981,6 +1089,13 @@ export default function NewMatch() {
             </div>
           ) : null}
 
+          {isTennisDoubles ? (
+            <div className="match-setup-row tennis-doubles-lineup">
+              {renderAdditionalTennisPlayer("player3", "Team 2 · Player 1")}
+              {renderAdditionalTennisPlayer("player4", "Team 2 · Player 2")}
+            </div>
+          ) : null}
+
           {!isPersonalAccount ? (
             <div className="match-setup-row match-setup-row--court-controls">
               <div className="field">
@@ -1037,7 +1152,7 @@ export default function NewMatch() {
             <div className="field">
               <label htmlFor="score_type">Game Format</label>
               <select
-                disabled={!isTennisMatch && formState.handicap_enabled}
+                disabled={!isTennisStyleMatch && formState.handicap_enabled}
                 id="score_type"
                 name="score_type"
                 value={formState.score_type}
@@ -1051,7 +1166,7 @@ export default function NewMatch() {
               </select>
             </div>
 
-            {!isPersonalAccount && !isTennisMatch ? (
+            {!isTennisStyleMatch ? (
               <div className="field checkbox-field match-setup-checkbox-field">
                 <label className="checkbox-label" htmlFor="handicap_enabled">
                   <input
@@ -1067,9 +1182,47 @@ export default function NewMatch() {
             ) : null}
           </div>
 
+          {isTennisStyleMatch ? (
+            <section className="panel stack compact tennis-rules-card">
+              <div className="panel-heading">
+                <h2>{isPadelMatch ? "Padel Rules" : "Tennis Rules"}</h2>
+                <p className="helper-text">These choices are stored with the match and apply on every client.</p>
+              </div>
+              <label className="checkbox-label" htmlFor="tennis_no_ad_scoring">
+                <input checked={formState.tennis_no_ad_scoring} id="tennis_no_ad_scoring" type="checkbox" onChange={(event) => handleChange("tennis_no_ad_scoring", event.target.checked)} />
+                Golden Point at 40-40
+              </label>
+              {!isPadelMatch ? <label className="checkbox-label" htmlFor="tennis_final_set_match_tiebreak">
+                <input checked={formState.tennis_final_set_match_tiebreak} disabled={formState.best_of === 1} id="tennis_final_set_match_tiebreak" type="checkbox" onChange={(event) => handleChange("tennis_final_set_match_tiebreak", event.target.checked)} />
+                Final-set 10-point match tiebreak
+              </label> : null}
+              <label className="checkbox-label" htmlFor="tennis_timed_breaks">
+                <input checked={formState.tennis_timed_breaks} id="tennis_timed_breaks" type="checkbox" onChange={(event) => handleChange("tennis_timed_breaks", event.target.checked)} />
+                Timed breaks: 90-second odd-game changeovers and 120-second set breaks
+              </label>
+            </section>
+          ) : null}
+
+          {!isTennisStyleMatch ? (
+            <section className="panel stack compact tennis-rules-card">
+              <div className="panel-heading">
+                <h2>{selectedSportOption?.label || "Racket Sport"} Rules</h2>
+                <p className="helper-text">These choices are stored with this match and apply on web and iOS.</p>
+              </div>
+              <label className="checkbox-label" htmlFor="racket_golden_point">
+                <input checked={formState.tennis_no_ad_scoring} id="racket_golden_point" type="checkbox" onChange={(event) => handleChange("tennis_no_ad_scoring", event.target.checked)} />
+                Golden Point at {formState.score_type - 1}-all
+              </label>
+              <label className="checkbox-label" htmlFor="racket_timed_breaks">
+                <input checked={formState.tennis_timed_breaks} id="racket_timed_breaks" type="checkbox" onChange={(event) => handleChange("tennis_timed_breaks", event.target.checked)} />
+                Timed warm-up and 90-second game breaks
+              </label>
+            </section>
+          ) : null}
+
         </div>
 
-        {!isPersonalAccount && !isTennisMatch && formState.handicap_enabled ? (
+        {!isTennisStyleMatch && formState.handicap_enabled ? (
           <div className="panel stack compact">
             <div className="panel-heading">
               <h2>Handicap Setup</h2>
@@ -1237,7 +1390,7 @@ export default function NewMatch() {
           </>
         ) : null}
 
-        {!isPersonalAccount ? (
+        {canScheduleMatch ? (
           <div className="field checkbox-field">
             <label className="checkbox-label" htmlFor="schedule_match">
               <input
@@ -1247,14 +1400,17 @@ export default function NewMatch() {
                 type="checkbox"
                 onChange={(event) => handleChange("schedule_match", event.target.checked)}
               />
-              Schedule Match
+              {isPersonalPlus ? "Schedule for Later" : "Schedule Match"}
             </label>
+            {isPersonalPlus ? (
+              <p className="helper-text">Save this match without starting the scoring clock. Start it later from Matches.</p>
+            ) : null}
           </div>
         ) : null}
 
         <div className="button-row">
           <button disabled={loading || !canSubmitMatch} type="submit">
-            {loading ? "Saving..." : "Start Match"}
+            {loading ? "Saving..." : shouldScheduleMatch ? "Schedule Match" : "Start Match"}
           </button>
           {personalActiveMatch?.id ? (
             <button

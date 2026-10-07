@@ -38,6 +38,24 @@ def point(match, side):
     return {**match, "state": transition["state"]}, transition
 
 
+@pytest.mark.parametrize(
+    ("player1_score", "player2_score", "expected"),
+    [
+        (0, 0, ("0", "0")),
+        (1, 0, ("15", "0")),
+        (2, 1, ("30", "15")),
+        (3, 2, ("40", "30")),
+        (4, 3, ("Ad", "40")),
+    ],
+)
+def test_standard_tennis_point_labels(player1_score, player2_score, expected):
+    assert tennis._tennis_score_labels(player1_score, player2_score, False) == expected
+
+
+def test_tiebreak_point_labels_are_numeric():
+    assert tennis._tennis_score_labels(8, 7, True) == ("8", "7")
+
+
 def test_advantage_deuce_requires_two_clear_points():
     match = make_match(player1_score=3, player2_score=3)
     match, _ = point(match, "player1")

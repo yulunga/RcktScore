@@ -654,6 +654,17 @@ def is_personal_tenant(connection, tenant_id):
     return _is_personal_tenant(tenant_id, _fetch_tenant_plan(connection, tenant_id))
 
 
+def ensure_scheduled_activation_available(connection, match_row):
+    tenant_id = match_row.get("tenant_id")
+    tenant_plan = _fetch_tenant_plan(connection, tenant_id)
+    if not _is_personal_tenant(tenant_id, tenant_plan):
+        return
+
+    active_match = _find_active_match_for_tenant(connection, tenant_id)
+    if active_match and str(active_match.get("id")) != str(match_row.get("id")):
+        raise ValueError("End the current personal match before starting this scheduled match")
+
+
 def _can_choose_shirt_colors(tenant_plan, tenant_id=None):
     return True
 
@@ -733,7 +744,7 @@ def create_match(connection, payload, source="api"):
     games_to_win = _games_to_win(best_of)
     conflicting_match = None
     match_status = requested_status
-    handicap_enabled = False if is_personal_tenant else bool(payload.get("handicap_enabled"))
+    handicap_enabled = bool(payload.get("handicap_enabled"))
     player1_offset = _coerce_int(payload.get("player1_offset")) if handicap_enabled else 0
     player2_offset = _coerce_int(payload.get("player2_offset")) if handicap_enabled else 0
     player1_shirt_color = _shirt_color_value(
@@ -942,6 +953,8 @@ def activate_scheduled_match(connection, match_id):
 
     if match_row["status"] != "scheduled":
         return get_match(connection, match_id)
+
+    ensure_scheduled_activation_available(connection, match_row)
 
     with connection.cursor() as cursor:
         cursor.execute(

@@ -26,6 +26,15 @@ ORGANIZATION_FIELDS = [
     "org_email",
     "org_webaddress",
 ]
+TIMED_BREAK_SPORTS = ("squash", "racketball", "tennis", "padel")
+
+
+def normalize_timed_break_defaults(value):
+    source = value if isinstance(value, dict) else {}
+    return {
+        sport: bool(source.get(sport, False))
+        for sport in TIMED_BREAK_SPORTS
+    }
 
 
 def _utcnow():
@@ -49,6 +58,7 @@ def _serialize_organization(row):
         "entitlements": personal_plan_entitlements(plan) if org_type == "personal" else None,
         "available_plan_entitlements": personal_plan_contract() if org_type == "personal" else None,
         "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
+        "timed_break_defaults": normalize_timed_break_defaults(row.get("timed_break_defaults")),
         "is_hidden": bool(row.get("is_hidden")),
         "social_profiles": {
             "facebook": "",
@@ -311,6 +321,7 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 org_type,
                 plan,
                 enabled_sports,
+                timed_break_defaults,
                 is_hidden
             FROM "SkwshOrgSettings"
             WHERE id = %(organization_id)s
@@ -389,6 +400,8 @@ def update_organization_details(connection, organization_id, payload):
     }
     if "enabled_sports" in payload:
         updates["enabled_sports"] = constrain_enabled_sports(connection, payload.get("enabled_sports"))
+    if "timed_break_defaults" in payload:
+        updates["timed_break_defaults"] = normalize_timed_break_defaults(payload.get("timed_break_defaults"))
 
     if updates:
         set_clause = ", ".join(f'{field} = %({field})s' for field in updates)
@@ -398,6 +411,8 @@ def update_organization_details(connection, organization_id, payload):
         }
         if "enabled_sports" in params:
             params["enabled_sports"] = Jsonb(params["enabled_sports"])
+        if "timed_break_defaults" in params:
+            params["timed_break_defaults"] = Jsonb(params["timed_break_defaults"])
         with connection.cursor() as cursor:
             cursor.execute(
                 f'''

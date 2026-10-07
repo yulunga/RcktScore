@@ -9,7 +9,17 @@
     "preview": "vite preview",
     "test:e2e": "playwright test -c playwright.config.cjs",
     "test:e2e:smoke": "playwright test -c playwright.config.cjs --grep @smoke",
-    "test:e2e:headed": "playwright test -c playwright.config.cjs --headed"
+    "test:e2e:headed": "playwright test -c playwright.config.cjs --headed",
+    "test:e2e:tennis": "playwright test -c playwright.config.cjs e2e/tennis-match-journey.spec.cjs --project=desktop-chromium",
+    "test:e2e:tennis:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/tennis-match-journey.spec.cjs --project=desktop-chromium --headed --workers=1",
+    "test:e2e:padel": "playwright test -c playwright.config.cjs e2e/tennis-match-journey.spec.cjs --project=desktop-chromium --grep @padel",
+    "test:e2e:padel:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/tennis-match-journey.spec.cjs --project=desktop-chromium --grep @padel --headed --workers=1",
+    "test:e2e:racket": "playwright test -c playwright.config.cjs e2e/racket-match-journey.spec.cjs --project=desktop-chromium",
+    "test:e2e:racket:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/racket-match-journey.spec.cjs --project=desktop-chromium --headed --workers=1",
+    "test:e2e:scheduling": "playwright test -c playwright.config.cjs e2e/personal-plus-scheduling.spec.cjs --project=desktop-chromium",
+    "test:e2e:scheduling:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/personal-plus-scheduling.spec.cjs --project=desktop-chromium --headed --workers=1",
+    "test:e2e:history": "playwright test -c playwright.config.cjs e2e/historic-match-journey.spec.cjs --project=desktop-chromium",
+    "test:e2e:history:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/historic-match-journey.spec.cjs --project=desktop-chromium --headed --workers=1"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -519,6 +519,7 @@ struct StartNewMatchView: View {
     @State private var refereeSuggestions: [String] = []
     @State private var loadedOrganizationType: String?
     @State private var loadedEnabledSports: [String] = []
+    @State private var loadedTimedBreakDefaults: [String: Bool] = [:]
     @State private var isLoading = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
@@ -857,6 +858,19 @@ struct StartNewMatchView: View {
                     Text("Handicap Match")
                         .font(.subheadline.weight(.semibold))
                 }
+                .tint(Color.dashboardBrand)
+                .accessibilityIdentifier("startMatch.handicapToggle")
+                .onChange(of: formState.handicapEnabled) {
+                    if formState.handicapEnabled {
+                        formState.scoreType = 15
+                    } else {
+                        formState.player1Band = ""
+                        formState.player2Band = ""
+                        formState.player1Offset = 0
+                        formState.player2Offset = 0
+                    }
+                    refreshSetupNotice()
+                }
 
                 checkboxOption(
                     title: "Golden Point",
@@ -871,19 +885,6 @@ struct StartNewMatchView: View {
                     isOn: $formState.tennisTimedBreaks,
                     identifier: "startMatch.racketTimedBreaksToggle"
                 )
-                .tint(Color.dashboardBrand)
-                .accessibilityIdentifier("startMatch.handicapToggle")
-                .onChange(of: formState.handicapEnabled) {
-                    if formState.handicapEnabled {
-                        formState.scoreType = 15
-                    } else {
-                        formState.player1Band = ""
-                        formState.player2Band = ""
-                        formState.player1Offset = 0
-                        formState.player2Offset = 0
-                    }
-                    refreshSetupNotice()
-                }
 
                 if !isPersonalAccount || isPersonalPlus {
                     Toggle(isOn: $formState.scheduleMatch) {
@@ -1494,6 +1495,7 @@ struct StartNewMatchView: View {
             await MainActor.run {
                 availableCourts = settings.courts
                 loadedOrganizationType = settings.organization.organizationType
+                loadedTimedBreakDefaults = settings.organization.timedBreakDefaults
                 let sessionSports = Set(session?.normalizedEnabledSports ?? [])
                 loadedEnabledSports = settings.organization.enabledSports.filter {
                     sessionSports.contains($0.lowercased())
@@ -1514,6 +1516,8 @@ struct StartNewMatchView: View {
     }
 
     private func applyOrganizationDefaults() {
+        formState.tennisTimedBreaks = loadedTimedBreakDefaults[selectedSport.rawValue] ?? false
+
         if isTennisMatch {
             formState.scoreType = 6
             formState.bestOf = [1, 3, 5].contains(formState.bestOf) ? formState.bestOf : 3

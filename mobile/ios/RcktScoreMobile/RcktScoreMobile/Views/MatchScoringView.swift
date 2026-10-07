@@ -2258,13 +2258,22 @@ struct MatchScoringView: View {
         durationSyncedMatchID = nil
 
         if let storedState = readStoredTimerState(matchID: match.id) {
-            let advancedState = advanceTimerSnapshot(storedState)
-            timerPhase = advancedState.phase
-            timerSeconds = advancedState.seconds
-            matchDurationSeconds = advancedState.matchDurationSeconds
-            activeIntervalDurationSeconds = advancedState.intervalDurationSeconds ?? intervalSeconds
-            timerRunning = advancedState.running
-            return
+            let optionalTimerPhase = [
+                MatchTimerPhase.warmupReady,
+                .warmupSideOne,
+                .warmupSideTwo,
+                .interval
+            ].contains(storedState.phase)
+            if live?.tennisTimedBreaks == true || !optionalTimerPhase {
+                let advancedState = advanceTimerSnapshot(storedState)
+                timerPhase = advancedState.phase
+                timerSeconds = advancedState.seconds
+                matchDurationSeconds = advancedState.matchDurationSeconds
+                activeIntervalDurationSeconds = advancedState.intervalDurationSeconds ?? intervalSeconds
+                timerRunning = advancedState.running
+                return
+            }
+            clearStoredTimerState(matchID: match.id)
         }
 
         if isMatchComplete {
@@ -2276,9 +2285,17 @@ struct MatchScoringView: View {
             return
         }
 
-        if isFreshMatch(match) {
+        if isFreshMatch(match), live?.tennisTimedBreaks == true {
             timerPhase = .warmupReady
             timerSeconds = warmupDurationSeconds
+            matchDurationSeconds = 0
+            timerRunning = false
+            return
+        }
+
+        if isFreshMatch(match), isTennisMatch {
+            timerPhase = .firstServer
+            timerSeconds = 0
             matchDurationSeconds = 0
             timerRunning = false
             return
@@ -2815,10 +2832,12 @@ struct MatchScoringView: View {
     private func isFreshMatch(_ match: MatchDetail) -> Bool {
         let state = match.state
         let events = state?.events ?? []
+        let player1Start = match.handicapEnabled ? match.player1Offset : 0
+        let player2Start = match.handicapEnabled ? match.player2Offset : 0
 
         return (state?.currentGameNumber ?? 1) == 1
-            && (state?.player1Score ?? 0) == 0
-            && (state?.player2Score ?? 0) == 0
+            && (state?.player1Score ?? player1Start) == player1Start
+            && (state?.player2Score ?? player2Start) == player2Start
             && (state?.gameHistory ?? []).isEmpty
             && events.count <= 1
     }

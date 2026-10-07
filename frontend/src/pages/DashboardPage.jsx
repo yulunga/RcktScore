@@ -481,11 +481,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }
 
   function renderScheduledMatchCard(match) {
+    const personalActiveMatchBlocksStart = isPersonalAccount && activeMatches.length > 0;
     return (
       <article className="dashboard-item dashboard-scheduled-card" key={match.id}>
         <div className="dashboard-scheduled-card__top">
           <span className="dashboard-scheduled-card__top-spacer" aria-hidden="true" />
-          <span className="dashboard-scheduled-card__status">Ready to start</span>
+          <span className="dashboard-scheduled-card__status">
+            {personalActiveMatchBlocksStart ? "Finish active match first" : "Ready to start"}
+          </span>
         </div>
 
         <div className="dashboard-scheduled-card__main">
@@ -507,6 +510,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
           <button
             className="dashboard-scheduled-card__start"
+            disabled={personalActiveMatchBlocksStart}
+            title={personalActiveMatchBlocksStart ? "End the current personal match before starting this one." : undefined}
             type="button"
             onClick={() => handleStartScheduledMatch(match.id)}
           >
@@ -598,7 +603,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         <button
           className="dashboard-history-card__view"
           type="button"
-          onClick={() => navigate(`/match/${match.id}`)}
+          onClick={() => navigate(`/match/${match.id}/history`)}
           aria-label={`View completed match ${formatPlayers(match)}`}
         >
           ›
@@ -693,7 +698,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         </section>
         ) : null}
 
-        {!isPersonalAccount && !showingHistory ? (
+        {(!isPersonalAccount || isPersonalPlus) && !showingHistory ? (
           <section className="panel stack" id="scheduled-matches-section">
             <div className="panel-heading">
               <h2 className="dashboard-scheduled-heading">
