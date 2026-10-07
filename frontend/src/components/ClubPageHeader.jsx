@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
-import { getNotifications } from "../services/api";
+import { getNotifications, getOrganizationSettings } from "../services/api";
 
 function inferOrganizationType(session) {
   if (session?.organization_type) {
@@ -43,6 +43,17 @@ function MobileMenuIcon({ name }) {
     );
   }
 
+  if (name === "tournament") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 4.75H16V7.5C16 10.2614 14.2091 12.5 12 12.5C9.79086 12.5 8 10.2614 8 7.5V4.75Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M8 6.25H5.25V7.25C5.25 9.04493 6.70507 10.5 8.5 10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 6.25H18.75V7.25C18.75 9.04493 17.2949 10.5 15.5 10.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 12.5V16.25M8.75 19.25H15.25M9.5 16.25H14.5V19.25H9.5V16.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
   if (name === "settings") {
     return (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -67,6 +78,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const { session, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [tournamentManagerEnabled, setTournamentManagerEnabled] = useState(false);
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
@@ -100,6 +112,12 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       onClick: () => navigate("/performance"),
       isActive: location.pathname === "/performance",
     },
+    ...(tournamentManagerEnabled ? [{
+      label: "Tournament",
+      icon: "tournament",
+      onClick: () => navigate("/tournaments"),
+      isActive: location.pathname.startsWith("/tournaments"),
+    }] : []),
     {
       label: "Settings",
       icon: "settings",
@@ -123,6 +141,12 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
     },
     { label: "Analytics", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" },
+    ...(tournamentManagerEnabled ? [{
+      label: "Tournament",
+      icon: "tournament",
+      onClick: () => navigate("/tournaments"),
+      isActive: location.pathname.startsWith("/tournaments"),
+    }] : []),
     { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
     { label: "Need Help?", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping", accent: true },
   ];
@@ -133,7 +157,11 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
 
   useEffect(() => {
     function updateHeader() {
-      setIsHeaderCompact(window.scrollY > 48);
+      setIsHeaderCompact((current) => {
+        const collapseAfter = 72;
+        const expandBefore = 16;
+        return current ? window.scrollY > expandBefore : window.scrollY > collapseAfter;
+      });
     }
 
     updateHeader();
@@ -159,6 +187,30 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       window.removeEventListener("rcktscore:notifications-changed", loadUnreadState);
     };
   }, [session?.organization_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTournamentAccess() {
+      if (!session?.organization_id || organizationType !== "club") {
+        setTournamentManagerEnabled(false);
+        return;
+      }
+      setTournamentManagerEnabled(false);
+      try {
+        const response = await getOrganizationSettings(session.organization_id);
+        const enabled = Boolean(
+          response?.organizationSettings?.organization?.features?.tournament_manager?.web_enabled,
+        );
+        if (!cancelled) setTournamentManagerEnabled(enabled);
+      } catch {
+        if (!cancelled) setTournamentManagerEnabled(false);
+      }
+    }
+    loadTournamentAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationType, session?.organization_id]);
 
   return (
     <>

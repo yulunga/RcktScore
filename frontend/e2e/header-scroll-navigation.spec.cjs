@@ -72,9 +72,18 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   expect(initialBox.y).toBeLessThanOrEqual(4);
   await page.evaluate(() => {
     document.body.style.minHeight = "2200px";
-    window.scrollTo(0, 300);
+    window.__headerCompactTransitions = 0;
+    const observedHeader = document.querySelector(".club-page-header");
+    const observer = new MutationObserver((mutations) => {
+      window.__headerCompactTransitions += mutations.filter((mutation) => mutation.attributeName === "class").length;
+    });
+    observer.observe(observedHeader, { attributes: true, attributeFilter: ["class"] });
+    window.__headerObserver = observer;
+    window.scrollTo(0, 80);
   });
   await expect(header).toHaveClass(/club-page-header--compact/);
+  await page.waitForTimeout(750);
+  expect(await page.evaluate(() => window.__headerCompactTransitions)).toBe(1);
   await expect.poll(async () => (await header.boundingBox()).height).toBeLessThan(initialBox.height);
   const compactBox = await header.boundingBox();
 
@@ -90,7 +99,11 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(primaryNavigation.locator(".club-page-header__menu-icon").first()).toBeVisible();
     const compactHomeBox = await primaryNavigation.getByRole("button", { name: "Home" }).boundingBox();
     expect(compactHomeBox.width).toBeLessThan(initialHomeBox.width);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(header).not.toHaveClass(/club-page-header--compact/);
     await primaryNavigation.getByRole("button", { name: "Start New Match" }).click();
     await expect(page).toHaveURL(/\/match\/new$/);
   }
+
+  await page.evaluate(() => window.__headerObserver?.disconnect());
 });

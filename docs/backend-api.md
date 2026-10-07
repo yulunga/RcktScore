@@ -246,6 +246,7 @@ Current root-admin Tournament Manager behavior:
 
 - Tournament Manager is web-only and disabled for clubs without an explicit enabled record
 - `PUT /root_admin/organizations/{organization_id}/tournament-feature` accepts `web_enabled` and changes access without deleting tournament data
+- the root-admin club page exposes this control in a dedicated Tournament tab immediately after Game Settings
 - personal organisations cannot be enabled
 - migration `031_tournament_demo_club.sql` creates an enabled Demo Club and an approved, password-disabled `demouser@democlub.com`; a root administrator must set its password before login
 
@@ -256,10 +257,12 @@ Current root-admin Tournament Manager behavior:
 - `GET /tournaments/{tournament_id}?organization_id=...`
 - `POST /tournaments/{tournament_id}/entries`
 
-All current tournament routes require an approved club-admin session and an
-enabled `tournament_organization_features.web_enabled` record. The first slice
-supports draft events and singles entries; draw generation, scheduling, fixtures,
-linked scoring matches and public tournament access are not implemented yet.
+All current tournament routes require an approved membership of the owning club
+and an enabled `tournament_organization_features.web_enabled` record. Listing and
+reading tournaments are available to ordinary club members. Creating tournaments
+and adding entries remain club-admin operations. The first slice supports draft
+events and singles entries; draw generation, scheduling, fixtures, linked scoring
+matches and public tournament access are not implemented yet.
 
 Current root-admin platform-sport behavior:
 

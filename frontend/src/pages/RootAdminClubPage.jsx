@@ -61,6 +61,7 @@ const adminTabs = [
   { id: "users", label: "Users" },
   { id: "courts", label: "Courts" },
   { id: "game-settings", label: "Game Settings" },
+  { id: "tournament", label: "Tournament" },
 ];
 
 function formatDate(value) {
@@ -735,16 +736,21 @@ export default function RootAdminClubPage() {
             </button>
           </div>
 
-          <div className="panel-heading panel-heading--subsection">
-            <h3>Tournament Manager</h3>
+        </section>
+      ) : null}
+
+      {activeTab === "tournament" ? (
+        <section className="panel stack">
+          <div className="panel-heading">
+            <h2>Tournament</h2>
             <p className="helper-text">
-              Enable the web-only tournament workspace for this club. Disabling it hides club access but retains tournament data.
+              Control whether this club can use the web Tournament Manager. Disabling access hides the club entry point while retaining its tournament data.
             </p>
           </div>
           <article className={`sport-option ${settings?.organization?.features?.tournament_manager?.web_enabled ? "active" : "disabled"}`}>
-            <strong>Web Tournament Manager</strong>
+            <strong>Tournament Manager</strong>
             <span>{settings?.organization?.features?.tournament_manager?.web_enabled ? "Enabled" : "Disabled"}</span>
-            <p>Club administrators will find the entry point in their Settings page.</p>
+            <p>When enabled, club administrators can open Tournament Manager from their Settings page.</p>
             <button
               className={settings?.organization?.features?.tournament_manager?.web_enabled ? "secondary" : ""}
               disabled={savingSection === "tournament-feature"}

@@ -84,7 +84,9 @@ compact after a vertical scroll. The check confirms that the outer width does
 not change, the header remains sticky, Home and the blue new-match `+` precede
 Matches/Analytics/Settings/Help, labels become icons, account and club details
 stay absent, the removed dashboard description and footer stay absent, and
-Start New Match remains a separate blue action.
+Start New Match remains a separate blue action. The automated journey also
+holds the page at the former scroll-boundary failure point and verifies that the
+header changes state once rather than oscillating between labels and icons.
 
 ### iOS project inventory
 
@@ -560,7 +562,13 @@ If Tournament Manager does not appear in club Settings:
 - inspect `organization.features.tournament_manager.web_enabled` from
   `GET /organization_settings/{organization_id}`
 - confirm `tournament_organization_features.web_enabled` is true for that club
-- use the root-admin club Game Settings tab to enable or disable the feature
+- use the root-admin club Tournament tab, immediately after Game Settings, to
+  enable or disable the feature
+
+If the Tournament button does not appear in the signed-in web header, confirm the
+user is currently associated with the enabled club rather than another personal
+or club membership. The header reads the effective feature from organisation
+settings whenever the active organisation changes.
 
 Direct calls return `TOURNAMENT_FEATURE_DISABLED` while the club feature is off.
 Disabling the feature retains its tournament and player data.

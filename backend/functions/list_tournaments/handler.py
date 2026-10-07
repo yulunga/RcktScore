@@ -12,7 +12,7 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, organization_id, require_admin=True)
+            authorize_organization_session(connection, event, organization_id, require_admin=False)
             require_tournament_feature(connection, organization_id)
             tournaments = list_tournaments(connection, organization_id)
     except SessionAuthError as auth_error:
@@ -21,4 +21,3 @@ def lambda_handler(event, context):
         return error_response(403, "TOURNAMENT_FEATURE_DISABLED", str(access_error))
 
     return success_response(200, {"tournaments": tournaments})
-

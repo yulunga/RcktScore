@@ -21,6 +21,7 @@ export default function TournamentDetailPage() {
   const { tournamentId } = useParams();
   const { session } = useAuth();
   const organizationId = session?.organization_id;
+  const isAdmin = session?.role === "admin";
   const [tournament, setTournament] = useState(null);
   const [entryForm, setEntryForm] = useState(EMPTY_ENTRY);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ export default function TournamentDetailPage() {
           </section>
 
           <section className="tournament-manager-grid">
-            <section className="panel stack">
+            {isAdmin ? <section className="panel stack">
               <div className="panel-heading">
                 <h2>Add Player</h2>
                 <p className="helper-text">
@@ -171,7 +172,14 @@ export default function TournamentDetailPage() {
                   <button disabled={saving} type="submit">{saving ? "Adding..." : "Add Tournament Player"}</button>
                 </div>
               </form>
-            </section>
+            </section> : (
+              <section className="panel stack">
+                <div className="panel-heading">
+                  <h2>Member View</h2>
+                  <p className="helper-text">Entries are read-only. A club administrator manages players, draws and scheduling.</p>
+                </div>
+              </section>
+            )}
 
             <section className="panel stack">
               <div className="panel-heading">

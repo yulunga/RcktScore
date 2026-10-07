@@ -25,6 +25,7 @@ export default function TournamentListPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
   const organizationId = session?.organization_id;
+  const isAdmin = session?.role === "admin";
   const [tournaments, setTournaments] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [featureChecked, setFeatureChecked] = useState(false);
@@ -106,7 +107,7 @@ export default function TournamentListPage() {
 
       {featureEnabled ? (
         <section className="tournament-manager-grid">
-          <section className="panel stack">
+          {isAdmin ? <section className="panel stack">
             <div className="panel-heading">
               <h2>New Tournament</h2>
               <p className="helper-text">This creates a draft. Draw generation and scheduling remain separate steps.</p>
@@ -174,7 +175,14 @@ export default function TournamentListPage() {
                 <button disabled={saving} type="submit">{saving ? "Creating..." : "Create Draft Tournament"}</button>
               </div>
             </form>
-          </section>
+          </section> : (
+            <section className="panel stack">
+              <div className="panel-heading">
+                <h2>Club Tournaments</h2>
+                <p className="helper-text">You have member access to view this club&apos;s tournaments. Club administrators manage events and entries.</p>
+              </div>
+            </section>
+          )}
 
           <section className="panel stack">
             <div className="panel-heading">
@@ -210,4 +218,3 @@ export default function TournamentListPage() {
     </main>
   );
 }
-
