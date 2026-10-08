@@ -256,15 +256,22 @@ Current root-admin Tournament Manager behavior:
 
 - `GET /organizations/{organization_id}/tournaments`
 - `POST /organizations/{organization_id}/tournaments`
+- `GET /organizations/{organization_id}/tournament-players?q=...`
 - `GET /tournaments/{tournament_id}?organization_id=...`
 - `POST /tournaments/{tournament_id}/entries`
 
 All current tournament routes require an approved membership of the owning club
 and an enabled `tournament_organization_features.web_enabled` record. Listing and
 reading tournaments are available to ordinary club members. Creating tournaments
-and adding entries remain club-admin operations. The first slice supports draft
-events and singles entries; draw generation, scheduling, fixtures, linked scoring
-matches and public tournament access are not implemented yet.
+and searching/adding entries remain club-admin operations. Draft events persist
+an `internal` or `open` audience, optional A–D grading and an optional entry-size
+limit. Internal events reject guest entries and size-limited events reject entries
+after capacity is reached. Entrants store a four-level ability assessment, mapped
+from level 1/D through level 4/A. Graded creation adds four `tournament_draws`
+groups (A–D); ungraded creation adds one Open Draw. The search endpoint searches canonical registered
+accounts and reusable player identities before the organiser uses manual entry.
+Draw generation, scheduling, fixtures, linked scoring matches and public spectator
+access are not implemented yet.
 
 Current root-admin platform-sport behavior:
 

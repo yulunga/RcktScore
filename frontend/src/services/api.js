@@ -394,6 +394,11 @@ export function createTournament(organizationId, payload) {
   });
 }
 
+export function searchTournamentPlayers(organizationId, query) {
+  const params = new URLSearchParams({ q: query });
+  return apiRequest(`/organizations/${organizationId}/tournament-players?${params.toString()}`);
+}
+
 export function getTournament(tournamentId, organizationId) {
   const params = new URLSearchParams({ organization_id: String(organizationId) });
   return apiRequest(`/tournaments/${tournamentId}?${params.toString()}`);

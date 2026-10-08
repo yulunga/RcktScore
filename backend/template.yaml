@@ -1049,6 +1049,18 @@ Resources:
             Path: /organizations/{organization_id}/tournaments
             Method: POST
 
+  SearchTournamentPlayersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/search_tournament_players/handler.lambda_handler
+      Events:
+        SearchTournamentPlayers:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /organizations/{organization_id}/tournament-players
+            Method: GET
+
   GetTournamentFunction:
     Type: AWS::Serverless::Function
     Properties:

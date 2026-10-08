@@ -584,3 +584,14 @@ If adding an entrant unexpectedly creates or reuses an identity, inspect
 `players.email`, `registered_username`, and `claim_status`. Email is
 the current strong deduplication key; name-only duplicate review and merge tooling
 is not implemented yet.
+
+Player entry is deliberately search-first. The player-search route requires a
+club-admin session, at least two query characters and an enabled Tournament
+Manager feature. An `Internal tournaments can only include members` error means
+the selected identity has no approved membership of the host club; change the
+event to Open only if external entrants are intended. A draw-size error means the
+count of non-withdrawn entries has reached `tournament_events.draw_size_limit`.
+
+If the new event options or ability values are absent after deployment, confirm
+`032_tournament_event_options.sql` has been applied before deploying the Lambda
+and web changes.

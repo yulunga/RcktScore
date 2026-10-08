@@ -11,6 +11,10 @@ const EMPTY_FORM = {
   name: "",
   sport: "squash",
   draw_format: "knockout",
+  audience: "internal",
+  graded_enabled: false,
+  limit_draw_size: false,
+  draw_size_limit: "",
   venue_name: "",
   starts_on: "",
   ends_on: "",
@@ -84,11 +88,7 @@ export default function TournamentListPage() {
 
   return (
     <main className="page-shell stack">
-      <ClubPageHeader
-        title="Tournament Manager"
-        subtitle="Create tournament events and build a reusable player list without changing the core scoring workflow."
-        actions={[{ label: "Back to Settings", onClick: () => navigate("/settings?tab=tournament-manager") }]}
-      />
+      <ClubPageHeader />
 
       {loading ? <div className="notice">Loading tournaments...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
@@ -144,6 +144,17 @@ export default function TournamentListPage() {
                   </select>
                 </div>
                 <div className="field settings-field-wide">
+                  <label htmlFor="tournament-audience">Tournament Access</label>
+                  <select
+                    id="tournament-audience"
+                    value={form.audience}
+                    onChange={(event) => setForm((current) => ({ ...current, audience: event.target.value }))}
+                  >
+                    <option value="internal">Internal — club members only</option>
+                    <option value="open">Open — club and external players</option>
+                  </select>
+                </div>
+                <div className="field settings-field-wide">
                   <label htmlFor="tournament-venue">Venue</label>
                   <input
                     id="tournament-venue"
@@ -170,6 +181,55 @@ export default function TournamentListPage() {
                     onChange={(event) => setForm((current) => ({ ...current, ends_on: event.target.value }))}
                   />
                 </div>
+              </div>
+              <div className="tournament-option-list">
+                <label className="match-option-switch" htmlFor="tournament-graded">
+                  <span className="match-option-switch__copy">
+                    <strong>Graded tournament</strong>
+                    <small>Assess each player and prepare separate A, B, C and D draw groups.</small>
+                  </span>
+                  <span className="match-option-switch__control">
+                    <input
+                      id="tournament-graded"
+                      type="checkbox"
+                      checked={form.graded_enabled}
+                      onChange={(event) => setForm((current) => ({ ...current, graded_enabled: event.target.checked }))}
+                    />
+                    <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+                  </span>
+                </label>
+                <label className="match-option-switch" htmlFor="tournament-limit-draw">
+                  <span className="match-option-switch__copy">
+                    <strong>Limit draw size</strong>
+                    <small>Stop new entries when this tournament reaches the selected capacity.</small>
+                  </span>
+                  <span className="match-option-switch__control">
+                    <input
+                      id="tournament-limit-draw"
+                      type="checkbox"
+                      checked={form.limit_draw_size}
+                      onChange={(event) => setForm((current) => ({
+                        ...current,
+                        limit_draw_size: event.target.checked,
+                        draw_size_limit: event.target.checked ? current.draw_size_limit : "",
+                      }))}
+                    />
+                    <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+                  </span>
+                </label>
+                {form.limit_draw_size ? (
+                  <div className="field tournament-draw-limit-field">
+                    <label htmlFor="tournament-draw-limit">Maximum Entries</label>
+                    <input
+                      id="tournament-draw-limit"
+                      min="2"
+                      required
+                      type="number"
+                      value={form.draw_size_limit}
+                      onChange={(event) => setForm((current) => ({ ...current, draw_size_limit: event.target.value }))}
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="button-row">
                 <button disabled={saving} type="submit">{saving ? "Creating..." : "Create Draft Tournament"}</button>

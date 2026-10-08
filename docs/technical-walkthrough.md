@@ -252,17 +252,24 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
    enabled club. The club Settings page also shows its administrator entry point;
    the backend repeats the same feature check on every tournament request.
 5. A club admin creates a draft through
-   `POST /organizations/{organization_id}/tournaments`.
-6. Adding an entry looks for a registered account with the supplied email, reuses
+   `POST /organizations/{organization_id}/tournaments`, classifying it as internal
+   or open and optionally enabling A–D grading or an entry-size limit. Creation
+   writes four A–D `tournament_draws` groups for a graded event, or one Open Draw
+   for an ungraded event.
+6. Before manual entry, the web client searches canonical accounts and reusable
+   players through `GET /organizations/{organization_id}/tournament-players?q=...`.
+7. Adding an entry looks for a registered account with the supplied email, reuses
    the canonical `users` identity and an existing `players` identity when the
    email is already known, and
    otherwise creates an unclaimed or claimable player.
-7. `player_organization_affiliations` records `member` when that account is an
+8. `player_organization_affiliations` records `member` when that account is an
    approved member of the host club and `guest` otherwise. Guest status grants no
-   login or club permissions.
-8. The tournament entry stores a name/club/country snapshot so later profile
-   edits cannot rewrite the historic event entry.
-9. Every tournament and entry creation writes `tournament_audit_events`.
+   login or club permissions; internal events reject guest entries.
+9. Every entrant receives a four-level organiser assessment. Levels 1–4 map to
+   grades D–A, giving the later draw generator stable grade groups.
+10. The tournament entry stores a name/club snapshot so later profile edits cannot
+    rewrite the historic event entry.
+11. Every tournament and entry creation writes `tournament_audit_events`.
 
 Ordinary club members may list and read tournaments. Creation and entry changes
 remain restricted to club administrators.
