@@ -273,6 +273,10 @@ accounts and reusable player identities before the organiser uses manual entry.
 Draw generation, scheduling, fixtures, linked scoring matches and public spectator
 access are not implemented yet.
 
+`GET /tournaments/{tournament_id}` checks whether `tournament_draws` exists before
+reading it and derives temporary A–D/Open group labels when a backend deployment
+briefly precedes migration `032`. Event creation still requires the migration.
+
 Current root-admin platform-sport behavior:
 
 - `GET /root_admin/platform_sports` returns the umbrella list plus separate `enabled_sports_web` and `enabled_sports_ios` lists

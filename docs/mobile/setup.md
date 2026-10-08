@@ -8,6 +8,8 @@ client in the `RcktScore` repository.
 ## Repository Areas
 
 - `mobile/ios/` native iOS workspace location
+- `docs/mobile/android-parity-plan.md` planned native Android parity approach;
+  there is no Android project yet
 - `mobile/shared/` shared mobile-facing contracts and state references
 - `docs/backend-api.md` backend endpoint and contract reference
 - `docs/technical-walkthrough.md` request lifecycle and end-to-end flows
@@ -27,7 +29,7 @@ Current implemented native scope:
 2. persisted, expiring session with optional Face ID / Touch ID unlock
 3. mobile dashboard with active, scheduled, and recent matches
 4. native start-new-match flow with sport picker, lookup suggestions, court selection, and scheduled fallback
-5. live scoring match screen for squash, racketball, and tennis
+5. live scoring match screen for squash, racketball, tennis, and doubles Padel
 6. historic match viewer
 7. native settings and help flows
 8. multi-organisation login selection and association switching
@@ -45,7 +47,7 @@ Still out of scope for the first native release:
 1. root admin portal
 2. offline history, offline match creation, and multi-match caching
 3. deep notification-center flows
-4. live padel, table tennis, badminton, and pickleball scoring
+4. table tennis, badminton, and pickleball scoring
 
 ## Environment Guidance
 

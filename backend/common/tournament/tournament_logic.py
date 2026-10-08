@@ -97,6 +97,16 @@ def _serialize_entry(row):
     }
 
 
+def _default_draw_groups(event):
+    grades = ("A", "B", "C", "D") if event.get("graded_enabled") else (None,)
+    return [{
+        "id": None,
+        "name": f"Grade {grade}" if grade else "Open Draw",
+        "grade": grade,
+        "status": "draft",
+    } for grade in grades]
+
+
 def list_tournaments(connection, organization_id):
     with connection.cursor() as cursor:
         cursor.execute(
@@ -287,21 +297,28 @@ def get_tournament(connection, tournament_id, organization_id):
             {"tournament_id": row["id"], "organization_id": int(organization_id)},
         )
         entries = [_serialize_entry(entry) for entry in cursor.fetchall()]
-        cursor.execute(
-            """
-            SELECT id, name, grade, status
-            FROM tournament_draws
-            WHERE tournament_id = %(tournament_id)s
-            ORDER BY grade ASC NULLS FIRST, name ASC
-            """,
-            {"tournament_id": row["id"]},
-        )
-        draws = [{
-            "id": str(draw["id"]),
-            "name": draw.get("name") or "Draw",
-            "grade": draw.get("grade"),
-            "status": draw.get("status") or "draft",
-        } for draw in cursor.fetchall()]
+        cursor.execute("SELECT to_regclass('public.tournament_draws') AS table_name")
+        draw_table = cursor.fetchone()
+        if (draw_table or {}).get("table_name"):
+            cursor.execute(
+                """
+                SELECT id, name, grade, status
+                FROM tournament_draws
+                WHERE tournament_id = %(tournament_id)s
+                ORDER BY grade ASC NULLS FIRST, name ASC
+                """,
+                {"tournament_id": row["id"]},
+            )
+            draws = [{
+                "id": str(draw["id"]),
+                "name": draw.get("name") or "Draw",
+                "grade": draw.get("grade"),
+                "status": draw.get("status") or "draft",
+            } for draw in cursor.fetchall()]
+        else:
+            # Keep reads available during a staggered backend/schema deployment.
+            # Migration 032 remains required before creating or editing draw data.
+            draws = _default_draw_groups(row)
     return _serialize_event(row, entries=entries, draws=draws)
 
 

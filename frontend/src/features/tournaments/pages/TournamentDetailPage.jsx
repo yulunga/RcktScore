@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import AppFooter from "../../../components/AppFooter";
 import ClubPageHeader from "../../../components/ClubPageHeader";
@@ -55,7 +55,6 @@ function AbilitySelector({ value, onChange, idPrefix }) {
 }
 
 export default function TournamentDetailPage() {
-  const navigate = useNavigate();
   const { tournamentId } = useParams();
   const { session } = useAuth();
   const organizationId = session?.organization_id;
@@ -165,7 +164,7 @@ export default function TournamentDetailPage() {
 
   return (
     <main className="page-shell stack">
-      <ClubPageHeader actions={[{ label: "All Tournaments", onClick: () => navigate("/tournaments") }]} />
+      <ClubPageHeader />
 
       {loading ? <div className="notice">Loading tournament...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}

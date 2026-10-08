@@ -15,7 +15,8 @@ Current app coverage:
 - optional Face ID / Touch ID unlock for an unexpired saved local session
 - dashboard, matches, history, settings, and help tabs
 - native match setup and scheduled-match start
-- squash, racketball, and tennis live scoring plus historic-match views
+- squash, racketball, tennis, and doubles Padel live scoring plus
+  historic-match views
 - one-match offline scoring cache with ordered reconnect synchronisation and duplicate-action protection
 - club organisation/user/court management
 - racket-sport visibility controls

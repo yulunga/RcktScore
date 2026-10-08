@@ -85,6 +85,7 @@ test("shows event identity in the summary and uses search-first player entry @to
   await page.goto(`/tournaments/${tournament.id}`);
 
   await expect(page.locator(".club-page-header__page-title")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "All Tournaments" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
   await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Summary" })).toHaveCount(0);

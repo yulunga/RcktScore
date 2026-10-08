@@ -150,6 +150,13 @@ def test_entry_serializer_maps_ability_level_to_grade():
     assert entry["ability_grade"] == "A"
 
 
+def test_missing_draw_table_falls_back_to_expected_draw_groups():
+    assert [draw["name"] for draw in tournament_logic._default_draw_groups({"graded_enabled": True})] == [
+        "Grade A", "Grade B", "Grade C", "Grade D",
+    ]
+    assert tournament_logic._default_draw_groups({"graded_enabled": False})[0]["name"] == "Open Draw"
+
+
 def test_short_player_search_returns_without_database_access():
     assert tournament_logic.search_tournament_players(None, 1, "x") == []
 

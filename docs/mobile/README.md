@@ -10,6 +10,7 @@ Current documents:
 - `build.md`
 - `release-notes.md`
 - `ios-v1-plan.md`
+- `android-parity-plan.md` (planning only; no Android app exists yet)
 
 ## Current iOS State
 
@@ -22,15 +23,16 @@ What the current app does:
 - persisted, expiring session state with `mobile_app` client-type sessions
 - active-session conflict handling with force-logout retry
 - TestFlight-style device builds have already been used for live app testing
-- dashboard tabs for `Home`, `Matches`, `History`, `Settings`, and `Need Help`
+- dashboard tabs for `Home`, `Matches`, `Analytics`, `Settings`, and `Need Help`,
+  with current, scheduled, and historic matches grouped under Matches
 - dashboard loading for active, scheduled, and recent matches
 - native start-new-match flow with sport picker, player/referee lookups, court
   selection, handicap setup, and scheduled-match fallback when a court is busy
 - native sport selection currently exposes the implemented and enabled sports
-  only: squash, racketball, and tennis
+  only: squash, racketball, tennis, and doubles Padel
 - native live scoring with warm-up, first-server selection, match timer,
   score/stroke/let actions, undo, early end, serve-side changes, in-match game
-  settings, tennis scoring presentation, and court display-code visibility
+  settings, tennis/Padel scoring presentation, and court display-code visibility
 - native historic-match view with grouped point timeline and match/game timing
 - native settings with plan-aware account menus ordered About, Profile, then
   Subscription, local profile photo picking, self-profile editing, password-reset
@@ -66,7 +68,8 @@ What it does not yet match perfectly:
 - APNs push notification delivery and background badge refresh
 - full implementation behind the native settings `Game Settings`, `Reporting`,
   and deeper federation-style association pages
-- StoreKit purchase, restore, Apple server verification, and automatic subscription entitlement changes
+- final Sandbox/TestFlight signoff and release gating for the implemented
+  StoreKit purchase, restore, and server-verification lifecycle
 - central/shared profile-photo storage across devices and users
 - offline history, match creation, scheduled activation, settings changes, and multi-match caching
 - documented CI/archive/release pipeline

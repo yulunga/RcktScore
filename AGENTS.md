@@ -200,6 +200,7 @@ See the backend/API reference for the exact route list.
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is enforced before match creation as the intersection of platform client access, organisation `enabled_sports`, and per-membership web/iOS access
 - Tournament Manager access is club-only, requires an explicit `tournament_organization_features.web_enabled` record and is enforced by the backend in addition to conditional web navigation
+- tournament detail reads tolerate a briefly missing `tournament_draws` table by deriving display-only draw labels, but migration `032_tournament_event_options.sql` is still required before creating events or changing draw data
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
 - the former `x-root-admin-request` trust-header bypass has been removed
 - root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain

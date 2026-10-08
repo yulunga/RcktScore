@@ -597,3 +597,8 @@ count of non-withdrawn entries has reached `tournament_events.draw_size_limit`.
 If the new event options or ability values are absent after deployment, confirm
 `032_tournament_event_options.sql` has been applied before deploying the Lambda
 and web changes.
+
+The tournament detail read checks for `tournament_draws` before querying it and
+returns temporary derived draw-group labels during a staggered deployment. This
+keeps existing tournaments readable, but migration `032` is still mandatory
+before creating events or changing draw data.

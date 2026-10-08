@@ -274,6 +274,11 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
 Ordinary club members may list and read tournaments. Creation and entry changes
 remain restricted to club administrators.
 
+Tournament detail reads use `to_regclass` before querying `tournament_draws`, so
+an existing event remains readable during a staggered schema deployment. The
+fallback only supplies display labels; migration `032` remains required for
+persisted draw groups and new-event creation.
+
 The seeded Demo Club has the feature enabled. Its approved
 `demouser@democlub.com` login is intentionally password-disabled until root admin
 sets a password through the existing User Accounts control.
