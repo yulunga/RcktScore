@@ -56,6 +56,13 @@ test.beforeEach(async ({ page }) => {
       recent_matches: completedMatches,
     } }) });
   });
+  await page.route("**/organization_settings/42", async (route) => {
+    await route.fulfill({ json: envelope({ organizationSettings: {
+      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
+      users: [],
+      courts: [],
+    } }) });
+  });
 });
 
 test("keeps the signed-in header width fixed while compacting its menu on scroll @header", async ({ page }) => {
@@ -103,6 +110,9 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     const secondHistoryCard = await historyCards.nth(1).boundingBox();
     expect(Math.abs(firstHistoryCard.y - secondHistoryCard.y)).toBeLessThanOrEqual(1);
     expect(secondHistoryCard.x).toBeGreaterThan(firstHistoryCard.x + firstHistoryCard.width);
+    await expect(page.getByRole("heading", { name: "Recent Matches" })).toBeVisible();
+    await expect(historyCards.nth(0).locator(".dashboard-history-card__date-tile small")).toHaveText(/^\d{2}:\d{2}$/);
+    await expect(historyCards.nth(0).locator(".dashboard-history-card__player-name--winner")).toHaveCSS("text-decoration-line", "none");
   }
 
   const initialBox = await header.boundingBox();
@@ -140,10 +150,30 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(header).not.toHaveClass(/club-page-header--compact/);
     await primaryNavigation.getByRole("button", { name: "Start New Match" }).click();
     await expect(page).toHaveURL(/\/match\/new$/);
+    await expect(primaryNavigation.getByRole("button", { name: "Start New Match" })).toHaveAttribute("aria-current", "page");
+    await expect(primaryNavigation.getByRole("button", { name: "Matches" })).not.toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("button", { name: "Back to Dashboard" })).toHaveCount(0);
     await expect(page.getByText("Choose Racket Sport", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Choose the racket sport first, then continue into the correct match setup flow.", { exact: true })).toHaveCount(0);
+  } else {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.getByRole("button", { name: "Open navigation menu" }).click();
+    const quickNavigation = page.getByRole("dialog", { name: "Quick navigation" });
+    const menuItems = quickNavigation.locator(".mobile-fab-menu-sheet__item");
+    await expect(menuItems).toHaveCount(6);
+    const menuBoxes = await menuItems.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+    expect(Math.max(...menuBoxes) - Math.min(...menuBoxes)).toBeLessThanOrEqual(1);
+    await quickNavigation.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(page).toHaveURL(/\/settings$/);
   }
 
   await page.evaluate(() => window.__headerObserver?.disconnect());
+});
+
+test("opens all recent matches on the Matches history tab @header", async ({ page }) => {
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "View all" }).click();
+  await expect(page).toHaveURL(/\/matches#match-history-section$/);
+  await expect(page.getByRole("tab", { name: "History", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Match History" })).toBeVisible();
 });

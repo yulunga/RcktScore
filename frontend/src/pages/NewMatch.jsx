@@ -102,6 +102,7 @@ export default function NewMatch() {
   const [courtError, setCourtError] = useState("");
   const [setupNotice, setSetupNotice] = useState("");
   const [showHandicapMatrix, setShowHandicapMatrix] = useState(false);
+  const [openShirtPicker, setOpenShirtPicker] = useState("");
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
   const [activeLookupField, setActiveLookupField] = useState("");
@@ -151,23 +152,7 @@ export default function NewMatch() {
       : usesCustomHandicap
         ? `Custom start: Player 1 starts ${formState.player1_offset || 0}, Player 2 starts ${formState.player2_offset || 0}.`
         : "Select both bands to see the starting offset for each player.";
-  const headerActions = [
-    {
-      label: "Back to Dashboard",
-      onClick: () => navigate("/dashboard"),
-    },
-    {
-      label: selectedSportOption ? `Sport: ${selectedSportOption.label}` : "Choose Sport",
-      onClick: () => navigate("/match/new"),
-    },
-  ];
-
-  if (isPersonalAccount) {
-    headerActions.push({
-      label: "Settings",
-      onClick: () => navigate("/settings"),
-    });
-  }
+  const playerDisplayName = (playerKey, fallback) => formState[`${playerKey}_name`].trim() || fallback;
   const player1LookupQuery = useMemo(
     () => [formState.player1_name, formState.player1_surname].filter(Boolean).join(" ").trim(),
     [formState.player1_name, formState.player1_surname],
@@ -643,10 +628,27 @@ export default function NewMatch() {
 
   function renderShirtColorField(playerKey, label) {
     const fieldName = `${playerKey}_shirt_color`;
+    const selectedColor = PLAYER_SHIRT_COLORS.find((color) => color.value === formState[fieldName]) || PLAYER_SHIRT_COLORS[0];
+    const isOpen = openShirtPicker === fieldName;
     return (
       <div className="field shirt-color-field">
         <label>{label}</label>
-        <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
+        <button
+          aria-expanded={isOpen}
+          aria-label={`Change ${label}, currently ${selectedColor.label}`}
+          className="shirt-color-trigger"
+          type="button"
+          onClick={() => setOpenShirtPicker((current) => current === fieldName ? "" : fieldName)}
+        >
+          <span
+            aria-hidden="true"
+            className="shirt-color-swatch"
+            style={{ background: selectedColor.background, borderColor: selectedColor.border }}
+          />
+          <span>{selectedColor.label}</span>
+          <span className="shirt-color-trigger__chevron" aria-hidden="true">⌄</span>
+        </button>
+        {isOpen ? <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
           {PLAYER_SHIRT_COLORS.map((color) => {
             const selected = formState[fieldName] === color.value;
             return (
@@ -656,7 +658,10 @@ export default function NewMatch() {
                 key={`${fieldName}-${color.value}`}
                 role="radio"
                 type="button"
-                onClick={() => handleChange(fieldName, color.value)}
+                onClick={() => {
+                  handleChange(fieldName, color.value);
+                  setOpenShirtPicker("");
+                }}
               >
                 <span
                   aria-hidden="true"
@@ -670,15 +675,39 @@ export default function NewMatch() {
               </button>
             );
           })}
-        </div>
+        </div> : null}
       </div>
     );
   }
 
+  function renderOptionSwitch({ id, label, description, checked, disabled = false, onChange }) {
+    return (
+      <label className={`match-option-switch${disabled ? " match-option-switch--disabled" : ""}`} htmlFor={id}>
+        <span className="match-option-switch__copy">
+          <strong>{label}</strong>
+          {description ? <small>{description}</small> : null}
+        </span>
+        <span className="match-option-switch__control">
+          <input
+            checked={checked}
+            disabled={disabled}
+            id={id}
+            type="checkbox"
+            onChange={(event) => onChange(event.target.checked)}
+          />
+          <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+        </span>
+      </label>
+    );
+  }
+
   function renderAdditionalTennisPlayer(playerKey, label) {
+    const [teamLabel, fallbackPlayerLabel] = label.split("·").map((value) => value.trim());
+    const playerName = playerDisplayName(playerKey, fallbackPlayerLabel || label);
+    const displayName = fallbackPlayerLabel ? `${teamLabel} · ${playerName}` : playerName;
     return (
       <section className="panel stack compact tennis-participant-card" data-testid={`${playerKey}-card`}>
-        <div className="panel-heading"><h3>{label}</h3></div>
+        <div className="panel-heading"><h3>{displayName}</h3></div>
         <div className="field-grid">
           <div className="field">
             <label htmlFor={`${playerKey}_name`}>First Name<span className="required-mark"> *</span></label>
@@ -700,7 +729,7 @@ export default function NewMatch() {
             />
           </div>
         </div>
-        {renderShirtColorField(playerKey, `${label} Shirt`)}
+        {renderShirtColorField(playerKey, `${playerName} Shirt`)}
       </section>
     );
   }
@@ -795,25 +824,11 @@ export default function NewMatch() {
 
   return (
     <main className="page-shell stack">
-      <ClubPageHeader
-        actions={headerActions}
-        subtitle={
-          isPersonalAccount
-            ? "Create a personal match and open the live scoring screen."
-            : "Start the next court session and publish it to the scoring console, spectator display, and device clients from one shared match record."
-        }
-        title={selectedSportOption ? `Create a New ${selectedSportOption.label} Match` : "Create a New Match"}
-      />
+      <ClubPageHeader />
 
       <form className="panel stack" onSubmit={handleSubmit}>
         <div className="section-heading stack compact">
-          {selectedSportOption ? <span className="match-sport-badge">{selectedSportOption.label}</span> : null}
-          <h2>Match Setup</h2>
-          <p>
-            {isPersonalAccount
-              ? "Enter both players and choose the match format before opening the live scoring screen."
-              : "Complete the required court and player fields before opening the live scoring screen."}
-          </p>
+          <h2>{selectedSportOption?.label || "Racket Sport"} Match Setup</h2>
         </div>
 
         {courtError ? <div className="notice error">{courtError}</div> : null}
@@ -850,7 +865,7 @@ export default function NewMatch() {
 
         <div className="match-setup-grid">
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">{isTennisDoubles ? "Team 1 · Player 1" : "Player 1"}</div>
+            <div className="match-setup-section-title">{isTennisDoubles ? `Team 1 · ${playerDisplayName("player1", "Player 1")}` : playerDisplayName("player1", "Player 1")}</div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -895,7 +910,7 @@ export default function NewMatch() {
 
           {canChooseShirtColors ? (
             <div className="match-setup-row match-setup-row--player-accessory">
-              {renderShirtColorField("player1", "Player 1 Shirt")}
+              {renderShirtColorField("player1", `${playerDisplayName("player1", "Player 1")} Shirt`)}
             </div>
           ) : null}
 
@@ -970,7 +985,7 @@ export default function NewMatch() {
           ) : null}
 
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">{isTennisDoubles ? "Team 1 · Player 2" : "Player 2"}</div>
+            <div className="match-setup-section-title">{isTennisDoubles ? `Team 1 · ${playerDisplayName("player2", "Player 2")}` : playerDisplayName("player2", "Player 2")}</div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -1015,7 +1030,7 @@ export default function NewMatch() {
 
           {canChooseShirtColors ? (
             <div className="match-setup-row match-setup-row--player-accessory">
-              {renderShirtColorField("player2", "Player 2 Shirt")}
+              {renderShirtColorField("player2", `${playerDisplayName("player2", "Player 2")} Shirt`)}
             </div>
           ) : null}
 
@@ -1167,18 +1182,13 @@ export default function NewMatch() {
             </div>
 
             {!isTennisStyleMatch ? (
-              <div className="field checkbox-field match-setup-checkbox-field">
-                <label className="checkbox-label" htmlFor="handicap_enabled">
-                  <input
-                    checked={formState.handicap_enabled}
-                    id="handicap_enabled"
-                    name="handicap_enabled"
-                    type="checkbox"
-                    onChange={(event) => handleHandicapToggle(event.target.checked)}
-                  />
-                  Handicap Match
-                </label>
-              </div>
+              renderOptionSwitch({
+                id: "handicap_enabled",
+                label: "Handicap Match",
+                description: "Give players different starting scores to create a balanced match.",
+                checked: formState.handicap_enabled,
+                onChange: handleHandicapToggle,
+              })
             ) : null}
           </div>
 
@@ -1188,18 +1198,30 @@ export default function NewMatch() {
                 <h2>{isPadelMatch ? "Padel Rules" : "Tennis Rules"}</h2>
                 <p className="helper-text">These choices are stored with the match and apply on every client.</p>
               </div>
-              <label className="checkbox-label" htmlFor="tennis_no_ad_scoring">
-                <input checked={formState.tennis_no_ad_scoring} id="tennis_no_ad_scoring" type="checkbox" onChange={(event) => handleChange("tennis_no_ad_scoring", event.target.checked)} />
-                Golden Point at 40-40
-              </label>
-              {!isPadelMatch ? <label className="checkbox-label" htmlFor="tennis_final_set_match_tiebreak">
-                <input checked={formState.tennis_final_set_match_tiebreak} disabled={formState.best_of === 1} id="tennis_final_set_match_tiebreak" type="checkbox" onChange={(event) => handleChange("tennis_final_set_match_tiebreak", event.target.checked)} />
-                Final-set 10-point match tiebreak
-              </label> : null}
-              <label className="checkbox-label" htmlFor="tennis_timed_breaks">
-                <input checked={formState.tennis_timed_breaks} id="tennis_timed_breaks" type="checkbox" onChange={(event) => handleChange("tennis_timed_breaks", event.target.checked)} />
-                Timed breaks: 90-second odd-game changeovers and 120-second set breaks
-              </label>
+              {renderOptionSwitch({
+                id: "tennis_no_ad_scoring",
+                label: "Golden Point at 40-40",
+                description: isPadelMatch
+                  ? "At 40-40, one deciding point is played after the receiving team chooses its receiver."
+                  : "At 40-40, the next point decides the game instead of playing advantage.",
+                checked: formState.tennis_no_ad_scoring,
+                onChange: (checked) => handleChange("tennis_no_ad_scoring", checked),
+              })}
+              {!isPadelMatch ? renderOptionSwitch({
+                id: "tennis_final_set_match_tiebreak",
+                label: "Final-set 10-point match tiebreak",
+                description: "Replace the deciding set with a first-to-10 tiebreak, winning by two points.",
+                checked: formState.tennis_final_set_match_tiebreak,
+                disabled: formState.best_of === 1,
+                onChange: (checked) => handleChange("tennis_final_set_match_tiebreak", checked),
+              }) : null}
+              {renderOptionSwitch({
+                id: "tennis_timed_breaks",
+                label: "Timed breaks: 90-second odd-game changeovers and 120-second set breaks",
+                description: "Runs 90-second odd-game changeovers and 120-second set breaks.",
+                checked: formState.tennis_timed_breaks,
+                onChange: (checked) => handleChange("tennis_timed_breaks", checked),
+              })}
             </section>
           ) : null}
 
@@ -1209,14 +1231,20 @@ export default function NewMatch() {
                 <h2>{selectedSportOption?.label || "Racket Sport"} Rules</h2>
                 <p className="helper-text">These choices are stored with this match and apply on web and iOS.</p>
               </div>
-              <label className="checkbox-label" htmlFor="racket_golden_point">
-                <input checked={formState.tennis_no_ad_scoring} id="racket_golden_point" type="checkbox" onChange={(event) => handleChange("tennis_no_ad_scoring", event.target.checked)} />
-                Golden Point at {formState.score_type - 1}-all
-              </label>
-              <label className="checkbox-label" htmlFor="racket_timed_breaks">
-                <input checked={formState.tennis_timed_breaks} id="racket_timed_breaks" type="checkbox" onChange={(event) => handleChange("tennis_timed_breaks", event.target.checked)} />
-                Timed warm-up and 90-second game breaks
-              </label>
+              {renderOptionSwitch({
+                id: "racket_golden_point",
+                label: `Golden Point at ${formState.score_type - 1}-all`,
+                description: `At ${formState.score_type - 1}-all, the next point decides the game.`,
+                checked: formState.tennis_no_ad_scoring,
+                onChange: (checked) => handleChange("tennis_no_ad_scoring", checked),
+              })}
+              {renderOptionSwitch({
+                id: "racket_timed_breaks",
+                label: "Timed warm-up and 90-second game breaks",
+                description: "Runs the sport warm-up timer and a 90-second break after each game.",
+                checked: formState.tennis_timed_breaks,
+                onChange: (checked) => handleChange("tennis_timed_breaks", checked),
+              })}
             </section>
           ) : null}
 
@@ -1391,21 +1419,13 @@ export default function NewMatch() {
         ) : null}
 
         {canScheduleMatch ? (
-          <div className="field checkbox-field">
-            <label className="checkbox-label" htmlFor="schedule_match">
-              <input
-                checked={Boolean(formState.schedule_match)}
-                id="schedule_match"
-                name="schedule_match"
-                type="checkbox"
-                onChange={(event) => handleChange("schedule_match", event.target.checked)}
-              />
-              {isPersonalPlus ? "Schedule for Later" : "Schedule Match"}
-            </label>
-            {isPersonalPlus ? (
-              <p className="helper-text">Save this match without starting the scoring clock. Start it later from Matches.</p>
-            ) : null}
-          </div>
+          renderOptionSwitch({
+            id: "schedule_match",
+            label: isPersonalPlus ? "Schedule for Later" : "Schedule Match",
+            description: "Save this match without starting the scoring clock, then start it later from Matches.",
+            checked: Boolean(formState.schedule_match),
+            onChange: (checked) => handleChange("schedule_match", checked),
+          })
         ) : null}
 
         <div className="button-row">

@@ -43,6 +43,19 @@ function MobileMenuIcon({ name }) {
     );
   }
 
+  if (name === "analytics") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 18.5V5.5M5 18.5H19" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M7.5 15L11 11.5L14 13L18.5 8.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="7.5" cy="15" r="1" fill="currentColor" />
+        <circle cx="11" cy="11.5" r="1" fill="currentColor" />
+        <circle cx="14" cy="13" r="1" fill="currentColor" />
+        <circle cx="18.5" cy="8.5" r="1" fill="currentColor" />
+      </svg>
+    );
+  }
+
   if (name === "tournament") {
     return (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -84,6 +97,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const organizationType = inferOrganizationType(session);
   const pageTitle = title && title !== organizationName ? title : "";
   const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
+  const isNewMatchRoute = location.pathname === "/match/new" || location.pathname.startsWith("/match/new/");
   const headerMenuItems = [
     {
       label: "Home",
@@ -104,11 +118,11 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       label: "Matches",
       icon: "matches",
       onClick: () => navigate("/matches"),
-      isActive: location.pathname === "/matches" || location.pathname === "/history" || location.pathname.startsWith("/match/"),
+      isActive: location.pathname === "/matches" || location.pathname === "/history" || (location.pathname.startsWith("/match/") && !isNewMatchRoute),
     },
     {
       label: "Analytics",
-      icon: "history",
+      icon: "analytics",
       onClick: () => navigate("/performance"),
       isActive: location.pathname === "/performance",
     },
@@ -140,7 +154,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       onClick: () => navigate("/matches"),
       isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
     },
-    { label: "Analytics", icon: "history", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" },
+    { label: "Analytics", icon: "analytics", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" },
     ...(tournamentManagerEnabled ? [{
       label: "Tournament",
       icon: "tournament",

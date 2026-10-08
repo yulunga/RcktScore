@@ -71,7 +71,8 @@ opens directly on scoring.
 Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
 a match and start it later from Matches. The mocked setup begins with another
 active match to verify that scheduling remains available; activation happens
-only after the active match has cleared.
+only after the active match has cleared. The journey also checks the visible
+Current/Scheduled/History controls in both light and dark colour schemes.
 
 Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
 Tennis views. The fixtures verify match start time and duration, game/set
@@ -84,7 +85,10 @@ compact after a vertical scroll. The check confirms that the outer width does
 not change, the header remains sticky, Home and the blue new-match `+` precede
 Matches/Analytics/Settings/Help, labels become icons, account and club details
 stay absent, the removed dashboard description and footer stay absent, and
-Start New Match remains a separate blue action. The automated journey also
+Start New Match remains a separate blue action. It also verifies that new-match
+routes do not highlight Matches, that the mobile menu remains on one row and
+Settings opens `/settings`, and that Recent Matches uses date/time tiles with
+View all opening Matches → History. The automated journey also
 holds the page at the former scroll-boundary failure point and verifies that the
 header changes state once rather than oscillating between labels and icons.
 

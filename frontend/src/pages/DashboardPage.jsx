@@ -89,6 +89,24 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatHistoryDate(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) {
+    return { day: "--", month: "Date", time: "--:--" };
+  }
+
+  return {
+    day: new Intl.DateTimeFormat("en-GB", { day: "2-digit" }).format(date),
+    month: new Intl.DateTimeFormat("en-GB", { month: "short" }).format(date),
+    time: new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(date),
+  };
+}
+
+function formatSportName(value) {
+  const normalized = String(value || "Match").replaceAll("_", " ");
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 function formatRunningTime(value, minuteTick) {
   void minuteTick;
   if (!value) {
@@ -148,7 +166,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [historyPage, setHistoryPage] = useState(0);
   const [activePage, setActivePage] = useState(0);
   const [scheduledPage, setScheduledPage] = useState(0);
-  const [showAllHistory, setShowAllHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [showSportOverlay, setShowSportOverlay] = useState(false);
   const [matchesCategory, setMatchesCategory] = useState("current");
@@ -166,7 +183,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       try {
         const response = await getDashboard(session.organization_id, {
           activeLimit: screenMode === "history" ? 0 : 200,
-          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : 12,
+          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : 10,
         });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
@@ -306,16 +323,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const isPersonalAccount = organizationType === "personal";
   const isPersonalPlus = isPersonalAccount && organizationPlan === "personal_plus";
   const historyLimit = organization.history_limit;
-  const historyTitle = screenMode === "history"
-    ? "Played Matches"
-    : (isPersonalAccount ? "Match History" : "Played Matches");
+  const historyTitle = screenMode === "dashboard" ? "Recent Matches" : "Match History";
   const dashboardSubtitle = screenMode === "matches"
     ? ""
     : screenMode === "history"
       ? "Search completed matches by player name, surname, or date."
       : "";
 
-  const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 12, 12);
+  const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 10, 10);
   const historyMatches = recentMatches.slice(0, historyPreviewLimit);
   const normalizedHistorySearch = historySearch.trim().toLowerCase();
   const showMatchesOnly = screenMode === "matches";
@@ -340,7 +355,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const historyPages = chunkItems(filteredHistoryMatches);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
   const hasHistoryCarousel = historyPages.length > 1;
-  const showHistoryViewAll = screenMode === "dashboard" && filteredHistoryMatches.length > DASHBOARD_CAROUSEL_PAGE_SIZE;
+  const showHistoryViewAll = screenMode === "dashboard" && filteredHistoryMatches.length > 0;
 
   const activePages = chunkItems(activeMatches);
   const visibleActivePage = activePages[clampPageIndex(activePage, activePages.length)] || [];
@@ -361,12 +376,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   useEffect(() => {
     setScheduledPage((current) => clampPageIndex(current, scheduledPages.length));
   }, [scheduledPages.length]);
-
-  useEffect(() => {
-    if (!showHistoryViewAll) {
-      setShowAllHistory(false);
-    }
-  }, [showHistoryViewAll]);
 
   function renderPagerDots(totalPages, currentPage, onSelectPage, label) {
     if (totalPages <= 1) {
@@ -561,10 +570,17 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       : winnerSide === "player1"
         ? " dashboard-history-card__player-name--loser"
         : "";
+    const historyDate = formatHistoryDate(match.completed_at || match.ended_at || match.updated_at);
 
     return (
       <article className="dashboard-item dashboard-history-card" key={match.id}>
+        <div className="dashboard-history-card__date-tile" aria-label={`${historyDate.day} ${historyDate.month} at ${historyDate.time}`}>
+          <strong>{historyDate.day}</strong>
+          <span>{historyDate.month}</span>
+          <small>{historyDate.time}</small>
+        </div>
         <div className="dashboard-history-card__top">
+          <span className="dashboard-history-card__sport">{formatSportName(match.sport)}</span>
           <div className="dashboard-history-card__players">
             <strong className={`dashboard-history-card__player-name${player1ResultClass}`}>
               {player1.firstName} {player1.surname || "Player 1"}
@@ -574,7 +590,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               {player2.firstName} {player2.surname || "Player 2"}
             </strong>
           </div>
-          <span className="dashboard-history-card__date">{formatDate(match.updated_at)}</span>
         </div>
         <div className="dashboard-history-card__meta">
           <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
@@ -750,9 +765,9 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <button
                 className="dashboard-section-link"
                 type="button"
-                onClick={() => setShowAllHistory((current) => !current)}
+                onClick={() => navigate("/matches#match-history-section")}
               >
-                {showAllHistory ? "Show less" : "View all"}
+                View all
               </button>
             ) : null}
           </div>
@@ -773,13 +788,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           ) : (
             <>
               <div className="dashboard-list dashboard-list--desktop dashboard-list--history">
-                {(showingHistory
-                  ? filteredHistoryMatches
-                  : (showAllHistory ? filteredHistoryMatches : filteredHistoryMatches.slice(0, DASHBOARD_CAROUSEL_PAGE_SIZE))
-                ).map((match) => renderHistoryMatchCard(match))}
+                {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
               </div>
               <div className="dashboard-carousel dashboard-carousel--mobile">
-                {showingHistory || showAllHistory ? (
+                {showingHistory ? (
                   <div className="dashboard-list">
                     {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
                   </div>

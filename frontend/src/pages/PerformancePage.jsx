@@ -56,7 +56,7 @@ export default function PerformancePage() {
   if (!isPersonalPlus) {
     return (
       <main className="page-shell stack">
-        <ClubPageHeader title="Performance" subtitle="Advanced personal match statistics." />
+        <ClubPageHeader />
         <section className="panel performance-upgrade-panel">
           <h2>Performance is included with Personal+</h2>
           <p>Upgrade to unlock trends, opponent records, serving performance and progress summaries.</p>
@@ -70,11 +70,7 @@ export default function PerformancePage() {
   const stats = performance || {};
   return (
     <main className="page-shell stack">
-      <ClubPageHeader
-        title="Performance"
-        subtitle="Your results, playing patterns and progress across every retained match."
-        actions={[{ label: "Matches", onClick: () => navigate("/matches") }, { label: "History", onClick: () => navigate("/history") }]}
-      />
+      <ClubPageHeader />
       {loading ? <div className="notice">Loading performance...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
       {!loading && !error ? (

@@ -91,7 +91,8 @@ npm run test:e2e:racket:watch
 
 This mocked journey begins with an active Personal Plus match, schedules a new
 match without disturbing it, confirms the scheduled match is visible in
-Matches, and then starts it after the active-match fixture clears.
+Matches under the Current/Scheduled/History switch, verifies that switch in
+light and dark mode, and then starts it after the active-match fixture clears.
 
 ```bash
 cd frontend
@@ -121,7 +122,10 @@ the page to exercise the sticky compact state. It confirms that the header keeps
 the same outer width, shrinks vertically, replaces labels with iOS-style icons,
 omits account/club details, the former dashboard description and shared footer,
 leaves Start New Match as a separate blue action, and verifies that Played
-Matches forms a two-column grid on the desktop profile.
+Recent Matches forms a two-column grid on the desktop profile, uses compact
+date/time tiles without underlining the pink winner, and View all opens Matches
+with History selected. Responsive profiles also verify a single-row quick menu
+and that Settings cannot be confused with Matches.
 
 ```bash
 cd frontend

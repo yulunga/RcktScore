@@ -2569,10 +2569,10 @@ textarea {
 }
 
 .dashboard-history-card {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px 12px;
-  padding: 14px 16px;
+  gap: 8px 12px;
+  padding: 10px 14px 10px 10px;
   border-radius: 20px;
   background: #fff;
   border: 1px solid #dde7f1;
@@ -2583,7 +2583,45 @@ textarea {
   display: grid;
   gap: 4px;
   min-width: 0;
+  grid-column: 2;
+}
+
+.dashboard-history-card__date-tile {
   grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-height: 76px;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #ffd42a 0%, #ffad60 100%);
+  color: #fff;
+  line-height: 1;
+}
+
+.dashboard-history-card__date-tile strong {
+  font-size: 1.3rem;
+  font-weight: 850;
+}
+
+.dashboard-history-card__date-tile span {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.dashboard-history-card__date-tile small {
+  margin-top: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.dashboard-history-card__sport {
+  color: #7b8794;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
 }
 
 .dashboard-history-card__players {
@@ -2595,16 +2633,13 @@ textarea {
 
 .dashboard-history-card__player-name {
   color: #102a43;
-  font-size: 0.98rem;
+  font-size: 0.86rem;
   line-height: 1.15;
   font-weight: 400;
 }
 
 .dashboard-history-card__player-name--winner {
   color: #ec5ea8;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.14em;
 }
 
 .dashboard-history-card__player-name--loser {
@@ -2626,7 +2661,7 @@ textarea {
 }
 
 .dashboard-history-card__view {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 1 / span 2;
   align-self: center;
   display: inline-flex;
@@ -2815,6 +2850,28 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
 
+.shirt-color-trigger {
+  width: min(100%, 260px);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #cbd2d9;
+  border-radius: 999px;
+  background: #fff;
+  color: #102a43;
+  cursor: pointer;
+  font-weight: 750;
+  text-align: left;
+}
+
+.shirt-color-trigger__chevron {
+  margin-left: auto;
+  color: #486581;
+  font-size: 1rem;
+}
+
 .shirt-color-option {
   display: inline-flex;
   align-items: center;
@@ -2841,6 +2898,91 @@ textarea {
   border: 1px solid currentColor;
   border-radius: 999px;
   flex: 0 0 auto;
+}
+
+.match-option-switch {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  color: #102a43;
+  cursor: pointer;
+}
+
+.match-option-switch + .match-option-switch {
+  border-top: 1px solid #e4ebf3;
+}
+
+.match-option-switch__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.match-option-switch__copy strong {
+  font-size: 0.92rem;
+}
+
+.match-option-switch__copy small {
+  color: #61758a;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.match-option-switch__control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.match-option-switch__control input {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.match-option-switch__track {
+  display: block;
+  width: 48px;
+  height: 28px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #a9b5c1;
+  transition: background 150ms ease;
+}
+
+.match-option-switch__track > span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(16, 42, 67, 0.22);
+  transition: transform 150ms ease;
+}
+
+.match-option-switch__control input:checked + .match-option-switch__track {
+  background: #1274d0;
+}
+
+.match-option-switch__control input:checked + .match-option-switch__track > span {
+  transform: translateX(20px);
+}
+
+.match-option-switch__control input:focus-visible + .match-option-switch__track {
+  outline: 3px solid rgba(18, 116, 208, 0.25);
+  outline-offset: 2px;
+}
+
+.match-option-switch--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .prefixed-input {
@@ -4904,9 +5046,9 @@ textarea {
   width: min(100%, 560px);
   margin: 0 auto;
   padding: 5px;
-  border: 1px solid var(--border);
+  border: 1px solid #d7e3f0;
   border-radius: 16px;
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .matches-category-switch button {
@@ -4914,12 +5056,12 @@ textarea {
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: var(--muted);
+  color: #486581;
   font-weight: 750;
 }
 
 .matches-category-switch button.active {
-  background: var(--primary);
+  background: #1274d0;
   color: #fff;
   box-shadow: 0 5px 14px rgba(14, 116, 209, 0.22);
 }
@@ -4981,6 +5123,20 @@ textarea {
 }
 
 @media (prefers-color-scheme: dark) {
+  .matches-category-switch {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(16, 42, 67, 0.96);
+  }
+
+  .matches-category-switch button {
+    color: #c8d8e8;
+  }
+
+  .matches-category-switch button.active {
+    background: #2f8ee5;
+    color: #fff;
+  }
+
   .dashboard-history-card__upgrade {
     background: rgba(16, 27, 42, 0.82);
   }
@@ -5285,14 +5441,15 @@ textarea {
   }
 
   .mobile-fab-menu-sheet__items {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px;
+    display: flex;
+    gap: 2px;
   }
 
   .mobile-fab-menu-sheet__item {
+    flex: 1 1 0;
+    min-width: 0;
     width: 100%;
-    min-height: 58px;
+    min-height: 54px;
     display: grid;
     justify-items: center;
     align-content: center;
@@ -5301,10 +5458,10 @@ textarea {
     border-radius: 14px;
     background: transparent;
     color: #486581;
-    font-size: 0.62rem;
+    font-size: 0.54rem;
     font-weight: 700;
     cursor: pointer;
-    padding: 4px 2px;
+    padding: 4px 1px;
   }
 
   .mobile-fab-menu-sheet__item--active {
@@ -5418,10 +5575,24 @@ textarea {
   }
 
   .dashboard-history-card {
-    grid-template-columns: minmax(0, 1fr) 24px;
+    grid-template-columns: 58px minmax(0, 1fr) 24px;
     gap: 6px 8px;
     padding: 10px 12px;
     border-radius: 18px;
+  }
+
+  .dashboard-history-card__date-tile {
+    min-height: 66px;
+    border-radius: 12px;
+  }
+
+  .dashboard-history-card__date-tile strong {
+    font-size: 1.05rem;
+  }
+
+  .dashboard-history-card__date-tile span,
+  .dashboard-history-card__date-tile small {
+    font-size: 0.58rem;
   }
 
   .dashboard-history-card__top,

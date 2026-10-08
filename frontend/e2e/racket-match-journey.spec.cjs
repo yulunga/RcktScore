@@ -89,11 +89,18 @@ for (const sport of ["squash", "racketball"]) {
     });
 
     await page.goto(`/match/new/setup?sport=${sport}`);
+    await expect(page.getByRole("heading", { name: `${sport === "racketball" ? "Racketball" : "Squash"} Match Setup` })).toBeVisible();
+    await expect(page.getByText(/Create a New .* Match/)).toHaveCount(0);
+    await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt shirt color" })).toHaveCount(0);
+    await page.getByRole("button", { name: /Change Player 1 Shirt, currently Navy/ }).click();
+    await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt shirt color" })).toBeVisible();
+    await page.getByRole("radio", { name: "Navy" }).click();
     await expect(page.getByLabel("Timed warm-up and 90-second game breaks")).toBeChecked();
     await page.locator("#player1_name").fill("Alex");
     await page.locator("#player1_surname").fill("Ace");
     await page.locator("#player2_name").fill("Blair");
     await page.locator("#player2_surname").fill("Backhand");
+    await expect(page.getByText("Alex", { exact: true }).first()).toBeVisible();
     await page.getByLabel("Handicap Match").check();
     await page.getByLabel("Handicap Option").selectOption("custom");
     await page.getByLabel("Player 1 Starting Score").fill("-2");

@@ -392,13 +392,6 @@ export default function OrganisationSettingsPage() {
   const personalHistoryLimit = settings?.organization?.available_plan_entitlements?.personal_plus?.history_limit
     ?? (personalPlan === "personal_plus" ? settings?.organization?.entitlements?.history_limit : null)
     ?? 100;
-  const personalHeaderActions = [
-    {
-      label: "Back to Dashboard",
-      onClick: () => navigate("/dashboard"),
-    },
-  ];
-
   useEffect(() => {
     if (!isPersonalAccount) {
       return;
@@ -532,18 +525,7 @@ export default function OrganisationSettingsPage() {
 
   return (
     <main className="page-shell stack">
-      {isPersonalAccount ? (
-        <ClubPageHeader
-          actions={personalHeaderActions}
-          subtitle="Manage your profile, plan options, and account access."
-          title=""
-        />
-      ) : (
-        <ClubPageHeader
-          subtitle="Manage organisation details, court inventory, and user access for this club."
-          title={organizationForm.organization_name || session?.organization_name || ""}
-        />
-      )}
+      <ClubPageHeader />
 
       {!isAdmin && !isPersonalAccount ? (
         <div className="notice">You are in view-only mode. Only organisation admins can save changes.</div>
