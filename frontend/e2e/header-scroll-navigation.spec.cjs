@@ -35,6 +35,19 @@ const completedMatches = [
     updated_at: "2026-10-05T17:15:00Z",
     state: { game_history: [{ player1_score: 8, player2_score: 11 }] },
   },
+  ...Array.from({ length: 23 }, (_, index) => ({
+    id: 903 + index,
+    sport: index % 2 === 0 ? "squash" : "tennis",
+    player1_name: `Player${index + 3}`,
+    player1_surname: "One",
+    player2_name: `Opponent${index + 3}`,
+    player2_surname: "Two",
+    winner_side: index % 2 === 0 ? "player1" : "player2",
+    player1_games_won: index % 2 === 0 ? 3 : 1,
+    player2_games_won: index % 2 === 0 ? 1 : 3,
+    updated_at: new Date(Date.UTC(2026, 8, 30 - index, 18, 0)).toISOString(),
+    state: { game_history: [{ player1_score: 11, player2_score: 8 }] },
+  })),
 ];
 
 function envelope(data) {
@@ -78,6 +91,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect(page.getByText(/build \d+/)).toHaveCount(0);
   await expect(startMatch).toBeVisible();
   await expect(startMatch).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(startMatch.locator("strong")).toHaveCSS("font-weight", "700");
 
   const viewport = page.viewportSize();
   let initialHomeBox = null;
@@ -105,7 +119,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
 
   if (viewport.width >= 1100) {
     const historyCards = page.locator(".dashboard-list--history.dashboard-list--desktop .dashboard-history-card");
-    await expect(historyCards).toHaveCount(2);
+    await expect(historyCards).toHaveCount(5);
     const firstHistoryCard = await historyCards.nth(0).boundingBox();
     const secondHistoryCard = await historyCards.nth(1).boundingBox();
     expect(Math.abs(firstHistoryCard.y - secondHistoryCard.y)).toBeLessThanOrEqual(1);
@@ -113,6 +127,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(page.getByRole("heading", { name: "Recent Matches" })).toBeVisible();
     await expect(historyCards.nth(0).locator(".dashboard-history-card__date-tile small")).toHaveText(/^\d{2}:\d{2}$/);
     await expect(historyCards.nth(0).locator(".dashboard-history-card__player-name--winner")).toHaveCSS("text-decoration-line", "none");
+    await expect(page.getByRole("button", { name: "Completed matches page 5" })).toBeVisible();
   }
 
   const initialBox = await header.boundingBox();
@@ -176,4 +191,15 @@ test("opens all recent matches on the Matches history tab @header", async ({ pag
   await expect(page).toHaveURL(/\/matches#match-history-section$/);
   await expect(page.getByRole("tab", { name: "History", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Match History" })).toBeVisible();
+  const historyCards = page.locator(".dashboard-list--history.dashboard-list--desktop .dashboard-history-card");
+  await expect(historyCards).toHaveCount(20);
+  await page.getByRole("button", { name: "Completed matches page 2" }).click();
+  await expect(historyCards).toHaveCount(5);
+});
+
+test("does not repeat the Home button in organisation settings tabs @header", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.locator(".root-admin-tab-row")).toBeVisible();
+  await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Back to dashboard" })).toHaveCount(0);
+  await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Organisation", exact: true })).toBeVisible();
 });

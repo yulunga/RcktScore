@@ -136,9 +136,9 @@ test("Personal Plus schedules a match and starts it later from Matches @scheduli
   await expect(scheduledTab).toHaveAttribute("aria-selected", "true");
   await expect(historyTab).toBeVisible();
   await page.emulateMedia({ colorScheme: "dark" });
-  await expect(matchTabs).toHaveCSS("background-color", "rgba(16, 42, 67, 0.96)");
+  await expect(matchTabs).toHaveCSS("background-color", "rgb(229, 242, 255)");
   await expect(scheduledTab).toHaveCSS("background-color", "rgb(47, 142, 229)");
-  await expect(currentTab).toHaveCSS("color", "rgb(200, 216, 232)");
+  await expect(currentTab).toHaveCSS("color", "rgb(11, 95, 179)");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.getByRole("heading", { name: "Scheduled Matches" })).toBeVisible();
   await currentTab.click();

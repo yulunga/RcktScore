@@ -8,6 +8,9 @@ import { useAuth } from "../hooks/useAuth";
 import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
 
 const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
+const DASHBOARD_HISTORY_PAGE_SIZE = 5;
+const DASHBOARD_HISTORY_MATCH_LIMIT = 25;
+const MATCHES_HISTORY_PAGE_SIZE = 20;
 const SCHEDULED_DETAILS_AUTO_COLLAPSE_MS = 5 * 60 * 1000;
 
 function formatScore(match) {
@@ -183,7 +186,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       try {
         const response = await getDashboard(session.organization_id, {
           activeLimit: screenMode === "history" ? 0 : 200,
-          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : 10,
+          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : DASHBOARD_HISTORY_MATCH_LIMIT,
         });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
@@ -330,7 +333,9 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       ? "Search completed matches by player name, surname, or date."
       : "";
 
-  const historyPreviewLimit = organizationPlan === "personal_free" ? 3 : Math.min(historyLimit || 10, 10);
+  const historyPreviewLimit = organizationPlan === "personal_free"
+    ? 3
+    : Math.min(historyLimit || DASHBOARD_HISTORY_MATCH_LIMIT, DASHBOARD_HISTORY_MATCH_LIMIT);
   const historyMatches = recentMatches.slice(0, historyPreviewLimit);
   const normalizedHistorySearch = historySearch.trim().toLowerCase();
   const showMatchesOnly = screenMode === "matches";
@@ -352,7 +357,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       return [player1, player2, dateText, winner].some((value) => value.includes(normalizedHistorySearch));
     });
   }, [historyCollection, normalizedHistorySearch]);
-  const historyPages = chunkItems(filteredHistoryMatches);
+  const historyPageSize = showingHistory ? MATCHES_HISTORY_PAGE_SIZE : DASHBOARD_HISTORY_PAGE_SIZE;
+  const historyPages = chunkItems(filteredHistoryMatches, historyPageSize);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
   const hasHistoryCarousel = historyPages.length > 1;
   const showHistoryViewAll = screenMode === "dashboard" && filteredHistoryMatches.length > 0;
@@ -368,6 +374,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   useEffect(() => {
     setHistoryPage((current) => clampPageIndex(current, historyPages.length));
   }, [historyPages.length]);
+
+  useEffect(() => {
+    setHistoryPage(0);
+  }, [matchesCategory, normalizedHistorySearch, screenMode]);
 
   useEffect(() => {
     setActivePage((current) => clampPageIndex(current, activePages.length));
@@ -396,6 +406,51 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           />
         ))}
       </div>
+    );
+  }
+
+  function renderHistoryPagination() {
+    if (historyPages.length <= 1) {
+      return null;
+    }
+
+    const firstVisiblePage = Math.max(0, Math.min(historyPage - 2, historyPages.length - 5));
+    const visiblePageNumbers = Array.from(
+      { length: Math.min(5, historyPages.length) },
+      (_, index) => firstVisiblePage + index,
+    );
+
+    return (
+      <nav className="dashboard-history-pagination" aria-label="Completed match pages">
+        <button
+          aria-label="Previous completed matches page"
+          disabled={historyPage === 0}
+          type="button"
+          onClick={() => setHistoryPage((current) => Math.max(0, current - 1))}
+        >
+          ‹
+        </button>
+        {visiblePageNumbers.map((pageIndex) => (
+          <button
+            aria-current={historyPage === pageIndex ? "page" : undefined}
+            aria-label={`Completed matches page ${pageIndex + 1}`}
+            className={historyPage === pageIndex ? "active" : ""}
+            key={`history-page-${pageIndex}`}
+            type="button"
+            onClick={() => setHistoryPage(pageIndex)}
+          >
+            {pageIndex + 1}
+          </button>
+        ))}
+        <button
+          aria-label="Next completed matches page"
+          disabled={historyPage === historyPages.length - 1}
+          type="button"
+          onClick={() => setHistoryPage((current) => Math.min(historyPages.length - 1, current + 1))}
+        >
+          ›
+        </button>
+      </nav>
     );
   }
 
@@ -788,24 +843,16 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           ) : (
             <>
               <div className="dashboard-list dashboard-list--desktop dashboard-list--history">
-                {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
+                {visibleHistoryPage.map((match) => renderHistoryMatchCard(match))}
               </div>
               <div className="dashboard-carousel dashboard-carousel--mobile">
-                {showingHistory ? (
+                <div className="dashboard-carousel__page">
                   <div className="dashboard-list">
-                    {filteredHistoryMatches.map((match) => renderHistoryMatchCard(match))}
+                    {visibleHistoryPage.map((match) => renderHistoryMatchCard(match))}
                   </div>
-                ) : (
-                  <>
-                    <div className="dashboard-carousel__page">
-                      <div className="dashboard-list">
-                        {visibleHistoryPage.map((match) => renderHistoryMatchCard(match))}
-                      </div>
-                    </div>
-                    {hasHistoryCarousel ? renderPagerDots(historyPages.length, historyPage, setHistoryPage, "History pages") : null}
-                  </>
-                )}
+                </div>
               </div>
+              {hasHistoryCarousel ? renderHistoryPagination() : null}
             </>
           )}
         </section>

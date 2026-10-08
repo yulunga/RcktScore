@@ -187,7 +187,7 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - returns a redacted fourth history teaser for Personal Free when older matches exist
    - derives Personal Plus performance statistics from completed match state and event actions
 5. The API returns `data.dashboard`.
-6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Dashboard Recent Matches is capped at ten client-side preview cards and View all opens the Matches screen with History selected. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate.
+6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Dashboard Recent Matches retains at most 25 client-side preview records and paginates five cards at a time; View all opens the Matches screen with History selected. Matches History paginates 20 cards at a time, giving ten two-card rows on wide screens. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate.
 7. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-three window, preventing direct URL access from bypassing the entitlement.
 
 ### Troubleshooting cues

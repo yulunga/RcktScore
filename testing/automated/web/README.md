@@ -123,9 +123,11 @@ the same outer width, shrinks vertically, replaces labels with iOS-style icons,
 omits account/club details, the former dashboard description and shared footer,
 leaves Start New Match as a separate blue action, and verifies that Played
 Recent Matches forms a two-column grid on the desktop profile, uses compact
-date/time tiles without underlining the pink winner, and View all opens Matches
-with History selected. Responsive profiles also verify a single-row quick menu
-and that Settings cannot be confused with Matches.
+date/time tiles without underlining the pink winner, retains at most 25 records
+and paginates five cards at a time. View all opens Matches with History selected,
+where 20-card pages provide ten desktop rows. Responsive profiles also verify a
+single-row quick menu, distinct Settings routing, and the absence of a duplicate
+Home control inside the Settings section tabs.
 
 ```bash
 cd frontend

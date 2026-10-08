@@ -87,8 +87,10 @@ Matches/Analytics/Settings/Help, labels become icons, account and club details
 stay absent, the removed dashboard description and footer stay absent, and
 Start New Match remains a separate blue action. It also verifies that new-match
 routes do not highlight Matches, that the mobile menu remains on one row and
-Settings opens `/settings`, and that Recent Matches uses date/time tiles with
-View all opening Matches → History. The automated journey also
+Settings opens `/settings`, the Settings section tabs do not repeat Home, and
+Recent Matches uses date/time tiles with five-card pages over at most 25
+records. View all opens Matches → History, whose 20-card pages form ten desktop
+rows. The automated journey also
 holds the page at the former scroll-boundary failure point and verifies that the
 header changes state once rather than oscillating between labels and icons.
 
