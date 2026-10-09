@@ -397,8 +397,28 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
     event = _fetch_event(connection, tournament_id, organization_id)
     if not event:
         raise LookupError("Tournament not found")
-    if event["status"] not in {"draft", "registration"}:
+    if event["status"] not in {"draft", "registration", "draw_published"}:
         raise ValueError("The draw has already been generated")
+
+    rebuilding_missing_draw = event["status"] == "draw_published"
+    if rebuilding_missing_draw:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT to_regclass('public.tournament_matches') AS table_name")
+            match_table = cursor.fetchone() or {}
+            if not match_table.get("table_name"):
+                raise ValueError("Tournament draw storage is not installed. Apply migration 034 before rebuilding the draw")
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS match_count
+                FROM tournament_matches AS fixture
+                INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
+                WHERE draw.tournament_id = %(event_id)s
+                """,
+                {"event_id": event["id"]},
+            )
+            existing_match_count = int((cursor.fetchone() or {}).get("match_count") or 0)
+        if existing_match_count:
+            return get_tournament(connection, event["id"], organization_id)
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -499,13 +519,14 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
             )
             VALUES (
                 %(organization_id)s, %(tournament_id)s, %(actor_username)s,
-                'draw_generated', 'tournament', %(entity_id)s, %(payload)s, %(created_at)s
+                %(action)s, 'tournament', %(entity_id)s, %(payload)s, %(created_at)s
             )
             """,
             {
                 "organization_id": int(organization_id),
                 "tournament_id": event["id"],
                 "actor_username": actor_username,
+                "action": "draw_rebuilt" if rebuilding_missing_draw else "draw_generated",
                 "entity_id": str(event["id"]),
                 "payload": Jsonb({"format": event["draw_format"], "match_count": generated_match_count}),
                 "created_at": now,

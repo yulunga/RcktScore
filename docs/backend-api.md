@@ -284,6 +284,9 @@ Monrad currently produce the opening round; non-power-of-two knockout fields giv
 the ordered top entrants byes. Plate population, later knockout/Monrad progression,
 scheduling, scoring-match linkage and public spectator access remain unimplemented.
 Migration `034_tournament_draw_matches.sql` is required for draw generation.
+The operation is idempotent after publication when fixtures exist. If an event is
+already `draw_published` but has no fixture rows, the same endpoint rebuilds them
+and records a `draw_rebuilt` audit event.
 
 Tournament entry updates are club-admin-only and limited to draft/registration
 events. First name, surname and ability are editable. Email and home-club fields

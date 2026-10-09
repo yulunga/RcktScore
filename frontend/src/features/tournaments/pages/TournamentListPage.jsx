@@ -25,6 +25,11 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`));
 }
 
+function statusLabel(status) {
+  if (status === "draw_published") return "Draw ready";
+  return (status || "draft").replaceAll("_", " ");
+}
+
 export default function TournamentListPage() {
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -247,7 +252,7 @@ export default function TournamentListPage() {
           <section className="panel stack">
             <div className="panel-heading">
               <h2>Your Tournaments</h2>
-              <p className="helper-text">Open a tournament to manage its initial player entries.</p>
+              <p className="helper-text">Open a tournament to manage players or view its draw.</p>
             </div>
             <div className="dashboard-list">
               {!loading && tournaments.length === 0 ? (
@@ -261,12 +266,15 @@ export default function TournamentListPage() {
                 >
                   <div className="dashboard-item-head">
                     <strong>{tournament.name}</strong>
-                    <span className="status-pill">{tournament.status.replaceAll("_", " ")}</span>
+                    <span className="status-pill">{statusLabel(tournament.status)}</span>
                   </div>
                   <div className="dashboard-item-meta">
                     <span>{optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}</span>
                     <span>{formatDate(tournament.starts_on)} · {tournament.entry_count} entr{tournament.entry_count === 1 ? "y" : "ies"}</span>
                   </div>
+                  <span className="tournament-list-action">
+                    {tournament.status === "draw_published" ? "View Draw" : "Open Tournament"}
+                  </span>
                 </button>
               ))}
             </div>

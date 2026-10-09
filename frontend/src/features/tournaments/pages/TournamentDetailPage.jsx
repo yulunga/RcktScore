@@ -462,6 +462,10 @@ export default function TournamentDetailPage() {
   const visibleSearchResults = selectedPlayer ? [selectedPlayer] : searchResults.slice(0, 4);
   const generatedDraws = (tournament?.draws || []).filter((draw) => (draw.matches || []).length > 0);
   const entriesEditable = ["draft", "registration"].includes(tournament?.status);
+  const publishedDrawMissing = tournament?.status === "draw_published" && generatedDraws.length === 0;
+  const displayStatus = tournament?.status === "draw_published"
+    ? (publishedDrawMissing ? "Draw needs rebuilding" : "Draw ready")
+    : (tournament?.status || "draft").replaceAll("_", " ");
 
   return (
     <main className="page-shell stack">
@@ -482,7 +486,7 @@ export default function TournamentDetailPage() {
                     {optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}
                   </p>
                 </div>
-                <span className="status-pill">{tournament.status.replaceAll("_", " ")}</span>
+                <span className={`status-pill${publishedDrawMissing ? " warning" : ""}`}>{displayStatus}</span>
               </div>
               <div className="dashboard-item-meta">
                 <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
@@ -499,8 +503,10 @@ export default function TournamentDetailPage() {
                 <h2>Draw & Scheduling</h2>
                 <p className="helper-text">
                   {generatedDraws.length
-                    ? "The draw is published. Court and time-slot scheduling will be added in the next stage."
-                    : "Generate the tournament draw from the registered players. Entries lock when the draw is published."}
+                    ? "The draw is ready to view. Court and time-slot scheduling will be added in the next stage."
+                    : publishedDrawMissing
+                      ? "The event was marked as draw-ready, but no fixtures were returned. Rebuild the missing draw below."
+                      : "Generate the tournament draw from the registered players. Entries lock when the draw is ready."}
                 </p>
               </div>
               {generatedDraws.length ? (
@@ -509,7 +515,7 @@ export default function TournamentDetailPage() {
                     <section className="tournament-draw" key={draw.id || draw.name}>
                       <div className="dashboard-item-head">
                         <h3>{draw.name}</h3>
-                        <span className="status-pill">{draw.status}</span>
+                        <span className="status-pill">{draw.status === "published" ? "Ready" : draw.status}</span>
                       </div>
                       {[...new Set(draw.matches.map((match) => match.round_number))].map((roundNumber) => (
                         <div className="tournament-draw-round" key={`${draw.id}-${roundNumber}`}>
@@ -540,7 +546,7 @@ export default function TournamentDetailPage() {
                       type="button"
                       onClick={handleGenerateDraw}
                     >
-                      {drawing ? "Generating..." : "Generate Draw"}
+                      {drawing ? (publishedDrawMissing ? "Rebuilding..." : "Generating...") : (publishedDrawMissing ? "Rebuild Missing Draw" : "Generate Draw")}
                     </button>
                   </div>
                   {(tournament.entries || []).length < 2 ? <p className="helper-text">Add at least two players to enable the draw.</p> : null}

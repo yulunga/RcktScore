@@ -275,6 +275,9 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
     `tournament_matches`, publishes the draw and locks entrant changes. Round
     robin produces its full circle-method rotation; knockout, plate and Monrad
     currently persist only their opening round because later pairings need results.
+    The web client presents the internal `draw_published` state as **Draw ready**
+    with an explicit **View Draw** cue. If a legacy or partial deployment has the
+    state without fixtures, an admin can use **Rebuild Missing Draw**.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
 optional Email, Club and Ability columns. It previews invalid and duplicate rows,

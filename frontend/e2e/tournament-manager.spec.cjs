@@ -69,6 +69,18 @@ test("uses the standard header and exposes persisted tournament options @tournam
   expect(rightPanel.height).toBeLessThan(leftPanel.height);
 });
 
+test("labels a published tournament as draw ready with an explicit view action @tournament", async ({ page }) => {
+  await page.route("**/organizations/77/tournaments", async (route) => route.fulfill({
+    json: envelope({ tournaments: [{ ...tournament, status: "draw_published" }] }),
+  }));
+
+  await page.goto("/tournaments");
+
+  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
+  await expect(page.getByText("View Draw", { exact: true })).toBeVisible();
+  await expect(page.getByText("draw published", { exact: false })).toHaveCount(0);
+});
+
 test("shows event identity in the summary and uses search-first player entry @tournament", async ({ page }) => {
   await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({
     json: envelope({ tournament }),
@@ -219,4 +231,25 @@ test("generates and displays an opening draw, then locks entries @tournament", a
   await expect(page.locator(".tournament-draw-match").getByText("Demo PlayTwo", { exact: true })).toBeVisible();
   await expect(page.getByText("Player entries are locked because the draw has been published.")).toBeVisible();
   await expect(page.getByLabel("Search Players")).toHaveCount(0);
+});
+
+test("repairs a draw-ready tournament when fixture data is missing @tournament", async ({ page }) => {
+  const entries = [
+    { id: "entry-1", display_name: "Demo PlayOne", first_name: "Demo", surname: "PlayOne", ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+    { id: "entry-2", display_name: "Demo PlayTwo", first_name: "Demo", surname: "PlayTwo", ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+  ];
+  const missingTournament = { ...tournament, status: "draw_published", graded_enabled: false, entry_count: 2, entries, draws: [{ id: "open-draw", name: "Open Draw", grade: null, status: "published", matches: [] }] };
+  const repairedTournament = {
+    ...missingTournament,
+    draws: [{ id: "open-draw", name: "Open Draw", grade: null, status: "published", matches: [{ id: "match-1", round_number: 1, match_number: 1, status: "pending", player1_name: "Demo PlayOne", player2_name: "Demo PlayTwo" }] }],
+  };
+  await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({ json: envelope({ tournament: missingTournament }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw`, async (route) => route.fulfill({ json: envelope({ tournament: repairedTournament }) }));
+
+  await page.goto(`/tournaments/${tournament.id}`);
+  await expect(page.getByText("Draw needs rebuilding", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Rebuild Missing Draw" }).click();
+
+  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
+  await expect(page.locator(".tournament-draw-match")).toContainText("Demo PlayOne");
 });

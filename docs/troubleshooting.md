@@ -613,6 +613,10 @@ applied. Draw generation changes the event to `draw_published` and intentionally
 locks add, import and edit entry actions. Round robin creates every round;
 knockout, knockout-with-plate and Monrad currently create the opening round only.
 Plate entrants and later Monrad/knockout rounds wait for result progression.
+The database value `draw_published` is shown to users as **Draw ready**. From the
+tournament list, select **View Draw**. If the detail page instead reports **Draw
+needs rebuilding**, the event status exists without fixture rows; an admin can
+use **Rebuild Missing Draw**, which is idempotent when fixtures already exist.
 
 CSV player imports require `First Name` and `Surname` headers. Optional recognised
 headers are Email, Club and Ability (1–4). Duplicate warnings are produced for

@@ -32,6 +32,13 @@
   border-color: var(--brand-blue, #1769aa);
 }
 
+.tournament-list-action {
+  justify-self: start;
+  margin-top: 0.65rem;
+  color: var(--brand-blue, #1769aa);
+  font-weight: 800;
+}
+
 .tournament-next-stage button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
