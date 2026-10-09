@@ -196,6 +196,17 @@ test("opens all recent matches on the Matches history tab @header", async ({ pag
   await expect(page.getByRole("heading", { name: "Match History" })).toBeVisible();
   const historyCards = page.locator(".dashboard-list--history.dashboard-list--desktop .dashboard-history-card");
   await expect(historyCards).toHaveCount(20);
+  if (page.viewportSize().width >= 1100) {
+    await expect(page.locator(".dashboard-carousel--mobile")).toBeHidden();
+    const tenthRowLeft = await historyCards.nth(18).boundingBox();
+    const tenthRowRight = await historyCards.nth(19).boundingBox();
+    expect(Math.abs(tenthRowLeft.y - tenthRowRight.y)).toBeLessThanOrEqual(1);
+    expect(tenthRowRight.x).toBeGreaterThan(tenthRowLeft.x + tenthRowLeft.width);
+  } else {
+    await expect(page.locator(".dashboard-list--history.dashboard-list--desktop")).toBeHidden();
+    await expect(page.locator(".dashboard-carousel--mobile")).toBeVisible();
+  }
+  await expect(page.getByRole("button", { name: "Completed matches page 2" })).toBeVisible();
   await page.getByRole("button", { name: "Completed matches page 2" }).click();
   await expect(historyCards).toHaveCount(5);
 });

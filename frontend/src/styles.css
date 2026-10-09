@@ -3691,7 +3691,6 @@ textarea {
 }
 
 .dashboard-carousel {
-  display: grid;
   gap: 12px;
 }
 

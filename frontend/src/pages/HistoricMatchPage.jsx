@@ -239,14 +239,7 @@ export default function HistoricMatchPage() {
 
   return (
     <main className="page-shell stack historic-match-page" data-testid="historic-match-page">
-      <ClubPageHeader
-        actions={[
-          { label: "History", onClick: () => navigate("/history") },
-          { label: "Matches", onClick: () => navigate("/matches") },
-        ]}
-        subtitle="A read-only record of the completed match."
-        title="Historic Match"
-      />
+      <ClubPageHeader />
 
       {loading ? <div className="notice">Loading historic match...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}

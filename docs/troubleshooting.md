@@ -77,7 +77,8 @@ Current/Scheduled/History controls in both light and dark colour schemes.
 Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
 Tennis views. The fixtures verify match start time and duration, game/set
 durations, sport terminology, the grouped scoring timeline, and separate
-tennis game/set dividers. Completed-match cards should navigate to
+tennis game/set dividers. The web detail must use the plain shared header without
+Historic Match copy or a separate History/Matches action row. Completed-match cards should navigate to
 `/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
 
 Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
@@ -90,8 +91,10 @@ action must both open the same sport-selection overlay before setup. It also ver
 routes do not highlight Matches, that the mobile menu remains on one row and
 Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with five-card pages over at most 25
-records. View all opens Matches → History, whose 20-card pages form ten desktop
-rows. The automated journey also
+records. View all opens Matches → History, whose 20-card pages form exactly ten
+two-card desktop rows. If full-width cards repeat below those rows, inspect the
+desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until
+the phone/portrait breakpoint. The automated journey also
 holds the page at the former scroll-boundary failure point and verifies that the
 header changes state once rather than oscillating between labels and icons.
 

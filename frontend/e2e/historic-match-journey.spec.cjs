@@ -17,6 +17,7 @@ function envelope(data) {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+    window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
   await page.route("**/notifications/50002*", async (route) => {
     await route.fulfill({ json: envelope({ notifications: [] }) });
@@ -68,6 +69,10 @@ test("shows a dedicated Squash historic match with game durations and a structur
 
   await page.goto("/match/historic-squash-1/history");
   await expect(page.getByTestId("historic-match-page")).toBeVisible();
+  await expect(page.locator(".club-page-header__page-title")).toHaveCount(0);
+  await expect(page.getByText("Historic Match", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("A read-only record of the completed match.", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".dashboard-menu-row")).toHaveCount(0);
   await expect(page.getByText("Squash", { exact: true })).toBeVisible();
   await expect(page.getByText("Handicap -2 | 2 • Best of 3 games • PAR-15")).toBeVisible();
   await expect(page.getByText(/20 Sep(?:t)? 2026/)).toBeVisible();
