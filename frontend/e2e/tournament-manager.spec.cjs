@@ -35,6 +35,7 @@ function envelope(data) {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+    window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
   await page.route("**/notifications/77*", async (route) => route.fulfill({ json: envelope({ notifications: [] }) }));
   await page.route("**/organization_settings/77", async (route) => route.fulfill({ json: envelope({
@@ -76,9 +77,38 @@ test("labels a published tournament as live with an explicit view action @tourna
 
   await page.goto("/tournaments");
 
-  await expect(page.getByText("Live", { exact: true })).toBeVisible();
+  const liveBadge = page.getByText("Live", { exact: true });
+  await expect(liveBadge).toBeVisible();
+  await expect(liveBadge).toHaveCSS("color", "rgb(20, 115, 60)");
   await expect(page.getByText("View Draw", { exact: true })).toBeVisible();
   await expect(page.getByText("draw published", { exact: false })).toHaveCount(0);
+});
+
+test("shows live tournaments below recent matches on enabled club dashboards @tournament", async ({ page }) => {
+  await page.route("**/dashboard/77*", async (route) => route.fulfill({
+    json: envelope({ dashboard: {
+      organization: { id: 77, name: "Demo Club", type: "club", plan: "club_essentials" },
+      active_matches: [],
+      scheduled_matches: [],
+      recent_matches: [],
+    } }),
+  }));
+  await page.route("**/organizations/77/tournaments", async (route) => route.fulfill({
+    json: envelope({ tournaments: [
+      { ...tournament, id: "live-tournament", status: "draw_published", entry_count: 7 },
+      { ...tournament, id: "draft-tournament", name: "Draft Event" },
+    ] }),
+  }));
+
+  await page.goto("/dashboard");
+
+  const recentSection = page.locator("#match-history-section");
+  const tournamentSection = page.locator("#live-tournaments-section");
+  await expect(tournamentSection.getByRole("heading", { name: "Live Tournaments" })).toBeVisible();
+  await expect(tournamentSection.getByText(tournament.name, { exact: true })).toBeVisible();
+  await expect(tournamentSection.getByText("Draft Event", { exact: true })).toHaveCount(0);
+  const [recentBox, tournamentBox] = await Promise.all([recentSection.boundingBox(), tournamentSection.boundingBox()]);
+  expect(tournamentBox.y).toBeGreaterThan(recentBox.y + recentBox.height);
 });
 
 test("shows event identity in the summary and uses search-first player entry @tournament", async ({ page }) => {
@@ -213,7 +243,9 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
   await expect(page.getByText("First name and surname are required", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Duplicate action for Demo PlayOne")).toBeVisible();
 
-  await page.getByRole("button", { name: "Edit Player" }).nth(1).click();
+  await expect(entryCards.nth(1).locator(".tournament-entry-card__indicators")).toBeVisible();
+  await expect(entryCards.nth(1).getByRole("button", { name: "Edit Casey Member" })).toBeVisible();
+  await page.getByRole("button", { name: "Edit Casey Member" }).click();
   await expect(page.getByLabel("Email Address").last()).toBeDisabled();
   await expect(page.getByLabel("Home Club").last()).toBeDisabled();
   await expect(page.getByLabel("Player Ability").last()).toHaveValue("3");
@@ -248,6 +280,7 @@ test("displays a published opening draw and locks entries @tournament", async ({
   await expect(page.getByRole("heading", { name: "Open Draw" })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayOne", { exact: true })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayTwo", { exact: true })).toBeVisible();
+  await expect(page.locator(".tournament-summary-grid .status-pill", { hasText: "Live" })).toHaveCSS("color", "rgb(20, 115, 60)");
   await expect(page.getByText("Player entries are locked because the draw has been published.")).toBeVisible();
   await expect(page.getByLabel("Search Players")).toHaveCount(0);
 });

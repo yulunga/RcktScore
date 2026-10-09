@@ -8,6 +8,8 @@ Lambda handlers, and shared backend logic.
 
 The app entry document at `frontend/index.html` and the public landing homepage use the same browser title, `HitNScore | Every Point. Every Court.`, and the same public description metadata.
 
+The React app's consent panel mirrors the public landing page. `CookieConsent.jsx` stores the visitor's explicit analytics choice, while `services/analytics.js` loads the GA4 tag only after consent and sends manual SPA page views. Dynamic user, match, tournament, organisation and public-draw path segments are replaced with route-template labels, query strings are not reported, and Google advertising storage/signals remain disabled. The Help Centre cookie section documents the active Analytics cookies and provides the control for reopening these preferences.
+
 For the route inventory and security posture, see [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md).
 For operational debugging, see [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md).
 
@@ -187,8 +189,9 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - returns a redacted fourth history teaser for Personal Free when older matches exist
    - derives Personal Plus performance statistics from completed match state and event actions
 5. The API returns `data.dashboard`.
-6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Dashboard Recent Matches retains at most 25 client-side preview records and paginates five cards at a time; View all opens the Matches screen with History selected. Matches History paginates 20 cards at a time, giving ten two-card rows on wide screens. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate.
-7. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-three window, preventing direct URL access from bypassing the entitlement.
+6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Dashboard Recent Matches retains at most 25 client-side preview records and paginates five cards at a time; View all opens the Matches screen with History selected. For feature-enabled clubs, the dashboard then reads the existing tournament list and shows only `draw_published` events in a Live Tournaments panel below Recent Matches. Matches History paginates 20 cards at a time, giving ten two-card rows on wide screens. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate.
+7. Both the dashboard Start New Match action and the signed-in header `+` route through the same dashboard sport-selection overlay; selecting a sport continues to `/match/new/setup?sport=...`.
+8. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-three window, preventing direct URL access from bypassing the entitlement.
 
 ### Troubleshooting cues
 
@@ -249,8 +252,9 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
 3. Organisation settings return
    `organization.features.tournament_manager.web_enabled`.
 4. The signed-in web header shows a Tournament button to every member of an
-   enabled club. The club Settings page also shows its administrator entry point;
-   the backend repeats the same feature check on every tournament request.
+   enabled club, and the dashboard shows its published tournaments beneath Recent
+   Matches. The club Settings page also shows its administrator entry point; the
+   backend repeats the same feature check on every tournament request.
 5. A club admin creates a draft through
    `POST /organizations/{organization_id}/tournaments`, classifying it as internal
    or open and optionally enabling A–D grading or an entry-size limit. Creation
@@ -290,9 +294,11 @@ and lets the organiser skip, reuse, replace or update as appropriate. Updates us
 `PUT /tournaments/{tournament_id}/entries/{entry_id}` and write an audit event.
 Linked account email and home-club values are locked; unlinked player records can
 be completed before they are claimed.
-Compact entry cards show grade, seed, linked-account and host-club-member
-indicators separately. Linked means that the reusable player identity belongs to
-a registered HitNScore account; it does not grant a plan, role or club access.
+Compact entry cards put a small edit gear at the top right and group grade, seed,
+linked-account and host-club-member indicators beneath the club details. Linked
+means that the reusable player identity belongs to a registered HitNScore account;
+it does not grant a plan, role or club access. Published list entries use a green
+Live badge in the client.
 
 Ordinary club members may list and read tournaments. Creation and entry changes
 remain restricted to club administrators.

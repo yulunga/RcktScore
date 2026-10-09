@@ -152,6 +152,15 @@ function MemberIcon() {
   );
 }
 
+function GearIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.75v2M12 18.25v2M20.25 12h-2M5.75 12h-2M17.83 6.17l-1.42 1.42M7.59 16.41l-1.42 1.42M17.83 17.83l-1.42-1.42M7.59 7.59L6.17 6.17" />
+    </svg>
+  );
+}
+
 function EntryIndicator({ className = "", description, label, children }) {
   return (
     <span
@@ -594,7 +603,9 @@ export default function TournamentDetailPage() {
                     {optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}
                   </p>
                 </div>
-                <span className={`status-pill${publishedDrawMissing ? " warning" : ""}`}>{displayStatus}</span>
+                <span className={`status-pill${publishedDrawMissing ? " warning" : tournament.status === "draw_published" ? " status-pill--live" : ""}`}>
+                  {displayStatus}
+                </span>
               </div>
               <div className="tournament-summary-details">
                 <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
@@ -973,47 +984,53 @@ export default function TournamentDetailPage() {
                             <strong>{entry.display_name}</strong>
                             <span>{entry.email || "Named player — no email yet"}</span>
                             <span>{entry.home_club_name || "No home club recorded"}</span>
+                            <div className="tournament-entry-card__indicators">
+                              {entry.ability_level ? (
+                                <EntryIndicator
+                                  className={`tournament-grade-pill tournament-grade-pill--${(entry.ability_grade || "").toLowerCase()}`}
+                                  description={`Grade ${entry.ability_grade} player ability`}
+                                  label={`Grade ${entry.ability_grade}`}
+                                >
+                                  {entry.ability_grade}
+                                </EntryIndicator>
+                              ) : null}
+                              {entry.seed ? (
+                                <EntryIndicator className="tournament-seed-pill" description={`Seed ${entry.seed} in this tournament draw`} label={`Seed ${entry.seed}`}>
+                                  {entry.seed}
+                                </EntryIndicator>
+                              ) : null}
+                              {entry.claim_status === "linked" ? (
+                                <EntryIndicator
+                                  className="tournament-link-indicator"
+                                  description="Linked to a registered HitNScore account. Account-owned identity details are managed from that account."
+                                  label="Linked HitNScore account"
+                                >
+                                  <LinkIcon />
+                                </EntryIndicator>
+                              ) : null}
+                              {entry.relationship === "member" ? (
+                                <EntryIndicator
+                                  className="tournament-member-indicator"
+                                  description="Approved member of the club hosting this tournament."
+                                  label="Club member"
+                                >
+                                  <MemberIcon />
+                                </EntryIndicator>
+                              ) : null}
+                            </div>
                           </div>
-                          <div className="tournament-entry-card__indicators">
-                            {entry.ability_level ? (
-                              <EntryIndicator
-                                className={`tournament-grade-pill tournament-grade-pill--${(entry.ability_grade || "").toLowerCase()}`}
-                                description={`Grade ${entry.ability_grade} player ability`}
-                                label={`Grade ${entry.ability_grade}`}
-                              >
-                                {entry.ability_grade}
-                              </EntryIndicator>
-                            ) : null}
-                            {entry.seed ? (
-                              <EntryIndicator className="tournament-seed-pill" description={`Seed ${entry.seed} in this tournament draw`} label={`Seed ${entry.seed}`}>
-                                {entry.seed}
-                              </EntryIndicator>
-                            ) : null}
-                            {entry.claim_status === "linked" ? (
-                              <EntryIndicator
-                                className="tournament-link-indicator"
-                                description="Linked to a registered HitNScore account. Account-owned identity details are managed from that account."
-                                label="Linked HitNScore account"
-                              >
-                                <LinkIcon />
-                              </EntryIndicator>
-                            ) : null}
-                            {entry.relationship === "member" ? (
-                              <EntryIndicator
-                                className="tournament-member-indicator"
-                                description="Approved member of the club hosting this tournament."
-                                label="Club member"
-                              >
-                                <MemberIcon />
-                              </EntryIndicator>
-                            ) : null}
-                          </div>
+                          {isAdmin && entriesEditable ? (
+                            <button
+                              aria-label={`Edit ${entry.display_name}`}
+                              className="tournament-entry-card__edit"
+                              title={`Edit ${entry.display_name}`}
+                              type="button"
+                              onClick={() => beginEditEntry(entry)}
+                            >
+                              <GearIcon />
+                            </button>
+                          ) : null}
                         </div>
-                        {isAdmin && entriesEditable ? (
-                          <div className="button-row tournament-entry-actions">
-                            <button type="button" onClick={() => beginEditEntry(entry)}>Edit Player</button>
-                          </div>
-                        ) : null}
                       </>
                     )}
                   </article>

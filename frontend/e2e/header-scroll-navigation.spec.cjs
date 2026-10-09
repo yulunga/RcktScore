@@ -57,6 +57,7 @@ function envelope(data) {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+    window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
   await page.route("**/notifications/42*", async (route) => {
     await route.fulfill({ json: envelope({ notifications: [] }) });
@@ -164,12 +165,14 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(header).not.toHaveClass(/club-page-header--compact/);
     await primaryNavigation.getByRole("button", { name: "Start New Match" }).click();
-    await expect(page).toHaveURL(/\/match\/new$/);
+    await expect(page).toHaveURL(/\/dashboard#new-match$/);
     await expect(primaryNavigation.getByRole("button", { name: "Start New Match" })).toHaveAttribute("aria-current", "page");
     await expect(primaryNavigation.getByRole("button", { name: "Matches" })).not.toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("button", { name: "Back to Dashboard" })).toHaveCount(0);
-    await expect(page.getByText("Choose Racket Sport", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Choose the racket sport first, then continue into the correct match setup flow.", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await startMatch.click();
+    await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
   } else {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.getByRole("button", { name: "Open navigation menu" }).click();
@@ -195,6 +198,24 @@ test("opens all recent matches on the Matches history tab @header", async ({ pag
   await expect(historyCards).toHaveCount(20);
   await page.getByRole("button", { name: "Completed matches page 2" }).click();
   await expect(historyCards).toHaveCount(5);
+});
+
+test("opens the shared sport chooser from the responsive new-match menu action @header", async ({ page }) => {
+  await page.goto("/dashboard");
+
+  if (page.viewportSize().width > 840) {
+    await page.getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("button", { name: "Start New Match" })
+      .click();
+  } else {
+    await page.getByRole("button", { name: "Open navigation menu" }).click();
+    await page.getByRole("dialog", { name: "Quick navigation" })
+      .getByRole("button", { name: "Start New Match" })
+      .click();
+  }
+
+  await expect(page).toHaveURL(/\/dashboard#new-match$/);
+  await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
 });
 
 test("does not repeat the Home button in organisation settings tabs @header", async ({ page }) => {

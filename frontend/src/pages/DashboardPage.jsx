@@ -5,7 +5,13 @@ import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
-import { endMatch, getDashboard, startScheduledMatch } from "../services/api";
+import {
+  endMatch,
+  getDashboard,
+  getOrganizationSettings,
+  getTournaments,
+  startScheduledMatch,
+} from "../services/api";
 
 const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
 const DASHBOARD_HISTORY_PAGE_SIZE = 5;
@@ -110,6 +116,14 @@ function formatSportName(value) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+function formatTournamentDate(value) {
+  if (!value) {
+    return "Date not set";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`));
+}
+
 function formatRunningTime(value, minuteTick) {
   void minuteTick;
   if (!value) {
@@ -171,6 +185,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [scheduledPage, setScheduledPage] = useState(0);
   const [historySearch, setHistorySearch] = useState("");
   const [showSportOverlay, setShowSportOverlay] = useState(false);
+  const [liveTournaments, setLiveTournaments] = useState([]);
+  const [tournamentManagerEnabled, setTournamentManagerEnabled] = useState(false);
   const [matchesCategory, setMatchesCategory] = useState("current");
   const scheduledDetailsTimeoutsRef = useRef({});
 
@@ -198,6 +214,48 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
     loadDashboard();
   }, [screenMode, session?.organization_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveTournaments() {
+      if (screenMode !== "dashboard" || !session?.organization_id || inferOrganizationType(session) !== "club") {
+        setTournamentManagerEnabled(false);
+        setLiveTournaments([]);
+        return;
+      }
+
+      try {
+        const settingsResponse = await getOrganizationSettings(session.organization_id);
+        const enabled = Boolean(
+          settingsResponse?.organizationSettings?.organization?.features?.tournament_manager?.web_enabled,
+        );
+        if (cancelled) return;
+        setTournamentManagerEnabled(enabled);
+        if (!enabled) {
+          setLiveTournaments([]);
+          return;
+        }
+
+        const tournamentResponse = await getTournaments(session.organization_id);
+        if (!cancelled) {
+          setLiveTournaments(
+            (tournamentResponse?.tournaments || []).filter((tournament) => tournament.status === "draw_published"),
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setTournamentManagerEnabled(false);
+          setLiveTournaments([]);
+        }
+      }
+    }
+
+    loadLiveTournaments();
+    return () => {
+      cancelled = true;
+    };
+  }, [screenMode, session?.organization_id, session?.organization_type]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -229,7 +287,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, [location.hash, screenMode]);
 
   useEffect(() => {
-    if (!location.hash) {
+    if (!location.hash || location.hash === "#new-match") {
       return;
     }
 
@@ -243,13 +301,19 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, [location.hash]);
 
   useEffect(() => {
+    if (screenMode === "dashboard" && location.hash === "#new-match") {
+      setShowSportOverlay(true);
+    }
+  }, [location.hash, screenMode]);
+
+  useEffect(() => {
     if (!showSportOverlay) {
       return undefined;
     }
 
     function handleKeyDown(event) {
       if (event.key === "Escape") {
-        setShowSportOverlay(false);
+        handleCloseSportOverlay();
       }
     }
 
@@ -284,6 +348,9 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
   function handleCloseSportOverlay() {
     setShowSportOverlay(false);
+    if (location.pathname === "/dashboard" && location.hash === "#new-match") {
+      navigate("/dashboard", { replace: true });
+    }
   }
 
   function handleSelectSport(sport) {
@@ -856,6 +923,39 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             </>
           )}
         </section>
+        ) : null}
+
+        {screenMode === "dashboard" && tournamentManagerEnabled ? (
+          <section className="panel stack dashboard-live-tournaments" id="live-tournaments-section">
+            <div className="panel-heading panel-heading--with-action">
+              <h2>Live Tournaments</h2>
+              <button className="dashboard-section-link" type="button" onClick={() => navigate("/tournaments")}>View all</button>
+            </div>
+            {liveTournaments.length === 0 ? (
+              <div className="dashboard-empty">No tournaments are live right now.</div>
+            ) : (
+              <div className="dashboard-card-grid dashboard-card-grid--tournaments">
+                {liveTournaments.map((tournament) => (
+                  <button
+                    className="dashboard-item tournament-list-item dashboard-tournament-card"
+                    key={tournament.id}
+                    type="button"
+                    onClick={() => navigate(`/tournaments/${tournament.id}`)}
+                  >
+                    <div className="dashboard-item-head">
+                      <strong>{tournament.name}</strong>
+                      <span className="status-pill status-pill--live">Live</span>
+                    </div>
+                    <div className="dashboard-item-meta">
+                      <span>{formatSportName(tournament.sport)} · {tournament.draw_format?.replaceAll("_", " ") || "Tournament"}</span>
+                      <span>{formatTournamentDate(tournament.starts_on)} · {tournament.entry_count || 0} entr{tournament.entry_count === 1 ? "y" : "ies"}</span>
+                    </div>
+                    <span className="tournament-list-action">View Draw</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         ) : null}
 
       </section>

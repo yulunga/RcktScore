@@ -838,17 +838,49 @@ export default function HelpPage() {
               </ul>
               <p>They help improve your experience but are not strictly essential.</p>
               <h4>3.3 Analytics Cookies</h4>
-              <p>With your consent, we use Google Analytics to understand how users interact with the App, such as:</p>
-              <ul>
-                <li>Pages visited</li>
-                <li>Features used</li>
-                <li>General usage patterns</li>
-              </ul>
-              <p>These cookies are only used if you provide consent.</p>
-              <h4>3.4 Marketing Cookies (If Enabled)</h4>
               <p>
-                We may use cookies to support marketing communications and improve relevance of content. These
-                cookies will only be used if you explicitly opt in.
+                With your consent, we use Google Analytics 4, provided by Google LLC, to understand how people use
+                the web App and where its experience can be improved.
+              </p>
+              <p>Google Analytics may collect:</p>
+              <ul>
+                <li>Sanitised page routes and page titles</li>
+                <li>Session and engagement information, such as page views and visit duration</li>
+                <li>Browser, device type, operating system and screen information</li>
+                <li>Country or approximate location derived by Google Analytics</li>
+                <li>Randomly generated client and session identifiers stored in first-party cookies</li>
+              </ul>
+              <p>
+                HitnScore does not send names, email addresses, account identifiers, user identifiers, match
+                identifiers, tournament identifiers or public draw access keys to Google Analytics. URL query
+                strings are also excluded from the page addresses we report.
+              </p>
+              <p>
+                The Google Analytics tag is not loaded unless you select <strong>Allow all</strong>. Advertising
+                storage, Google signals and advertising-personalisation signals are disabled in our implementation.
+              </p>
+              <h4>3.4 Google Analytics Cookies</h4>
+              <ul>
+                <li><code>_ga</code> — distinguishes visitors; Google&apos;s default expiry is up to two years.</li>
+                <li>
+                  <code>_ga_&lt;container-id&gt;</code> — maintains session state; Google&apos;s default expiry is up to two
+                  years.
+                </li>
+              </ul>
+              <p>
+                Browser restrictions may shorten those periods. See Google&apos;s{" "}
+                <a href="https://support.google.com/analytics/answer/11397207" target="_blank" rel="noreferrer">
+                  GA4 cookie information
+                </a>{" "}
+                and{" "}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+                  Privacy Policy
+                </a>.
+              </p>
+              <h4>3.5 Marketing Cookies</h4>
+              <p>
+                HitnScore does not currently use marketing cookies in the web App. If that changes, this policy and
+                the consent choices will be updated before those cookies are enabled.
               </p>
               <h3>4. How We Use Cookies</h3>
               <p>We use cookies to:</p>
@@ -865,7 +897,11 @@ export default function HelpPage() {
                 <li>Through any cookie consent banner presented when you first use the App</li>
                 <li>By adjusting your preferences within the App, where available</li>
               </ul>
-              <p>You can choose to accept or reject non-essential cookies at any time.</p>
+              <p>
+                You can choose <strong>Allow all</strong> or <strong>Essential only</strong> and change that choice at
+                any time. Switching to Essential only disables further Analytics collection and removes accessible
+                HitnScore Google Analytics cookies from the browser.
+              </p>
               <button
                 type="button"
                 className="secondary"
@@ -875,8 +911,9 @@ export default function HelpPage() {
               </button>
               <h3>6. Third-Party Cookies</h3>
               <p>
-                Google Analytics may place cookies on your device when you accept analytics cookies. Other trusted
-                third-party services may support essential app infrastructure.
+                Google Analytics places the first-party cookies described above only when you allow optional
+                analytics. Analytics information is sent to Google for processing on HitnScore&apos;s behalf. Other
+                trusted third-party services may support essential app infrastructure.
               </p>
               <p>Where third-party cookies are used:</p>
               <ul>

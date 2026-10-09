@@ -266,7 +266,9 @@ export default function TournamentListPage() {
                 >
                   <div className="dashboard-item-head">
                     <strong>{tournament.name}</strong>
-                    <span className="status-pill">{statusLabel(tournament.status)}</span>
+                    <span className={`status-pill${tournament.status === "draw_published" ? " status-pill--live" : ""}`}>
+                      {statusLabel(tournament.status)}
+                    </span>
                   </div>
                   <div className="dashboard-item-meta">
                     <span>{optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}</span>

@@ -191,7 +191,9 @@ The app shell and public landing homepage use the same browser title and descrip
 
 The Help Centre header compacts on scroll and its brand link returns to the public landing homepage. Both behaviours are client-only and add no API contract.
 
-The signed-in web header, the Current/Scheduled/History Matches tabs, the dashboard's 25-record/five-card pagination, the History tab's 20-card pagination, collapsed shirt-colour pickers and iOS-style setup switches are client-only presentation changes. They reuse the existing dashboard, match-creation and organisation-settings contracts and require no backend migration or endpoint change.
+The web app's Google Analytics integration is also client-only and adds no backend route. The GA4 script is loaded only after explicit consent; client-side route reporting strips query strings and replaces user, organisation, match, tournament and public draw-key values with route-template placeholders before transmission.
+
+The signed-in web header, its shared dashboard sport-selection overlay, the Current/Scheduled/History Matches tabs, the dashboard's 25-record/five-card pagination, the History tab's 20-card pagination, collapsed shirt-colour pickers and iOS-style setup switches are client-only presentation changes. The enabled-club dashboard's live-tournament panel also reuses `GET /organization_settings/{organization_id}` and `GET /organizations/{organization_id}/tournaments`, filtering for `draw_published` in the client. These changes require no backend migration or endpoint change.
 
 The public login logo and wordmark also link to the public landing homepage. This is client-only navigation and does not change authentication APIs.
 

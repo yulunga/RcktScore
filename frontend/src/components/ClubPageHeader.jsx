@@ -97,6 +97,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const organizationType = inferOrganizationType(session);
   const pageTitle = title && title !== organizationName ? title : "";
   const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
+  const isNewMatchOverlay = location.pathname === "/dashboard" && location.hash === "#new-match";
   const isNewMatchRoute = location.pathname === "/match/new" || location.pathname.startsWith("/match/new/");
   const headerMenuItems = [
     {
@@ -104,15 +105,15 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       icon: "home",
       iconOnly: true,
       onClick: () => navigate("/dashboard"),
-      isActive: location.pathname === "/dashboard",
+      isActive: location.pathname === "/dashboard" && !isNewMatchOverlay,
     },
     {
       label: "Start New Match",
       icon: "add",
       iconOnly: true,
       isPrimary: true,
-      onClick: () => navigate("/match/new"),
-      isActive: location.pathname.startsWith("/match/new"),
+      onClick: () => navigate("/dashboard#new-match"),
+      isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"),
     },
     {
       label: "Matches",
@@ -147,7 +148,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   ];
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
-    { label: "Start New Match", icon: "add", onClick: () => navigate("/match/new"), isActive: location.pathname.startsWith("/match/new"), accent: true },
+    { label: "Start New Match", icon: "add", onClick: () => navigate("/dashboard#new-match"), isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"), accent: true },
     {
       label: "Matches",
       icon: "matches",

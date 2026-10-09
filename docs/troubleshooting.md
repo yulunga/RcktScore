@@ -85,7 +85,8 @@ compact after a vertical scroll. The check confirms that the outer width does
 not change, the header remains sticky, Home and the blue new-match `+` precede
 Matches/Analytics/Settings/Help, labels become icons, account and club details
 stay absent, the removed dashboard description and footer stay absent, and
-Start New Match remains a separate blue action. It also verifies that new-match
+Start New Match remains a separate blue action. The header `+` and dashboard
+action must both open the same sport-selection overlay before setup. It also verifies that new-match
 routes do not highlight Matches, that the mobile menu remains on one row and
 Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with five-card pages over at most 25
@@ -381,6 +382,8 @@ The login logo and HitnScore wordmark should link to `https://www.hitnscore.com/
 
 The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct Help Centre section opens the overview instead, verify the `section` value against `web-access`, `ios-access`, `terms`, `privacy`, and `cookies` and deploy the current frontend bundle.
 
+If web Analytics does not appear, inspect `hitnscore.analytics-consent` in local storage. A missing value should display the privacy-choice panel, `denied` must leave the Google tag unloaded, and `granted` should add one `script[data-hitnscore-analytics]` element for measurement ID `G-30V1YTPY1F`. Use GA4 DebugView or the browser network panel only after granting consent. SPA page-view payloads should contain route templates such as `/match/:matchId` or `/tournament-draw/:accessKey`, never the real path identifiers or query strings. The Cookie Policy's **Update cookie preferences** control reopens the panel; choosing **Essential only** disables collection and removes accessible `_ga` cookies.
+
 The Help Centre header should remain fixed and switch to `help-centre-header--compact` after scrolling beyond 48 pixels. If it does not shrink, check the scroll listener in `HelpPage.jsx` and the compact rules in `styles.css`. The Help Centre logo/wordmark should navigate to `https://www.hitnscore.com/`, not the app login route.
 
 The root-admin User Accounts `Unverified Users` card requests `GET /root_admin/users?account_type=unverified`. If its count is non-zero but selecting it does not filter the list, deploy the current root-admin users Lambda as well as the frontend; the card depends on backend support for that filter value.
@@ -578,6 +581,14 @@ settings whenever the active organisation changes.
 
 Direct calls return `TOURNAMENT_FEATURE_DISABLED` while the club feature is off.
 Disabling the feature retains its tournament and player data.
+
+The dashboard Live Tournaments section uses the same feature flag and tournament
+list request as the header/list page. It is intentionally absent for personal or
+disabled-club sessions, and only `draw_published` events appear there. If the
+section or its green Live badges are missing, inspect both
+`organization.features.tournament_manager.web_enabled` and the returned event
+statuses. Entrant edit controls are top-right gear buttons; grade, seed,
+linked-account and approved-member indicators sit beneath the club line.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.
