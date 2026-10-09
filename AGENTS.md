@@ -94,7 +94,7 @@ What is real and implemented:
 - root-admin user profiles show email-verification state and allow an authenticated root admin to manually verify an account and approve pending memberships for that email without changing its password
 - personal accounts are created immediately through self-service registration; only club account enquiries and club membership invitations remain approval-controlled
 - root-admin RacketSports controls for separate web and iOS availability lists; the default save changes only platform availability, while a separate affected-user preview and confirmation-protected apply-to-all action remains available, and individual access is assigned from User Accounts or club settings
-- a web-only Tournament Manager foundation for selectively enabled clubs: each root-admin club page has a dedicated Tournament tab after Game Settings for enabling or disabling access, every signed-in member of an enabled club receives a Tournament button in the web header and can view club events, enabled club admins can create internal or open draft events with optional A–D grading and entry-size limits, search canonical accounts/reusable players before manual entry, import duplicate-reviewed CSV entrants, and edit entrant names/ability plus unlinked email/home-club data; internal events reject external guests, while the canonical `users` identity links repeated organisation memberships and reusable `players` identities distinguish linked members from non-authenticating guests; admins can publish full round-robin fixtures or opening-round knockout, knockout-with-plate and Monrad fixtures with non-power-of-two byes, after which entries are locked; plate population, result-driven progression, scheduling and scoring-match linkage are not implemented yet
+- a web-only Tournament Manager foundation for selectively enabled clubs: each root-admin club page has a dedicated Tournament tab after Game Settings for enabling or disabling access, every signed-in member of an enabled club receives a Tournament button in the web header and can view club events, enabled club admins can create internal or open draft events with optional A–D grading and entry-size limits, search canonical accounts/reusable players before manual entry, import duplicate-reviewed CSV entrants, edit entrant identity/ability/seed data, and generate reviewable draws; knockout draws use separated seed placement, top-seed byes, editable first-round positions and horizontal championship/plate brackets; publishing is explicit, locks entries and issues a sanitized no-login public draw key, while confirmation-protected return-to-draft disables public access before results start; plate population, result-driven progression, scheduling and scoring-match linkage are not implemented yet
 - expiring backend root-admin session tokens, enforced across all root-admin routes and reused organisation-management routes
 - a public database-backed `/health` readiness endpoint, a five-minute scheduled health invocation, and CloudWatch/SNS alarms for API availability/latency and the Apple subscription lifecycle
 
@@ -157,6 +157,8 @@ Defined in [frontend/src/App.jsx](/Users/glennrowe/Development/Projects/RcktScor
 - `/settings/users/:userId`
 - `/tournaments`
 - `/tournaments/:tournamentId`
+- `/tournament-draw`
+- `/tournament-draw/:accessKey`
 - `/ping`
 - `/match/new`
 - `/match/new/setup`
@@ -200,7 +202,7 @@ See the backend/API reference for the exact route list.
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is enforced before match creation as the intersection of platform client access, organisation `enabled_sports`, and per-membership web/iOS access
 - Tournament Manager access is club-only, requires an explicit `tournament_organization_features.web_enabled` record and is enforced by the backend in addition to conditional web navigation
-- tournament detail reads tolerate briefly missing `tournament_draws`/`tournament_matches` tables by deriving display-only draw labels or returning empty fixture lists, but migrations `032_tournament_event_options.sql` and `034_tournament_draw_matches.sql` are required before event/draw writes
+- tournament detail reads tolerate briefly missing `tournament_draws`/`tournament_matches` tables by deriving display-only draw labels or returning empty fixture lists, but migrations `032_tournament_event_options.sql`, `034_tournament_draw_matches.sql` and `035_tournament_draw_publication.sql` are required before event/draw/publication writes; public draw-key responses are read-only and exclude emails and account identifiers
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
 - the former `x-root-admin-request` trust-header bypass has been removed
 - root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain

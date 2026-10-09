@@ -1,5 +1,6 @@
 import re
 import random
+import secrets
 from datetime import date, datetime, timezone
 from uuid import UUID
 
@@ -12,6 +13,8 @@ VALID_STATUSES = {"draft", "registration", "draw_published", "in_progress", "com
 VALID_AUDIENCES = {"internal", "open"}
 ABILITY_GRADES = {1: "A", 2: "B", 3: "C", 4: "D"}
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PUBLIC_DRAW_KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+PUBLIC_DRAW_KEY_LENGTH = 12
 
 
 def _utcnow():
@@ -65,6 +68,9 @@ def _serialize_event(row, entries=None, draws=None):
         "scoring_config": row.get("scoring_config") or {},
         "format_config": row.get("format_config") or {},
         "revision": int(row.get("revision") or 1),
+        "public_draw_key": row.get("public_draw_key") or "",
+        "public_draw_enabled": bool(row.get("public_draw_enabled")),
+        "draw_published_at": _iso(row.get("draw_published_at")),
         "created_by_username": row.get("created_by_username") or "",
         "created_at": _iso(row.get("created_at")),
         "updated_at": _iso(row.get("updated_at")),
@@ -376,6 +382,60 @@ def _knockout_pairings(entries):
     return pairings
 
 
+def _seed_order(bracket_size):
+    order = [1, 2]
+    while len(order) < bracket_size:
+        complement = len(order) * 2 + 1
+        order = [value for seed in order for value in (seed, complement - seed)]
+    return order[:bracket_size]
+
+
+def _seeded_knockout_pairings(entries, randomizer):
+    if not entries:
+        return []
+    if len(entries) == 1:
+        return [(entries[0], None)]
+
+    bracket_size = 1
+    while bracket_size < len(entries):
+        bracket_size *= 2
+    slots = [None] * bracket_size
+    position_by_seed = {seed: index for index, seed in enumerate(_seed_order(bracket_size))}
+    placed_ids = set()
+    for entry in sorted(entries, key=lambda item: item.get("seed") or bracket_size + 1):
+        seed = entry.get("seed")
+        if seed and seed in position_by_seed and seed <= bracket_size:
+            slots[position_by_seed[seed]] = entry
+            placed_ids.add(str(entry["id"]))
+
+    remaining = [entry for entry in entries if str(entry["id"]) not in placed_ids]
+    randomizer.shuffle(remaining)
+    bye_count = bracket_size - len(entries)
+    reserved_byes = set()
+    seeded_positions = sorted(
+        (entry.get("seed"), index)
+        for index, entry in enumerate(slots)
+        if entry and entry.get("seed")
+    )
+    for _seed, index in seeded_positions:
+        opponent_index = index ^ 1
+        if bye_count and slots[opponent_index] is None:
+            reserved_byes.add(opponent_index)
+            bye_count -= 1
+
+    available_slots = [
+        index for index, entry in enumerate(slots)
+        if entry is None and index not in reserved_byes
+    ]
+    for index, entry in zip(available_slots, remaining):
+        slots[index] = entry
+    remaining = remaining[len(available_slots):]
+    for index, entry in zip(sorted(reserved_byes), remaining):
+        slots[index] = entry
+
+    return [(slots[index], slots[index + 1]) for index in range(0, bracket_size, 2)]
+
+
 def _round_robin_pairings(entries):
     rotation = list(entries)
     if len(rotation) % 2:
@@ -401,6 +461,7 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
         raise ValueError("The draw has already been generated")
 
     rebuilding_missing_draw = event["status"] == "draw_published"
+    rebuilt_public_key = None
     if rebuilding_missing_draw:
         with connection.cursor() as cursor:
             cursor.execute("SELECT to_regclass('public.tournament_matches') AS table_name")
@@ -419,6 +480,7 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
             existing_match_count = int((cursor.fetchone() or {}).get("match_count") or 0)
         if existing_match_count:
             return get_tournament(connection, event["id"], organization_id)
+        rebuilt_public_key = event.get("public_draw_key") or _generate_public_draw_key(connection)
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -450,14 +512,15 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
             ]
             seeded = [entry for entry in draw_entries if entry.get("seed")]
             unseeded = [entry for entry in draw_entries if not entry.get("seed")]
-            random.Random(f"{event['id']}:{draw['id']}:{event.get('revision') or 1}").shuffle(unseeded)
+            randomizer = random.Random(f"{event['id']}:{draw['id']}:{event.get('revision') or 1}")
+            randomizer.shuffle(unseeded)
             ordered_entries = seeded + unseeded
             cursor.execute("DELETE FROM tournament_matches WHERE draw_id = %(draw_id)s", {"draw_id": draw["id"]})
 
             if event["draw_format"] == "round_robin":
                 rounds = _round_robin_pairings(ordered_entries)
             else:
-                rounds = [_knockout_pairings(ordered_entries)]
+                rounds = [_seeded_knockout_pairings(draw_entries, randomizer)]
 
             for round_index, pairings in enumerate(rounds, start=1):
                 for match_index, (player1, player2) in enumerate(pairings, start=1):
@@ -495,7 +558,7 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
                 WHERE id = %(draw_id)s
                 """,
                 {
-                    "status": "published" if ordered_entries else "draft",
+                    "status": "published" if rebuilding_missing_draw and ordered_entries else "draft",
                     "updated_at": now,
                     "draw_id": draw["id"],
                 },
@@ -506,10 +569,21 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
         cursor.execute(
             """
             UPDATE tournament_events
-            SET status = 'draw_published', revision = revision + 1, updated_at = %(updated_at)s
+            SET status = %(status)s,
+                public_draw_key = COALESCE(%(public_draw_key)s, public_draw_key),
+                public_draw_enabled = %(public_draw_enabled)s,
+                draw_published_at = CASE WHEN %(status)s = 'draw_published' THEN %(updated_at)s ELSE draw_published_at END,
+                revision = revision + 1,
+                updated_at = %(updated_at)s
             WHERE id = %(event_id)s
             """,
-            {"updated_at": now, "event_id": event["id"]},
+            {
+                "status": "draw_published" if rebuilding_missing_draw else "draft",
+                "public_draw_key": rebuilt_public_key,
+                "public_draw_enabled": rebuilding_missing_draw,
+                "updated_at": now,
+                "event_id": event["id"],
+            },
         )
         cursor.execute(
             """
@@ -534,6 +608,284 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
         )
     connection.commit()
     return get_tournament(connection, event["id"], organization_id)
+
+
+def _generate_public_draw_key(connection):
+    for _ in range(20):
+        key = "".join(secrets.choice(PUBLIC_DRAW_KEY_ALPHABET) for _ in range(PUBLIC_DRAW_KEY_LENGTH))
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM tournament_events WHERE public_draw_key = %(key)s LIMIT 1",
+                {"key": key},
+            )
+            if not cursor.fetchone():
+                return key
+    raise ValueError("Unable to create a unique public draw key right now")
+
+
+def publish_tournament_draw(connection, tournament_id, organization_id, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] not in {"draft", "registration", "draw_published"}:
+        raise ValueError("This draw cannot be published")
+    enabling_legacy_public_access = event["status"] == "draw_published"
+    if enabling_legacy_public_access and event.get("public_draw_key") and event.get("public_draw_enabled"):
+        return get_tournament(connection, event["id"], organization_id)
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS match_count
+            FROM tournament_matches AS fixture
+            INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
+            WHERE draw.tournament_id = %(event_id)s
+            """,
+            {"event_id": event["id"]},
+        )
+        if int((cursor.fetchone() or {}).get("match_count") or 0) == 0:
+            raise ValueError("Generate and review the draft draw before publishing")
+
+        public_draw_key = event.get("public_draw_key") or _generate_public_draw_key(connection)
+        now = _utcnow()
+        cursor.execute(
+            """
+            UPDATE tournament_events
+            SET status = 'draw_published', public_draw_key = %(public_draw_key)s,
+                public_draw_enabled = TRUE, draw_published_at = %(published_at)s,
+                revision = revision + 1, updated_at = %(published_at)s
+            WHERE id = %(event_id)s
+            """,
+            {"public_draw_key": public_draw_key, "published_at": now, "event_id": event["id"]},
+        )
+        cursor.execute(
+            "UPDATE tournament_draws SET status = 'published', updated_at = %(updated_at)s WHERE tournament_id = %(event_id)s",
+            {"updated_at": now, "event_id": event["id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(event_id)s, %(actor_username)s, %(action)s,
+                'tournament', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "event_id": event["id"],
+                "actor_username": actor_username,
+                "action": "draw_public_access_enabled" if enabling_legacy_public_access else "draw_published",
+                "entity_id": str(event["id"]),
+                "payload": Jsonb({"public_draw_key": public_draw_key}),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
+
+
+def return_tournament_draw_to_draft(connection, tournament_id, organization_id, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] != "draw_published":
+        raise ValueError("Only a published draw can be returned to draft")
+
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS result_count
+            FROM tournament_matches AS fixture
+            INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
+            WHERE draw.tournament_id = %(event_id)s
+              AND fixture.status IN ('in_progress', 'completed', 'walkover')
+            """,
+            {"event_id": event["id"]},
+        )
+        if int((cursor.fetchone() or {}).get("result_count") or 0):
+            raise ValueError("A draw with started or completed matches cannot be returned to draft")
+        cursor.execute(
+            """
+            UPDATE tournament_events
+            SET status = 'draft', public_draw_enabled = FALSE,
+                revision = revision + 1, updated_at = %(updated_at)s
+            WHERE id = %(event_id)s
+            """,
+            {"updated_at": now, "event_id": event["id"]},
+        )
+        cursor.execute(
+            "UPDATE tournament_draws SET status = 'draft', updated_at = %(updated_at)s WHERE tournament_id = %(event_id)s",
+            {"updated_at": now, "event_id": event["id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(event_id)s, %(actor_username)s, 'draw_returned_to_draft',
+                'tournament', %(entity_id)s, '{}'::jsonb, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "event_id": event["id"],
+                "actor_username": actor_username,
+                "entity_id": str(event["id"]),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
+
+
+def update_tournament_draw_slot(connection, tournament_id, match_id, organization_id, payload, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] not in {"draft", "registration"}:
+        raise ValueError("Return the draw to draft before moving players")
+    slot = payload.get("slot")
+    if slot not in {"player1", "player2"}:
+        raise ValueError("slot must be player1 or player2")
+    entry_id = _uuid(payload.get("entry_id"), "entry_id")
+    target_column = f"{slot}_entry_id"
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT fixture.*, draw.grade
+            FROM tournament_matches AS fixture
+            INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
+            WHERE fixture.id = %(match_id)s
+              AND fixture.round_number = 1
+              AND draw.tournament_id = %(event_id)s
+            LIMIT 1
+            """,
+            {"match_id": _uuid(match_id, "match_id"), "event_id": event["id"]},
+        )
+        target = cursor.fetchone()
+        if not target:
+            raise LookupError("Draft draw match not found")
+        cursor.execute(
+            """
+            SELECT id, ability_level
+            FROM tournament_entries
+            WHERE id = %(entry_id)s AND event_id = %(event_id)s AND entry_status <> 'withdrawn'
+            LIMIT 1
+            """,
+            {"entry_id": entry_id, "event_id": event["id"]},
+        )
+        entry = cursor.fetchone()
+        if not entry:
+            raise ValueError("The selected player is not an active tournament entry")
+        if target.get("grade") and ABILITY_GRADES.get(entry.get("ability_level")) != target["grade"]:
+            raise ValueError("Players can only be moved within their grade draw")
+
+        current_target_entry = target.get(target_column)
+        cursor.execute(
+            """
+            SELECT id, player1_entry_id, player2_entry_id
+            FROM tournament_matches
+            WHERE draw_id = %(draw_id)s AND round_number = 1
+              AND (player1_entry_id = %(entry_id)s OR player2_entry_id = %(entry_id)s)
+            LIMIT 1
+            """,
+            {"draw_id": target["draw_id"], "entry_id": entry_id},
+        )
+        source = cursor.fetchone()
+        if not source:
+            raise ValueError("The selected player is not in this draft draw")
+        source_column = "player1_entry_id" if str(source.get("player1_entry_id")) == entry_id else "player2_entry_id"
+        if str(source["id"]) != str(target["id"]) or source_column != target_column:
+            cursor.execute(
+                f"UPDATE tournament_matches SET {source_column} = %(replacement_id)s, winner_entry_id = NULL, status = 'pending', updated_at = %(updated_at)s WHERE id = %(source_id)s",
+                {"replacement_id": current_target_entry, "updated_at": _utcnow(), "source_id": source["id"]},
+            )
+            cursor.execute(
+                f"UPDATE tournament_matches SET {target_column} = %(entry_id)s, winner_entry_id = NULL, status = 'pending', updated_at = %(updated_at)s WHERE id = %(target_id)s",
+                {"entry_id": entry_id, "updated_at": _utcnow(), "target_id": target["id"]},
+            )
+            cursor.execute(
+                """
+                UPDATE tournament_matches
+                SET status = CASE
+                        WHEN player1_entry_id IS NULL OR player2_entry_id IS NULL THEN 'bye'
+                        ELSE 'pending'
+                    END,
+                    winner_entry_id = CASE
+                        WHEN player1_entry_id IS NULL THEN player2_entry_id
+                        WHEN player2_entry_id IS NULL THEN player1_entry_id
+                        ELSE NULL
+                    END,
+                    updated_at = %(updated_at)s
+                WHERE draw_id = %(draw_id)s AND round_number = 1
+                """,
+                {"updated_at": _utcnow(), "draw_id": target["draw_id"]},
+            )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(event_id)s, %(actor_username)s, 'draw_player_moved',
+                'draw_match', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "event_id": event["id"],
+                "actor_username": actor_username,
+                "entity_id": str(target["id"]),
+                "payload": Jsonb({"slot": slot, "entry_id": entry_id}),
+                "created_at": _utcnow(),
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
+
+
+def get_public_tournament_draw(connection, access_key):
+    normalized_key = "".join(character for character in str(access_key or "").upper() if character.isalnum())
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, organization_id
+            FROM tournament_events
+            WHERE public_draw_key = %(access_key)s
+              AND public_draw_enabled = TRUE
+              AND status = 'draw_published'
+            LIMIT 1
+            """,
+            {"access_key": normalized_key},
+        )
+        event = cursor.fetchone()
+    if not event:
+        return None
+    tournament = get_tournament(connection, event["id"], event["organization_id"])
+    return {
+        "id": tournament["id"],
+        "name": tournament["name"],
+        "sport": tournament["sport"],
+        "draw_format": tournament["draw_format"],
+        "audience": tournament["audience"],
+        "graded_enabled": tournament["graded_enabled"],
+        "status": tournament["status"],
+        "venue_name": tournament["venue_name"],
+        "starts_on": tournament["starts_on"],
+        "ends_on": tournament["ends_on"],
+        "entries": [{
+            "id": entry["id"],
+            "display_name": entry["display_name"],
+            "seed": entry["seed"],
+            "ability_grade": entry["ability_grade"],
+        } for entry in tournament.get("entries", [])],
+        "draws": tournament.get("draws", []),
+    }
 
 
 def _find_or_create_player(connection, organization_id, payload):
@@ -849,6 +1201,28 @@ def update_tournament_entry(connection, tournament_id, entry_id, organization_id
             raise ValueError("Select a player ability level from 1 to 4") from exc
         if ability_level not in ABILITY_GRADES:
             raise ValueError("Select a player ability level from 1 to 4")
+        seed = payload.get("seed", entry.get("seed"))
+        if seed in (None, ""):
+            seed = None
+        else:
+            try:
+                seed = int(seed)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Seed must be a positive whole number") from exc
+            if seed < 1:
+                raise ValueError("Seed must be a positive whole number")
+            cursor.execute(
+                """
+                SELECT id
+                FROM tournament_entries
+                WHERE event_id = %(event_id)s AND seed = %(seed)s
+                  AND id <> %(entry_id)s AND entry_status <> 'withdrawn'
+                LIMIT 1
+                """,
+                {"event_id": event["id"], "seed": seed, "entry_id": entry["id"]},
+            )
+            if cursor.fetchone():
+                raise ValueError(f"Seed {seed} is already assigned to another player")
 
         linked_account = bool(entry.get("user_id") or entry.get("registered_username"))
         current_email = _normalize_email(entry.get("email"))
@@ -951,6 +1325,7 @@ def update_tournament_entry(connection, tournament_id, entry_id, organization_id
                 surname_snapshot = %(surname)s,
                 club_snapshot = %(club)s,
                 ability_level = %(ability_level)s,
+                seed = %(seed)s,
                 updated_at = %(updated_at)s
             WHERE id = %(entry_id)s
             """,
@@ -959,6 +1334,7 @@ def update_tournament_entry(connection, tournament_id, entry_id, organization_id
                 "surname": surname,
                 "club": next_club,
                 "ability_level": ability_level,
+                "seed": seed,
                 "updated_at": now,
                 "entry_id": entry["id"],
             },
@@ -996,7 +1372,7 @@ def update_tournament_entry(connection, tournament_id, entry_id, organization_id
                 "tournament_id": event["id"],
                 "actor_username": actor_username,
                 "entity_id": str(entry["id"]),
-                "payload": Jsonb({"ability_level": ability_level, "relationship": relationship}),
+                "payload": Jsonb({"ability_level": ability_level, "relationship": relationship, "seed": seed}),
                 "created_at": now,
             },
         )

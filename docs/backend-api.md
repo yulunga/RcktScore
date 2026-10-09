@@ -262,9 +262,15 @@ Current root-admin Tournament Manager behavior:
 - `POST /tournaments/{tournament_id}/entries`
 - `PUT /tournaments/{tournament_id}/entries/{entry_id}`
 - `POST /tournaments/{tournament_id}/draw`
+- `PUT /tournaments/{tournament_id}/draw/matches/{match_id}`
+- `POST /tournaments/{tournament_id}/draw/publish`
+- `POST /tournaments/{tournament_id}/draw/draft`
+- `GET /public/tournament-draws/{access_key}` (no login)
 
-All current tournament routes require an approved membership of the owning club
-and an enabled `tournament_organization_features.web_enabled` record. Listing and
+All authenticated tournament routes require an approved membership of the owning
+club and an enabled `tournament_organization_features.web_enabled` record. The
+public-key route is the deliberate read-only exception and returns no email or
+account identifiers. Listing and
 reading tournaments are available to ordinary club members. Creating tournaments,
 searching/changing entries and generating draws remain club-admin operations.
 Draft events persist
@@ -277,19 +283,24 @@ canonical registered
 accounts and reusable player identities before the organiser uses manual entry;
 exact and prefix matches rank first and the web client displays at most four candidates.
 
-`POST /tournaments/{tournament_id}/draw` persists fixtures in
-`tournament_matches`, publishes the draw and locks entrant changes. Round robin
+`POST /tournaments/{tournament_id}/draw` persists a reviewable draft in
+`tournament_matches`; it does not publish or lock the entrant list. Round robin
 uses the circle method and produces every round. Knockout, knockout-with-plate and
 Monrad currently produce the opening round; non-power-of-two knockout fields give
-the ordered top entrants byes. Plate population, later knockout/Monrad progression,
-scheduling, scoring-match linkage and public spectator access remain unimplemented.
-Migration `034_tournament_draw_matches.sql` is required for draw generation.
-The operation is idempotent after publication when fixtures exist. If an event is
+top seeds byes and distribute seeds into separated bracket positions. Organisers
+can swap first-round players through the match endpoint, then explicitly publish.
+Publishing locks entries and issues a 12-character public read-only key. Returning
+to draft requires an explicit client confirmation, disables public access, and is
+rejected after a fixture has started or completed. Plate population, later
+knockout/Monrad progression, scheduling and scoring-match linkage remain unimplemented.
+Migrations `034_tournament_draw_matches.sql` and
+`035_tournament_draw_publication.sql` are required.
+Generation is idempotent after publication when fixtures exist. If an event is
 already `draw_published` but has no fixture rows, the same endpoint rebuilds them
 and records a `draw_rebuilt` audit event.
 
 Tournament entry updates are club-admin-only and limited to draft/registration
-events. First name, surname and ability are editable. Email and home-club fields
+events. First name, surname, ability and unique positive seed are editable. Email and home-club fields
 are editable only while the reusable player is not linked to a canonical
 HitNScore account; linked identities retain their account-owned email and club
 data. CSV import is orchestrated by the web client over the create/update routes:
@@ -301,7 +312,7 @@ matching record.
 `tournament_matches` exist before reading them. It derives temporary A–D/Open
 group labels when a backend deployment briefly precedes migration `032`, and
 returns draw groups without fixtures if migration `034` is pending. Event creation
-and draw generation still require their respective migrations.
+and draw generation/publication still require their respective migrations.
 
 Current root-admin platform-sport behavior:
 

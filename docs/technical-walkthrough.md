@@ -270,14 +270,18 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
 10. The tournament entry stores a name/club snapshot so later profile edits cannot
     rewrite the historic event entry.
 11. Every tournament and entry creation writes `tournament_audit_events`.
-12. A club admin calls `POST /tournaments/{tournament_id}/draw`. The backend
-    deterministically shuffles unseeded entrants, stores fixtures in
-    `tournament_matches`, publishes the draw and locks entrant changes. Round
-    robin produces its full circle-method rotation; knockout, plate and Monrad
-    currently persist only their opening round because later pairings need results.
-    The web client presents the internal `draw_published` state as **Draw ready**
-    with an explicit **View Draw** cue. If a legacy or partial deployment has the
-    state without fixtures, an admin can use **Rebuild Missing Draw**.
+12. A club admin assigns optional unique seeds and calls
+    `POST /tournaments/{tournament_id}/draw`. The backend deterministically
+    shuffles unseeded entrants, separates seeds across a power-of-two bracket,
+    gives top seeds non-power-of-two byes and stores a draft in
+    `tournament_matches`. The organiser reviews a horizontal championship/plate
+    brace and may swap first-round slots before publishing.
+13. `POST /tournaments/{tournament_id}/draw/publish` locks entries, enables a
+    12-character public key and exposes the sanitized read-only draw through
+    `GET /public/tournament-draws/{access_key}` without login. Returning to draft
+    disables that key and is blocked after results start. The web client presents
+    `draw_published` as **Draw ready**. Legacy status-only events expose **Rebuild
+    Missing Draw**.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
 optional Email, Club and Ability columns. It previews invalid and duplicate rows,
@@ -295,7 +299,7 @@ Tournament detail reads use `to_regclass` before querying `tournament_draws` or
 an existing event remains readable during a staggered schema deployment. The
 fallback only supplies display labels; migration `032` remains required for
 persisted draw groups and new-event creation. Migration `034` is required to
-generate and return persisted fixtures.
+generate fixtures, and migration `035` supplies publication keys and seed uniqueness.
 
 The seeded Demo Club has the feature enabled. Its approved
 `demouser@democlub.com` login is intentionally password-disabled until root admin

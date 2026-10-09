@@ -28,6 +28,7 @@ import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
 import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
 import TournamentDetailPage from "./features/tournaments/pages/TournamentDetailPage";
 import TournamentListPage from "./features/tournaments/pages/TournamentListPage";
+import PublicTournamentDrawPage from "./features/tournaments/pages/PublicTournamentDrawPage";
 
 export default function App() {
   return (
@@ -35,6 +36,8 @@ export default function App() {
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/help" element={<HelpPage />} />
+      <Route path="/tournament-draw" element={<PublicTournamentDrawPage />} />
+      <Route path="/tournament-draw/:accessKey" element={<PublicTournamentDrawPage />} />
       <Route path="/rckscoreAdmin" element={<RootAdminLoginPage />} />
       <Route
         path="/rckscoreAdmin/dashboard"

@@ -8,9 +8,13 @@ import {
   createTournamentEntry,
   generateTournamentDraw,
   getTournament,
+  publishTournamentDraw,
+  returnTournamentDrawToDraft,
   searchTournamentPlayers,
+  updateTournamentDrawSlot,
   updateTournamentEntry,
 } from "../../../services/api";
+import TournamentBracket from "../components/TournamentBracket";
 import { optionLabel, TOURNAMENT_FORMATS, TOURNAMENT_SPORTS } from "../tournamentOptions";
 
 const EMPTY_ENTRY = {
@@ -129,6 +133,23 @@ function AbilitySelector({ value, onChange, idPrefix }) {
       </div>
     </fieldset>
   );
+}
+
+function buildPlateDraw(draw) {
+  const mainMatches = (draw.matches || []).filter((match) => (
+    Number(match.round_number) === 1 && match.player1_entry_id && match.player2_entry_id
+  ));
+  const loserSlots = mainMatches.map((match, index) => ({ name: `Loser Championship Match ${index + 1}` }));
+  const matches = [];
+  for (let index = 0; index < loserSlots.length; index += 2) {
+    matches.push({
+      id: `${draw.id}-plate-${index / 2 + 1}`,
+      round_number: 1,
+      player1_name: loserSlots[index]?.name || "TBD",
+      player2_name: loserSlots[index + 1]?.name || "Bye",
+    });
+  }
+  return { id: `${draw.id}-plate`, name: `${draw.name} Plate`, matches };
 }
 
 export default function TournamentDetailPage() {
@@ -418,6 +439,7 @@ export default function TournamentDetailPage() {
       email: entry.email,
       home_club_name: entry.home_club_name,
       ability_level: String(entry.ability_level || 1),
+      seed: entry.seed || "",
     });
     setError("");
     setMessage("");
@@ -451,9 +473,61 @@ export default function TournamentDetailPage() {
     try {
       const response = await generateTournamentDraw(tournamentId, { organization_id: organizationId });
       setTournament(response?.tournament || tournament);
-      setMessage("Draw generated. Player entries are now locked.");
+      setMessage(publishedDrawMissing
+        ? "Missing published fixtures rebuilt."
+        : "Draft draw generated. Review player positions before publishing.");
     } catch (requestError) {
       setError(requestError.message || "Unable to generate the draw.");
+    } finally {
+      setDrawing(false);
+    }
+  }
+
+  async function handlePublishDraw() {
+    setDrawing(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await publishTournamentDraw(tournamentId, { organization_id: organizationId });
+      setTournament(response?.tournament || tournament);
+      setMessage("Draw published and available through its public read-only key.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to publish the draw.");
+    } finally {
+      setDrawing(false);
+    }
+  }
+
+  async function handleReturnToDraft() {
+    if (!window.confirm("Return this published draw to draft? Public access will be disabled until you publish it again.")) return;
+    setDrawing(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await returnTournamentDrawToDraft(tournamentId, { organization_id: organizationId });
+      setTournament(response?.tournament || tournament);
+      setMessage("The draw is back in draft and public access is disabled.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to return the draw to draft.");
+    } finally {
+      setDrawing(false);
+    }
+  }
+
+  async function handleMovePlayer(matchId, slot, entryId) {
+    if (!entryId) return;
+    setDrawing(true);
+    setError("");
+    try {
+      const response = await updateTournamentDrawSlot(tournamentId, matchId, {
+        organization_id: organizationId,
+        slot,
+        entry_id: entryId,
+      });
+      setTournament(response?.tournament || tournament);
+      setMessage("Draft draw position updated.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to move the player.");
     } finally {
       setDrawing(false);
     }
@@ -465,7 +539,10 @@ export default function TournamentDetailPage() {
   const publishedDrawMissing = tournament?.status === "draw_published" && generatedDraws.length === 0;
   const displayStatus = tournament?.status === "draw_published"
     ? (publishedDrawMissing ? "Draw needs rebuilding" : "Draw ready")
-    : (tournament?.status || "draft").replaceAll("_", " ");
+    : generatedDraws.length ? "Draft draw" : (tournament?.status || "draft").replaceAll("_", " ");
+  const publicDrawUrl = tournament?.public_draw_key && typeof window !== "undefined"
+    ? `${window.location.origin}/tournament-draw/${tournament.public_draw_key}`
+    : "";
 
   return (
     <main className="page-shell stack">
@@ -488,22 +565,22 @@ export default function TournamentDetailPage() {
                 </div>
                 <span className={`status-pill${publishedDrawMissing ? " warning" : ""}`}>{displayStatus}</span>
               </div>
-              <div className="dashboard-item-meta">
+              <div className="tournament-summary-details">
                 <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
-                <span>Start: {tournament.starts_on || "Not set"}</span>
-                <span>End: {tournament.ends_on || "Not set"}</span>
-                <span>{tournament.audience === "open" ? "Open tournament" : "Internal — club members only"}</span>
-                <span>{tournament.graded_enabled ? "A–D grading enabled" : "Single ungraded draw"}</span>
-                <span>{(tournament.draws || []).map((draw) => draw.name).join(" · ") || "Draw setup pending"}</span>
-                <span>{tournament.draw_size_limit ? `Maximum ${tournament.draw_size_limit} entries` : "No draw size limit"}</span>
+                <span>Start: {tournament.starts_on || "Not set"} · End: {tournament.ends_on || "Not set"}</span>
+                <span>{tournament.audience === "open" ? "Open tournament" : "Internal tournament"}</span>
+                <span>{tournament.graded_enabled ? "Graded tournament" : "Ungraded tournament"}</span>
+                <span>{tournament.draw_size_limit ? `Size limit: ${tournament.draw_size_limit} entries` : "No size limit"}</span>
               </div>
             </article>
-            <article className="panel stack tournament-next-stage">
+            <article className={`panel stack tournament-next-stage${generatedDraws.length ? " tournament-next-stage--wide" : ""}`}>
               <div className="panel-heading">
                 <h2>Draw & Scheduling</h2>
                 <p className="helper-text">
                   {generatedDraws.length
-                    ? "The draw is ready to view. Court and time-slot scheduling will be added in the next stage."
+                    ? tournament.status === "draw_published"
+                      ? "The draw is ready to view and available through its public read-only key."
+                      : "This is a draft draw. Review seeds and player positions before publishing."
                     : publishedDrawMissing
                       ? "The event was marked as draw-ready, but no fixtures were returned. Rebuild the missing draw below."
                       : "Generate the tournament draw from the registered players. Entries lock when the draw is ready."}
@@ -511,31 +588,59 @@ export default function TournamentDetailPage() {
               </div>
               {generatedDraws.length ? (
                 <div className="tournament-draws stack">
-                  {generatedDraws.map((draw) => (
-                    <section className="tournament-draw" key={draw.id || draw.name}>
-                      <div className="dashboard-item-head">
-                        <h3>{draw.name}</h3>
-                        <span className="status-pill">{draw.status === "published" ? "Ready" : draw.status}</span>
-                      </div>
-                      {[...new Set(draw.matches.map((match) => match.round_number))].map((roundNumber) => (
-                        <div className="tournament-draw-round" key={`${draw.id}-${roundNumber}`}>
-                          <strong>{tournament.draw_format === "round_robin" ? `Round ${roundNumber}` : "Opening Round"}</strong>
-                          {draw.matches.filter((match) => match.round_number === roundNumber).map((match) => (
-                            <div className="tournament-draw-match" key={match.id}>
-                              <span>{match.player1_name}</span>
-                              <small>{match.status === "bye" ? "Bye — advances" : "vs"}</small>
-                              <span>{match.player2_name || "—"}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </section>
-                  ))}
-                  {tournament.draw_format === "knockout_plate" ? (
-                    <p className="helper-text">The plate will be populated from first-round losers once match results are available.</p>
-                  ) : null}
+                  {generatedDraws.map((draw) => {
+                    const drawEntries = (tournament.entries || []).filter((entry) => !draw.grade || entry.ability_grade === draw.grade);
+                    const knockout = tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate";
+                    return knockout ? (
+                      <React.Fragment key={draw.id || draw.name}>
+                        <TournamentBracket
+                          draw={draw}
+                          entries={drawEntries}
+                          editable={isAdmin && entriesEditable && !drawing}
+                          title={`${draw.name} — Championship`}
+                          onMove={handleMovePlayer}
+                        />
+                        {tournament.draw_format === "knockout_plate" && buildPlateDraw(draw).matches.length ? (
+                          <TournamentBracket draw={buildPlateDraw(draw)} title={`${draw.name} — Plate`} />
+                        ) : null}
+                      </React.Fragment>
+                    ) : (
+                      <section className="tournament-draw" key={draw.id || draw.name}>
+                        <div className="dashboard-item-head"><h3>{draw.name}</h3><span className="status-pill">{draw.status}</span></div>
+                        {[...new Set(draw.matches.map((match) => match.round_number))].map((roundNumber) => (
+                          <div className="tournament-draw-round" key={`${draw.id}-${roundNumber}`}>
+                            <strong>{`Round ${roundNumber}`}</strong>
+                            {draw.matches.filter((match) => match.round_number === roundNumber).map((match) => (
+                              <div className="tournament-draw-match" key={match.id}><span>{match.player1_name}</span><small>vs</small><span>{match.player2_name || "—"}</span></div>
+                            ))}
+                          </div>
+                        ))}
+                      </section>
+                    );
+                  })}
                   {tournament.draw_format === "monrad" ? (
                     <p className="helper-text">Later Monrad rounds will be paired from standings after opening-round results.</p>
+                  ) : null}
+                  {entriesEditable && isAdmin ? (
+                    <div className="tournament-draw-review stack">
+                      <p className="helper-text">Review the draft. Use the player selectors to swap positions, or change seeds and regenerate before publishing.</p>
+                      <div className="button-row">
+                        <button disabled={drawing} type="button" onClick={handlePublishDraw}>Publish Draw</button>
+                        <button className="secondary" disabled={drawing} type="button" onClick={handleGenerateDraw}>Regenerate from Seeds</button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {tournament.status === "draw_published" ? (
+                    <div className="tournament-public-access stack">
+                      <div><strong>Public read-only draw key</strong><code>{tournament.public_draw_key || "Unavailable"}</code></div>
+                      {publicDrawUrl ? <a href={publicDrawUrl} target="_blank" rel="noreferrer">Open Public Draw</a> : null}
+                      {isAdmin ? (
+                        <div className="button-row">
+                          {!tournament.public_draw_key ? <button disabled={drawing} type="button" onClick={handlePublishDraw}>Enable Public Access</button> : null}
+                          <button className="secondary" disabled={drawing} type="button" onClick={handleReturnToDraft}>Return Draw to Draft</button>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               ) : (
@@ -808,6 +913,17 @@ export default function TournamentDetailPage() {
                               ))}
                             </select>
                           </div>
+                          <div className="field">
+                            <label htmlFor={`edit-seed-${entry.id}`}>Seed</label>
+                            <input
+                              id={`edit-seed-${entry.id}`}
+                              min="1"
+                              placeholder="Unseeded"
+                              type="number"
+                              value={editForm.seed}
+                              onChange={(event) => setEditForm((current) => ({ ...current, seed: event.target.value }))}
+                            />
+                          </div>
                         </div>
                         {entry.claim_status === "linked" ? (
                           <p className="helper-text">Email and home club come from the existing HitNScore account and cannot be changed here.</p>
@@ -822,6 +938,7 @@ export default function TournamentDetailPage() {
                         <div className="dashboard-item-head">
                           <strong>{entry.display_name}</strong>
                           <div className="dashboard-status-group">
+                            {entry.seed ? <span className="status-pill tournament-seed-pill">Seed {entry.seed}</span> : null}
                             {entry.ability_level ? (
                               <span className={`status-pill tournament-grade-pill tournament-grade-pill--${(entry.ability_grade || "").toLowerCase()}`}>
                                 {`Grade ${entry.ability_grade}`}

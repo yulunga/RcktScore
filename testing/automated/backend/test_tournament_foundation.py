@@ -170,6 +170,22 @@ def test_knockout_pairings_allow_single_entry_grade_as_bye():
     assert tournament_logic._knockout_pairings([entry]) == [(entry, None)]
 
 
+def test_seeded_knockout_separates_top_seeds_and_gives_them_byes():
+    import random
+
+    entries = [{"id": str(index), "seed": index} for index in range(1, 7)]
+    pairings = tournament_logic._seeded_knockout_pairings(entries, random.Random(1))
+
+    seed_pairs = [
+        (player1.get("seed") if player1 else None, player2.get("seed") if player2 else None)
+        for player1, player2 in pairings
+    ]
+    assert seed_pairs == [(1, None), (4, 5), (2, None), (3, 6)]
+    assert next(index for index, pair in enumerate(seed_pairs) if 1 in pair) // 2 != next(
+        index for index, pair in enumerate(seed_pairs) if 2 in pair
+    ) // 2
+
+
 @pytest.mark.parametrize(("entrant_count", "round_count", "matches_per_round"), [(6, 5, 3), (5, 5, 2)])
 def test_round_robin_circle_method(entrant_count, round_count, matches_per_round):
     entries = [{"id": str(index)} for index in range(entrant_count)]

@@ -105,6 +105,14 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
   await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Summary" })).toHaveCount(0);
+  const summaryRows = page.locator(".tournament-summary-details > span");
+  await expect(summaryRows).toHaveCount(5);
+  await expect(summaryRows.nth(0)).toContainText("Venue:");
+  await expect(summaryRows.nth(1)).toContainText("Start:");
+  await expect(summaryRows.nth(1)).toContainText("End:");
+  await expect(summaryRows.nth(2)).toHaveText("Open tournament");
+  await expect(summaryRows.nth(3)).toHaveText("Graded tournament");
+  await expect(summaryRows.nth(4)).toContainText("Size limit:");
   await expect(page.getByLabel("Country")).toHaveCount(0);
   await expect(page.getByLabel("Seed")).toHaveCount(0);
 
@@ -203,7 +211,7 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
   await expect(page.getByText("Email and home club come from the existing HitNScore account", { exact: false })).toBeVisible();
 });
 
-test("generates and displays an opening draw, then locks entries @tournament", async ({ page }) => {
+test("displays a published opening draw and locks entries @tournament", async ({ page }) => {
   const entries = [
     { id: "entry-1", display_name: "Demo PlayOne", first_name: "Demo", surname: "PlayOne", ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
     { id: "entry-2", display_name: "Demo PlayTwo", first_name: "Demo", surname: "PlayTwo", ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
@@ -227,8 +235,8 @@ test("generates and displays an opening draw, then locks entries @tournament", a
   await page.getByRole("button", { name: "Generate Draw" }).click();
 
   await expect(page.getByRole("heading", { name: "Open Draw" })).toBeVisible();
-  await expect(page.locator(".tournament-draw-match").getByText("Demo PlayOne", { exact: true })).toBeVisible();
-  await expect(page.locator(".tournament-draw-match").getByText("Demo PlayTwo", { exact: true })).toBeVisible();
+  await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayOne", { exact: true })).toBeVisible();
+  await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayTwo", { exact: true })).toBeVisible();
   await expect(page.getByText("Player entries are locked because the draw has been published.")).toBeVisible();
   await expect(page.getByLabel("Search Players")).toHaveCount(0);
 });
@@ -251,5 +259,64 @@ test("repairs a draw-ready tournament when fixture data is missing @tournament",
   await page.getByRole("button", { name: "Rebuild Missing Draw" }).click();
 
   await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
-  await expect(page.locator(".tournament-draw-match")).toContainText("Demo PlayOne");
+  await expect(page.locator(".tournament-bracket-match")).toContainText("Demo PlayOne");
+});
+
+test("reviews, publishes and safely returns a seeded knockout draw to draft @tournament", async ({ page }) => {
+  const entries = [
+    { id: "entry-1", display_name: "Seed One", first_name: "Seed", surname: "One", seed: 1, ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+    { id: "entry-2", display_name: "Seed Two", first_name: "Seed", surname: "Two", seed: 2, ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+    { id: "entry-3", display_name: "Seed Three", first_name: "Seed", surname: "Three", seed: 3, ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+    { id: "entry-4", display_name: "Seed Four", first_name: "Seed", surname: "Four", seed: 4, ability_level: 1, ability_grade: "A", relationship: "member", claim_status: "linked" },
+  ];
+  const draftDraw = {
+    ...tournament,
+    draw_format: "knockout",
+    graded_enabled: false,
+    status: "draft",
+    entry_count: 4,
+    entries,
+    draws: [{
+      id: "open-draw",
+      name: "Open Draw",
+      status: "draft",
+      matches: [
+        { id: "match-1", round_number: 1, match_number: 1, status: "pending", player1_entry_id: "entry-1", player2_entry_id: "entry-4", player1_name: "Seed One", player2_name: "Seed Four" },
+        { id: "match-2", round_number: 1, match_number: 2, status: "pending", player1_entry_id: "entry-2", player2_entry_id: "entry-3", player1_name: "Seed Two", player2_name: "Seed Three" },
+      ],
+    }],
+  };
+  const publishedDraw = { ...draftDraw, status: "draw_published", public_draw_key: "DRAWKEY23456", public_draw_enabled: true, draws: draftDraw.draws.map((draw) => ({ ...draw, status: "published" })) };
+  await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({ json: envelope({ tournament: draftDraw }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw/publish`, async (route) => route.fulfill({ json: envelope({ tournament: publishedDraw }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw/draft`, async (route) => route.fulfill({ json: envelope({ tournament: draftDraw }) }));
+
+  await page.goto(`/tournaments/${tournament.id}`);
+  await expect(page.getByText("Draft draw", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Open Draw — Championship" })).toBeVisible();
+  await expect(page.locator(".tournament-bracket-round")).toHaveCount(2);
+  await expect(page.getByLabel("Move Seed One in the draw")).toBeVisible();
+  await page.getByRole("button", { name: "Publish Draw" }).click();
+  await expect(page.getByText("DRAWKEY23456", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Public Draw" })).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Return Draw to Draft" }).click();
+  await expect(page.getByText("Draft draw", { exact: true })).toBeVisible();
+});
+
+test("opens a published draw without login using its public key @tournament", async ({ page }) => {
+  const publicTournament = {
+    ...tournament,
+    status: "draw_published",
+    entries: [],
+    draws: [{ id: "open-draw", name: "Open Draw", status: "published", matches: [{ id: "match-1", round_number: 1, player1_name: "Public One", player2_name: "Public Two" }] }],
+  };
+  await page.route("**/public/tournament-draws/DRAWKEY23456", async (route) => route.fulfill({ json: envelope({ tournament: publicTournament }) }));
+
+  await page.goto("/tournament-draw/DRAWKEY23456");
+
+  await expect(page.getByText("Public Tournament Draw", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
+  await expect(page.locator(".tournament-bracket-match")).toContainText("Public One");
 });

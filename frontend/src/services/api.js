@@ -425,6 +425,31 @@ export function generateTournamentDraw(tournamentId, payload) {
   });
 }
 
+export function publishTournamentDraw(tournamentId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/publish`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function returnTournamentDrawToDraft(tournamentId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/draft`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTournamentDrawSlot(tournamentId, matchId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/matches/${matchId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getPublicTournamentDraw(accessKey) {
+  return apiRequest(`/public/tournament-draws/${encodeURIComponent(accessKey)}`, { sessionToken: null });
+}
+
 export function searchMatchSetupLookup(organizationId, query) {
   const params = new URLSearchParams({ q: query });
   return apiRequest(`/match_setup_lookup/${organizationId}?${params.toString()}`);

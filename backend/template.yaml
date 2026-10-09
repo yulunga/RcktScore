@@ -1109,6 +1109,54 @@ Resources:
             Path: /tournaments/{tournament_id}/draw
             Method: POST
 
+  PublishTournamentDrawFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/publish_tournament_draw/handler.lambda_handler
+      Events:
+        PublishTournamentDraw:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/publish
+            Method: POST
+
+  ReturnTournamentDrawToDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/return_tournament_draw_to_draft/handler.lambda_handler
+      Events:
+        ReturnTournamentDrawToDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/draft
+            Method: POST
+
+  UpdateTournamentDrawSlotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_tournament_draw_slot/handler.lambda_handler
+      Events:
+        UpdateTournamentDrawSlot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/matches/{match_id}
+            Method: PUT
+
+  GetPublicTournamentDrawFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_public_tournament_draw/handler.lambda_handler
+      Events:
+        GetPublicTournamentDraw:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /public/tournament-draws/{access_key}
+            Method: GET
+
   HttpApiServerErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
