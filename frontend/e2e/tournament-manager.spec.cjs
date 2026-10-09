@@ -93,10 +93,25 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(page.getByLabel("Seed")).toHaveCount(0);
 
   await page.getByLabel("Search Players").fill("alex");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(0);
   await expect(page.getByText("Alex Player", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Alex Player/ }).click();
   await expect(page.getByText("Racket up is this way", { exact: true })).toBeVisible();
   await expect(page.getByText("Advanced player", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Player Manually" })).toBeVisible();
+  const manualButton = page.getByRole("button", { name: "Add Player Manually" });
+  await expect(manualButton).toBeVisible();
+  await expect(manualButton).toHaveCSS("background-color", "rgb(18, 116, 208)");
+  await expect(manualButton).toHaveCSS("border-radius", "999px");
+
+  const summaryPanels = page.locator(".tournament-summary-grid > .panel");
+  const managerPanels = page.locator(".tournament-manager-grid > .panel");
+  const [summaryLeft, summaryRight, managerLeft, managerRight] = await Promise.all([
+    summaryPanels.nth(0).boundingBox(),
+    summaryPanels.nth(1).boundingBox(),
+    managerPanels.nth(0).boundingBox(),
+    managerPanels.nth(1).boundingBox(),
+  ]);
+  expect(Math.abs(summaryLeft.x - managerLeft.x)).toBeLessThan(2);
+  expect(Math.abs(summaryRight.x - managerRight.x)).toBeLessThan(2);
+  expect(Math.abs(summaryLeft.width - managerLeft.width)).toBeLessThan(2);
 });

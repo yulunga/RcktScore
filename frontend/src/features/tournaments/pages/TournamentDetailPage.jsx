@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import AppFooter from "../../../components/AppFooter";
@@ -21,6 +21,36 @@ const ABILITY_OPTIONS = [
   { value: "3", grade: "B", label: "Club player", detail: "Consistent rallies with sound movement and match awareness." },
   { value: "4", grade: "A", label: "Advanced player", detail: "Experienced league or tournament competitor." },
 ];
+
+function describeAddedPlayer(entry) {
+  if (!entry) {
+    return "Player added to the tournament. Tournament entry does not grant app or club access.";
+  }
+  if (entry.claim_status === "linked" && entry.relationship === "member") {
+    return "Player added as a linked HitNScore club member. Their existing app role, plan and access are unchanged.";
+  }
+  if (entry.claim_status === "linked") {
+    return "Player added as a guest linked to an existing HitNScore account. This does not grant membership, a role or access to this club.";
+  }
+  if (entry.claim_status === "claimable") {
+    return "Player added as a claimable guest. They have no login, role, plan or club access from this tournament entry.";
+  }
+  return "Player added as an unclaimed named guest. They have no login, role, plan or club access.";
+}
+
+function findAddedEntry(nextTournament, player) {
+  const entries = nextTournament?.entries || [];
+  if (player.player_id) {
+    return entries.find((entry) => entry.player_id === player.player_id);
+  }
+  const email = (player.email || "").trim().toLowerCase();
+  if (email) {
+    return entries.find((entry) => (entry.email || "").trim().toLowerCase() === email);
+  }
+  return entries.find((entry) => (
+    entry.first_name === player.first_name && entry.surname === player.surname
+  ));
+}
 
 function AbilitySelector({ value, onChange, idPrefix }) {
   return (
@@ -72,6 +102,7 @@ export default function TournamentDetailPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const searchRequestRef = useRef(0);
 
   const load = useCallback(async () => {
     if (!tournamentId || !organizationId) return;
@@ -91,6 +122,41 @@ export default function TournamentDetailPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const query = searchQuery.trim();
+    const requestId = searchRequestRef.current + 1;
+    searchRequestRef.current = requestId;
+    setSelectedPlayer(null);
+
+    if (query.length < 2 || !organizationId) {
+      setSearchResults([]);
+      setSearchPerformed(false);
+      setSearching(false);
+      return undefined;
+    }
+
+    setSearching(true);
+    setSearchPerformed(false);
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchTournamentPlayers(organizationId, query);
+        if (searchRequestRef.current !== requestId) return;
+        setSearchResults(response?.players || []);
+        setSearchPerformed(true);
+        setError("");
+      } catch (requestError) {
+        if (searchRequestRef.current !== requestId) return;
+        setSearchResults([]);
+        setSearchPerformed(true);
+        setError(requestError.message || "Unable to search for players.");
+      } finally {
+        if (searchRequestRef.current === requestId) setSearching(false);
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [organizationId, searchQuery]);
+
   async function handleAddEntry(event) {
     event.preventDefault();
     setSaving(true);
@@ -101,34 +167,15 @@ export default function TournamentDetailPage() {
         ...entryForm,
         organization_id: organizationId,
       });
-      setTournament(response?.tournament || null);
+      const nextTournament = response?.tournament || null;
+      setTournament(nextTournament);
       setEntryForm(EMPTY_ENTRY);
-      setMessage("Player added. Registered emails are linked automatically; other players remain claimable guests.");
+      setManualEntryOpen(false);
+      setMessage(describeAddedPlayer(findAddedEntry(nextTournament, entryForm)));
     } catch (requestError) {
       setError(requestError.message || "Unable to add the player.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleSearch(event) {
-    event.preventDefault();
-    if (searchQuery.trim().length < 2) {
-      setError("Enter at least two characters to search for a player.");
-      return;
-    }
-    setSearching(true);
-    setSearchPerformed(false);
-    setSelectedPlayer(null);
-    setError("");
-    try {
-      const response = await searchTournamentPlayers(organizationId, searchQuery.trim());
-      setSearchResults(response?.players || []);
-      setSearchPerformed(true);
-    } catch (requestError) {
-      setError(requestError.message || "Unable to search for players.");
-    } finally {
-      setSearching(false);
     }
   }
 
@@ -148,13 +195,14 @@ export default function TournamentDetailPage() {
         home_club_name: selectedPlayer.home_club_name,
         ability_level: selectedAbility,
       });
-      setTournament(response?.tournament || null);
+      const nextTournament = response?.tournament || null;
+      setTournament(nextTournament);
       setSearchQuery("");
       setSearchResults([]);
       setSearchPerformed(false);
       setSelectedPlayer(null);
       setSelectedAbility("");
-      setMessage("Player added to the tournament.");
+      setMessage(describeAddedPlayer(findAddedEntry(nextTournament, selectedPlayer)));
     } catch (requestError) {
       setError(requestError.message || "Unable to add the player.");
     } finally {
@@ -210,20 +258,18 @@ export default function TournamentDetailPage() {
                   Search the shared HitNScore player list first. If there is no match, add a new player manually.
                 </p>
               </div>
-              <form className="stack" onSubmit={handleSearch}>
+              <div className="stack">
                 <div className="field tournament-player-search">
                   <label htmlFor="tournament-player-search">Search Players</label>
-                  <div className="tournament-search-row">
-                    <input
-                      id="tournament-player-search"
-                      placeholder="Name or email address"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                    />
-                    <button disabled={searching} type="submit">{searching ? "Searching..." : "Search"}</button>
-                  </div>
+                  <input
+                    id="tournament-player-search"
+                    placeholder="Type a name or email address"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
+                  {searching ? <small className="tournament-search-status">Searching...</small> : null}
                 </div>
-              </form>
+              </div>
 
               {searchResults.length ? (
                 <div className="tournament-search-results" aria-label="Player search results">
@@ -255,9 +301,11 @@ export default function TournamentDetailPage() {
               ) : null}
 
               <div className="tournament-manual-divider"><span>Player not found?</span></div>
-              <button className="secondary" type="button" onClick={() => setManualEntryOpen((current) => !current)}>
-                {manualEntryOpen ? "Close Manual Entry" : "Add Player Manually"}
-              </button>
+              <div className="button-row tournament-add-player-row">
+                <button type="button" onClick={() => setManualEntryOpen((current) => !current)}>
+                  {manualEntryOpen ? "Close Manual Entry" : "Add Player Manually"}
+                </button>
+              </div>
 
               {manualEntryOpen ? <form className="stack" onSubmit={handleAddEntry}>
                 <div className="field-grid">

@@ -7,15 +7,20 @@
 
 .tournament-manager-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .tournament-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.tournament-manager-grid > .panel,
+.tournament-summary-grid > .panel {
+  height: 100%;
 }
 
 .tournament-list-item {
@@ -47,10 +52,12 @@
   padding: 0 0 0.9rem;
 }
 
-.tournament-search-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.7rem;
+.tournament-search-status {
+  color: #61758a;
+}
+
+.tournament-add-player-row {
+  justify-content: flex-start;
 }
 
 .tournament-search-results,
@@ -159,10 +166,6 @@
 @media (max-width: 860px) {
   .tournament-manager-grid,
   .tournament-summary-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tournament-search-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
