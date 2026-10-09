@@ -1085,6 +1085,30 @@ Resources:
             Path: /tournaments/{tournament_id}/entries
             Method: POST
 
+  UpdateTournamentEntryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_tournament_entry/handler.lambda_handler
+      Events:
+        UpdateTournamentEntry:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/entries/{entry_id}
+            Method: PUT
+
+  GenerateTournamentDrawFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/generate_tournament_draw/handler.lambda_handler
+      Events:
+        GenerateTournamentDraw:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw
+            Method: POST
+
   HttpApiServerErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:

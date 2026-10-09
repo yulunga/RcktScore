@@ -54,7 +54,7 @@ COMMENT ON COLUMN tournament_events.draw_size_limit IS
     'Optional maximum number of active entries. NULL means no entry limit.';
 
 COMMENT ON COLUMN tournament_entries.ability_level IS
-    'Organiser assessment from 1 (new player / D grade) to 4 (advanced / A grade).';
+    'Organiser assessment from 1 (A grade / advanced) to 4 (D grade / new player).';
 
 COMMENT ON TABLE tournament_draws IS
     'Top-level draw groups. Graded events receive A, B, C and D groups; ungraded events receive one Open Draw.';

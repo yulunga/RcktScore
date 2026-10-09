@@ -265,23 +265,41 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
 8. `player_organization_affiliations` records `member` when that account is an
    approved member of the host club and `guest` otherwise. Guest status grants no
    login or club permissions; internal events reject guest entries.
-9. Every entrant receives a four-level organiser assessment. Levels 1–4 map to
-   grades D–A, giving the later draw generator stable grade groups.
+9. Every entrant receives a four-level organiser assessment. Level 1 is Grade A,
+   level 2 Grade B, level 3 Grade C and level 4 Grade D.
 10. The tournament entry stores a name/club snapshot so later profile edits cannot
     rewrite the historic event entry.
 11. Every tournament and entry creation writes `tournament_audit_events`.
+12. A club admin calls `POST /tournaments/{tournament_id}/draw`. The backend
+    deterministically shuffles unseeded entrants, stores fixtures in
+    `tournament_matches`, publishes the draw and locks entrant changes. Round
+    robin produces its full circle-method rotation; knockout, plate and Monrad
+    currently persist only their opening round because later pairings need results.
+
+The web entrant importer accepts CSV files with required First Name/Surname and
+optional Email, Club and Ability columns. It previews invalid and duplicate rows,
+checks exact matches against both current entries and the shared player search,
+and lets the organiser skip, reuse, replace or update as appropriate. Updates use
+`PUT /tournaments/{tournament_id}/entries/{entry_id}` and write an audit event.
+Linked account email and home-club values are locked; unlinked player records can
+be completed before they are claimed.
 
 Ordinary club members may list and read tournaments. Creation and entry changes
 remain restricted to club administrators.
 
-Tournament detail reads use `to_regclass` before querying `tournament_draws`, so
+Tournament detail reads use `to_regclass` before querying `tournament_draws` or
+`tournament_matches`, so
 an existing event remains readable during a staggered schema deployment. The
 fallback only supplies display labels; migration `032` remains required for
-persisted draw groups and new-event creation.
+persisted draw groups and new-event creation. Migration `034` is required to
+generate and return persisted fixtures.
 
 The seeded Demo Club has the feature enabled. Its approved
 `demouser@democlub.com` login is intentionally password-disabled until root admin
 sets a password through the existing User Accounts control.
+Migration `033_demo_club_players.sql` adds eight similarly password-disabled
+Demo Club user memberships named Demo PlayOne through Demo PlayEight for entrant
+search and import testing.
 
 ## 8. Organisation User Invite / Approval Flow
 

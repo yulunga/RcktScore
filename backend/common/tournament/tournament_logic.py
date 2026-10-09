@@ -1,4 +1,5 @@
 import re
+import random
 from datetime import date, datetime, timezone
 from uuid import UUID
 
@@ -9,7 +10,7 @@ VALID_SPORTS = {"squash", "racketball", "tennis", "padel"}
 VALID_DRAW_FORMATS = {"knockout", "knockout_plate", "round_robin", "monrad"}
 VALID_STATUSES = {"draft", "registration", "draw_published", "in_progress", "completed", "cancelled"}
 VALID_AUDIENCES = {"internal", "open"}
-ABILITY_GRADES = {1: "D", 2: "C", 3: "B", 4: "A"}
+ABILITY_GRADES = {1: "A", 2: "B", 3: "C", 4: "D"}
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -105,6 +106,20 @@ def _default_draw_groups(event):
         "grade": grade,
         "status": "draft",
     } for grade in grades]
+
+
+def _serialize_draw_match(row):
+    return {
+        "id": str(row["id"]),
+        "round_number": int(row.get("round_number") or 1),
+        "match_number": int(row.get("match_number") or 1),
+        "status": row.get("status") or "pending",
+        "player1_entry_id": str(row["player1_entry_id"]) if row.get("player1_entry_id") else None,
+        "player2_entry_id": str(row["player2_entry_id"]) if row.get("player2_entry_id") else None,
+        "winner_entry_id": str(row["winner_entry_id"]) if row.get("winner_entry_id") else None,
+        "player1_name": row.get("player1_name") or "",
+        "player2_name": row.get("player2_name") or "",
+    }
 
 
 def list_tournaments(connection, organization_id):
@@ -297,9 +312,14 @@ def get_tournament(connection, tournament_id, organization_id):
             {"tournament_id": row["id"], "organization_id": int(organization_id)},
         )
         entries = [_serialize_entry(entry) for entry in cursor.fetchall()]
-        cursor.execute("SELECT to_regclass('public.tournament_draws') AS table_name")
-        draw_table = cursor.fetchone()
-        if (draw_table or {}).get("table_name"):
+        cursor.execute(
+            """
+            SELECT to_regclass('public.tournament_draws') AS draw_table,
+                   to_regclass('public.tournament_matches') AS match_table
+            """
+        )
+        draw_tables = cursor.fetchone() or {}
+        if draw_tables.get("draw_table"):
             cursor.execute(
                 """
                 SELECT id, name, grade, status
@@ -309,17 +329,190 @@ def get_tournament(connection, tournament_id, organization_id):
                 """,
                 {"tournament_id": row["id"]},
             )
-            draws = [{
-                "id": str(draw["id"]),
-                "name": draw.get("name") or "Draw",
-                "grade": draw.get("grade"),
-                "status": draw.get("status") or "draft",
-            } for draw in cursor.fetchall()]
+            draws = []
+            for draw in cursor.fetchall():
+                matches = []
+                if draw_tables.get("match_table"):
+                    cursor.execute(
+                        """
+                        SELECT fixture.*,
+                               CONCAT_WS(' ', player1.first_name_snapshot, player1.surname_snapshot) AS player1_name,
+                               CONCAT_WS(' ', player2.first_name_snapshot, player2.surname_snapshot) AS player2_name
+                        FROM tournament_matches AS fixture
+                        LEFT JOIN tournament_entries AS player1 ON player1.id = fixture.player1_entry_id
+                        LEFT JOIN tournament_entries AS player2 ON player2.id = fixture.player2_entry_id
+                        WHERE fixture.draw_id = %(draw_id)s
+                        ORDER BY fixture.round_number, fixture.match_number
+                        """,
+                        {"draw_id": draw["id"]},
+                    )
+                    matches = [_serialize_draw_match(match) for match in cursor.fetchall()]
+                draws.append({
+                    "id": str(draw["id"]),
+                    "name": draw.get("name") or "Draw",
+                    "grade": draw.get("grade"),
+                    "status": draw.get("status") or "draft",
+                    "matches": matches,
+                })
         else:
             # Keep reads available during a staggered backend/schema deployment.
             # Migration 032 remains required before creating or editing draw data.
             draws = _default_draw_groups(row)
     return _serialize_event(row, entries=entries, draws=draws)
+
+
+def _knockout_pairings(entries):
+    if not entries:
+        return []
+    if len(entries) == 1:
+        return [(entries[0], None)]
+    bracket_size = 1
+    while bracket_size < len(entries):
+        bracket_size *= 2
+    bye_count = bracket_size - len(entries)
+    pairings = [(entry, None) for entry in entries[:bye_count]]
+    remaining = entries[bye_count:]
+    pairings.extend((remaining[index], remaining[index + 1]) for index in range(0, len(remaining), 2))
+    return pairings
+
+
+def _round_robin_pairings(entries):
+    rotation = list(entries)
+    if len(rotation) % 2:
+        rotation.append(None)
+    rounds = []
+    for round_index in range(len(rotation) - 1):
+        matches = []
+        for index in range(len(rotation) // 2):
+            player1 = rotation[index]
+            player2 = rotation[-(index + 1)]
+            if player1 is not None and player2 is not None:
+                matches.append((player1, player2))
+        rounds.append(matches)
+        rotation = [rotation[0], rotation[-1], *rotation[1:-1]]
+    return rounds
+
+
+def generate_tournament_draw(connection, tournament_id, organization_id, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] not in {"draft", "registration"}:
+        raise ValueError("The draw has already been generated")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT entry.id, entry.seed, entry.ability_level,
+                   entry.first_name_snapshot, entry.surname_snapshot
+            FROM tournament_entries AS entry
+            WHERE entry.event_id = %(event_id)s
+              AND entry.entry_status <> 'withdrawn'
+            ORDER BY entry.seed ASC NULLS LAST, LOWER(entry.first_name_snapshot), LOWER(entry.surname_snapshot)
+            """,
+            {"event_id": event["id"]},
+        )
+        entries = cursor.fetchall()
+        if len(entries) < 2:
+            raise ValueError("Add at least two players before generating the draw")
+
+        cursor.execute(
+            "SELECT id, name, grade FROM tournament_draws WHERE tournament_id = %(event_id)s ORDER BY grade NULLS FIRST",
+            {"event_id": event["id"]},
+        )
+        draws = cursor.fetchall()
+        now = _utcnow()
+        generated_match_count = 0
+        for draw in draws:
+            draw_entries = [
+                entry for entry in entries
+                if not draw.get("grade") or ABILITY_GRADES.get(entry.get("ability_level")) == draw["grade"]
+            ]
+            seeded = [entry for entry in draw_entries if entry.get("seed")]
+            unseeded = [entry for entry in draw_entries if not entry.get("seed")]
+            random.Random(f"{event['id']}:{draw['id']}:{event.get('revision') or 1}").shuffle(unseeded)
+            ordered_entries = seeded + unseeded
+            cursor.execute("DELETE FROM tournament_matches WHERE draw_id = %(draw_id)s", {"draw_id": draw["id"]})
+
+            if event["draw_format"] == "round_robin":
+                rounds = _round_robin_pairings(ordered_entries)
+            else:
+                rounds = [_knockout_pairings(ordered_entries)]
+
+            for round_index, pairings in enumerate(rounds, start=1):
+                for match_index, (player1, player2) in enumerate(pairings, start=1):
+                    winner_id = player1["id"] if player1 and not player2 else None
+                    cursor.execute(
+                        """
+                        INSERT INTO tournament_matches (
+                            draw_id, round_number, match_number,
+                            player1_entry_id, player2_entry_id, winner_entry_id,
+                            status, created_at, updated_at
+                        )
+                        VALUES (
+                            %(draw_id)s, %(round_number)s, %(match_number)s,
+                            %(player1_id)s, %(player2_id)s, %(winner_id)s,
+                            %(status)s, %(created_at)s, %(updated_at)s
+                        )
+                        """,
+                        {
+                            "draw_id": draw["id"],
+                            "round_number": round_index,
+                            "match_number": match_index,
+                            "player1_id": player1["id"] if player1 else None,
+                            "player2_id": player2["id"] if player2 else None,
+                            "winner_id": winner_id,
+                            "status": "bye" if winner_id else "pending",
+                            "created_at": now,
+                            "updated_at": now,
+                        },
+                    )
+                    generated_match_count += 1
+            cursor.execute(
+                """
+                UPDATE tournament_draws
+                SET status = %(status)s, updated_at = %(updated_at)s
+                WHERE id = %(draw_id)s
+                """,
+                {
+                    "status": "published" if ordered_entries else "draft",
+                    "updated_at": now,
+                    "draw_id": draw["id"],
+                },
+            )
+
+        if generated_match_count == 0:
+            raise ValueError("No grade contains enough players to generate a fixture")
+        cursor.execute(
+            """
+            UPDATE tournament_events
+            SET status = 'draw_published', revision = revision + 1, updated_at = %(updated_at)s
+            WHERE id = %(event_id)s
+            """,
+            {"updated_at": now, "event_id": event["id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            )
+            VALUES (
+                %(organization_id)s, %(tournament_id)s, %(actor_username)s,
+                'draw_generated', 'tournament', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "tournament_id": event["id"],
+                "actor_username": actor_username,
+                "entity_id": str(event["id"]),
+                "payload": Jsonb({"format": event["draw_format"], "match_count": generated_match_count}),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
 
 
 def _find_or_create_player(connection, organization_id, payload):
@@ -340,6 +533,8 @@ def _find_or_create_player(connection, organization_id, payload):
     email = _normalize_email(payload.get("email"))
     if not first_name:
         raise ValueError("Player first name is required")
+    if not surname:
+        raise ValueError("Player surname is required")
     if email and not EMAIL_PATTERN.match(email):
         raise ValueError("Player email address is invalid")
 
@@ -595,11 +790,205 @@ def add_tournament_entry(connection, tournament_id, organization_id, payload, ac
     return get_tournament(connection, event["id"], organization_id)
 
 
+def update_tournament_entry(connection, tournament_id, entry_id, organization_id, payload, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] not in {"draft", "registration"}:
+        raise ValueError("Entries can only be changed before the draw is published")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT entry.*, player.user_id, player.registered_username,
+                   player.email, player.first_name AS player_first_name,
+                   player.surname AS player_surname,
+                   player.home_club_name
+            FROM tournament_entries AS entry
+            INNER JOIN players AS player ON player.id = entry.player_id
+            WHERE entry.id = %(entry_id)s
+              AND entry.event_id = %(event_id)s
+            LIMIT 1
+            """,
+            {"entry_id": _uuid(entry_id, "entry_id"), "event_id": event["id"]},
+        )
+        entry = cursor.fetchone()
+        if not entry:
+            raise LookupError("Tournament entry not found")
+
+        first_name = (payload.get("first_name", entry["first_name_snapshot"]) or "").strip()
+        surname = (payload.get("surname", entry["surname_snapshot"]) or "").strip()
+        if not first_name or not surname:
+            raise ValueError("Player first name and surname are required")
+
+        ability_level = payload.get("ability_level", entry.get("ability_level"))
+        try:
+            ability_level = int(ability_level)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Select a player ability level from 1 to 4") from exc
+        if ability_level not in ABILITY_GRADES:
+            raise ValueError("Select a player ability level from 1 to 4")
+
+        linked_account = bool(entry.get("user_id") or entry.get("registered_username"))
+        current_email = _normalize_email(entry.get("email"))
+        next_email = _normalize_email(payload.get("email", current_email))
+        next_club = (payload.get("home_club_name", entry.get("club_snapshot")) or "").strip() or None
+        if next_email and not EMAIL_PATTERN.match(next_email):
+            raise ValueError("Player email address is invalid")
+        if linked_account and (next_email != current_email or next_club != (entry.get("club_snapshot") or None)):
+            raise ValueError("Email and home club cannot be changed for a player linked to an existing HitNScore account")
+
+        registered_username = entry.get("registered_username")
+        user_id = entry.get("user_id")
+        if not linked_account and next_email:
+            cursor.execute(
+                """
+                SELECT id, email
+                FROM "users"
+                WHERE email_normalized = LOWER(%(email)s)
+                LIMIT 1
+                """,
+                {"email": next_email},
+            )
+            identity = cursor.fetchone()
+            if identity:
+                user_id = identity["id"]
+                registered_username = identity["email"]
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM players
+                WHERE id <> %(player_id)s
+                  AND (
+                    LOWER(email) = LOWER(%(email)s)
+                    OR LOWER(registered_username) = LOWER(%(email)s)
+                    OR (%(user_id)s IS NOT NULL AND user_id = %(user_id)s)
+                  )
+                LIMIT 1
+                """,
+                {"player_id": entry["player_id"], "email": next_email, "user_id": user_id},
+            )
+            if cursor.fetchone():
+                raise ValueError("That email already belongs to another player. Add the existing player from search instead")
+
+        relationship = "guest"
+        if registered_username or next_email:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM "SkwshOrgUsers"
+                WHERE organization_id = %(organization_id)s
+                  AND LOWER(clubusername) = LOWER(%(username)s)
+                  AND COALESCE(approval_status, 'approved') = 'approved'
+                LIMIT 1
+                """,
+                {
+                    "organization_id": int(organization_id),
+                    "username": registered_username or next_email,
+                },
+            )
+            relationship = "member" if cursor.fetchone() else "guest"
+        if (event.get("audience") or "internal") == "internal" and relationship != "member":
+            raise ValueError("Internal tournaments can only include members of the host club")
+
+        now = _utcnow()
+        if not linked_account:
+            cursor.execute(
+                """
+                UPDATE players
+                SET user_id = %(user_id)s,
+                    registered_username = %(registered_username)s,
+                    email = %(email)s,
+                    first_name = %(first_name)s,
+                    surname = %(surname)s,
+                    normalized_name = %(normalized_name)s,
+                    home_club_name = %(home_club_name)s,
+                    claim_status = %(claim_status)s,
+                    claimed_at = CASE WHEN %(user_id)s IS NOT NULL THEN COALESCE(claimed_at, %(updated_at)s) ELSE NULL END,
+                    updated_at = %(updated_at)s
+                WHERE id = %(player_id)s
+                """,
+                {
+                    "user_id": user_id,
+                    "registered_username": registered_username,
+                    "email": next_email,
+                    "first_name": first_name,
+                    "surname": surname,
+                    "normalized_name": _normalize_name(first_name, surname),
+                    "home_club_name": next_club,
+                    "claim_status": "linked" if user_id else ("claimable" if next_email else "unclaimed"),
+                    "updated_at": now,
+                    "player_id": entry["player_id"],
+                },
+            )
+
+        cursor.execute(
+            """
+            UPDATE tournament_entries
+            SET first_name_snapshot = %(first_name)s,
+                surname_snapshot = %(surname)s,
+                club_snapshot = %(club)s,
+                ability_level = %(ability_level)s,
+                updated_at = %(updated_at)s
+            WHERE id = %(entry_id)s
+            """,
+            {
+                "first_name": first_name,
+                "surname": surname,
+                "club": next_club,
+                "ability_level": ability_level,
+                "updated_at": now,
+                "entry_id": entry["id"],
+            },
+        )
+        cursor.execute(
+            """
+            INSERT INTO player_organization_affiliations (
+                player_id, organization_id, relationship, created_at, updated_at
+            )
+            VALUES (%(player_id)s, %(organization_id)s, %(relationship)s, %(created_at)s, %(updated_at)s)
+            ON CONFLICT (player_id, organization_id) DO UPDATE
+            SET relationship = EXCLUDED.relationship, updated_at = EXCLUDED.updated_at
+            """,
+            {
+                "player_id": entry["player_id"],
+                "organization_id": int(organization_id),
+                "relationship": relationship,
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            )
+            VALUES (
+                %(organization_id)s, %(tournament_id)s, %(actor_username)s,
+                'entry_updated', 'entry', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "tournament_id": event["id"],
+                "actor_username": actor_username,
+                "entity_id": str(entry["id"]),
+                "payload": Jsonb({"ability_level": ability_level, "relationship": relationship}),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
+
+
 def search_tournament_players(connection, organization_id, query):
     search = " ".join((query or "").strip().split())
     if len(search) < 2:
         return []
     pattern = f"%{search}%"
+    prefix = f"{search}%"
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -652,10 +1041,29 @@ def search_tournament_players(connection, organization_id, query):
                     OR identity.email ILIKE %(pattern)s
                   )
             ) AS candidate
-            ORDER BY relationship DESC, LOWER(first_name), LOWER(surname), LOWER(email)
+            ORDER BY
+                CASE
+                    WHEN LOWER(COALESCE(email, '')) = LOWER(%(search)s)
+                      OR LOWER(CONCAT_WS(' ', first_name, surname)) = LOWER(%(search)s)
+                    THEN 0
+                    WHEN LOWER(COALESCE(email, '')) LIKE LOWER(%(prefix)s)
+                      OR LOWER(COALESCE(first_name, '')) LIKE LOWER(%(prefix)s)
+                      OR LOWER(COALESCE(surname, '')) LIKE LOWER(%(prefix)s)
+                      OR LOWER(CONCAT_WS(' ', first_name, surname)) LIKE LOWER(%(prefix)s)
+                    THEN 1
+                    ELSE 2
+                END,
+                relationship DESC,
+                LENGTH(CONCAT_WS(' ', first_name, surname)),
+                LOWER(first_name), LOWER(surname), LOWER(email)
             LIMIT 20
             """,
-            {"organization_id": int(organization_id), "pattern": pattern},
+            {
+                "organization_id": int(organization_id),
+                "pattern": pattern,
+                "prefix": prefix,
+                "search": search,
+            },
         )
         rows = cursor.fetchall()
     return [{

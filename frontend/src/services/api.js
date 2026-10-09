@@ -411,6 +411,20 @@ export function createTournamentEntry(tournamentId, payload) {
   });
 }
 
+export function updateTournamentEntry(tournamentId, entryId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/entries/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function generateTournamentDraw(tournamentId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function searchMatchSetupLookup(organizationId, query) {
   const params = new URLSearchParams({ q: query });
   return apiRequest(`/match_setup_lookup/${organizationId}?${params.toString()}`);

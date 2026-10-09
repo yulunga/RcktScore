@@ -251,6 +251,7 @@ Current root-admin Tournament Manager behavior:
 - the root-admin club page exposes this control in a dedicated Tournament tab immediately after Game Settings
 - personal organisations cannot be enabled
 - migration `031_tournament_demo_club.sql` creates an enabled Demo Club and an approved, password-disabled `demouser@democlub.com`; a root administrator must set its password before login
+- migration `033_demo_club_players.sql` idempotently adds approved, password-disabled Demo Club user memberships for Demo PlayOne through Demo PlayEight; they use the standard `user` role and require an administrator-set password before login
 
 ### Tournament Manager routes
 
@@ -259,23 +260,45 @@ Current root-admin Tournament Manager behavior:
 - `GET /organizations/{organization_id}/tournament-players?q=...`
 - `GET /tournaments/{tournament_id}?organization_id=...`
 - `POST /tournaments/{tournament_id}/entries`
+- `PUT /tournaments/{tournament_id}/entries/{entry_id}`
+- `POST /tournaments/{tournament_id}/draw`
 
 All current tournament routes require an approved membership of the owning club
 and an enabled `tournament_organization_features.web_enabled` record. Listing and
-reading tournaments are available to ordinary club members. Creating tournaments
-and searching/adding entries remain club-admin operations. Draft events persist
+reading tournaments are available to ordinary club members. Creating tournaments,
+searching/changing entries and generating draws remain club-admin operations.
+Draft events persist
 an `internal` or `open` audience, optional A–D grading and an optional entry-size
 limit. Internal events reject guest entries and size-limited events reject entries
 after capacity is reached. Entrants store a four-level ability assessment, mapped
-from level 1/D through level 4/A. Graded creation adds four `tournament_draws`
-groups (A–D); ungraded creation adds one Open Draw. The search endpoint searches canonical registered
-accounts and reusable player identities before the organiser uses manual entry.
-Draw generation, scheduling, fixtures, linked scoring matches and public spectator
-access are not implemented yet.
+from level 1/A through level 4/D. Graded creation adds four `tournament_draws`
+groups (A–D); ungraded creation adds one Open Draw. The search endpoint searches
+canonical registered
+accounts and reusable player identities before the organiser uses manual entry;
+exact and prefix matches rank first and the web client displays at most four candidates.
 
-`GET /tournaments/{tournament_id}` checks whether `tournament_draws` exists before
-reading it and derives temporary A–D/Open group labels when a backend deployment
-briefly precedes migration `032`. Event creation still requires the migration.
+`POST /tournaments/{tournament_id}/draw` persists fixtures in
+`tournament_matches`, publishes the draw and locks entrant changes. Round robin
+uses the circle method and produces every round. Knockout, knockout-with-plate and
+Monrad currently produce the opening round; non-power-of-two knockout fields give
+the ordered top entrants byes. Plate population, later knockout/Monrad progression,
+scheduling, scoring-match linkage and public spectator access remain unimplemented.
+Migration `034_tournament_draw_matches.sql` is required for draw generation.
+
+Tournament entry updates are club-admin-only and limited to draft/registration
+events. First name, surname and ability are editable. Email and home-club fields
+are editable only while the reusable player is not linked to a canonical
+HitNScore account; linked identities retain their account-owned email and club
+data. CSV import is orchestrated by the web client over the create/update routes:
+it validates required names, detects duplicates in the file, current event and
+shared player directory, then requires the organiser to skip, reuse or update a
+matching record.
+
+`GET /tournaments/{tournament_id}` checks whether both `tournament_draws` and
+`tournament_matches` exist before reading them. It derives temporary A–D/Open
+group labels when a backend deployment briefly precedes migration `032`, and
+returns draw groups without fixtures if migration `034` is pending. Event creation
+and draw generation still require their respective migrations.
 
 Current root-admin platform-sport behavior:
 

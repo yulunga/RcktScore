@@ -581,6 +581,9 @@ Disabling the feature retains its tournament and player data.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.
+The eight migration `033` Demo PlayOne–Demo PlayEight accounts follow the same
+password-disabled rule and do not become usable logins until an administrator
+sets their passwords.
 
 If adding an entrant unexpectedly creates or reuses an identity, inspect
 `players.email`, `registered_username`, and `claim_status`. Email is
@@ -598,7 +601,22 @@ If the new event options or ability values are absent after deployment, confirm
 `032_tournament_event_options.sql` has been applied before deploying the Lambda
 and web changes.
 
-The tournament detail read checks for `tournament_draws` before querying it and
-returns temporary derived draw-group labels during a staggered deployment. This
-keeps existing tournaments readable, but migration `032` is still mandatory
-before creating events or changing draw data.
+The tournament detail read checks for `tournament_draws` and `tournament_matches`
+before querying them. It returns temporary derived draw-group labels, or draw
+groups without fixtures, during a staggered deployment. Migration `032` is still
+mandatory before creating events and migration `034` before generating draws.
+
+If Generate Draw is disabled, the event needs at least two active entrants and
+the current membership must be a club admin. If the draw request fails after the
+button becomes available, confirm `034_tournament_draw_matches.sql` has been
+applied. Draw generation changes the event to `draw_published` and intentionally
+locks add, import and edit entry actions. Round robin creates every round;
+knockout, knockout-with-plate and Monrad currently create the opening round only.
+Plate entrants and later Monrad/knockout rounds wait for result progression.
+
+CSV player imports require `First Name` and `Surname` headers. Optional recognised
+headers are Email, Club and Ability (1–4). Duplicate warnings are produced for
+repeated file rows, an existing tournament entrant or one exact shared-player
+match. If an update rejects email or club changes, inspect `players.user_id`,
+`registered_username` and `claim_status`; linked account-owned identity fields
+must be edited through the account/membership workflow instead.

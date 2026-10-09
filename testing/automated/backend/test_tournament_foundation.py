@@ -118,6 +118,11 @@ def test_player_normalization_is_case_and_whitespace_insensitive():
     assert tournament_logic._normalize_name("  Alex ", " Mc Kay  ") == "alex mc kay"
 
 
+def test_new_player_requires_first_name_and_surname_before_database_access():
+    with pytest.raises(ValueError, match="surname is required"):
+        tournament_logic._find_or_create_player(None, 1, {"first_name": "Demo", "surname": ""})
+
+
 def test_tournament_creation_rejects_invalid_audience_before_database_write():
     with pytest.raises(ValueError, match="audience must be internal or open"):
         tournament_logic.create_tournament(
@@ -138,16 +143,45 @@ def test_tournament_creation_rejects_draw_limit_below_two_before_database_write(
         )
 
 
-def test_entry_serializer_maps_ability_level_to_grade():
+@pytest.mark.parametrize(("ability_level", "grade"), [(1, "A"), (2, "B"), (3, "C"), (4, "D")])
+def test_entry_serializer_maps_ability_level_to_grade(ability_level, grade):
     entry = tournament_logic._serialize_entry({
         "id": "07fd1fc6-4133-4872-b469-112841c49384",
         "player_id": "e1cbcc2a-d9bd-48b4-96c9-5643140d23ef",
         "first_name_snapshot": "Sam",
         "surname_snapshot": "Player",
-        "ability_level": 4,
+        "ability_level": ability_level,
     })
 
-    assert entry["ability_grade"] == "A"
+    assert entry["ability_grade"] == grade
+
+
+def test_knockout_pairings_put_top_entries_into_non_power_of_two_byes():
+    entries = [{"id": str(index)} for index in range(1, 7)]
+    pairings = tournament_logic._knockout_pairings(entries)
+    assert len(pairings) == 4
+    assert pairings[0] == (entries[0], None)
+    assert pairings[1] == (entries[1], None)
+    assert pairings[2:] == [(entries[2], entries[3]), (entries[4], entries[5])]
+
+
+def test_knockout_pairings_allow_single_entry_grade_as_bye():
+    entry = {"id": "1"}
+    assert tournament_logic._knockout_pairings([entry]) == [(entry, None)]
+
+
+@pytest.mark.parametrize(("entrant_count", "round_count", "matches_per_round"), [(6, 5, 3), (5, 5, 2)])
+def test_round_robin_circle_method(entrant_count, round_count, matches_per_round):
+    entries = [{"id": str(index)} for index in range(entrant_count)]
+    rounds = tournament_logic._round_robin_pairings(entries)
+    assert len(rounds) == round_count
+    assert all(len(matches) == matches_per_round for matches in rounds)
+    pairings = {
+        frozenset((player1["id"], player2["id"]))
+        for matches in rounds
+        for player1, player2 in matches
+    }
+    assert len(pairings) == entrant_count * (entrant_count - 1) // 2
 
 
 def test_missing_draw_table_falls_back_to_expected_draw_groups():
