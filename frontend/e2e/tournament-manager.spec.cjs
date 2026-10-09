@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
         features: { tournament_manager: { web_enabled: true } },
       },
       users: [],
-      courts: [],
+      courts: [{ id: 9, court_name: "Court 1", court_alias: "Show Court" }],
     },
   }) }));
   await page.route("**/organizations/77/tournaments", async (route) => route.fulfill({
@@ -133,16 +133,20 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(page.locator(".club-page-header__page-title")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "All Tournaments" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
+  await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "View tournament details" }).click();
   await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Summary" })).toHaveCount(0);
   const summaryRows = page.locator(".tournament-summary-details > span");
-  await expect(summaryRows).toHaveCount(5);
-  await expect(summaryRows.nth(0)).toContainText("Venue:");
-  await expect(summaryRows.nth(1)).toContainText("Start:");
-  await expect(summaryRows.nth(1)).toContainText("End:");
-  await expect(summaryRows.nth(2)).toHaveText("Open tournament");
-  await expect(summaryRows.nth(3)).toHaveText("Graded tournament");
-  await expect(summaryRows.nth(4)).toContainText("Size limit:");
+  await expect(summaryRows).toHaveCount(6);
+  await expect(summaryRows.nth(1)).toContainText("Venue:");
+  await expect(summaryRows.nth(2)).toContainText("Start:");
+  await expect(summaryRows.nth(2)).toContainText("End:");
+  await expect(summaryRows.nth(3)).toHaveText("Open tournament");
+  await expect(summaryRows.nth(4)).toHaveText("Graded tournament");
+  await expect(summaryRows.nth(5)).toContainText("Size limit:");
+  await expect(page.getByRole("tab", { name: "Draw" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Entrants" }).click();
   await expect(page.getByLabel("Country")).toHaveCount(0);
   await expect(page.getByLabel("Seed")).toHaveCount(0);
 
@@ -161,17 +165,15 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(manualButton).toHaveCSS("background-color", "rgb(18, 116, 208)");
   await expect(manualButton).toHaveCSS("border-radius", "999px");
 
-  const summaryPanels = page.locator(".tournament-summary-grid > .panel");
+  const summaryPanel = page.locator(".tournament-selected-summary");
   const managerPanels = page.locator(".tournament-manager-grid > .panel");
-  const [summaryLeft, summaryRight, managerLeft, managerRight] = await Promise.all([
-    summaryPanels.nth(0).boundingBox(),
-    summaryPanels.nth(1).boundingBox(),
+  const [summary, managerLeft, managerRight] = await Promise.all([
+    summaryPanel.boundingBox(),
     managerPanels.nth(0).boundingBox(),
     managerPanels.nth(1).boundingBox(),
   ]);
-  expect(Math.abs(summaryLeft.x - managerLeft.x)).toBeLessThan(2);
-  expect(Math.abs(summaryRight.x - managerRight.x)).toBeLessThan(2);
-  expect(Math.abs(summaryLeft.width - managerLeft.width)).toBeLessThan(2);
+  expect(Math.abs(summary.x - managerLeft.x)).toBeLessThan(2);
+  expect(Math.abs((summary.x + summary.width) - (managerRight.x + managerRight.width))).toBeLessThan(2);
 });
 
 test("previews CSV duplicates and locks linked account identity fields @tournament", async ({ page }) => {
@@ -217,6 +219,7 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
   }));
 
   await page.goto(`/tournaments/${tournament.id}`);
+  await page.getByRole("tab", { name: "Entrants" }).click();
   await expect(page.getByRole("heading", { name: "Add Players" })).toBeVisible();
   const entryCards = page.locator(".tournament-entry-card");
   await expect(entryCards.nth(0).locator(".tournament-entry-card__identity").locator("span").nth(0)).toHaveText("alex.guest@example.com");
@@ -280,7 +283,8 @@ test("displays a published opening draw and locks entries @tournament", async ({
   await expect(page.getByRole("heading", { name: "Open Draw" })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayOne", { exact: true })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match").getByText("Demo PlayTwo", { exact: true })).toBeVisible();
-  await expect(page.locator(".tournament-summary-grid .status-pill", { hasText: "Live" })).toHaveCSS("color", "rgb(20, 115, 60)");
+  await expect(page.locator(".tournament-selected-summary .status-pill", { hasText: "Live" })).toHaveCSS("color", "rgb(20, 115, 60)");
+  await page.getByRole("tab", { name: "Entrants" }).click();
   await expect(page.getByText("Player entries are locked because the draw has been published.")).toBeVisible();
   await expect(page.getByLabel("Search Players")).toHaveCount(0);
 });
@@ -304,6 +308,43 @@ test("repairs a draw-ready tournament when fixture data is missing @tournament",
 
   await expect(page.getByText("Live", { exact: true })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match")).toContainText("Demo PlayOne");
+});
+
+test("offers scheduling and result entry only for playable tournament matches @tournament", async ({ page }) => {
+  const entries = [
+    { id: "entry-1", display_name: "Demo PlayOne", first_name: "Demo", surname: "PlayOne", ability_level: 1, ability_grade: "A" },
+    { id: "entry-2", display_name: "Demo PlayTwo", first_name: "Demo", surname: "PlayTwo", ability_level: 1, ability_grade: "A" },
+    { id: "entry-3", display_name: "Demo PlayThree", first_name: "Demo", surname: "PlayThree", ability_level: 2, ability_grade: "B" },
+    { id: "entry-4", display_name: "Demo PlayFour", first_name: "Demo", surname: "PlayFour", ability_level: 2, ability_grade: "B" },
+  ];
+  const playableMatch = { id: "match-ready", round_number: 1, match_number: 1, status: "pending", player1_entry_id: "entry-1", player2_entry_id: "entry-2", player1_name: "Demo PlayOne", player2_name: "Demo PlayTwo" };
+  const scoreMatch = { id: "match-score", round_number: 1, match_number: 2, status: "pending", player1_entry_id: "entry-3", player2_entry_id: "entry-4", player1_name: "Demo PlayThree", player2_name: "Demo PlayFour" };
+  const waitingMatch = { id: "match-waiting", round_number: 2, match_number: 1, status: "pending", player1_entry_id: null, player2_entry_id: null, player1_name: "", player2_name: "" };
+  const liveTournament = { ...tournament, status: "draw_published", graded_enabled: false, entries, draws: [{ id: "open-draw", name: "Open Draw", status: "published", matches: [playableMatch, scoreMatch, waitingMatch], plate_matches: [] }] };
+  const scheduledTournament = { ...liveTournament, draws: [{ ...liveTournament.draws[0], matches: [{ ...playableMatch, status: "scheduled", scoring_match_id: "scoring-1" }, scoreMatch, waitingMatch] }] };
+  const completedTournament = { ...scheduledTournament, draws: [{ ...scheduledTournament.draws[0], matches: [{ ...playableMatch, status: "scheduled", scoring_match_id: "scoring-1" }, { ...scoreMatch, status: "completed", winner_entry_id: "entry-3", score_summary: "3-1", result_source: "manual" }, { ...waitingMatch, player2_entry_id: "entry-3", player2_name: "Demo PlayThree" }] }] };
+  await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({ json: envelope({ tournament: liveTournament }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw/matches/match-ready/schedule`, async (route) => route.fulfill({ json: envelope({ tournament: scheduledTournament, match: { id: "scoring-1", tournament_name: tournament.name } }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw/matches/match-score/result`, async (route) => route.fulfill({ json: envelope({ tournament: completedTournament }) }));
+
+  await page.goto(`/tournaments/${tournament.id}`);
+  await expect(page.getByRole("button", { name: /Match options for Demo PlayOne and Demo PlayTwo/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Match options for Demo PlayThree and Demo PlayFour/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Match options for Winner 1 and Winner 2/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Match options for Demo PlayOne and Demo PlayTwo/ }).click();
+  await page.getByRole("button", { name: "Schedule Match" }).click();
+  await expect(page.getByRole("heading", { name: "Schedule Tournament Match" })).toBeVisible();
+  await expect(page.getByLabel("Court")).toHaveValue("9");
+  await page.getByRole("button", { name: "Add to Scheduled Matches" }).click();
+  await expect(page.getByText(`${tournament.name} match added to Scheduled Matches.`)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Match options for Demo PlayOne and Demo PlayTwo/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /Match options for Demo PlayThree and Demo PlayFour/ }).click();
+  await page.getByRole("button", { name: "Add Score" }).click();
+  await expect(page.getByRole("heading", { name: "Add Match Score" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Full Match Score" }).fill("1103, 11-4, 3-11, 11-7");
+  await page.getByRole("button", { name: "Save Score" }).click();
+  await expect(page.getByText("Tournament result saved and the winner advanced.")).toBeVisible();
+  await expect(page.locator(".tournament-bracket-match").nth(1)).toContainText("3-1");
 });
 
 test("reviews, publishes and safely returns a seeded knockout draw to draft @tournament", async ({ page }) => {
@@ -331,8 +372,10 @@ test("reviews, publishes and safely returns a seeded knockout draw to draft @tou
     }],
   };
   const publishedDraw = { ...draftDraw, status: "draw_published", public_draw_key: "DRAWKEY23456", public_draw_enabled: true, draws: draftDraw.draws.map((draw) => ({ ...draw, status: "published" })) };
+  const privatePublishedDraw = { ...publishedDraw, public_draw_enabled: false };
   await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({ json: envelope({ tournament: draftDraw }) }));
   await page.route(`**/tournaments/${tournament.id}/draw/publish`, async (route) => route.fulfill({ json: envelope({ tournament: publishedDraw }) }));
+  await page.route(`**/tournaments/${tournament.id}/draw/public-access`, async (route) => route.fulfill({ json: envelope({ tournament: privatePublishedDraw }) }));
   await page.route(`**/tournaments/${tournament.id}/draw/draft`, async (route) => route.fulfill({ json: envelope({ tournament: draftDraw }) }));
 
   await page.goto(`/tournaments/${tournament.id}`);
@@ -344,6 +387,13 @@ test("reviews, publishes and safely returns a seeded knockout draw to draft @tou
   await expect(page.getByText("Live", { exact: true })).toBeVisible();
   await expect(page.getByText("DRAWKEY23456", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Public Draw" })).toBeVisible();
+  const summary = page.locator(".tournament-selected-summary");
+  await expect(summary.getByRole("switch", { name: "Public draw access" })).toBeChecked();
+  await expect(summary.getByRole("button", { name: "Return Draw to Draft" })).toBeVisible();
+  await summary.getByRole("switch", { name: "Public draw access" }).uncheck();
+  await expect(page.getByText("Public draw access disabled.")).toBeVisible();
+  await expect(summary.getByText("Disabled", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Public Draw" })).toHaveCount(0);
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Return Draw to Draft" }).click();

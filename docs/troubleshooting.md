@@ -615,16 +615,21 @@ and web changes.
 The tournament detail read checks for `tournament_draws` and `tournament_matches`
 before querying them. It returns temporary derived draw-group labels, or draw
 groups without fixtures, during a staggered deployment. Migration `032` is still
-mandatory before creating events, migration `034` before generating draws, and
-migration `035_tournament_draw_publication.sql` before publishing or public access.
+mandatory before creating events, migration `034` before generating draws,
+migration `035_tournament_draw_publication.sql` before publishing or public access,
+and migration `036_tournament_match_results.sql` before scheduling fixtures or
+recording results.
 
 If Generate Draw is disabled, the event needs at least two active entrants and
 the current membership must be a club admin. If the draw request fails after the
 button becomes available, confirm `034_tournament_draw_matches.sql` has been
 applied. Draw generation now creates an editable draft; only **Publish Draw**
-changes the event to `draw_published` and locks entry changes. Round robin creates every round;
-knockout, knockout-with-plate and Monrad currently create the opening round only.
-Plate entrants and later Monrad/knockout rounds wait for result progression.
+changes the event to `draw_published` and locks entry changes. Round robin creates
+every round; knockout and knockout-with-plate create complete future-round trees,
+while Monrad currently creates the opening round only. Knockout winners progress
+automatically, and first-round knockout-with-plate losers populate the plate. Older
+published knockout draws with opening-round rows only backfill their future rounds
+when the first result is saved after migration `036`.
 A generated, unpublished draw is shown as **Draw ready**, with **Publish Draw**
 above the bracket. The database value `draw_published` is shown as **Live**. From
 the tournament list, select **View Draw**. If the detail page instead reports
@@ -635,6 +640,21 @@ If publishing does not produce a public key, confirm migration `035` and the
 publish Lambda routes were deployed together. Public responses deliberately omit
 emails, account IDs and membership details. **Return Draw to Draft** disables the
 key immediately and refuses to proceed once a match has started or completed.
+The Public Access switch is in the live tournament description card and is
+club-admin-only. Turning it off preserves the key for later reuse but causes the
+public route to return not found until the switch is enabled again; it does not
+change the draw's Live status.
+
+If a fixture action icon is absent, confirm the draw is Live and both participant
+slots contain actual entrants rather than Winner/Bye placeholders. Scheduling also
+requires at least one active club court. A scheduled match carries
+`tournament_event_id`, `tournament_match_id` and `tournament_name`; if its Tournament
+label is missing from Scheduled Matches, confirm migration `036` and the updated
+match serializers are deployed together. Once scheduled, enter the result through
+that linked scoring match; the separate manual score action is removed to prevent
+two conflicting result sources. Ordinary approved members can enter an unscheduled
+fixture's first result, but only club admins can use **Edit Score**. Admin corrections are
+rejected when a dependent next-round fixture has already started or completed.
 
 CSV player imports require `First Name` and `Surname` headers. Optional recognised
 headers are Email, Club and Ability (1–4). Duplicate warnings are produced for

@@ -1121,6 +1121,18 @@ Resources:
             Path: /tournaments/{tournament_id}/draw/publish
             Method: POST
 
+  SetTournamentPublicAccessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/set_tournament_public_access/handler.lambda_handler
+      Events:
+        SetTournamentPublicAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/public-access
+            Method: PUT
+
   ReturnTournamentDrawToDraftFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1156,6 +1168,30 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /public/tournament-draws/{access_key}
             Method: GET
+
+  ScheduleTournamentMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/schedule_tournament_match/handler.lambda_handler
+      Events:
+        ScheduleTournamentMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/matches/{match_id}/schedule
+            Method: POST
+
+  RecordTournamentMatchResultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/record_tournament_match_result/handler.lambda_handler
+      Events:
+        RecordTournamentMatchResult:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /tournaments/{tournament_id}/draw/matches/{match_id}/result
+            Method: PUT
 
   HttpApiServerErrorsAlarm:
     Type: AWS::CloudWatch::Alarm

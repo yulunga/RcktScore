@@ -87,8 +87,8 @@ export default function PublicTournamentDrawPage() {
               {tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate" ? (
                 <div className="stack">
                   <TournamentBracket draw={draw} entries={tournament.entries || []} title={`${draw.name} — Championship`} />
-                  {tournament.draw_format === "knockout_plate" && publicPlateDraw(draw).matches.length ? (
-                    <TournamentBracket draw={publicPlateDraw(draw)} title={`${draw.name} — Plate`} />
+                  {tournament.draw_format === "knockout_plate" && ((draw.plate_matches || []).length || publicPlateDraw(draw).matches.length) ? (
+                    <TournamentBracket draw={(draw.plate_matches || []).length ? { ...draw, id: `${draw.id}-plate`, matches: draw.plate_matches } : publicPlateDraw(draw)} title={`${draw.name} — Plate`} />
                   ) : null}
                 </div>
               ) : (

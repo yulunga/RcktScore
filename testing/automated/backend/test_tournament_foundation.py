@@ -243,3 +243,53 @@ def test_graded_tournament_creation_creates_four_draw_groups():
     ]
     assert [params["grade"] for params in draw_params] == ["A", "B", "C", "D"]
     assert connection.committed is True
+
+
+@pytest.mark.parametrize(("current", "requested"), [(True, False), (False, True)])
+def test_public_draw_access_toggle_preserves_live_status_and_audits(monkeypatch, current, requested):
+    event_id = "07fd1fc6-4133-4872-b469-112841c49384"
+    connection = SingleRowConnection([])
+    monkeypatch.setattr(tournament_logic, "_fetch_event", lambda *_args: {
+        "id": event_id,
+        "status": "draw_published",
+        "public_draw_enabled": current,
+        "public_draw_key": "DRAWKEY23456",
+    })
+    monkeypatch.setattr(tournament_logic, "get_tournament", lambda *_args: {
+        "id": event_id,
+        "status": "draw_published",
+        "public_draw_enabled": requested,
+    })
+
+    tournament = tournament_logic.set_tournament_public_access(
+        connection, event_id, 77, requested, "admin@example.com"
+    )
+
+    assert tournament["status"] == "draw_published"
+    assert tournament["public_draw_enabled"] is requested
+    assert connection.committed is True
+    update_params = next(params for query, params in connection.statements if "UPDATE tournament_events" in query)
+    assert update_params["enabled"] is requested
+    assert any("draw_public_access_" in params.get("action", "") for _query, params in connection.statements)
+
+
+@pytest.mark.parametrize(
+    ("entered", "summary", "winner_side", "game_count"),
+    [
+        ("1103, 11-4, 3-11, 11-7", "3-1", "player1", 4),
+        ("11-8, 6-11, 9-11, 7-11", "1-3", "player2", 4),
+        ("3-1 win", "3-1", "player1", 0),
+    ],
+)
+def test_tournament_score_parser_accepts_full_games_compact_games_and_summary(entered, summary, winner_side, game_count):
+    result = tournament_logic._score_result(entered)
+
+    assert result["summary"] == summary
+    assert result["winner_side"] == winner_side
+    assert len(result["games"]) == game_count
+
+
+@pytest.mark.parametrize("entered", ["", "11-11", "one nil", "2-2 win"])
+def test_tournament_score_parser_rejects_missing_invalid_or_tied_results(entered):
+    with pytest.raises(ValueError):
+        tournament_logic._score_result(entered)

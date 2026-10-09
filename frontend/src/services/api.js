@@ -432,6 +432,13 @@ export function publishTournamentDraw(tournamentId, payload) {
   });
 }
 
+export function setTournamentPublicAccess(tournamentId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/public-access`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function returnTournamentDrawToDraft(tournamentId, payload) {
   return apiRequest(`/tournaments/${tournamentId}/draw/draft`, {
     method: "POST",
@@ -441,6 +448,20 @@ export function returnTournamentDrawToDraft(tournamentId, payload) {
 
 export function updateTournamentDrawSlot(tournamentId, matchId, payload) {
   return apiRequest(`/tournaments/${tournamentId}/draw/matches/${matchId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function scheduleTournamentMatch(tournamentId, matchId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/matches/${matchId}/schedule`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function recordTournamentMatchResult(tournamentId, matchId, payload) {
+  return apiRequest(`/tournaments/${tournamentId}/draw/matches/${matchId}/result`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });

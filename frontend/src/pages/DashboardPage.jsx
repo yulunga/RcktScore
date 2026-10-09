@@ -608,6 +608,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           </div>
 
           <div className="dashboard-scheduled-card__center">
+            {match.tournament_name ? <span className="status-pill status-pill--live">{match.tournament_name}</span> : null}
             <span className="dashboard-scheduled-card__court-detail">
               {match.court_alias || match.court_name || "Unassigned Court"}
             </span>
@@ -646,6 +647,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
               <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
               <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
+              {match.tournament_name ? <span>{`Tournament: ${match.tournament_name}`}</span> : null}
               <div className="dashboard-scheduled-card__detail-actions">
                 <button
                   className="dashboard-scheduled-card__edit"

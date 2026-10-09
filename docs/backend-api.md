@@ -265,7 +265,10 @@ Current root-admin Tournament Manager behavior:
 - `PUT /tournaments/{tournament_id}/entries/{entry_id}`
 - `POST /tournaments/{tournament_id}/draw`
 - `PUT /tournaments/{tournament_id}/draw/matches/{match_id}`
+- `POST /tournaments/{tournament_id}/draw/matches/{match_id}/schedule`
+- `PUT /tournaments/{tournament_id}/draw/matches/{match_id}/result`
 - `POST /tournaments/{tournament_id}/draw/publish`
+- `PUT /tournaments/{tournament_id}/draw/public-access`
 - `POST /tournaments/{tournament_id}/draw/draft`
 - `GET /public/tournament-draws/{access_key}` (no login)
 
@@ -273,8 +276,10 @@ All authenticated tournament routes require an approved membership of the owning
 club and an enabled `tournament_organization_features.web_enabled` record. The
 public-key route is the deliberate read-only exception and returns no email or
 account identifiers. Listing and
-reading tournaments are available to ordinary club members. Creating tournaments,
-searching/changing entries and generating draws remain club-admin operations.
+reading tournaments, scheduling a playable fixture and entering its first result
+are available to ordinary approved club members. Creating tournaments,
+searching/changing entries, generating draws and correcting an entered result
+remain club-admin operations.
 Draft events persist
 an `internal` or `open` audience, optional A–D grading and an optional entry-size
 limit. Internal events reject guest entries and size-limited events reject entries
@@ -287,19 +292,31 @@ exact and prefix matches rank first and the web client displays at most four can
 
 `POST /tournaments/{tournament_id}/draw` persists a reviewable draft in
 `tournament_matches`; it does not publish or lock the entrant list. Round robin
-uses the circle method and produces every round. Knockout, knockout-with-plate and
-Monrad currently produce the opening round; non-power-of-two knockout fields give
-top seeds byes and distribute seeds into separated bracket positions. Organisers
+uses the circle method and produces every round. Knockout and knockout-with-plate
+persist their complete future-round trees, while Monrad currently produces its
+opening round; non-power-of-two knockout fields give top seeds byes and distribute
+seeds into separated bracket positions. Organisers
 can swap first-round players through the match endpoint, then explicitly publish.
 Publishing locks entries and issues a 12-character public read-only key. Returning
 to draft requires an explicit client confirmation, disables public access, and is
-rejected after a fixture has started or completed. Plate population, later
-knockout/Monrad progression, scheduling and scoring-match linkage remain unimplemented.
+rejected after a fixture has started or completed. A live knockout fixture exposes
+actions only after both players are known. Scheduling creates a normal scheduled
+`matches` row with tournament identifiers/name and makes that scoring match the
+result source. An unscheduled fixture's manual result entry accepts either
+game scores (including compact values such as `1103`) or a match summary such as
+`3-1 win`. Winners advance through knockout trees and first-round championship
+losers enter a knockout-with-plate draw; later Monrad pairing and round-robin
+standings remain unimplemented. A published legacy knockout that contains only its
+opening round receives the missing future-round and plate structure when its first
+result is recorded.
+`PUT /tournaments/{tournament_id}/draw/public-access` is admin-only, accepts a
+boolean `enabled`, preserves the event's key when disabled, and immediately enables
+or rejects no-login reads without changing the live draw status.
 The web client labels a generated draft **Draw ready** and a published draw
 **Live**; these are presentation labels over the existing draft and
 `draw_published` API states.
-Migrations `034_tournament_draw_matches.sql` and
-`035_tournament_draw_publication.sql` are required.
+Migrations `034_tournament_draw_matches.sql`,
+`035_tournament_draw_publication.sql` and `036_tournament_match_results.sql` are required.
 Generation is idempotent after publication when fixtures exist. If an event is
 already `draw_published` but has no fixture rows, the same endpoint rebuilds them
 and records a `draw_rebuilt` audit event.
@@ -317,7 +334,7 @@ matching record.
 `tournament_matches` exist before reading them. It derives temporary A–D/Open
 group labels when a backend deployment briefly precedes migration `032`, and
 returns draw groups without fixtures if migration `034` is pending. Event creation
-and draw generation/publication still require their respective migrations.
+and draw generation/publication/result writes still require their respective migrations.
 
 Current root-admin platform-sport behavior:
 

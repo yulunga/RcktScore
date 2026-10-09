@@ -152,14 +152,22 @@ def score_point(connection, match_id, scorer, source="api"):
     engine, _ = _resolve_engine_for_match_id(connection, match_id)
     if engine is None:
         return None
-    return engine.score_point(connection, match_id, scorer, source=source)
+    match = engine.score_point(connection, match_id, scorer, source=source)
+    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
+        from common.tournament.tournament_logic import sync_tournament_scoring_result
+        sync_tournament_scoring_result(connection, match)
+    return match
 
 
 def event_action(connection, match_id, action_type, payload, source="api"):
     engine, _ = _resolve_engine_for_match_id(connection, match_id)
     if engine is None:
         return None
-    return engine.event_action(connection, match_id, action_type, payload, source=source)
+    match = engine.event_action(connection, match_id, action_type, payload, source=source)
+    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
+        from common.tournament.tournament_logic import sync_tournament_scoring_result
+        sync_tournament_scoring_result(connection, match)
+    return match
 
 
 def undo_last_action(connection, match_id):
@@ -173,7 +181,7 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
     engine, _ = _resolve_engine_for_match_id(connection, match_id)
     if engine is None:
         return None
-    return engine.end_match(
+    match = engine.end_match(
         connection,
         match_id,
         source=source,
@@ -181,6 +189,10 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
         ended_early=ended_early,
         match_duration_seconds=match_duration_seconds,
     )
+    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
+        from common.tournament.tournament_logic import sync_tournament_scoring_result
+        sync_tournament_scoring_result(connection, match)
+    return match
 
 
 def is_personal_tenant(connection, tenant_id):

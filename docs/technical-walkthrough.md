@@ -286,6 +286,21 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
     disables that key and is blocked after results start. The web client presents
     a generated, unpublished draft as **Draw ready** and `draw_published` as
     **Live**. Legacy status-only events expose **Rebuild Missing Draw**.
+14. The selected tournament uses a full-width summary card with its metadata
+    collapsed behind **View tournament details**. A Draw/Entrants segmented control
+    keeps bracket work separate from player management. For a live draw the summary
+    also contains the public-access switch and confirmation-protected return-to-draft
+    edit control. Disabling public access leaves the internal draw Live but makes its
+    no-login key unavailable immediately.
+15. On a live draw, fixture actions appear only when both player slots contain
+    real entrants. Any approved club member can create a standard scheduled scoring
+    match or enter the completed score; correcting an entered result remains
+    club-admin-only.
+16. Scheduled scoring matches store the tournament event, fixture and tournament
+    name. When scoring completes, the shared match lifecycle records the tournament
+    result. Knockout winners advance to their next fixture, and first-round losers
+    enter the plate for knockout-with-plate events. An older published knockout
+    containing only opening-round rows backfills its remaining tree on first result.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
 optional Email, Club and Ability columns. It previews invalid and duplicate rows,
@@ -300,15 +315,17 @@ means that the reusable player identity belongs to a registered HitNScore accoun
 it does not grant a plan, role or club access. Published list entries use a green
 Live badge in the client.
 
-Ordinary club members may list and read tournaments. Creation and entry changes
-remain restricted to club administrators.
+Ordinary club members may list/read tournaments and schedule or score ready live
+fixtures. Creation, entry changes, draw changes and result corrections remain
+restricted to club administrators.
 
 Tournament detail reads use `to_regclass` before querying `tournament_draws` or
 `tournament_matches`, so
 an existing event remains readable during a staggered schema deployment. The
 fallback only supplies display labels; migration `032` remains required for
 persisted draw groups and new-event creation. Migration `034` is required to
-generate fixtures, and migration `035` supplies publication keys and seed uniqueness.
+generate fixtures, migration `035` supplies publication keys and seed uniqueness,
+and migration `036` supplies bracket/result/scoring-link fields.
 
 The seeded Demo Club has the feature enabled. Its approved
 `demouser@democlub.com` login is intentionally password-disabled until root admin

@@ -7,10 +7,14 @@ import { useAuth } from "../../../hooks/useAuth";
 import {
   createTournamentEntry,
   generateTournamentDraw,
+  getOrganizationSettings,
   getTournament,
   publishTournamentDraw,
+  recordTournamentMatchResult,
   returnTournamentDrawToDraft,
+  scheduleTournamentMatch,
   searchTournamentPlayers,
+  setTournamentPublicAccess,
   updateTournamentDrawSlot,
   updateTournamentEntry,
 } from "../../../services/api";
@@ -161,6 +165,15 @@ function GearIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 20h4l10.7-10.7a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+      <path d="m14.5 7.5 3 3" />
+    </svg>
+  );
+}
+
 function EntryIndicator({ className = "", description, label, children }) {
   return (
     <span
@@ -216,6 +229,13 @@ export default function TournamentDetailPage() {
   const [drawing, setDrawing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("draw");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [matchAction, setMatchAction] = useState(null);
+  const [matchScore, setMatchScore] = useState("");
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [scheduleForm, setScheduleForm] = useState({ court_id: "", best_of: "3", score_type: "11" });
+  const [matchActionSaving, setMatchActionSaving] = useState(false);
   const searchRequestRef = useRef(0);
 
   const load = useCallback(async () => {
@@ -235,6 +255,13 @@ export default function TournamentDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    getOrganizationSettings(organizationId)
+      .then((response) => setAvailableCourts(response?.organizationSettings?.courts || []))
+      .catch(() => setAvailableCourts([]));
+  }, [organizationId]);
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -554,6 +581,28 @@ export default function TournamentDetailPage() {
     }
   }
 
+  async function handlePublicAccessChange(event) {
+    const enabled = event.target.checked;
+    const previousTournament = tournament;
+    setTournament((current) => ({ ...current, public_draw_enabled: enabled }));
+    setDrawing(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await setTournamentPublicAccess(tournamentId, {
+        organization_id: organizationId,
+        enabled,
+      });
+      setTournament(response?.tournament || tournament);
+      setMessage(enabled ? "Public draw access enabled." : "Public draw access disabled.");
+    } catch (requestError) {
+      setTournament(previousTournament);
+      setError(requestError.message || "Unable to change public draw access.");
+    } finally {
+      setDrawing(false);
+    }
+  }
+
   async function handleMovePlayer(matchId, slot, entryId) {
     if (!entryId) return;
     setDrawing(true);
@@ -573,6 +622,68 @@ export default function TournamentDetailPage() {
     }
   }
 
+  function openScheduleMatch(match) {
+    const firstCourt = availableCourts[0];
+    setScheduleForm({
+      court_id: firstCourt ? String(firstCourt.id) : "",
+      best_of: "3",
+      score_type: "11",
+    });
+    setMatchAction({ type: "schedule", match });
+    setError("");
+  }
+
+  function openScoreMatch(match) {
+    setMatchScore(match.score_data?.entered_score || match.score_summary || "");
+    setMatchAction({ type: "score", match });
+    setError("");
+  }
+
+  async function handleScheduleTournamentMatch(event) {
+    event.preventDefault();
+    const court = availableCourts.find((item) => String(item.id) === scheduleForm.court_id);
+    if (!court) return;
+    setMatchActionSaving(true);
+    setError("");
+    try {
+      const response = await scheduleTournamentMatch(tournamentId, matchAction.match.id, {
+        organization_id: organizationId,
+        court_id: court.id,
+        court_name: court.court_name,
+        court_alias: court.court_alias || court.court_name,
+        best_of: Number(scheduleForm.best_of),
+        score_type: Number(scheduleForm.score_type),
+      });
+      setTournament(response?.tournament || tournament);
+      setMatchAction(null);
+      setMessage(`${tournament.name} match added to Scheduled Matches.`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to schedule the tournament match.");
+    } finally {
+      setMatchActionSaving(false);
+    }
+  }
+
+  async function handleRecordTournamentResult(event) {
+    event.preventDefault();
+    setMatchActionSaving(true);
+    setError("");
+    try {
+      const response = await recordTournamentMatchResult(tournamentId, matchAction.match.id, {
+        organization_id: organizationId,
+        score: matchScore,
+      });
+      setTournament(response?.tournament || tournament);
+      setMatchAction(null);
+      setMatchScore("");
+      setMessage("Tournament result saved and the winner advanced.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to save the tournament result.");
+    } finally {
+      setMatchActionSaving(false);
+    }
+  }
+
   const visibleSearchResults = selectedPlayer ? [selectedPlayer] : searchResults.slice(0, 4);
   const generatedDraws = (tournament?.draws || []).filter((draw) => (draw.matches || []).length > 0);
   const entriesEditable = ["draft", "registration"].includes(tournament?.status);
@@ -580,7 +691,7 @@ export default function TournamentDetailPage() {
   const displayStatus = tournament?.status === "draw_published"
     ? (publishedDrawMissing ? "Draw needs rebuilding" : "Live")
     : generatedDraws.length ? "Draw ready" : (tournament?.status || "draft").replaceAll("_", " ");
-  const publicDrawUrl = tournament?.public_draw_key && typeof window !== "undefined"
+  const publicDrawUrl = tournament?.public_draw_enabled && tournament?.public_draw_key && typeof window !== "undefined"
     ? `${window.location.origin}/tournament-draw/${tournament.public_draw_key}`
     : "";
 
@@ -594,28 +705,81 @@ export default function TournamentDetailPage() {
 
       {tournament ? (
         <>
-          <section className="tournament-summary-grid">
-            <article className="panel stack">
+          <section className="tournament-selected-layout">
+            <article className="panel stack tournament-selected-summary">
               <div className="dashboard-item-head">
                 <div className="panel-heading">
                   <h2>{tournament.name}</h2>
-                  <p className="helper-text">
-                    {optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}
-                  </p>
                 </div>
                 <span className={`status-pill${publishedDrawMissing ? " warning" : tournament.status === "draw_published" ? " status-pill--live" : ""}`}>
                   {displayStatus}
                 </span>
               </div>
-              <div className="tournament-summary-details">
-                <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
-                <span>Start: {tournament.starts_on || "Not set"} · End: {tournament.ends_on || "Not set"}</span>
-                <span>{tournament.audience === "open" ? "Open tournament" : "Internal tournament"}</span>
-                <span>{tournament.graded_enabled ? "Graded tournament" : "Ungraded tournament"}</span>
-                <span>{tournament.draw_size_limit ? `Size limit: ${tournament.draw_size_limit} entries` : "No size limit"}</span>
-              </div>
+              <button
+                aria-expanded={detailsOpen}
+                className="tournament-details-toggle"
+                type="button"
+                onClick={() => setDetailsOpen((current) => !current)}
+              >
+                {detailsOpen ? "Hide tournament details" : "View tournament details"}
+              </button>
+              {detailsOpen ? (
+                <div className="tournament-summary-details">
+                  <span>{optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}</span>
+                  <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
+                  <span>Start: {tournament.starts_on || "Not set"} · End: {tournament.ends_on || "Not set"}</span>
+                  <span>{tournament.audience === "open" ? "Open tournament" : "Internal tournament"}</span>
+                  <span>{tournament.graded_enabled ? "Graded tournament" : "Ungraded tournament"}</span>
+                  <span>{tournament.draw_size_limit ? `Size limit: ${tournament.draw_size_limit} entries` : "No size limit"}</span>
+                </div>
+              ) : null}
+              {tournament.status === "draw_published" ? (
+                <div className="tournament-summary-actions">
+                  <div className="tournament-public-toggle-row">
+                    <span>
+                      <strong>Public access</strong>
+                      <small>Allow anyone with the draw key to view this tournament.</small>
+                    </span>
+                    <label className={`tournament-public-switch${!isAdmin ? " tournament-public-switch--readonly" : ""}`}>
+                      <input
+                        aria-label="Public draw access"
+                        checked={Boolean(tournament.public_draw_enabled)}
+                        disabled={!isAdmin || drawing}
+                        role="switch"
+                        type="checkbox"
+                        onChange={handlePublicAccessChange}
+                      />
+                      <span aria-hidden="true"><span /></span>
+                    </label>
+                  </div>
+                  <div className="tournament-public-details">
+                    <code>{tournament.public_draw_enabled ? tournament.public_draw_key || "Unavailable" : "Disabled"}</code>
+                    {publicDrawUrl ? <a href={publicDrawUrl} target="_blank" rel="noreferrer">Open Public Draw</a> : null}
+                    {isAdmin ? (
+                      <button
+                        aria-label="Return Draw to Draft"
+                        className="tournament-draft-edit-button"
+                        disabled={drawing}
+                        type="button"
+                        onClick={handleReturnToDraft}
+                      >
+                        <EditIcon />
+                        <span>Return to draft</span>
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </article>
-            <article className={`panel stack tournament-next-stage${generatedDraws.length ? " tournament-next-stage--wide" : ""}`}>
+          </section>
+
+          <nav className="tournament-section-tabs" aria-label="Tournament sections" role="tablist">
+            <button className={activeTab === "draw" ? "active" : ""} role="tab" aria-selected={activeTab === "draw"} type="button" onClick={() => setActiveTab("draw")}>Draw</button>
+            <button className={activeTab === "entrants" ? "active" : ""} role="tab" aria-selected={activeTab === "entrants"} type="button" onClick={() => setActiveTab("entrants")}>Entrants</button>
+          </nav>
+
+          {activeTab === "draw" ? (
+            <article className="panel stack tournament-next-stage tournament-next-stage--wide">
               <div className="panel-heading">
                 <h2>Draw & Scheduling</h2>
                 <p className="helper-text">
@@ -648,11 +812,20 @@ export default function TournamentDetailPage() {
                           draw={draw}
                           entries={drawEntries}
                           editable={isAdmin && entriesEditable && !drawing}
+                          isAdmin={isAdmin}
                           title={`${draw.name} — Championship`}
                           onMove={handleMovePlayer}
+                          onSchedule={tournament.status === "draw_published" ? openScheduleMatch : undefined}
+                          onScore={tournament.status === "draw_published" ? openScoreMatch : undefined}
                         />
-                        {tournament.draw_format === "knockout_plate" && buildPlateDraw(draw).matches.length ? (
-                          <TournamentBracket draw={buildPlateDraw(draw)} title={`${draw.name} — Plate`} />
+                        {tournament.draw_format === "knockout_plate" && ((draw.plate_matches || []).length || buildPlateDraw(draw).matches.length) ? (
+                          <TournamentBracket
+                            draw={(draw.plate_matches || []).length ? { ...draw, id: `${draw.id}-plate`, matches: draw.plate_matches } : buildPlateDraw(draw)}
+                            isAdmin={isAdmin}
+                            title={`${draw.name} — Plate`}
+                            onSchedule={tournament.status === "draw_published" ? openScheduleMatch : undefined}
+                            onScore={tournament.status === "draw_published" ? openScoreMatch : undefined}
+                          />
                         ) : null}
                       </React.Fragment>
                     ) : (
@@ -672,18 +845,6 @@ export default function TournamentDetailPage() {
                   {tournament.draw_format === "monrad" ? (
                     <p className="helper-text">Later Monrad rounds will be paired from standings after opening-round results.</p>
                   ) : null}
-                  {tournament.status === "draw_published" ? (
-                    <div className="tournament-public-access stack">
-                      <div><strong>Public read-only draw key</strong><code>{tournament.public_draw_key || "Unavailable"}</code></div>
-                      {publicDrawUrl ? <a href={publicDrawUrl} target="_blank" rel="noreferrer">Open Public Draw</a> : null}
-                      {isAdmin ? (
-                        <div className="button-row">
-                          {!tournament.public_draw_key ? <button disabled={drawing} type="button" onClick={handlePublishDraw}>Enable Public Access</button> : null}
-                          <button className="secondary" disabled={drawing} type="button" onClick={handleReturnToDraft}>Return Draw to Draft</button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 <>
@@ -701,9 +862,9 @@ export default function TournamentDetailPage() {
                 </>
               )}
             </article>
-          </section>
+          ) : null}
 
-          <section className="tournament-manager-grid">
+          {activeTab === "entrants" ? <section className="tournament-manager-grid">
             {isAdmin ? <section className="panel stack">
               <div className="panel-heading">
                 <h2>Add Players</h2>
@@ -888,7 +1049,7 @@ export default function TournamentDetailPage() {
               <section className="panel stack">
                 <div className="panel-heading">
                   <h2>Member View</h2>
-                  <p className="helper-text">Entries are read-only. A club administrator manages players, draws and scheduling.</p>
+                  <p className="helper-text">Entries are read-only. A club administrator manages players and draw setup; use the live draw to schedule matches or enter results.</p>
                 </div>
               </section>
             )}
@@ -1037,8 +1198,59 @@ export default function TournamentDetailPage() {
                 ))}
               </div>
             </section>
-          </section>
+          </section> : null}
         </>
+      ) : null}
+
+      {matchAction ? (
+        <div className="tournament-action-overlay" role="presentation" onMouseDown={() => !matchActionSaving && setMatchAction(null)}>
+          <section className="panel stack tournament-action-dialog" role="dialog" aria-modal="true" aria-labelledby="tournament-action-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="dashboard-item-head">
+              <div className="panel-heading">
+                <h2 id="tournament-action-title">{matchAction.type === "schedule" ? "Schedule Tournament Match" : matchAction.match.status === "completed" ? "Edit Match Score" : "Add Match Score"}</h2>
+                <p className="helper-text">{matchAction.match.player1_name} vs {matchAction.match.player2_name}</p>
+              </div>
+              <button aria-label="Close" className="tournament-action-dialog__close" type="button" onClick={() => setMatchAction(null)}>×</button>
+            </div>
+            {matchAction.type === "schedule" ? (
+              <form className="stack" onSubmit={handleScheduleTournamentMatch}>
+                <div className="field">
+                  <label htmlFor="tournament-schedule-court">Court</label>
+                  <select id="tournament-schedule-court" required value={scheduleForm.court_id} onChange={(event) => setScheduleForm((current) => ({ ...current, court_id: event.target.value }))}>
+                    <option value="">Select a court</option>
+                    {availableCourts.map((court) => <option key={court.id} value={court.id}>{court.court_name}</option>)}
+                  </select>
+                </div>
+                <div className="field-grid">
+                  <div className="field">
+                    <label htmlFor="tournament-schedule-best-of">Match Format</label>
+                    <select id="tournament-schedule-best-of" value={scheduleForm.best_of} onChange={(event) => setScheduleForm((current) => ({ ...current, best_of: event.target.value }))}>
+                      <option value="3">Best of 3</option><option value="5">Best of 5</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="tournament-schedule-score-type">Points per Game</label>
+                    <select id="tournament-schedule-score-type" value={scheduleForm.score_type} onChange={(event) => setScheduleForm((current) => ({ ...current, score_type: event.target.value }))}>
+                      <option value="11">11</option><option value="15">15</option>
+                    </select>
+                  </div>
+                </div>
+                <p className="helper-text">This creates a scheduled scoring match labelled with {tournament?.name}.</p>
+                <div className="button-row"><button disabled={matchActionSaving || !scheduleForm.court_id} type="submit">{matchActionSaving ? "Scheduling..." : "Add to Scheduled Matches"}</button><button className="secondary" type="button" onClick={() => setMatchAction(null)}>Cancel</button></div>
+              </form>
+            ) : (
+              <form className="stack" onSubmit={handleRecordTournamentResult}>
+                <div className="field">
+                  <label htmlFor="tournament-match-score">Full Match Score</label>
+                  <input id="tournament-match-score" required placeholder="11-3, 11-4, 3-11, 11-7 or 3-1" value={matchScore} onChange={(event) => setMatchScore(event.target.value)} />
+                  <small>Enter every game separated by commas, or enter the final games score.</small>
+                </div>
+                <p className="helper-text">Saving advances the winner. A first-round championship loser enters the plate.</p>
+                <div className="button-row"><button disabled={matchActionSaving} type="submit">{matchActionSaving ? "Saving..." : matchAction.match.status === "completed" ? "Save Corrected Score" : "Save Score"}</button><button className="secondary" type="button" onClick={() => setMatchAction(null)}>Cancel</button></div>
+              </form>
+            )}
+          </section>
+        </div>
       ) : null}
 
       <AppFooter />

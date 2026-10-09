@@ -120,9 +120,14 @@ def _serialize_draw_match(row):
         "round_number": int(row.get("round_number") or 1),
         "match_number": int(row.get("match_number") or 1),
         "status": row.get("status") or "pending",
+        "bracket": row.get("bracket") or "championship",
         "player1_entry_id": str(row["player1_entry_id"]) if row.get("player1_entry_id") else None,
         "player2_entry_id": str(row["player2_entry_id"]) if row.get("player2_entry_id") else None,
         "winner_entry_id": str(row["winner_entry_id"]) if row.get("winner_entry_id") else None,
+        "scoring_match_id": str(row["scoring_match_id"]) if row.get("scoring_match_id") else None,
+        "score_data": row.get("score_data") or {},
+        "score_summary": row.get("score_summary") or "",
+        "result_source": "scoring" if row.get("result_entered_by") == "scoring-app" else "manual" if row.get("result_entered_at") else None,
         "player1_name": row.get("player1_name") or "",
         "player2_name": row.get("player2_name") or "",
     }
@@ -321,7 +326,13 @@ def get_tournament(connection, tournament_id, organization_id):
         cursor.execute(
             """
             SELECT to_regclass('public.tournament_draws') AS draw_table,
-                   to_regclass('public.tournament_matches') AS match_table
+                   to_regclass('public.tournament_matches') AS match_table,
+                   EXISTS (
+                       SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = 'public'
+                         AND table_name = 'tournament_matches'
+                         AND column_name = 'bracket'
+                   ) AS result_columns
             """
         )
         draw_tables = cursor.fetchone() or {}
@@ -339,8 +350,9 @@ def get_tournament(connection, tournament_id, organization_id):
             for draw in cursor.fetchall():
                 matches = []
                 if draw_tables.get("match_table"):
+                    match_order = "fixture.bracket, fixture.round_number, fixture.match_number" if draw_tables.get("result_columns") else "fixture.round_number, fixture.match_number"
                     cursor.execute(
-                        """
+                        f"""
                         SELECT fixture.*,
                                CONCAT_WS(' ', player1.first_name_snapshot, player1.surname_snapshot) AS player1_name,
                                CONCAT_WS(' ', player2.first_name_snapshot, player2.surname_snapshot) AS player2_name
@@ -348,7 +360,7 @@ def get_tournament(connection, tournament_id, organization_id):
                         LEFT JOIN tournament_entries AS player1 ON player1.id = fixture.player1_entry_id
                         LEFT JOIN tournament_entries AS player2 ON player2.id = fixture.player2_entry_id
                         WHERE fixture.draw_id = %(draw_id)s
-                        ORDER BY fixture.round_number, fixture.match_number
+                        ORDER BY {match_order}
                         """,
                         {"draw_id": draw["id"]},
                     )
@@ -358,7 +370,8 @@ def get_tournament(connection, tournament_id, organization_id):
                     "name": draw.get("name") or "Draw",
                     "grade": draw.get("grade"),
                     "status": draw.get("status") or "draft",
-                    "matches": matches,
+                    "matches": [match for match in matches if match["bracket"] == "championship"],
+                    "plate_matches": [match for match in matches if match["bracket"] == "plate"],
                 })
         else:
             # Keep reads available during a staggered backend/schema deployment.
@@ -453,6 +466,189 @@ def _round_robin_pairings(entries):
     return rounds
 
 
+def _insert_knockout_tree(cursor, draw_id, pairings, bracket, now):
+    for match_index, (player1, player2) in enumerate(pairings, start=1):
+        winner_id = player1["id"] if player1 and not player2 else player2["id"] if player2 and not player1 else None
+        cursor.execute(
+            """
+            INSERT INTO tournament_matches (
+                draw_id, bracket, round_number, match_number,
+                player1_entry_id, player2_entry_id, winner_entry_id,
+                status, created_at, updated_at
+            ) VALUES (
+                %(draw_id)s, %(bracket)s, 1, %(match_number)s,
+                %(player1_id)s, %(player2_id)s, %(winner_id)s,
+                %(status)s, %(created_at)s, %(updated_at)s
+            )
+            """,
+            {
+                "draw_id": draw_id,
+                "bracket": bracket,
+                "match_number": match_index,
+                "player1_id": player1["id"] if player1 else None,
+                "player2_id": player2["id"] if player2 else None,
+                "winner_id": winner_id,
+                "status": "bye" if winner_id else "pending",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+
+    previous_count = len(pairings)
+    round_number = 2
+    while previous_count > 1:
+        match_count = (previous_count + 1) // 2
+        for match_number in range(1, match_count + 1):
+            cursor.execute(
+                """
+                INSERT INTO tournament_matches (
+                    draw_id, bracket, round_number, match_number, status, created_at, updated_at
+                ) VALUES (
+                    %(draw_id)s, %(bracket)s, %(round_number)s, %(match_number)s,
+                    'pending', %(created_at)s, %(updated_at)s
+                )
+                """,
+                {
+                    "draw_id": draw_id,
+                    "bracket": bracket,
+                    "round_number": round_number,
+                    "match_number": match_number,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+            )
+        previous_count = match_count
+        round_number += 1
+
+
+def _insert_future_knockout_rounds(cursor, draw_id, bracket, first_round_count, now):
+    previous_count = int(first_round_count)
+    round_number = 2
+    while previous_count > 1:
+        match_count = (previous_count + 1) // 2
+        for match_number in range(1, match_count + 1):
+            cursor.execute(
+                """
+                INSERT INTO tournament_matches (
+                    draw_id, bracket, round_number, match_number, status, created_at, updated_at
+                ) VALUES (
+                    %(draw_id)s, %(bracket)s, %(round_number)s, %(match_number)s,
+                    'pending', %(created_at)s, %(updated_at)s
+                )
+                ON CONFLICT (draw_id, bracket, round_number, match_number) DO NOTHING
+                """,
+                {
+                    "draw_id": draw_id,
+                    "bracket": bracket,
+                    "round_number": round_number,
+                    "match_number": match_number,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+            )
+        previous_count = match_count
+        round_number += 1
+
+
+def _ensure_knockout_structure(cursor, fixture, now):
+    if fixture.get("draw_format") not in {"knockout", "knockout_plate"}:
+        return
+    cursor.execute(
+        """
+        SELECT COUNT(*) FILTER (WHERE round_number = 1) AS first_round_count,
+               MAX(round_number) AS maximum_round
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'championship'
+        """,
+        {"draw_id": fixture["draw_id"]},
+    )
+    structure = cursor.fetchone() or {}
+    first_round_count = int(structure.get("first_round_count") or 0)
+    if first_round_count > 1 and int(structure.get("maximum_round") or 1) == 1:
+        _insert_future_knockout_rounds(cursor, fixture["draw_id"], "championship", first_round_count, now)
+
+    if fixture.get("draw_format") != "knockout_plate":
+        return
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS fixture_count
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'plate'
+        """,
+        {"draw_id": fixture["draw_id"]},
+    )
+    if int((cursor.fetchone() or {}).get("fixture_count") or 0):
+        return
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS potential_losers
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'championship' AND round_number = 1
+          AND player1_entry_id IS NOT NULL AND player2_entry_id IS NOT NULL
+        """,
+        {"draw_id": fixture["draw_id"]},
+    )
+    potential_losers = int((cursor.fetchone() or {}).get("potential_losers") or 0)
+    plate_size = 1
+    while plate_size < potential_losers:
+        plate_size *= 2
+    if plate_size >= 2:
+        plate_pairings = [(None, None) for _ in range(plate_size // 2)]
+        _insert_knockout_tree(cursor, fixture["draw_id"], plate_pairings, "plate", now)
+
+
+def _advance_entry(cursor, draw_id, bracket, round_number, match_number, entry_id, now):
+    next_round = int(round_number) + 1
+    next_match = (int(match_number) + 1) // 2
+    slot = "player1_entry_id" if int(match_number) % 2 else "player2_entry_id"
+    cursor.execute(
+        f"""
+        UPDATE tournament_matches
+        SET {slot} = %(entry_id)s, updated_at = %(updated_at)s
+        WHERE draw_id = %(draw_id)s
+          AND bracket = %(bracket)s
+          AND round_number = %(round_number)s
+          AND match_number = %(match_number)s
+        """,
+        {
+            "entry_id": entry_id,
+            "updated_at": now,
+            "draw_id": draw_id,
+            "bracket": bracket,
+            "round_number": next_round,
+            "match_number": next_match,
+        },
+    )
+
+
+def _propagate_byes(cursor, draw_id, bracket, now, allow_plate=False):
+    cursor.execute(
+        """
+        SELECT * FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = %(bracket)s
+        ORDER BY round_number, match_number
+        """,
+        {"draw_id": draw_id, "bracket": bracket},
+    )
+    fixtures = cursor.fetchall()
+    maximum_round = max((fixture["round_number"] for fixture in fixtures), default=1)
+    for fixture in fixtures:
+        player1 = fixture.get("player1_entry_id")
+        player2 = fixture.get("player2_entry_id")
+        if (bracket != "championship" and not allow_plate) or fixture["round_number"] != 1 or fixture["round_number"] >= maximum_round or bool(player1) == bool(player2):
+            continue
+        winner_id = player1 or player2
+        cursor.execute(
+            """
+            UPDATE tournament_matches
+            SET winner_entry_id = %(winner_id)s, status = 'bye', updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {"winner_id": winner_id, "updated_at": now, "match_id": fixture["id"]},
+        )
+        _advance_entry(cursor, draw_id, bracket, fixture["round_number"], fixture["match_number"], winner_id, now)
+
+
 def generate_tournament_draw(connection, tournament_id, organization_id, actor_username):
     event = _fetch_event(connection, tournament_id, organization_id)
     if not event:
@@ -519,38 +715,44 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
 
             if event["draw_format"] == "round_robin":
                 rounds = _round_robin_pairings(ordered_entries)
+                for round_index, pairings in enumerate(rounds, start=1):
+                    for match_index, (player1, player2) in enumerate(pairings, start=1):
+                        cursor.execute(
+                            """
+                            INSERT INTO tournament_matches (
+                                draw_id, bracket, round_number, match_number,
+                                player1_entry_id, player2_entry_id, status, created_at, updated_at
+                            ) VALUES (
+                                %(draw_id)s, 'championship', %(round_number)s, %(match_number)s,
+                                %(player1_id)s, %(player2_id)s, 'pending', %(created_at)s, %(updated_at)s
+                            )
+                            """,
+                            {
+                                "draw_id": draw["id"],
+                                "round_number": round_index,
+                                "match_number": match_index,
+                                "player1_id": player1["id"],
+                                "player2_id": player2["id"],
+                                "created_at": now,
+                                "updated_at": now,
+                            },
+                        )
+                        generated_match_count += 1
             else:
-                rounds = [_seeded_knockout_pairings(draw_entries, randomizer)]
+                championship_pairings = _seeded_knockout_pairings(draw_entries, randomizer)
+                _insert_knockout_tree(cursor, draw["id"], championship_pairings, "championship", now)
+                generated_match_count += max(0, len(championship_pairings) * 2 - 1)
+                _propagate_byes(cursor, draw["id"], "championship", now)
 
-            for round_index, pairings in enumerate(rounds, start=1):
-                for match_index, (player1, player2) in enumerate(pairings, start=1):
-                    winner_id = player1["id"] if player1 and not player2 else None
-                    cursor.execute(
-                        """
-                        INSERT INTO tournament_matches (
-                            draw_id, round_number, match_number,
-                            player1_entry_id, player2_entry_id, winner_entry_id,
-                            status, created_at, updated_at
-                        )
-                        VALUES (
-                            %(draw_id)s, %(round_number)s, %(match_number)s,
-                            %(player1_id)s, %(player2_id)s, %(winner_id)s,
-                            %(status)s, %(created_at)s, %(updated_at)s
-                        )
-                        """,
-                        {
-                            "draw_id": draw["id"],
-                            "round_number": round_index,
-                            "match_number": match_index,
-                            "player1_id": player1["id"] if player1 else None,
-                            "player2_id": player2["id"] if player2 else None,
-                            "winner_id": winner_id,
-                            "status": "bye" if winner_id else "pending",
-                            "created_at": now,
-                            "updated_at": now,
-                        },
-                    )
-                    generated_match_count += 1
+                if event["draw_format"] == "knockout_plate":
+                    potential_losers = sum(1 for player1, player2 in championship_pairings if player1 and player2)
+                    plate_size = 1
+                    while plate_size < potential_losers:
+                        plate_size *= 2
+                    if plate_size >= 2:
+                        plate_pairings = [(None, None) for _ in range(plate_size // 2)]
+                        _insert_knockout_tree(cursor, draw["id"], plate_pairings, "plate", now)
+                        generated_match_count += max(0, len(plate_pairings) * 2 - 1)
             cursor.execute(
                 """
                 UPDATE tournament_draws
@@ -679,6 +881,60 @@ def publish_tournament_draw(connection, tournament_id, organization_id, actor_us
                 "action": "draw_public_access_enabled" if enabling_legacy_public_access else "draw_published",
                 "entity_id": str(event["id"]),
                 "payload": Jsonb({"public_draw_key": public_draw_key}),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, event["id"], organization_id)
+
+
+def set_tournament_public_access(connection, tournament_id, organization_id, enabled, actor_username):
+    event = _fetch_event(connection, tournament_id, organization_id)
+    if not event:
+        raise LookupError("Tournament not found")
+    if event["status"] != "draw_published":
+        raise ValueError("Publish the draw before changing public access")
+
+    enabled = bool(enabled)
+    if bool(event.get("public_draw_enabled")) == enabled and (not enabled or event.get("public_draw_key")):
+        return get_tournament(connection, event["id"], organization_id)
+
+    public_draw_key = event.get("public_draw_key") or (_generate_public_draw_key(connection) if enabled else None)
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE tournament_events
+            SET public_draw_enabled = %(enabled)s,
+                public_draw_key = COALESCE(%(public_draw_key)s, public_draw_key),
+                revision = revision + 1,
+                updated_at = %(updated_at)s
+            WHERE id = %(event_id)s
+            """,
+            {
+                "enabled": enabled,
+                "public_draw_key": public_draw_key,
+                "updated_at": now,
+                "event_id": event["id"],
+            },
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(event_id)s, %(actor_username)s, %(action)s,
+                'tournament', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "event_id": event["id"],
+                "actor_username": actor_username,
+                "action": "draw_public_access_enabled" if enabled else "draw_public_access_disabled",
+                "entity_id": str(event["id"]),
+                "payload": Jsonb({"enabled": enabled, "public_draw_key": public_draw_key}),
                 "created_at": now,
             },
         )
@@ -849,6 +1105,361 @@ def update_tournament_draw_slot(connection, tournament_id, match_id, organizatio
     return get_tournament(connection, event["id"], organization_id)
 
 
+def _fetch_fixture_context(connection, tournament_id, match_id, organization_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT fixture.*, draw.tournament_id, draw.name AS draw_name,
+                   event.name AS tournament_name, event.sport, event.status AS tournament_status,
+                   event.scoring_config, event.draw_format,
+                   player1.first_name_snapshot AS player1_first_name,
+                   player1.surname_snapshot AS player1_surname,
+                   player2.first_name_snapshot AS player2_first_name,
+                   player2.surname_snapshot AS player2_surname
+            FROM tournament_matches AS fixture
+            INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
+            INNER JOIN tournament_events AS event ON event.id = draw.tournament_id
+            LEFT JOIN tournament_entries AS player1 ON player1.id = fixture.player1_entry_id
+            LEFT JOIN tournament_entries AS player2 ON player2.id = fixture.player2_entry_id
+            WHERE fixture.id = %(match_id)s
+              AND event.id = %(tournament_id)s
+              AND event.organization_id = %(organization_id)s
+            LIMIT 1
+            """,
+            {
+                "match_id": _uuid(match_id, "match_id"),
+                "tournament_id": _uuid(tournament_id, "tournament_id"),
+                "organization_id": int(organization_id),
+            },
+        )
+        return cursor.fetchone()
+
+
+def _score_result(value):
+    raw = str(value or "").strip()
+    if not raw:
+        raise ValueError("Enter the match score")
+    compact = re.sub(r"\s+", "", raw.lower().replace("win", ""))
+    tokens = [token for token in re.split(r"[,;\n]+", compact) if token]
+    games = []
+    for token in tokens:
+        if re.fullmatch(r"\d{4}", token):
+            games.append((int(token[:2]), int(token[2:])))
+            continue
+        match = re.fullmatch(r"(\d{1,2})[-:](\d{1,2})", token)
+        if not match:
+            raise ValueError("Use game scores such as 11-3, 11-4, 3-11, 11-7 or a match score such as 3-1")
+        games.append((int(match.group(1)), int(match.group(2))))
+    if len(games) == 1 and max(games[0]) <= 5:
+        player1_games, player2_games = games[0]
+        score_type = "summary"
+        game_scores = []
+    else:
+        if any(player1 == player2 for player1, player2 in games):
+            raise ValueError("A completed game cannot be tied")
+        player1_games = sum(1 for player1, player2 in games if player1 > player2)
+        player2_games = sum(1 for player1, player2 in games if player2 > player1)
+        score_type = "games"
+        game_scores = [{"player1": player1, "player2": player2} for player1, player2 in games]
+    if player1_games == player2_games:
+        raise ValueError("The match score must have a winner")
+    winner_side = "player1" if player1_games > player2_games else "player2"
+    return {
+        "type": score_type,
+        "games": game_scores,
+        "player1_games": player1_games,
+        "player2_games": player2_games,
+        "winner_side": winner_side,
+        "summary": f"{player1_games}-{player2_games}",
+        "entered_score": raw,
+    }
+
+
+def _ensure_downstream_editable(cursor, fixture):
+    winner_id = fixture.get("winner_entry_id")
+    if not winner_id:
+        return
+    cursor.execute(
+        """
+        SELECT status, scoring_match_id
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s
+          AND bracket = %(bracket)s
+          AND round_number = %(round_number)s
+          AND (player1_entry_id = %(entry_id)s OR player2_entry_id = %(entry_id)s)
+        LIMIT 1
+        """,
+        {
+            "draw_id": fixture["draw_id"],
+            "bracket": fixture.get("bracket") or "championship",
+            "round_number": int(fixture["round_number"]) + 1,
+            "entry_id": winner_id,
+        },
+    )
+    downstream = cursor.fetchone()
+    if downstream and (downstream.get("scoring_match_id") or downstream.get("status") in {"scheduled", "in_progress", "completed", "walkover"}):
+        raise ValueError("This result cannot be edited because the next match has already started or been scheduled")
+
+
+def _place_first_round_loser(cursor, fixture, loser_id, now):
+    if fixture.get("bracket") != "championship" or int(fixture["round_number"]) != 1:
+        return
+    cursor.execute(
+        """
+        SELECT id FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'championship' AND round_number = 1
+          AND player1_entry_id IS NOT NULL AND player2_entry_id IS NOT NULL
+        ORDER BY match_number
+        """,
+        {"draw_id": fixture["draw_id"]},
+    )
+    eligible_ids = [str(row["id"]) for row in cursor.fetchall()]
+    if str(fixture["id"]) not in eligible_ids:
+        return
+    slot_index = eligible_ids.index(str(fixture["id"]))
+    plate_match_number = (slot_index // 2) + 1
+    slot = "player1_entry_id" if slot_index % 2 == 0 else "player2_entry_id"
+    cursor.execute(
+        f"""
+        UPDATE tournament_matches
+        SET {slot} = %(loser_id)s, updated_at = %(updated_at)s
+        WHERE draw_id = %(draw_id)s AND bracket = 'plate'
+          AND round_number = 1 AND match_number = %(match_number)s
+        """,
+        {
+            "loser_id": loser_id,
+            "updated_at": now,
+            "draw_id": fixture["draw_id"],
+            "match_number": plate_match_number,
+        },
+    )
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS incomplete_count
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'championship' AND round_number = 1
+          AND player1_entry_id IS NOT NULL AND player2_entry_id IS NOT NULL
+          AND status <> 'completed'
+        """,
+        {"draw_id": fixture["draw_id"]},
+    )
+    if int((cursor.fetchone() or {}).get("incomplete_count") or 0) == 0:
+        _propagate_byes(cursor, fixture["draw_id"], "plate", now, allow_plate=True)
+
+
+def record_tournament_match_result(connection, tournament_id, match_id, organization_id, payload, actor_username, is_admin=False, from_scoring=False):
+    fixture = _fetch_fixture_context(connection, tournament_id, match_id, organization_id)
+    if not fixture:
+        raise LookupError("Tournament match not found")
+    if fixture["tournament_status"] != "draw_published":
+        raise ValueError("Publish the draw before entering results")
+    if not fixture.get("player1_entry_id") or not fixture.get("player2_entry_id"):
+        raise ValueError("Both players must reach this match before a result can be entered")
+    if fixture.get("status") == "completed" and not is_admin:
+        raise PermissionError("Only a club administrator can edit an entered result")
+    if fixture.get("scoring_match_id") and not from_scoring:
+        raise ValueError("Use the linked scoring match to enter this result")
+    result = _score_result(payload.get("score"))
+    winner_id = fixture[f"{result['winner_side']}_entry_id"]
+    loser_id = fixture["player2_entry_id"] if result["winner_side"] == "player1" else fixture["player1_entry_id"]
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        _ensure_knockout_structure(cursor, fixture, now)
+        if fixture.get("status") == "completed" and fixture.get("draw_format") in {"knockout", "knockout_plate"}:
+            _ensure_downstream_editable(cursor, fixture)
+            old_winner = fixture.get("winner_entry_id")
+            cursor.execute(
+                """
+                UPDATE tournament_matches
+                SET player1_entry_id = CASE WHEN player1_entry_id = %(old_winner)s THEN NULL ELSE player1_entry_id END,
+                    player2_entry_id = CASE WHEN player2_entry_id = %(old_winner)s THEN NULL ELSE player2_entry_id END,
+                    updated_at = %(updated_at)s
+                WHERE draw_id = %(draw_id)s AND bracket = %(bracket)s
+                  AND round_number = %(round_number)s
+                """,
+                {
+                    "old_winner": old_winner,
+                    "updated_at": now,
+                    "draw_id": fixture["draw_id"],
+                    "bracket": fixture.get("bracket") or "championship",
+                    "round_number": int(fixture["round_number"]) + 1,
+                },
+            )
+        cursor.execute(
+            """
+            UPDATE tournament_matches
+            SET winner_entry_id = %(winner_id)s, status = 'completed',
+                score_data = %(score_data)s, score_summary = %(score_summary)s,
+                result_entered_by = %(actor_username)s, result_entered_at = %(entered_at)s,
+                updated_at = %(entered_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "winner_id": winner_id,
+                "score_data": Jsonb(result),
+                "score_summary": result["summary"],
+                "actor_username": actor_username,
+                "entered_at": now,
+                "match_id": fixture["id"],
+            },
+        )
+        if fixture.get("draw_format") in {"knockout", "knockout_plate"}:
+            _advance_entry(cursor, fixture["draw_id"], fixture.get("bracket") or "championship", fixture["round_number"], fixture["match_number"], winner_id, now)
+            if fixture.get("draw_format") == "knockout_plate":
+                _place_first_round_loser(cursor, fixture, loser_id, now)
+            _propagate_byes(cursor, fixture["draw_id"], fixture.get("bracket") or "championship", now)
+        cursor.execute(
+            """
+            UPDATE tournament_events SET revision = revision + 1, updated_at = %(updated_at)s
+            WHERE id = %(event_id)s
+            """,
+            {"updated_at": now, "event_id": fixture["tournament_id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(tournament_id)s, %(actor_username)s, %(action)s,
+                'draw_match', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "tournament_id": fixture["tournament_id"],
+                "actor_username": actor_username,
+                "action": "result_corrected" if fixture.get("status") == "completed" else "result_entered",
+                "entity_id": str(fixture["id"]),
+                "payload": Jsonb(result),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    return get_tournament(connection, tournament_id, organization_id)
+
+
+def sync_tournament_scoring_result(connection, match):
+    if not match or match.get("status") != "completed" or not match.get("tournament_match_id"):
+        return
+    winner_side = match.get("winner_side") or (match.get("state") or {}).get("winner_side")
+    if winner_side not in {"player1", "player2"}:
+        return
+    player1_games = int(match.get("player1_games_won") or (match.get("state") or {}).get("player1_games_won") or 0)
+    player2_games = int(match.get("player2_games_won") or (match.get("state") or {}).get("player2_games_won") or 0)
+    if player1_games == player2_games:
+        player1_games, player2_games = (1, 0) if winner_side == "player1" else (0, 1)
+    record_tournament_match_result(
+        connection,
+        match["tournament_event_id"],
+        match["tournament_match_id"],
+        match["tenant_id"],
+        {"score": f"{player1_games}-{player2_games}"},
+        "scoring-app",
+        is_admin=True,
+        from_scoring=True,
+    )
+
+
+def schedule_tournament_match(connection, tournament_id, match_id, organization_id, payload, actor_username):
+    fixture = _fetch_fixture_context(connection, tournament_id, match_id, organization_id)
+    if not fixture:
+        raise LookupError("Tournament match not found")
+    if fixture["tournament_status"] not in {"draw_published", "in_progress"}:
+        raise ValueError("Publish the draw before scheduling matches")
+    if not fixture.get("player1_entry_id") or not fixture.get("player2_entry_id"):
+        raise ValueError("Both players must reach this match before it can be scheduled")
+    if fixture.get("status") == "completed":
+        raise ValueError("This tournament match is already complete")
+    if fixture.get("scoring_match_id"):
+        from common.match_logic import get_match
+        return get_tournament(connection, tournament_id, organization_id), get_match(connection, fixture["scoring_match_id"])
+
+    try:
+        court_id = int(payload.get("court_id"))
+    except (TypeError, ValueError):
+        raise ValueError("Select a valid club court")
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, court_name, court_alias
+            FROM "SkwshCourts"
+            WHERE id = %(court_id)s AND organization_name = %(organization_id)s
+            LIMIT 1
+            """,
+            {"court_id": court_id, "organization_id": int(organization_id)},
+        )
+        court = cursor.fetchone()
+    if not court:
+        raise ValueError("Select a valid club court")
+
+    from common.match_logic import create_match
+    scoring_config = fixture.get("scoring_config") or {}
+    match = create_match(connection, {
+        "tenant_id": int(organization_id),
+        "court_id": court["id"],
+        "court_name": court["court_name"],
+        "court_alias": court.get("court_alias") or court["court_name"],
+        "sport": fixture.get("sport") or "squash",
+        "player1_name": fixture.get("player1_first_name") or "Player 1",
+        "player1_surname": fixture.get("player1_surname") or "",
+        "player2_name": fixture.get("player2_first_name") or "Player 2",
+        "player2_surname": fixture.get("player2_surname") or "",
+        "score_type": int(payload.get("score_type") or scoring_config.get("points_per_game") or 11),
+        "best_of": int(payload.get("best_of") or scoring_config.get("best_of") or 3),
+        "status": "scheduled",
+    }, source="tournament")
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE matches
+            SET tournament_event_id = %(tournament_id)s,
+                tournament_match_id = %(tournament_match_id)s,
+                tournament_name = %(tournament_name)s,
+                updated_at = %(updated_at)s
+            WHERE id = %(scoring_match_id)s
+            """,
+            {
+                "tournament_id": fixture["tournament_id"],
+                "tournament_match_id": fixture["id"],
+                "tournament_name": fixture["tournament_name"],
+                "updated_at": now,
+                "scoring_match_id": match["id"],
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE tournament_matches
+            SET scoring_match_id = %(scoring_match_id)s, status = 'scheduled', updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {"scoring_match_id": match["id"], "updated_at": now, "match_id": fixture["id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(tournament_id)s, %(actor_username)s, 'match_scheduled',
+                'draw_match', %(entity_id)s, %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(organization_id),
+                "tournament_id": fixture["tournament_id"],
+                "actor_username": actor_username,
+                "entity_id": str(fixture["id"]),
+                "payload": Jsonb({"scoring_match_id": str(match["id"]), "court_id": court["id"]}),
+                "created_at": now,
+            },
+        )
+    connection.commit()
+    from common.match_logic import get_match
+    return get_tournament(connection, tournament_id, organization_id), get_match(connection, match["id"])
+
+
 def get_public_tournament_draw(connection, access_key):
     normalized_key = "".join(character for character in str(access_key or "").upper() if character.isalnum())
     with connection.cursor() as cursor:
@@ -867,6 +1478,13 @@ def get_public_tournament_draw(connection, access_key):
     if not event:
         return None
     tournament = get_tournament(connection, event["id"], event["organization_id"])
+    public_draws = []
+    for draw in tournament.get("draws", []):
+        public_draws.append({
+            **{key: value for key, value in draw.items() if key not in {"matches", "plate_matches"}},
+            "matches": [{key: value for key, value in match.items() if key != "scoring_match_id"} for match in draw.get("matches", [])],
+            "plate_matches": [{key: value for key, value in match.items() if key != "scoring_match_id"} for match in draw.get("plate_matches", [])],
+        })
     return {
         "id": tournament["id"],
         "name": tournament["name"],
@@ -884,7 +1502,7 @@ def get_public_tournament_draw(connection, access_key):
             "seed": entry["seed"],
             "ability_grade": entry["ability_grade"],
         } for entry in tournament.get("entries", [])],
-        "draws": tournament.get("draws", []),
+        "draws": public_draws,
     }
 
 
