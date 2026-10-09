@@ -69,14 +69,14 @@ test("uses the standard header and exposes persisted tournament options @tournam
   expect(rightPanel.height).toBeLessThan(leftPanel.height);
 });
 
-test("labels a published tournament as draw ready with an explicit view action @tournament", async ({ page }) => {
+test("labels a published tournament as live with an explicit view action @tournament", async ({ page }) => {
   await page.route("**/organizations/77/tournaments", async (route) => route.fulfill({
     json: envelope({ tournaments: [{ ...tournament, status: "draw_published" }] }),
   }));
 
   await page.goto("/tournaments");
 
-  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
+  await expect(page.getByText("Live", { exact: true })).toBeVisible();
   await expect(page.getByText("View Draw", { exact: true })).toBeVisible();
   await expect(page.getByText("draw published", { exact: false })).toHaveCount(0);
 });
@@ -125,8 +125,7 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(page.locator(".tournament-search-result")).toHaveCount(1);
   await expect(page.getByText("Alex Park", { exact: true })).toHaveCount(0);
   await expect(page.locator(".tournament-ability-option").first()).toContainText("Grade A");
-  await expect(page.getByText("Racket up is this way", { exact: true })).toBeVisible();
-  await expect(page.getByText("Advanced player", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ability 1", { exact: false })).toHaveCount(0);
   const manualButton = page.getByRole("button", { name: "Add Player Manually" });
   await expect(manualButton).toBeVisible();
   await expect(manualButton).toHaveCSS("background-color", "rgb(18, 116, 208)");
@@ -174,6 +173,7 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
         home_club_name: "Demo Club",
         ability_level: 3,
         ability_grade: "C",
+        seed: 3,
         relationship: "member",
         claim_status: "linked",
       },
@@ -188,8 +188,16 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
 
   await page.goto(`/tournaments/${tournament.id}`);
   await expect(page.getByRole("heading", { name: "Add Players" })).toBeVisible();
-  await expect(page.getByText("Grade B", { exact: true })).toHaveCSS("background-color", "rgb(207, 231, 255)");
-  await expect(page.getByText("Grade C", { exact: true })).toHaveCSS("background-color", "rgb(204, 239, 217)");
+  const entryCards = page.locator(".tournament-entry-card");
+  await expect(entryCards.nth(0).locator(".tournament-entry-card__identity").locator("span").nth(0)).toHaveText("alex.guest@example.com");
+  await expect(entryCards.nth(0).locator(".tournament-entry-card__identity").locator("span").nth(1)).toHaveText("Away Club");
+  await expect(entryCards.nth(0).getByRole("img", { name: /Grade B/ })).toHaveText("B");
+  await expect(entryCards.nth(0).getByRole("img", { name: /Grade B/ })).toHaveCSS("background-color", "rgb(207, 231, 255)");
+  await expect(entryCards.nth(1).getByRole("img", { name: /Grade C/ })).toHaveText("C");
+  await expect(entryCards.nth(1).getByRole("img", { name: /Grade C/ })).toHaveCSS("background-color", "rgb(204, 239, 217)");
+  await expect(entryCards.nth(1).getByRole("img", { name: /Seed 3/ })).toHaveText("3");
+  await expect(entryCards.nth(1).getByRole("img", { name: /Linked HitNScore account/ })).toBeVisible();
+  await expect(entryCards.nth(1).getByRole("img", { name: /Club member/ })).toBeVisible();
   await page.getByRole("button", { name: "Import Players" }).click();
   await page.locator("#tournament-player-import").setInputFiles({
     name: "players.csv",
@@ -208,6 +216,9 @@ test("previews CSV duplicates and locks linked account identity fields @tourname
   await page.getByRole("button", { name: "Edit Player" }).nth(1).click();
   await expect(page.getByLabel("Email Address").last()).toBeDisabled();
   await expect(page.getByLabel("Home Club").last()).toBeDisabled();
+  await expect(page.getByLabel("Player Ability").last()).toHaveValue("3");
+  await expect(page.getByLabel("Player Ability").last().locator("option")).toHaveText(["Grade A", "Grade B", "Grade C", "Grade D"]);
+  await expect(page.getByLabel("Seed").locator("option")).toHaveCount(9);
   await expect(page.getByText("Email and home club come from the existing HitNScore account", { exact: false })).toBeVisible();
 });
 
@@ -258,7 +269,7 @@ test("repairs a draw-ready tournament when fixture data is missing @tournament",
   await expect(page.getByText("Draw needs rebuilding", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Rebuild Missing Draw" }).click();
 
-  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
+  await expect(page.getByText("Live", { exact: true })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match")).toContainText("Demo PlayOne");
 });
 
@@ -292,17 +303,18 @@ test("reviews, publishes and safely returns a seeded knockout draw to draft @tou
   await page.route(`**/tournaments/${tournament.id}/draw/draft`, async (route) => route.fulfill({ json: envelope({ tournament: draftDraw }) }));
 
   await page.goto(`/tournaments/${tournament.id}`);
-  await expect(page.getByText("Draft draw", { exact: true })).toBeVisible();
+  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Open Draw — Championship" })).toBeVisible();
   await expect(page.locator(".tournament-bracket-round")).toHaveCount(2);
   await expect(page.getByLabel("Move Seed One in the draw")).toBeVisible();
   await page.getByRole("button", { name: "Publish Draw" }).click();
+  await expect(page.getByText("Live", { exact: true })).toBeVisible();
   await expect(page.getByText("DRAWKEY23456", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Public Draw" })).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Return Draw to Draft" }).click();
-  await expect(page.getByText("Draft draw", { exact: true })).toBeVisible();
+  await expect(page.getByText("Draw ready", { exact: true })).toBeVisible();
 });
 
 test("opens a published draw without login using its public key @tournament", async ({ page }) => {

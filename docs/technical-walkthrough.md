@@ -280,8 +280,8 @@ Social-profile fields are still UI scaffolds and are not persisted/enforced. The
     12-character public key and exposes the sanitized read-only draw through
     `GET /public/tournament-draws/{access_key}` without login. Returning to draft
     disables that key and is blocked after results start. The web client presents
-    `draw_published` as **Draw ready**. Legacy status-only events expose **Rebuild
-    Missing Draw**.
+    a generated, unpublished draft as **Draw ready** and `draw_published` as
+    **Live**. Legacy status-only events expose **Rebuild Missing Draw**.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
 optional Email, Club and Ability columns. It previews invalid and duplicate rows,
@@ -290,6 +290,9 @@ and lets the organiser skip, reuse, replace or update as appropriate. Updates us
 `PUT /tournaments/{tournament_id}/entries/{entry_id}` and write an audit event.
 Linked account email and home-club values are locked; unlinked player records can
 be completed before they are claimed.
+Compact entry cards show grade, seed, linked-account and host-club-member
+indicators separately. Linked means that the reusable player identity belongs to
+a registered HitNScore account; it does not grant a plan, role or club access.
 
 Ordinary club members may list and read tournaments. Creation and entry changes
 remain restricted to club administrators.

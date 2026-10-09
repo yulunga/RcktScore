@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 import { confirmPasswordReset, requestPasswordReset } from "../services/api";
+import { OPEN_COOKIE_SETTINGS_EVENT } from "../services/analytics";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HELP_SECTIONS = ["web-access", "ios-access", "reset", "terms", "privacy", "cookies"];
@@ -836,8 +837,8 @@ export default function HelpPage() {
                 <li>Display settings</li>
               </ul>
               <p>They help improve your experience but are not strictly essential.</p>
-              <h4>3.3 Analytics Cookies (If Enabled)</h4>
-              <p>We may use analytics tools to understand how users interact with the App, such as:</p>
+              <h4>3.3 Analytics Cookies</h4>
+              <p>With your consent, we use Google Analytics to understand how users interact with the App, such as:</p>
               <ul>
                 <li>Pages visited</li>
                 <li>Features used</li>
@@ -865,10 +866,17 @@ export default function HelpPage() {
                 <li>By adjusting your preferences within the App, where available</li>
               </ul>
               <p>You can choose to accept or reject non-essential cookies at any time.</p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => window.dispatchEvent(new Event(OPEN_COOKIE_SETTINGS_EVENT))}
+              >
+                Update cookie preferences
+              </button>
               <h3>6. Third-Party Cookies</h3>
               <p>
-                We may use trusted third-party services that place cookies on your device to support functionality
-                such as analytics or infrastructure services.
+                Google Analytics may place cookies on your device when you accept analytics cookies. Other trusted
+                third-party services may support essential app infrastructure.
               </p>
               <p>Where third-party cookies are used:</p>
               <ul>

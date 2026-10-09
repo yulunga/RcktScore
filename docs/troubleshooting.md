@@ -614,10 +614,11 @@ applied. Draw generation now creates an editable draft; only **Publish Draw**
 changes the event to `draw_published` and locks entry changes. Round robin creates every round;
 knockout, knockout-with-plate and Monrad currently create the opening round only.
 Plate entrants and later Monrad/knockout rounds wait for result progression.
-The database value `draw_published` is shown to users as **Draw ready**. From the
-tournament list, select **View Draw**. If the detail page instead reports **Draw
-needs rebuilding**, the event status exists without fixture rows; an admin can
-use **Rebuild Missing Draw**, which is idempotent when fixtures already exist.
+A generated, unpublished draw is shown as **Draw ready**, with **Publish Draw**
+above the bracket. The database value `draw_published` is shown as **Live**. From
+the tournament list, select **View Draw**. If the detail page instead reports
+**Draw needs rebuilding**, the event status exists without fixture rows; an admin
+can use **Rebuild Missing Draw**, which is idempotent when fixtures already exist.
 
 If publishing does not produce a public key, confirm migration `035` and the
 publish Lambda routes were deployed together. Public responses deliberately omit
@@ -630,3 +631,6 @@ repeated file rows, an existing tournament entrant or one exact shared-player
 match. If an update rejects email or club changes, inspect `players.user_id`,
 `registered_username` and `claim_status`; linked account-owned identity fields
 must be edited through the account/membership workflow instead.
+The pink link icon means the player identity is connected to a registered
+HitNScore account. The member icon independently means the account has an
+approved membership of the host club; neither indicator creates new entitlement.

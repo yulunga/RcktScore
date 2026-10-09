@@ -26,7 +26,7 @@ function formatDate(value) {
 }
 
 function statusLabel(status) {
-  if (status === "draw_published") return "Draw ready";
+  if (status === "draw_published") return "Live";
   return (status || "draft").replaceAll("_", " ");
 }
 

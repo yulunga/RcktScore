@@ -293,6 +293,9 @@ Publishing locks entries and issues a 12-character public read-only key. Returni
 to draft requires an explicit client confirmation, disables public access, and is
 rejected after a fixture has started or completed. Plate population, later
 knockout/Monrad progression, scheduling and scoring-match linkage remain unimplemented.
+The web client labels a generated draft **Draw ready** and a published draw
+**Live**; these are presentation labels over the existing draft and
+`draw_published` API states.
 Migrations `034_tournament_draw_matches.sql` and
 `035_tournament_draw_publication.sql` are required.
 Generation is idempotent after publication when fixtures exist. If an event is

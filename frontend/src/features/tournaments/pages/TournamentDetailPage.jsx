@@ -70,7 +70,7 @@ function parseCsv(text) {
 
 function abilityLabel(level) {
   const option = ABILITY_OPTIONS.find((item) => item.value === String(level));
-  return option ? `Ability ${option.value} — Grade ${option.grade} — ${option.label}` : "Ability 1 — Grade A";
+  return option ? `Grade ${option.grade}` : "Grade A";
 }
 
 function describeAddedPlayer(entry) {
@@ -123,15 +123,46 @@ function AbilitySelector({ value, onChange, idPrefix }) {
               value={option.value}
               onChange={(event) => onChange(event.target.value)}
             />
-            <span className="tournament-ability-number">{option.value}</span>
             <span>
-              <strong>{option.label}</strong>
-              <small>{option.detail}{` Grade ${option.grade}.`}</small>
+              <strong>{`Grade ${option.grade}`}</strong>
+              <small>{option.detail}</small>
             </span>
           </label>
         ))}
       </div>
     </fieldset>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M10.4 13.6a4.5 4.5 0 0 0 6.4 0l2.1-2.1a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2" />
+      <path d="M13.6 10.4a4.5 4.5 0 0 0-6.4 0l-2.1 2.1a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2" />
+    </svg>
+  );
+}
+
+function MemberIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.5 19c.5-3.4 2.7-5.2 6.5-5.2s6 1.8 6.5 5.2" />
+    </svg>
+  );
+}
+
+function EntryIndicator({ className = "", description, label, children }) {
+  return (
+    <span
+      aria-label={`${label}. ${description}`}
+      className={`tournament-entry-indicator ${className}`.trim()}
+      data-tooltip={description}
+      role="img"
+      tabIndex="0"
+    >
+      {children}
+    </span>
   );
 }
 
@@ -538,8 +569,8 @@ export default function TournamentDetailPage() {
   const entriesEditable = ["draft", "registration"].includes(tournament?.status);
   const publishedDrawMissing = tournament?.status === "draw_published" && generatedDraws.length === 0;
   const displayStatus = tournament?.status === "draw_published"
-    ? (publishedDrawMissing ? "Draw needs rebuilding" : "Draw ready")
-    : generatedDraws.length ? "Draft draw" : (tournament?.status || "draft").replaceAll("_", " ");
+    ? (publishedDrawMissing ? "Draw needs rebuilding" : "Live")
+    : generatedDraws.length ? "Draw ready" : (tournament?.status || "draft").replaceAll("_", " ");
   const publicDrawUrl = tournament?.public_draw_key && typeof window !== "undefined"
     ? `${window.location.origin}/tournament-draw/${tournament.public_draw_key}`
     : "";
@@ -579,15 +610,24 @@ export default function TournamentDetailPage() {
                 <p className="helper-text">
                   {generatedDraws.length
                     ? tournament.status === "draw_published"
-                      ? "The draw is ready to view and available through its public read-only key."
-                      : "This is a draft draw. Review seeds and player positions before publishing."
+                      ? "This draw is live and available through its public read-only key."
+                      : "The draw is ready for review. Publish it when the player positions are correct."
                     : publishedDrawMissing
-                      ? "The event was marked as draw-ready, but no fixtures were returned. Rebuild the missing draw below."
-                      : "Generate the tournament draw from the registered players. Entries lock when the draw is ready."}
+                      ? "The event was marked live, but no fixtures were returned. Rebuild the missing draw below."
+                      : "Generate the tournament draw from the registered players. Entries lock only after you publish it."}
                 </p>
               </div>
               {generatedDraws.length ? (
                 <div className="tournament-draws stack">
+                  {entriesEditable && isAdmin ? (
+                    <div className="tournament-draw-review stack">
+                      <p className="helper-text">Review the draw below. Use the player selectors to swap positions, or change seeds and regenerate before making it live.</p>
+                      <div className="button-row">
+                        <button disabled={drawing} type="button" onClick={handlePublishDraw}>Publish Draw</button>
+                        <button className="secondary" disabled={drawing} type="button" onClick={handleGenerateDraw}>Regenerate from Seeds</button>
+                      </div>
+                    </div>
+                  ) : null}
                   {generatedDraws.map((draw) => {
                     const drawEntries = (tournament.entries || []).filter((entry) => !draw.grade || entry.ability_grade === draw.grade);
                     const knockout = tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate";
@@ -620,15 +660,6 @@ export default function TournamentDetailPage() {
                   })}
                   {tournament.draw_format === "monrad" ? (
                     <p className="helper-text">Later Monrad rounds will be paired from standings after opening-round results.</p>
-                  ) : null}
-                  {entriesEditable && isAdmin ? (
-                    <div className="tournament-draw-review stack">
-                      <p className="helper-text">Review the draft. Use the player selectors to swap positions, or change seeds and regenerate before publishing.</p>
-                      <div className="button-row">
-                        <button disabled={drawing} type="button" onClick={handlePublishDraw}>Publish Draw</button>
-                        <button className="secondary" disabled={drawing} type="button" onClick={handleGenerateDraw}>Regenerate from Seeds</button>
-                      </div>
-                    </div>
                   ) : null}
                   {tournament.status === "draw_published" ? (
                     <div className="tournament-public-access stack">
@@ -860,7 +891,7 @@ export default function TournamentDetailPage() {
                 {tournament.entries.length === 0 ? (
                   <div className="dashboard-empty">No players have been added yet.</div>
                 ) : tournament.entries.map((entry) => (
-                  <article className="dashboard-item" key={entry.id}>
+                  <article className={`dashboard-item${editingEntryId === entry.id ? "" : " tournament-entry-card"}`} key={entry.id}>
                     {editingEntryId === entry.id && editForm ? (
                       <form className="stack" onSubmit={(event) => handleUpdateEntry(event, entry)}>
                         <div className="field-grid">
@@ -915,14 +946,16 @@ export default function TournamentDetailPage() {
                           </div>
                           <div className="field">
                             <label htmlFor={`edit-seed-${entry.id}`}>Seed</label>
-                            <input
+                            <select
                               id={`edit-seed-${entry.id}`}
-                              min="1"
-                              placeholder="Unseeded"
-                              type="number"
                               value={editForm.seed}
                               onChange={(event) => setEditForm((current) => ({ ...current, seed: event.target.value }))}
-                            />
+                            >
+                              <option value="">Unseeded</option>
+                              {Array.from({ length: 8 }, (_, index) => index + 1).map((seed) => (
+                                <option key={seed} value={seed}>{seed}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                         {entry.claim_status === "linked" ? (
@@ -935,22 +968,46 @@ export default function TournamentDetailPage() {
                       </form>
                     ) : (
                       <>
-                        <div className="dashboard-item-head">
-                          <strong>{entry.display_name}</strong>
-                          <div className="dashboard-status-group">
-                            {entry.seed ? <span className="status-pill tournament-seed-pill">Seed {entry.seed}</span> : null}
-                            {entry.ability_level ? (
-                              <span className={`status-pill tournament-grade-pill tournament-grade-pill--${(entry.ability_grade || "").toLowerCase()}`}>
-                                {`Grade ${entry.ability_grade}`}
-                              </span>
-                            ) : null}
-                            <span className="status-pill">{entry.relationship}</span>
+                        <div className="tournament-entry-card__content">
+                          <div className="tournament-entry-card__identity">
+                            <strong>{entry.display_name}</strong>
+                            <span>{entry.email || "Named player — no email yet"}</span>
+                            <span>{entry.home_club_name || "No home club recorded"}</span>
                           </div>
-                        </div>
-                        <div className="dashboard-item-meta">
-                          <span>{entry.home_club_name || "No home club recorded"}</span>
-                          <span>{entry.email || "Named player — no email yet"}</span>
-                          <span>{entry.claim_status === "linked" ? "Linked HitNScore account" : entry.claim_status === "claimable" ? "Can be claimed after registration" : "Unclaimed named player"}</span>
+                          <div className="tournament-entry-card__indicators">
+                            {entry.ability_level ? (
+                              <EntryIndicator
+                                className={`tournament-grade-pill tournament-grade-pill--${(entry.ability_grade || "").toLowerCase()}`}
+                                description={`Grade ${entry.ability_grade} player ability`}
+                                label={`Grade ${entry.ability_grade}`}
+                              >
+                                {entry.ability_grade}
+                              </EntryIndicator>
+                            ) : null}
+                            {entry.seed ? (
+                              <EntryIndicator className="tournament-seed-pill" description={`Seed ${entry.seed} in this tournament draw`} label={`Seed ${entry.seed}`}>
+                                {entry.seed}
+                              </EntryIndicator>
+                            ) : null}
+                            {entry.claim_status === "linked" ? (
+                              <EntryIndicator
+                                className="tournament-link-indicator"
+                                description="Linked to a registered HitNScore account. Account-owned identity details are managed from that account."
+                                label="Linked HitNScore account"
+                              >
+                                <LinkIcon />
+                              </EntryIndicator>
+                            ) : null}
+                            {entry.relationship === "member" ? (
+                              <EntryIndicator
+                                className="tournament-member-indicator"
+                                description="Approved member of the club hosting this tournament."
+                                label="Club member"
+                              >
+                                <MemberIcon />
+                              </EntryIndicator>
+                            ) : null}
+                          </div>
                         </div>
                         {isAdmin && entriesEditable ? (
                           <div className="button-row tournament-entry-actions">

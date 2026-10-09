@@ -1,6 +1,8 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 
+import AnalyticsRouteTracker from "./components/AnalyticsRouteTracker";
+import CookieConsent from "./components/CookieConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RootAdminProtectedRoute from "./components/RootAdminProtectedRoute";
 import DisplayScreen from "./pages/DisplayScreen";
@@ -32,7 +34,9 @@ import PublicTournamentDrawPage from "./features/tournaments/pages/PublicTournam
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <AnalyticsRouteTracker />
+      <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/help" element={<HelpPage />} />
@@ -225,6 +229,8 @@ export default function App() {
       />
       <Route path="/scoreboard" element={<DisplayScreen />} />
       <Route path="/display" element={<DisplayScreen />} />
-    </Routes>
+      </Routes>
+      <CookieConsent />
+    </>
   );
 }
