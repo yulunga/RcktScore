@@ -73,6 +73,8 @@ a match and start it later from Matches. The mocked setup begins with another
 active match to verify that scheduling remains available; activation happens
 only after the active match has cleared. The journey also checks the visible
 Current/Scheduled/History controls in both light and dark colour schemes.
+They should remain white with a thin blue outer border, blue labels, a light-blue
+selected item and a two-pixel pink selection marker at iPhone and desktop widths.
 
 Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
 Tennis views. The fixtures verify match start time and duration, game/set
@@ -80,6 +82,16 @@ durations, sport terminology, the grouped scoring timeline, and separate
 tennis game/set dividers. The web detail must use the plain shared header without
 Historic Match copy or a separate History/Matches action row. Completed-match cards should navigate to
 `/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
+
+For web Analytics discrepancies, call `GET /dashboard/{organization_id}` with
+the same `analytics_period_days` value selected in the UI. Check
+`app_analytics`, `player_analytics`, and (for a club-admin session only)
+`club_analytics`. Player figures require the profile first name and surname to
+match a participant identity exactly. Historical match events using source
+`lambda` cannot be split into web versus iOS; the UI labels them unattributed.
+New events should carry `web_app` or `mobile_app` from the authenticated session.
+Setup-completion and member-adoption cards intentionally say **Not tracked**
+until setup-start and member-action/view attribution are persisted.
 
 Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
 compact after a vertical scroll. The check confirms that the outer width does
@@ -599,7 +611,8 @@ disabled-club sessions, and only `draw_published` events appear there. If the
 section or its green Live badges are missing, inspect both
 `organization.features.tournament_manager.web_enabled` and the returned event
 statuses. Its heading is the link to `/tournaments`; there is no separate View all
-button. New Tournament starts collapsed and expands from its heading. If it closes
+button. Its heading includes the tournament trophy icon. New Tournament starts
+collapsed with equal compact top and bottom spacing and expands from its heading. If it closes
 unexpectedly, confirm the form was still untouched for the five-minute inactivity
 window. Selected tournament details, public access and the return-to-draft edit
 control likewise expand from the tournament-name heading. Entrant edit controls are top-right gear buttons; grade, seed,

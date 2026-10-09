@@ -941,7 +941,16 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         {screenMode === "dashboard" && tournamentManagerEnabled ? (
           <section className="panel stack dashboard-live-tournaments" id="live-tournaments-section">
             <div className="panel-heading">
-              <h2><Link className="dashboard-heading-link" to="/tournaments">Live Tournaments</Link></h2>
+              <h2 className="dashboard-tournament-heading">
+                <span className="dashboard-tournament-heading__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 5.5H16V9.5C16 12.2614 14.2091 14.5 12 14.5C9.79086 14.5 8 12.2614 8 9.5V5.5Z" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M8 7H5.75V8.25C5.75 10.045 6.95507 11.5599 8.6 12.0287M16 7H18.25V8.25C18.25 10.045 17.0449 11.5599 15.4 12.0287" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <path d="M12 14.5V18.5M9 18.5H15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <Link className="dashboard-heading-link" to="/tournaments">Live Tournaments</Link>
+              </h2>
             </div>
             {liveTournaments.length === 0 ? (
               <div className="dashboard-empty">No tournaments are live right now.</div>

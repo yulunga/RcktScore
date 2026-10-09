@@ -220,6 +220,14 @@
   align-self: start;
 }
 
+.collapsible-panel:not(.collapsible-panel--open) {
+  padding-block: 18px;
+}
+
+.collapsible-panel:not(.collapsible-panel--open) .panel-heading h2 {
+  margin-bottom: 0;
+}
+
 .collapsible-heading-button {
   display: flex;
   width: 100%;
@@ -2558,14 +2566,16 @@ textarea {
   display: block;
 }
 
-.dashboard-history-heading {
+.dashboard-history-heading,
+.dashboard-tournament-heading {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   font-size: 1.35rem;
 }
 
-.dashboard-history-heading__icon {
+.dashboard-history-heading__icon,
+.dashboard-tournament-heading__icon {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -2577,7 +2587,8 @@ textarea {
   flex: 0 0 auto;
 }
 
-.dashboard-history-heading__icon svg {
+.dashboard-history-heading__icon svg,
+.dashboard-tournament-heading__icon svg {
   width: 22px;
   height: 22px;
   display: block;
@@ -6122,26 +6133,29 @@ textarea {
   width: min(100%, 560px);
   margin: 0 auto;
   padding: 5px;
-  border: 1px solid #a8cbed;
-  border-radius: 16px;
-  background: #edf6ff;
-  box-shadow: 0 8px 24px rgba(11, 95, 179, 0.08);
+  border: 1px solid #7aa5d8;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: none;
 }
 
 .matches-category-switch button {
   min-height: 44px;
-  border: 0;
-  border-radius: 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
   background: transparent;
   color: #0b5fb3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.15;
   font-weight: 700;
 }
 
 .matches-category-switch button.active {
-  background: #2f8ee5;
-  color: #fff;
-  box-shadow: inset 0 -4px 0 #ec5ea8, 0 5px 14px rgba(14, 116, 209, 0.2);
+  border-color: #7aa5d8;
+  background: #e7f1fc;
+  color: #0b5fb3;
+  box-shadow: inset 0 -2px 0 #ec5ea8;
 }
 
 .dashboard-history-pagination {
@@ -6184,6 +6198,144 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
+}
+
+.analytics-category-switch {
+  margin-top: 2px;
+}
+
+.analytics-period-field {
+  display: grid;
+  gap: 6px;
+  min-width: 170px;
+  color: #17324d;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.analytics-period-field select {
+  min-height: 42px;
+  border: 1px solid #b9cde1;
+  border-radius: 12px;
+  background: #fff;
+  color: #17324d;
+}
+
+.analytics-sport-breakdown {
+  margin-top: 4px;
+  padding-top: 20px;
+  border-top: 1px solid #e3edf7;
+}
+
+.analytics-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.analytics-section-grid > div,
+.analytics-subpanel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #d7e3f0;
+  border-radius: 18px;
+  background: #f9fbfe;
+}
+
+.analytics-section-grid h3 {
+  margin-top: 0;
+}
+
+.performance-stat-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.analytics-list {
+  display: grid;
+}
+
+.analytics-list__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e3edf7;
+}
+
+.analytics-list__row:last-child {
+  border-bottom: 0;
+}
+
+.analytics-list__row span {
+  color: #486581;
+  text-align: right;
+}
+
+.analytics-heatmap {
+  display: grid;
+  gap: 5px;
+  min-width: 620px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.analytics-heatmap__row {
+  display: grid;
+  grid-template-columns: 36px minmax(552px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.analytics-heatmap__row > strong {
+  color: #486581;
+  font-size: 0.72rem;
+}
+
+.analytics-heatmap__cells {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(16px, 1fr));
+  gap: 3px;
+}
+
+.analytics-heatmap__cells span {
+  aspect-ratio: 1;
+  border: 1px solid rgba(18, 116, 208, 0.09);
+  border-radius: 4px;
+  background: var(--heat-color);
+}
+
+.analytics-heatmap__hours {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 44px;
+  color: #6c8095;
+  font-size: 0.68rem;
+}
+
+.analytics-table-wrap {
+  overflow-x: auto;
+}
+
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.analytics-table th,
+.analytics-table td {
+  padding: 12px;
+  border-bottom: 1px solid #dce8f4;
+  text-align: left;
+  vertical-align: top;
+}
+
+.analytics-table thead th {
+  color: #0b5fb3;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .performance-stat-card {
@@ -6234,12 +6386,37 @@ textarea {
     flex-direction: column;
     gap: 4px;
   }
+
+  .analytics-panel-heading {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .analytics-period-field {
+    min-width: 0;
+  }
+
+  .analytics-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-subpanel {
+    padding: 14px;
+  }
+
+  .analytics-heatmap {
+    min-width: 0;
+  }
+
+  .analytics-heatmap__row {
+    grid-template-columns: 32px minmax(520px, 1fr);
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   .matches-category-switch {
-    border-color: #8dbce8;
-    background: #e5f2ff;
+    border-color: #7aa5d8;
+    background: #fff;
   }
 
   .matches-category-switch button {
@@ -6247,9 +6424,10 @@ textarea {
   }
 
   .matches-category-switch button.active {
-    background: #2f8ee5;
-    color: #fff;
-    box-shadow: inset 0 -4px 0 #ec5ea8, 0 5px 14px rgba(14, 116, 209, 0.2);
+    border-color: #7aa5d8;
+    background: #e7f1fc;
+    color: #0b5fb3;
+    box-shadow: inset 0 -2px 0 #ec5ea8;
   }
 
   .dashboard-history-card__upgrade {
@@ -6404,17 +6582,20 @@ textarea {
     height: 18px;
   }
 
-  .dashboard-history-heading {
+  .dashboard-history-heading,
+  .dashboard-tournament-heading {
     gap: 8px;
     font-size: 1.08rem;
   }
 
-  .dashboard-history-heading__icon {
+  .dashboard-history-heading__icon,
+  .dashboard-tournament-heading__icon {
     width: 24px;
     height: 24px;
   }
 
-  .dashboard-history-heading__icon svg {
+  .dashboard-history-heading__icon svg,
+  .dashboard-tournament-heading__icon svg {
     width: 18px;
     height: 18px;
   }

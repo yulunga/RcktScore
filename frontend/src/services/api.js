@@ -190,6 +190,9 @@ export function getDashboard(organizationId, options = {}) {
   if (options.recentLimit !== undefined) {
     params.set("recent_limit", String(options.recentLimit));
   }
+  if (options.analyticsPeriodDays !== undefined) {
+    params.set("analytics_period_days", String(options.analyticsPeriodDays));
+  }
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return apiRequest(`/dashboard/${organizationId}${suffix}`);
 }

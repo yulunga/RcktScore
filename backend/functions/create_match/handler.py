@@ -43,7 +43,11 @@ def lambda_handler(event, context):
                     )
 
             try:
-                match = create_match(connection, payload, source="lambda")
+                match = create_match(
+                    connection,
+                    payload,
+                    source=auth_context["session"].get("login_source") or "web_app",
+                )
             except ValueError as exc:
                 return error_response(400, "INVALID_INPUT", str(exc))
     except SessionAuthError as auth_error:

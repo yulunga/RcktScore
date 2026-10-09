@@ -18,7 +18,7 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_match_session(connection, event, payload["match_id"])
+            auth_context = authorize_match_session(connection, event, payload["match_id"])
             try:
                 claimed = claim_match_action(
                     connection,
@@ -30,7 +30,7 @@ def lambda_handler(event, context):
                     end_match(
                         connection,
                         payload["match_id"],
-                        source=payload.get("source", "lambda"),
+                        source=auth_context["session"].get("login_source") or "web_app",
                         reason=payload.get("reason"),
                         ended_early=payload.get("ended_early"),
                         match_duration_seconds=payload.get("match_duration_seconds"),

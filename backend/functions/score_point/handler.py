@@ -18,7 +18,7 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_match_session(connection, event, payload["match_id"])
+            auth_context = authorize_match_session(connection, event, payload["match_id"])
             try:
                 claimed = claim_match_action(
                     connection,
@@ -27,7 +27,12 @@ def lambda_handler(event, context):
                     payload.get("client_action_id"),
                 )
                 match = (
-                    score_point(connection, payload["match_id"], payload["scorer"], source=payload.get("source", "lambda"))
+                    score_point(
+                        connection,
+                        payload["match_id"],
+                        payload["scorer"],
+                        source=auth_context["session"].get("login_source") or "web_app",
+                    )
                     if claimed
                     else get_match(connection, payload["match_id"])
                 )

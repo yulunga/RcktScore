@@ -68,6 +68,43 @@ test.beforeEach(async ({ page }) => {
       active_matches: [],
       scheduled_matches: [],
       recent_matches: completedMatches,
+      app_analytics: {
+        period_days: 30,
+        matches_scored: 48,
+        completed_matches: 36,
+        completed_match_rate: 75,
+        uncompleted_started_matches: 4,
+        abandoned_match_rate: 10,
+        matches_by_sport: [
+          { sport: "squash", count: 20 },
+          { sport: "racketball", count: 8 },
+          { sport: "tennis", count: 12 },
+          { sport: "padel", count: 8 },
+        ],
+      },
+      player_analytics: {
+        matches_played: 12,
+        matches_won: 7,
+        matches_lost: 5,
+        win_percentage: 58.3,
+        points_won: 214,
+        playing_time_seconds: 28800,
+        average_match_duration_seconds: 2400,
+        sports: [{ sport: "squash", matches: 12 }],
+        opponents: [{ name: "Jamie Jones", matches: 4 }],
+      },
+      club_analytics: {
+        club_matches_scored: 48,
+        member_activity: { tracked: false, reason: "Match actions are not yet attributed to individual member accounts." },
+        club_usage_heatmap: [],
+        peak_hours: [18, 19, 20],
+        peak_time_concentration: 35.4,
+        off_peak_matches: 31,
+        simultaneous_court_activity: 3,
+        court_usage: [{ court: "Court 1", matches: 18, duration_seconds: 43200, sports: [{ sport: "squash", count: 18 }] }],
+        scheduled_match_demand: [],
+        premium_digest: "48 matches were recorded across 1 court.",
+      },
     } }) });
   });
   await page.route("**/organization_settings/42", async (route) => {
@@ -258,11 +295,53 @@ test("opens Current and Scheduled matches from their dashboard headings @header"
   await page.getByRole("link", { name: "Active Matches" }).click();
   await expect(page).toHaveURL(/\/matches#active-matches-section$/);
   await expect(page.getByRole("tab", { name: "Current", exact: true })).toHaveAttribute("aria-selected", "true");
+  const matchTabs = page.locator(".matches-category-switch");
+  const currentTab = page.getByRole("tab", { name: "Current", exact: true });
+  const scheduledTab = page.getByRole("tab", { name: "Scheduled", exact: true });
+  await expect(matchTabs).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(matchTabs).toHaveCSS("border-top-color", "rgb(122, 165, 216)");
+  await expect(currentTab).toHaveCSS("background-color", "rgb(231, 241, 252)");
+  await expect(currentTab).toHaveCSS("color", "rgb(11, 95, 179)");
+  expect(await currentTab.evaluate((element) => getComputedStyle(element).fontSize))
+    .toBe(await scheduledTab.evaluate((element) => getComputedStyle(element).fontSize));
 
   await page.goto("/dashboard");
   await page.getByRole("link", { name: "Scheduled Matches" }).click();
   await expect(page).toHaveURL(/\/matches#scheduled-matches-section$/);
   await expect(page.getByRole("tab", { name: "Scheduled", exact: true })).toHaveAttribute("aria-selected", "true");
+});
+
+test("offers App, Player and Club analytics with period-based app metrics @header", async ({ page }) => {
+  await page.goto("/performance");
+
+  const analyticsTabs = page.getByRole("tablist", { name: "Analytics category" });
+  await expect(analyticsTabs.getByRole("tab")).toHaveCount(3);
+  await expect(analyticsTabs.getByRole("tab", { name: "App" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByText("Matches scored", { exact: true })).toBeVisible();
+  await expect(page.getByText("48", { exact: true })).toBeVisible();
+  await expect(page.getByText("Completed-match rate", { exact: true })).toBeVisible();
+  await expect(page.getByText("75%", { exact: true })).toBeVisible();
+  await expect(page.getByText("Abandoned-match rate", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Matches by Sport" })).toBeVisible();
+  await expect(page.getByText("Padel", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Duration Distribution" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hourly Activity Heatmap" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Monthly Scoring Trend" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Web versus iOS" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Match Setup and Rules" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Match Structure and Competitiveness" })).toBeVisible();
+  await expect(page.getByText("New-match setup completion", { exact: true })).toBeVisible();
+  await expect(page.getByText("Not tracked", { exact: true }).first()).toBeVisible();
+
+  await analyticsTabs.getByRole("tab", { name: "Player" }).click();
+  await expect(page.getByRole("heading", { name: "Your Player Stats" })).toBeVisible();
+  await expect(page.getByText("Jamie Jones", { exact: true })).toBeVisible();
+  await analyticsTabs.getByRole("tab", { name: "Club" }).click();
+  await expect(page.getByRole("heading", { name: "Club Usage Analytics" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Court Usage" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scheduled-match Demand" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sport Popularity Trend" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Premium Club Digest" })).toBeVisible();
 });
 
 test("opens and updates the signed-in club admin profile from the header @header", async ({ page }) => {

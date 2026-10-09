@@ -179,6 +179,7 @@ The native login `Ping Us` form posts name, email, category, message, app versio
 2. The frontend calls `GET /dashboard/{organization_id}` with optional:
    - `active_limit`
    - `recent_limit`
+   - `analytics_period_days` (`0` for all time, otherwise capped at 3650 days)
 3. [backend/functions/get_dashboard/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_dashboard/handler.py) authorizes the org-user session.
 4. [backend/common/dashboard_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/dashboard_logic.py):
    - loads organisation summary
@@ -187,9 +188,12 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - loads completed match history
    - applies personal-plan history limits
    - returns a redacted fourth history teaser for Personal Free when older matches exist
+   - aggregates App analytics from match rows and event payloads for the requested rolling period, including duration, heatmap, trend, format/rule, competitiveness, point and participant measures
+   - derives signed-in Player usage by exact profile-name participation
+   - returns court/demand/peak-time Club analytics only for a club administrator
    - derives Personal Plus performance statistics from completed match state and event actions
 5. The API returns `data.dashboard`.
-6. The page renders screen-mode-specific views for dashboard, matches, history, or Personal Plus performance. Dashboard Recent Matches retains at most 24 client-side preview records and paginates six cards at a time, giving three complete two-card rows on wide screens. The Active Matches, Scheduled Matches and Recent Matches heading text opens the corresponding Current, Scheduled or History tab on the Matches screen. For feature-enabled clubs, the dashboard then reads the existing tournament list and shows only `draw_published` events in a Live Tournaments panel below Recent Matches. Matches History paginates 20 cards at a time, giving exactly ten two-card rows on wide screens; the alternate mobile list is hidden there so it cannot duplicate those cards as full-width rows. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate.
+6. The page renders screen-mode-specific views for dashboard, matches, history, or Analytics. Dashboard Recent Matches retains at most 24 client-side preview records and paginates six cards at a time, giving three complete two-card rows on wide screens. The Active Matches, Scheduled Matches and Recent Matches heading text opens the corresponding Current, Scheduled or History tab on the Matches screen. Those tabs use the same white, blue and light-blue visual language as organisation Settings. For feature-enabled clubs, the dashboard then reads the existing tournament list and shows only `draw_published` events in an icon-labelled Live Tournaments panel below Recent Matches. Matches History paginates 20 cards at a time, giving exactly ten two-card rows on wide screens; the alternate mobile list is hidden there so it cannot duplicate those cards as full-width rows. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate. Analytics exposes App and Player to eligible accounts plus an admin-only Club tab for club accounts. App renders the complete selected-period activity, duration, heatmap, trend, setup/rules, competitiveness, points and participant aggregate. Player uses exact profile-name participation and retains the deeper Personal Plus report. Club renders court demand, peak/off-peak and simultaneous use, schedules, sport trends and its digest. Metrics whose source telemetry is absent return a visible untracked state instead of a fabricated zero.
 7. Both the dashboard Start New Match action and the signed-in header `+` route through the same dashboard sport-selection overlay; selecting a sport continues to `/match/new/setup?sport=...`.
 8. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-three window, preventing direct URL access from bypassing the entitlement.
 

@@ -18,7 +18,7 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_match_session(connection, event, payload["match_id"])
+            auth_context = authorize_match_session(connection, event, payload["match_id"])
             try:
                 claimed = claim_match_action(
                     connection,
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
                             for key, value in payload.items()
                             if key not in {"match_id", "action_type", "client_action_id"}
                         },
-                        source=payload.get("source", "lambda"),
+                        source=auth_context["session"].get("login_source") or "web_app",
                     )
                     if claimed
                     else get_match(connection, payload["match_id"])

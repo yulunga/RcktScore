@@ -33,15 +33,29 @@ def lambda_handler(event, context):
     query_params = event.get("queryStringParameters") or {}
     active_limit = _optional_positive_int(query_params.get("active_limit"), 12)
     recent_limit = _optional_positive_int(query_params.get("recent_limit"), 12)
+    analytics_period_days = min(
+        _optional_positive_int(query_params.get("analytics_period_days"), 30),
+        3650,
+    )
+    include_extended_analytics = "analytics_period_days" in query_params
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, organization_id, require_admin=False)
+            auth_context = authorize_organization_session(connection, event, organization_id, require_admin=False)
+            membership = auth_context["membership"]
             dashboard = get_dashboard_data(
                 connection,
                 organization_id,
                 active_limit=active_limit,
                 recent_limit=recent_limit,
+                analytics_period_days=analytics_period_days,
+                actor_first_name=membership.get("first_name"),
+                actor_surname=membership.get("surname"),
+                include_club_analytics=(
+                    membership.get("organization_type") == "club"
+                    and membership.get("role") == "admin"
+                ),
+                include_extended_analytics=include_extended_analytics,
             )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

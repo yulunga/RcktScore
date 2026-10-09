@@ -56,12 +56,20 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("uses the standard header and exposes persisted tournament options @tournament", async ({ page }) => {
+  await page.setViewportSize({ width: 414, height: 896 });
   await page.goto("/tournaments");
 
   await expect(page.locator(".club-page-header__page-title")).toHaveCount(0);
   await expect(page.getByText("Create tournament events and build a reusable player list", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Back to Settings" })).toHaveCount(0);
   await expect(page.getByLabel("Tournament Name")).toHaveCount(0);
+  const collapsedPanel = page.locator(".collapsible-panel");
+  const collapsedButton = collapsedPanel.getByRole("button", { name: "New Tournament" });
+  const [collapsedPanelBox, collapsedButtonBox] = await Promise.all([collapsedPanel.boundingBox(), collapsedButton.boundingBox()]);
+  const topBuffer = collapsedButtonBox.y - collapsedPanelBox.y;
+  const bottomBuffer = collapsedPanelBox.y + collapsedPanelBox.height - collapsedButtonBox.y - collapsedButtonBox.height;
+  expect(Math.abs(topBuffer - bottomBuffer)).toBeLessThanOrEqual(2);
+  expect(topBuffer).toBeLessThanOrEqual(20);
   await page.getByRole("button", { name: "New Tournament" }).click();
   await expect(page.getByLabel("Tournament Access")).toBeVisible();
   await expect(page.getByText("Graded tournament", { exact: true })).toBeVisible();
@@ -107,6 +115,7 @@ test("shows live tournaments below recent matches on enabled club dashboards @to
   const recentSection = page.locator("#match-history-section");
   const tournamentSection = page.locator("#live-tournaments-section");
   await expect(tournamentSection.getByRole("heading", { name: "Live Tournaments" })).toBeVisible();
+  await expect(tournamentSection.locator(".dashboard-tournament-heading__icon svg")).toBeVisible();
   await expect(tournamentSection.getByRole("button", { name: "View all" })).toHaveCount(0);
   await expect(tournamentSection.getByRole("link", { name: "Live Tournaments" })).toBeVisible();
   await expect(tournamentSection.getByText(tournament.name, { exact: true })).toBeVisible();

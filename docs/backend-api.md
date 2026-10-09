@@ -193,7 +193,7 @@ The Help Centre header compacts on scroll and its brand link returns to the publ
 
 The web app's Google Analytics integration is also client-only and adds no backend route. The GA4 script is loaded only after explicit consent; client-side route reporting strips query strings and replaces user, organisation, match, tournament and public draw-key values with route-template placeholders before transmission.
 
-The signed-in web header, its self-profile shortcut, its shared dashboard sport-selection overlay, the Current/Scheduled/History Matches tabs, the dashboard's 24-record/six-card pagination, the History tab's 20-card pagination, the plain completed-match detail header, collapsed shirt-colour pickers and iOS-style setup switches are client-only presentation changes. Dashboard section headings route directly to their corresponding Matches tabs. The History page hides its alternate mobile list on wide screens so each 20-card page is exactly ten two-card rows rather than a duplicated continuation. The enabled-club dashboard's Live Tournaments heading links to Tournament Manager and reuses `GET /organization_settings/{organization_id}` plus `GET /organizations/{organization_id}/tournaments`, filtering for `draw_published` in the client. Collapsed tournament create/summary cards and organisation-user form/search/sorting are also client-only. Primary Contact is selected from the approved users already returned by organisation settings and remains persisted in the existing `org_contact` field through `PUT /organization_details/{organization_id}`. These changes require no backend migration or endpoint change.
+The signed-in web header, its self-profile shortcut, its shared dashboard sport-selection overlay, the Current/Scheduled/History Matches tabs, the dashboard's 24-record/six-card pagination, the History tab's 20-card pagination, the plain completed-match detail header, collapsed shirt-colour pickers and iOS-style setup switches are client presentation changes. Dashboard section headings route directly to their corresponding Matches tabs. The History page hides its alternate mobile list on wide screens so each 20-card page is exactly ten two-card rows rather than a duplicated continuation. The enabled-club dashboard's icon-labelled Live Tournaments heading links to Tournament Manager and reuses `GET /organization_settings/{organization_id}` plus `GET /organizations/{organization_id}/tournaments`, filtering for `draw_published` in the client. Collapsed tournament create/summary cards and organisation-user form/search/sorting are also client-only. Primary Contact is selected from the approved users already returned by organisation settings and remains persisted in the existing `org_contact` field through `PUT /organization_details/{organization_id}`.
 
 The public login logo and wordmark also link to the public landing homepage. This is client-only navigation and does not change authentication APIs.
 
@@ -368,6 +368,25 @@ Current root-admin club-user behavior:
 - `PUT /organization_courts/{court_id}`
 - `DELETE /organization_courts/{court_id}`
 - `POST /organization_courts/{court_id}/display-code`
+
+`GET /dashboard/{organization_id}` accepts `active_limit`, `recent_limit`, and
+`analytics_period_days`. The analytics period is `30` by default, `0` means all
+time, and positive values are capped at 3650 days. Supplying that query parameter
+opts into the detailed analytics read; ordinary dashboard requests retain the
+lighter summary query. Its `app_analytics` response
+contains organisation-wide match, sport, duration, heatmap, trend, returning-use,
+format/rule, competitiveness, point and participant aggregates. It also returns
+`player_analytics` when the current plan/account may receive personal reporting,
+using the authenticated membership's first name and surname, and returns
+`club_analytics` only to a club administrator. Scheduled matches are not treated
+as started in the abandonment rate. Client-platform and setup-completion objects
+carry a `tracked` flag so missing historical attribution cannot be mistaken for
+zero activity.
+
+New `match_started`, scoring and end events use the authenticated session's
+`web_app` or `mobile_app` login source instead of accepting a client-supplied
+source. This makes web/iOS analytics authoritative for newly recorded matches;
+older `lambda`-sourced events remain visibly unattributed.
 
 Current organisation-settings behavior:
 
