@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
@@ -14,8 +14,8 @@ import {
 } from "../services/api";
 
 const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
-const DASHBOARD_HISTORY_PAGE_SIZE = 5;
-const DASHBOARD_HISTORY_MATCH_LIMIT = 25;
+const DASHBOARD_HISTORY_PAGE_SIZE = 6;
+const DASHBOARD_HISTORY_MATCH_LIMIT = 24;
 const MATCHES_HISTORY_PAGE_SIZE = 20;
 const SCHEDULED_DETAILS_AUTO_COLLAPSE_MS = 5 * 60 * 1000;
 
@@ -428,7 +428,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const historyPages = chunkItems(filteredHistoryMatches, historyPageSize);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
   const hasHistoryCarousel = historyPages.length > 1;
-  const showHistoryViewAll = screenMode === "dashboard" && filteredHistoryMatches.length > 0;
 
   const activePages = chunkItems(activeMatches);
   const visibleActivePage = activePages[clampPageIndex(activePage, activePages.length)] || [];
@@ -786,7 +785,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   <path d="M19.25 4.75C23.25 8.75 23.25 15.25 19.25 19.25" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                 </svg>
               </span>
-              Active Matches
+              {screenMode === "dashboard" ? (
+                <Link
+                  className="dashboard-heading-link"
+                  to="/matches#active-matches-section"
+                >
+                  Active Matches
+                </Link>
+              ) : "Active Matches"}
             </h2>
           </div>
 
@@ -829,7 +835,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                     <path d="M12 11.25V15.25" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
                   </svg>
                 </span>
-                Scheduled Matches
+                {screenMode === "dashboard" ? (
+                  <Link
+                    className="dashboard-heading-link"
+                    to="/matches#scheduled-matches-section"
+                  >
+                    Scheduled Matches
+                  </Link>
+                ) : "Scheduled Matches"}
               </h2>
             </div>
 
@@ -874,7 +887,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
         {(!showMatchesOnly || showingHistory) ? (
         <section className="panel stack" id="match-history-section">
-          <div className="panel-heading panel-heading--with-action">
+          <div className="panel-heading">
             <h2 className="dashboard-history-heading">
               <span className="dashboard-history-heading__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -883,17 +896,15 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   <path d="M12 8.5V12.25L14.5 13.75" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-              {historyTitle}
+              {screenMode === "dashboard" ? (
+                <Link
+                  className="dashboard-heading-link"
+                  to="/matches#match-history-section"
+                >
+                  Recent Matches
+                </Link>
+              ) : historyTitle}
             </h2>
-            {showHistoryViewAll ? (
-              <button
-                className="dashboard-section-link"
-                type="button"
-                onClick={() => navigate("/matches#match-history-section")}
-              >
-                View all
-              </button>
-            ) : null}
           </div>
 
           {showingHistory ? (
@@ -929,9 +940,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
         {screenMode === "dashboard" && tournamentManagerEnabled ? (
           <section className="panel stack dashboard-live-tournaments" id="live-tournaments-section">
-            <div className="panel-heading panel-heading--with-action">
-              <h2>Live Tournaments</h2>
-              <button className="dashboard-section-link" type="button" onClick={() => navigate("/tournaments")}>View all</button>
+            <div className="panel-heading">
+              <h2><Link className="dashboard-heading-link" to="/tournaments">Live Tournaments</Link></h2>
             </div>
             {liveTournaments.length === 0 ? (
               <div className="dashboard-empty">No tournaments are live right now.</div>

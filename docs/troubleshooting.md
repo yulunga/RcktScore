@@ -90,13 +90,21 @@ Start New Match remains a separate blue action. The header `+` and dashboard
 action must both open the same sport-selection overlay before setup. It also verifies that new-match
 routes do not highlight Matches, that the mobile menu remains on one row and
 Settings opens `/settings`, the Settings section tabs do not repeat Home, and
-Recent Matches uses date/time tiles with five-card pages over at most 25
-records. View all opens Matches → History, whose 20-card pages form exactly ten
+Recent Matches uses date/time tiles with six-card pages over at most 24 records,
+forming three complete two-card desktop rows. Its heading opens Matches → History;
+the Active Matches and Scheduled Matches headings open their corresponding tabs.
+Matches History uses 20-card pages that form exactly ten
 two-card desktop rows. If full-width cards repeat below those rows, inspect the
 desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until
 the phone/portrait breakpoint. The automated journey also
 holds the page at the former scroll-boundary failure point and verifies that the
 header changes state once rather than oscillating between labels and icons.
+The same suite verifies that the profile icon beside Messages exposes the
+signed-in username, opens `/profile`, and lets a club admin update their own
+name/contact/country fields. If the profile loads blank, verify that
+`GET /organization_settings/{organization_id}` returns the signed-in username in
+`users`; if saving fails, inspect `PUT /personal_profile/{organization_id}` and
+the current org-user bearer session.
 
 ### iOS project inventory
 
@@ -590,8 +598,18 @@ list request as the header/list page. It is intentionally absent for personal or
 disabled-club sessions, and only `draw_published` events appear there. If the
 section or its green Live badges are missing, inspect both
 `organization.features.tournament_manager.web_enabled` and the returned event
-statuses. Entrant edit controls are top-right gear buttons; grade, seed,
+statuses. Its heading is the link to `/tournaments`; there is no separate View all
+button. New Tournament starts collapsed and expands from its heading. If it closes
+unexpectedly, confirm the form was still untouched for the five-minute inactivity
+window. Selected tournament details, public access and the return-to-draft edit
+control likewise expand from the tournament-name heading. Entrant edit controls are top-right gear buttons; grade, seed,
 linked-account and approved-member indicators sit beneath the club line.
+
+In club Settings, Primary Contact can only be selected from approved members in
+the organisation-settings response. If a person is missing, add and approve their
+club membership first. Organisation Users are sorted by surname and filtered
+client-side by the Search Users field; the Add User form starts collapsed and an
+untouched expanded form closes after five minutes.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.

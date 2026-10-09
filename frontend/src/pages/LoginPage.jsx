@@ -41,6 +41,9 @@ export default function LoginPage() {
     selectOrganization,
     cancelOrganizationSelection,
   } = useAuth();
+  const profileMessage = !isAuthenticated && typeof window !== "undefined"
+    ? window.sessionStorage.getItem("rcktscore.profile-message") || ""
+    : "";
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/dashboard";
@@ -54,6 +57,12 @@ export default function LoginPage() {
     || interestAnswer.trim()
     || interestUseType !== "personal",
   );
+
+  useEffect(() => {
+    if (profileMessage) {
+      window.sessionStorage.removeItem("rcktscore.profile-message");
+    }
+  }, [profileMessage]);
 
   useEffect(() => {
     if (!shouldOpenInterestFormFromUrl) {
@@ -241,6 +250,9 @@ export default function LoginPage() {
                 </h1>
               </a>
             </div>
+            {profileMessage ? (
+              <div className="notice settings-success">{profileMessage}</div>
+            ) : null}
             {requiresOrganizationSelection ? (
               <div className="stack">
                 <div className="panel stack compact login-choice-panel">

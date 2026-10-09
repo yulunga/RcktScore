@@ -193,7 +193,7 @@ The Help Centre header compacts on scroll and its brand link returns to the publ
 
 The web app's Google Analytics integration is also client-only and adds no backend route. The GA4 script is loaded only after explicit consent; client-side route reporting strips query strings and replaces user, organisation, match, tournament and public draw-key values with route-template placeholders before transmission.
 
-The signed-in web header, its shared dashboard sport-selection overlay, the Current/Scheduled/History Matches tabs, the dashboard's 25-record/five-card pagination, the History tab's 20-card pagination, the plain completed-match detail header, collapsed shirt-colour pickers and iOS-style setup switches are client-only presentation changes. The History page hides its alternate mobile list on wide screens so each 20-card page is exactly ten two-card rows rather than a duplicated continuation. The enabled-club dashboard's live-tournament panel also reuses `GET /organization_settings/{organization_id}` and `GET /organizations/{organization_id}/tournaments`, filtering for `draw_published` in the client. These changes require no backend migration or endpoint change.
+The signed-in web header, its self-profile shortcut, its shared dashboard sport-selection overlay, the Current/Scheduled/History Matches tabs, the dashboard's 24-record/six-card pagination, the History tab's 20-card pagination, the plain completed-match detail header, collapsed shirt-colour pickers and iOS-style setup switches are client-only presentation changes. Dashboard section headings route directly to their corresponding Matches tabs. The History page hides its alternate mobile list on wide screens so each 20-card page is exactly ten two-card rows rather than a duplicated continuation. The enabled-club dashboard's Live Tournaments heading links to Tournament Manager and reuses `GET /organization_settings/{organization_id}` plus `GET /organizations/{organization_id}/tournaments`, filtering for `draw_published` in the client. Collapsed tournament create/summary cards and organisation-user form/search/sorting are also client-only. Primary Contact is selected from the approved users already returned by organisation settings and remains persisted in the existing `org_contact` field through `PUT /organization_details/{organization_id}`. These changes require no backend migration or endpoint change.
 
 The public login logo and wordmark also link to the public landing homepage. This is client-only navigation and does not change authentication APIs.
 
@@ -374,7 +374,7 @@ Current organisation-settings behavior:
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
 - both the web organisation settings page and the native iOS club-admin settings screen use that same organisation-details update route for racket-sport visibility changes
-- the native iOS settings profile page uses `PUT /personal_profile/{organization_id}` for first name, surname, email/username, telephone, and country updates, and still uses `POST /password_reset/request` for password-reset emails
+- the native iOS settings profile page and the web `/profile` page use `PUT /personal_profile/{organization_id}` for signed-in self-profile updates; both can change email/username, name, telephone, city/location and country. An email change revokes existing sessions, so the web client returns to login with the new sign-in address; iOS still uses `POST /password_reset/request` for password-reset emails
 - personal-account owners can call `DELETE /personal_account/{organization_id}` with the exact confirmation value `DELETE MY ACCOUNT`; the route requires a valid session for that organisation and independently verifies that the session username owns a personal tenant
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
 - the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
@@ -506,11 +506,11 @@ Current behavior:
   - `courts`
   - `organization.enabled_sports`
 
-### Personal profile
+### Signed-in user profile
 
 [functions/update_personal_profile/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/update_personal_profile/handler.py)
 
-Current personal-profile behavior:
+Current profile behavior:
 
 - authorizes the presented org-user session against the requested organisation
 - updates the signed-in user rather than trusting a username supplied by the client
@@ -528,14 +528,6 @@ Current deletion behavior:
 - permits deletion only when the authenticated username is the owner of a tenant whose `org_type` is `personal`
 - permanently removes the personal tenant's matches, scoring events/action receipts through cascade, court display sessions, courts, memberships, organisation settings, associated personal signup record, and all active sessions for that username
 - returns `403 ACCOUNT_DELETION_FORBIDDEN` for a valid member who is not the personal-account owner
-
-- only the signed-in user can update their own personal profile
-- requires `username` in the payload
-- currently updates:
-  - `first_name`
-  - `surname`
-  - `country`
-  - `city_location`
 
 ### Organisation users
 

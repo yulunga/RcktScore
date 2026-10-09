@@ -18,6 +18,7 @@ import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
 import OrganisationUserPage from "./pages/OrganisationUserPage";
 import PerformancePage from "./pages/PerformancePage";
 import PingUsPage from "./pages/PingUsPage";
+import ProfilePage from "./pages/ProfilePage";
 import RootAdminClubPage from "./pages/RootAdminClubPage";
 import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
 import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
@@ -152,6 +153,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <NotificationsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/profile"
+        element={(
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         )}
       />

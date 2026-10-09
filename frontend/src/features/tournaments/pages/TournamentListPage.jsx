@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   starts_on: "",
   ends_on: "",
 };
+const EMPTY_FORM_COLLAPSE_MS = 5 * 60 * 1000;
 
 function formatDate(value) {
   if (!value) return "Date not set";
@@ -42,6 +43,15 @@ export default function TournamentListPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const formHasData = JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+
+  useEffect(() => {
+    if (!createOpen || formHasData) return undefined;
+    const timeoutId = window.setTimeout(() => setCreateOpen(false), EMPTY_FORM_COLLAPSE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [createOpen, formHasData]);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -112,12 +122,22 @@ export default function TournamentListPage() {
 
       {featureEnabled ? (
         <section className="tournament-manager-grid">
-          {isAdmin ? <section className="panel stack">
+          {isAdmin ? <section className={`panel stack collapsible-panel${createOpen ? " collapsible-panel--open" : ""}`}>
             <div className="panel-heading">
-              <h2>New Tournament</h2>
-              <p className="helper-text">This creates a draft. Draw generation and scheduling remain separate steps.</p>
+              <h2>
+                <button
+                  aria-expanded={createOpen}
+                  className="collapsible-heading-button"
+                  type="button"
+                  onClick={() => setCreateOpen((current) => !current)}
+                >
+                  <span>New Tournament</span>
+                  <span className="collapsible-heading-button__chevron" aria-hidden="true">⌄</span>
+                </button>
+              </h2>
+              {createOpen ? <p className="helper-text">This creates a draft. Draw generation and scheduling remain separate steps.</p> : null}
             </div>
-            <form className="stack" onSubmit={handleCreate}>
+            {createOpen ? <form className="stack" onSubmit={handleCreate}>
               <div className="field-grid">
                 <div className="field settings-field-wide">
                   <label htmlFor="tournament-name">Tournament Name</label>
@@ -239,7 +259,7 @@ export default function TournamentListPage() {
               <div className="button-row">
                 <button disabled={saving} type="submit">{saving ? "Creating..." : "Create Draft Tournament"}</button>
               </div>
-            </form>
+            </form> : null}
           </section> : (
             <section className="panel stack">
               <div className="panel-heading">

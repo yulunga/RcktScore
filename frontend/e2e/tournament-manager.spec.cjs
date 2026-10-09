@@ -61,13 +61,15 @@ test("uses the standard header and exposes persisted tournament options @tournam
   await expect(page.locator(".club-page-header__page-title")).toHaveCount(0);
   await expect(page.getByText("Create tournament events and build a reusable player list", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Back to Settings" })).toHaveCount(0);
+  await expect(page.getByLabel("Tournament Name")).toHaveCount(0);
+  await page.getByRole("button", { name: "New Tournament" }).click();
   await expect(page.getByLabel("Tournament Access")).toBeVisible();
   await expect(page.getByText("Graded tournament", { exact: true })).toBeVisible();
   await expect(page.getByText("Limit draw size", { exact: true })).toBeVisible();
   const panels = page.locator(".tournament-manager-grid > .panel");
   const [leftPanel, rightPanel] = await Promise.all([panels.nth(0).boundingBox(), panels.nth(1).boundingBox()]);
   expect(Math.abs(leftPanel.width - rightPanel.width)).toBeLessThan(2);
-  expect(rightPanel.height).toBeLessThan(leftPanel.height);
+  expect(leftPanel.height).toBeGreaterThan(200);
 });
 
 test("labels a published tournament as live with an explicit view action @tournament", async ({ page }) => {
@@ -105,10 +107,14 @@ test("shows live tournaments below recent matches on enabled club dashboards @to
   const recentSection = page.locator("#match-history-section");
   const tournamentSection = page.locator("#live-tournaments-section");
   await expect(tournamentSection.getByRole("heading", { name: "Live Tournaments" })).toBeVisible();
+  await expect(tournamentSection.getByRole("button", { name: "View all" })).toHaveCount(0);
+  await expect(tournamentSection.getByRole("link", { name: "Live Tournaments" })).toBeVisible();
   await expect(tournamentSection.getByText(tournament.name, { exact: true })).toBeVisible();
   await expect(tournamentSection.getByText("Draft Event", { exact: true })).toHaveCount(0);
   const [recentBox, tournamentBox] = await Promise.all([recentSection.boundingBox(), tournamentSection.boundingBox()]);
   expect(tournamentBox.y).toBeGreaterThan(recentBox.y + recentBox.height);
+  await tournamentSection.getByRole("link", { name: "Live Tournaments" }).click();
+  await expect(page).toHaveURL(/\/tournaments$/);
 });
 
 test("shows event identity in the summary and uses search-first player entry @tournament", async ({ page }) => {
@@ -134,7 +140,8 @@ test("shows event identity in the summary and uses search-first player entry @to
   await expect(page.getByRole("button", { name: "All Tournaments" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
   await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "View tournament details" }).click();
+  await expect(page.getByRole("button", { name: "View tournament details" })).toHaveCount(0);
+  await page.getByRole("button", { name: tournament.name }).click();
   await expect(page.getByText("Squash · Knockout with Plate", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Summary" })).toHaveCount(0);
   const summaryRows = page.locator(".tournament-summary-details > span");
@@ -385,6 +392,7 @@ test("reviews, publishes and safely returns a seeded knockout draw to draft @tou
   await expect(page.getByLabel("Move Seed One in the draw")).toBeVisible();
   await page.getByRole("button", { name: "Publish Draw" }).click();
   await expect(page.getByText("Live", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: tournament.name }).click();
   await expect(page.getByText("DRAWKEY23456", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open Public Draw" })).toBeVisible();
   const summary = page.locator(".tournament-selected-summary");

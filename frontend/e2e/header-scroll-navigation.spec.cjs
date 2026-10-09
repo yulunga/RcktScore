@@ -72,8 +72,39 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/organization_settings/42", async (route) => {
     await route.fulfill({ json: envelope({ organizationSettings: {
-      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
-      users: [],
+      organization: {
+        id: 42,
+        organization_name: "Header Test Club",
+        org_address: "1 Court Road",
+        org_contact: "Header Tester",
+        type: "club",
+        features: {},
+      },
+      users: [{
+        id: 7,
+        username: session.username,
+        role: "admin",
+        status: "approved",
+        first_name: "Header",
+        surname: "Tester",
+        telephone: "01234 567890",
+        city_location: "London",
+        country: "United Kingdom",
+      }, {
+        id: 8,
+        username: "zoe@example.com",
+        role: "user",
+        status: "approved",
+        first_name: "Zoe",
+        surname: "Alpha",
+      }, {
+        id: 9,
+        username: "alex@example.com",
+        role: "user",
+        status: "approved",
+        first_name: "Alex",
+        surname: "Zephyr",
+      }],
       courts: [],
     } }) });
   });
@@ -120,15 +151,20 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
 
   if (viewport.width >= 1100) {
     const historyCards = page.locator(".dashboard-list--history.dashboard-list--desktop .dashboard-history-card");
-    await expect(historyCards).toHaveCount(5);
+    await expect(historyCards).toHaveCount(6);
     const firstHistoryCard = await historyCards.nth(0).boundingBox();
     const secondHistoryCard = await historyCards.nth(1).boundingBox();
+    const fifthHistoryCard = await historyCards.nth(4).boundingBox();
+    const sixthHistoryCard = await historyCards.nth(5).boundingBox();
     expect(Math.abs(firstHistoryCard.y - secondHistoryCard.y)).toBeLessThanOrEqual(1);
     expect(secondHistoryCard.x).toBeGreaterThan(firstHistoryCard.x + firstHistoryCard.width);
+    expect(Math.abs(fifthHistoryCard.y - sixthHistoryCard.y)).toBeLessThanOrEqual(1);
+    expect(sixthHistoryCard.x).toBeGreaterThan(fifthHistoryCard.x + fifthHistoryCard.width);
     await expect(page.getByRole("heading", { name: "Recent Matches" })).toBeVisible();
     await expect(historyCards.nth(0).locator(".dashboard-history-card__date-tile small")).toHaveText(/^\d{2}:\d{2}$/);
     await expect(historyCards.nth(0).locator(".dashboard-history-card__player-name--winner")).toHaveCSS("text-decoration-line", "none");
-    await expect(page.getByRole("button", { name: "Completed matches page 5" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Completed matches page 4" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Completed matches page 5" })).toHaveCount(0);
   }
 
   const initialBox = await header.boundingBox();
@@ -188,9 +224,10 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await page.evaluate(() => window.__headerObserver?.disconnect());
 });
 
-test("opens all recent matches on the Matches history tab @header", async ({ page }) => {
+test("opens all recent matches from the heading on the Matches history tab @header", async ({ page }) => {
   await page.goto("/dashboard");
-  await page.getByRole("button", { name: "View all" }).click();
+  await expect(page.getByRole("button", { name: "View all" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Recent Matches" }).click();
   await expect(page).toHaveURL(/\/matches#match-history-section$/);
   await expect(page.getByRole("tab", { name: "History", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Match History" })).toBeVisible();
@@ -198,8 +235,13 @@ test("opens all recent matches on the Matches history tab @header", async ({ pag
   await expect(historyCards).toHaveCount(20);
   if (page.viewportSize().width >= 1100) {
     await expect(page.locator(".dashboard-carousel--mobile")).toBeHidden();
-    const tenthRowLeft = await historyCards.nth(18).boundingBox();
-    const tenthRowRight = await historyCards.nth(19).boundingBox();
+    await page.evaluate(() => document.fonts.ready);
+    const [tenthRowLeft, tenthRowRight] = await historyCards.evaluateAll((cards) => (
+      cards.slice(18, 20).map((card) => {
+        const box = card.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width };
+      })
+    ));
     expect(Math.abs(tenthRowLeft.y - tenthRowRight.y)).toBeLessThanOrEqual(1);
     expect(tenthRowRight.x).toBeGreaterThan(tenthRowLeft.x + tenthRowLeft.width);
   } else {
@@ -209,6 +251,91 @@ test("opens all recent matches on the Matches history tab @header", async ({ pag
   await expect(page.getByRole("button", { name: "Completed matches page 2" })).toBeVisible();
   await page.getByRole("button", { name: "Completed matches page 2" }).click();
   await expect(historyCards).toHaveCount(5);
+});
+
+test("opens Current and Scheduled matches from their dashboard headings @header", async ({ page }) => {
+  await page.goto("/dashboard");
+  await page.getByRole("link", { name: "Active Matches" }).click();
+  await expect(page).toHaveURL(/\/matches#active-matches-section$/);
+  await expect(page.getByRole("tab", { name: "Current", exact: true })).toHaveAttribute("aria-selected", "true");
+
+  await page.goto("/dashboard");
+  await page.getByRole("link", { name: "Scheduled Matches" }).click();
+  await expect(page).toHaveURL(/\/matches#scheduled-matches-section$/);
+  await expect(page.getByRole("tab", { name: "Scheduled", exact: true })).toHaveAttribute("aria-selected", "true");
+});
+
+test("opens and updates the signed-in club admin profile from the header @header", async ({ page }) => {
+  let submittedProfile = null;
+  await page.route("**/personal_profile/42", async (route) => {
+    submittedProfile = route.request().postDataJSON();
+    await route.fulfill({ json: envelope({ organizationSettings: {
+      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
+      users: [{
+        id: 7,
+        username: session.username,
+        role: "admin",
+        status: "approved",
+        first_name: submittedProfile.first_name,
+        surname: submittedProfile.surname,
+        telephone: submittedProfile.telephone,
+        city_location: submittedProfile.city_location,
+        country: submittedProfile.country,
+      }],
+      courts: [],
+    } }) });
+  });
+
+  await page.goto("/dashboard");
+  const profileButton = page.getByRole("button", { name: `Profile: ${session.username}` });
+  await expect(profileButton).toBeVisible();
+  await expect(profileButton).toHaveAttribute("title", session.username);
+  await profileButton.click();
+
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByRole("heading", { name: "Your Profile" })).toBeVisible();
+  await expect(page.getByLabel("Email / Username")).toHaveValue(session.username);
+  await expect(page.getByLabel("Email / Username")).toBeEditable();
+  await expect(page.getByLabel("First name")).toHaveValue("Header");
+  await page.getByLabel("Telephone").fill("020 7946 0100");
+  await page.getByLabel("Country").selectOption("France");
+  await page.getByRole("button", { name: "Save Profile" }).click();
+
+  await expect(page.getByText("Your profile has been updated.")).toBeVisible();
+  expect(submittedProfile.telephone).toBe("020 7946 0100");
+  expect(submittedProfile.country).toBe("France");
+});
+
+test("returns to login with the new address after a profile email change @header", async ({ page }) => {
+  const nextEmail = "updated-header@example.com";
+  await page.route("**/personal_profile/42", async (route) => {
+    const submittedProfile = route.request().postDataJSON();
+    await route.fulfill({ json: envelope({ organizationSettings: {
+      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
+      users: [{
+        id: 7,
+        username: submittedProfile.email,
+        role: "admin",
+        status: "approved",
+        first_name: submittedProfile.first_name,
+        surname: submittedProfile.surname,
+        telephone: submittedProfile.telephone,
+        city_location: submittedProfile.city_location,
+        country: submittedProfile.country,
+      }],
+      courts: [],
+    } }) });
+  });
+  await page.route("**/logout", async (route) => {
+    await route.fulfill({ json: envelope({}) });
+  });
+
+  await page.goto("/profile");
+  await page.getByLabel("Email / Username").fill(nextEmail);
+  await page.getByRole("button", { name: "Save Profile" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText(`Email updated. Sign in again using ${nextEmail}.`)).toBeVisible();
 });
 
 test("opens the shared sport chooser from the responsive new-match menu action @header", async ({ page }) => {
@@ -234,4 +361,48 @@ test("does not repeat the Home button in organisation settings tabs @header", as
   await expect(page.locator(".root-admin-tab-row")).toBeVisible();
   await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Back to dashboard" })).toHaveCount(0);
   await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Organisation", exact: true })).toBeVisible();
+});
+
+test("uses a club-member primary contact and searchable surname-sorted users @header", async ({ page }) => {
+  let submittedOrganization = null;
+  await page.route("**/organization_details/42", async (route) => {
+    submittedOrganization = route.request().postDataJSON();
+    await route.fulfill({ json: envelope({}) });
+  });
+
+  await page.goto("/settings");
+  const clubName = page.getByLabel("Club Name");
+  const address = page.getByLabel("Address");
+  const primaryContact = page.getByLabel("Primary Contact");
+  const [clubBox, addressBox, contactBox] = await Promise.all([
+    clubName.boundingBox(),
+    address.boundingBox(),
+    primaryContact.boundingBox(),
+  ]);
+  expect(addressBox.y).toBeGreaterThan(clubBox.y);
+  expect(contactBox.y).toBeGreaterThan(addressBox.y);
+
+  await primaryContact.fill("Nobody Missing");
+  await expect(page.getByText("The primary contact must first be added", { exact: false })).toBeVisible();
+  await primaryContact.fill("Alex Zeph");
+  await page.getByRole("option", { name: /Alex Zephyr/ }).click();
+  await page.getByRole("button", { name: "Save Organisation Details" }).click();
+  await expect(page.getByText("Organisation details updated.")).toBeVisible();
+  expect(submittedOrganization.org_contact).toBe("Alex Zephyr");
+
+  await page.getByRole("button", { name: "Users", exact: true }).click();
+  const addUserToggle = page.getByRole("button", { name: "Add User", exact: true }).first();
+  await expect(addUserToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("First Name")).toHaveCount(0);
+  await addUserToggle.click();
+  await expect(page.getByLabel("First Name")).toBeVisible();
+
+  const userCards = page.locator(".dashboard-list .dashboard-item");
+  await expect(userCards).toHaveCount(3);
+  await expect(userCards.nth(0)).toContainText("Zoe Alpha");
+  await expect(userCards.nth(1)).toContainText("Header Tester");
+  await expect(userCards.nth(2)).toContainText("Alex Zephyr");
+  await page.getByLabel("Search Users").fill("Zephyr");
+  await expect(userCards).toHaveCount(1);
+  await expect(userCards.first()).toContainText("Alex Zephyr");
 });

@@ -53,6 +53,7 @@ const SETTINGS_TABS = [
   { id: "game-social", label: "Game & Social" },
   { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
+const EMPTY_FORM_COLLAPSE_MS = 5 * 60 * 1000;
 
 function formatDate(value) {
   if (!value) {
@@ -67,6 +68,10 @@ function formatDate(value) {
 
 function formatUserDisplayName(user) {
   return [user?.first_name, user?.surname].filter(Boolean).join(" ").trim() || "";
+}
+
+function primaryContactValue(user) {
+  return formatUserDisplayName(user) || user?.username || "";
 }
 
 export default function OrganisationSettingsPage() {
@@ -93,6 +98,11 @@ export default function OrganisationSettingsPage() {
   const [countryQuery, setCountryQuery] = useState("");
   const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
   const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
+  const [primaryContactQuery, setPrimaryContactQuery] = useState("");
+  const [primaryContactUserId, setPrimaryContactUserId] = useState(null);
+  const [showPrimaryContactSuggestions, setShowPrimaryContactSuggestions] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
     SETTINGS_TABS.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
@@ -102,6 +112,7 @@ export default function OrganisationSettingsPage() {
   const isAdmin = session?.role === "admin";
   const isPersonalSession = session?.organization_type === "personal";
   const isPersonalAccount = isPersonalSession || settings?.organization?.org_type === "personal";
+  const users = settings?.users || [];
   const tournamentManagerEnabled = !isPersonalAccount
     && Boolean(settings?.organization?.features?.tournament_manager?.web_enabled);
   const visibleAdminTabs = useMemo(
@@ -138,6 +149,35 @@ export default function OrganisationSettingsPage() {
 
     return COUNTRIES.filter((country) => country.toLowerCase().includes(query)).slice(0, 8);
   }, [countryQuery]);
+  const primaryContactSuggestions = useMemo(() => {
+    const query = primaryContactQuery.trim().toLowerCase();
+    if (!query) return [];
+    return users
+      .filter((user) => (user.status || "approved") === "approved")
+      .filter((user) => (
+        primaryContactValue(user).toLowerCase().includes(query)
+        || String(user.username || "").toLowerCase().includes(query)
+      ))
+      .slice(0, 8);
+  }, [primaryContactQuery, users]);
+  const sortedFilteredUsers = useMemo(() => {
+    const query = userSearchQuery.trim().toLowerCase();
+    return [...users]
+      .filter((user) => !query || [user.first_name, user.surname, user.username]
+        .some((value) => String(value || "").toLowerCase().includes(query)))
+      .sort((left, right) => (
+        String(left.surname || "").localeCompare(String(right.surname || ""), undefined, { sensitivity: "base" })
+        || String(left.first_name || "").localeCompare(String(right.first_name || ""), undefined, { sensitivity: "base" })
+        || String(left.username || "").localeCompare(String(right.username || ""), undefined, { sensitivity: "base" })
+      ));
+  }, [userSearchQuery, users]);
+  const userFormHasData = JSON.stringify(userForm) !== JSON.stringify(emptyUserForm);
+
+  useEffect(() => {
+    if (!addUserOpen || userFormHasData) return undefined;
+    const timeoutId = window.setTimeout(() => setAddUserOpen(false), EMPTY_FORM_COLLAPSE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [addUserOpen, userFormHasData]);
 
   useEffect(() => {
     if (!showCountrySuggestions || filteredCountries.length === 0) {
@@ -169,6 +209,13 @@ export default function OrganisationSettingsPage() {
       org_email: nextSettings?.organization?.org_email || "",
       org_webaddress: nextSettings?.organization?.org_webaddress || "",
     });
+    const savedContact = nextSettings?.organization?.org_contact || "";
+    const matchingContact = (nextSettings?.users || []).find((user) => (
+      primaryContactValue(user).toLowerCase() === savedContact.toLowerCase()
+      || String(user.username || "").toLowerCase() === savedContact.toLowerCase()
+    ));
+    setPrimaryContactQuery(savedContact);
+    setPrimaryContactUserId(matchingContact?.id || null);
     setCourtDrafts(
       Object.fromEntries(
         (nextSettings?.courts || []).map((court) => [
@@ -307,6 +354,11 @@ export default function OrganisationSettingsPage() {
 
   async function handleOrganizationSubmit(event) {
     event.preventDefault();
+    if (primaryContactQuery.trim() && !primaryContactUserId) {
+      setMessage("");
+      setError("Choose the primary contact from an approved organisation member.");
+      return;
+    }
     await runMutation(
       "organization",
       () => updateOrganizationDetails(organizationId, organizationForm),
@@ -337,6 +389,7 @@ export default function OrganisationSettingsPage() {
       "User added to organisation. Invitation email sent and access is pending approval.",
     );
     setUserForm(emptyUserForm);
+    setAddUserOpen(false);
   }
 
   async function handleCourtCreate(event) {
@@ -381,7 +434,6 @@ export default function OrganisationSettingsPage() {
     );
   }
 
-  const users = settings?.users || [];
   const courts = settings?.courts || [];
   const currentPersonalUser = users.find(
     (user) => user.username?.toLowerCase() === session?.username?.toLowerCase(),
@@ -798,14 +850,66 @@ export default function OrganisationSettingsPage() {
                         onChange={(event) => setOrganizationForm((current) => ({ ...current, organization_name: event.target.value }))}
                       />
                     </div>
-                    <div className="field">
-                      <label htmlFor="org_contact">Primary Contact</label>
+                    <div className="field settings-field-wide">
+                      <label htmlFor="org_address">Address</label>
                       <input
                         disabled={!isAdmin}
-                        id="org_contact"
-                        value={organizationForm.org_contact}
-                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_contact: event.target.value }))}
+                        id="org_address"
+                        value={organizationForm.org_address}
+                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
                       />
+                    </div>
+                    <div className="field settings-member-lookup">
+                      <label htmlFor="org_contact">Primary Contact</label>
+                      <input
+                        aria-autocomplete="list"
+                        aria-controls="primary-contact-suggestions"
+                        aria-expanded={showPrimaryContactSuggestions ? "true" : "false"}
+                        autoComplete="off"
+                        disabled={!isAdmin}
+                        id="org_contact"
+                        placeholder="Search approved club members"
+                        role="combobox"
+                        value={primaryContactQuery}
+                        onBlur={() => window.setTimeout(() => setShowPrimaryContactSuggestions(false), 120)}
+                        onFocus={() => setShowPrimaryContactSuggestions(true)}
+                        onChange={(event) => {
+                          setPrimaryContactQuery(event.target.value);
+                          setPrimaryContactUserId(null);
+                          setShowPrimaryContactSuggestions(true);
+                          setOrganizationForm((current) => ({ ...current, org_contact: "" }));
+                        }}
+                      />
+                      {showPrimaryContactSuggestions && primaryContactSuggestions.length ? (
+                        <div className="lookup-list settings-lookup-list" id="primary-contact-suggestions" role="listbox" aria-label="Primary contact suggestions">
+                          {primaryContactSuggestions.map((user) => (
+                            <button
+                              className="lookup-item settings-member-lookup__option"
+                              key={user.id}
+                              role="option"
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => {
+                                const contactName = primaryContactValue(user);
+                                setPrimaryContactQuery(contactName);
+                                setPrimaryContactUserId(user.id);
+                                setShowPrimaryContactSuggestions(false);
+                                setOrganizationForm((current) => ({ ...current, org_contact: contactName }));
+                              }}
+                            >
+                              <strong>{primaryContactValue(user)}</strong>
+                              <span>{user.username}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      {primaryContactQuery.trim() && !primaryContactUserId && primaryContactSuggestions.length === 0 ? (
+                        <small className="field-hint field-hint--warning">
+                          The primary contact must first be added as an approved HitnScore user and be part of this club.
+                        </small>
+                      ) : (
+                        <small className="field-hint">Search by member name or email, then choose the club member.</small>
+                      )}
                     </div>
                     <div className="field">
                       <label htmlFor="org_telephone">Telephone</label>
@@ -834,15 +938,6 @@ export default function OrganisationSettingsPage() {
                         type="url"
                         value={organizationForm.org_webaddress}
                         onChange={(event) => setOrganizationForm((current) => ({ ...current, org_webaddress: event.target.value }))}
-                      />
-                    </div>
-                    <div className="field settings-field-wide">
-                      <label htmlFor="org_address">Address</label>
-                      <input
-                        disabled={!isAdmin}
-                        id="org_address"
-                        value={organizationForm.org_address}
-                        onChange={(event) => setOrganizationForm((current) => ({ ...current, org_address: event.target.value }))}
                       />
                     </div>
                   </div>
@@ -879,10 +974,22 @@ export default function OrganisationSettingsPage() {
             <section className="panel stack">
               <div className="panel-heading">
                 <h2>Organisation Users</h2>
-                <p className="helper-text">Add users with name, email address, and an admin or user role.</p>
+                <p className="helper-text">Search existing members or add a new user with club access.</p>
               </div>
 
-              <form className="stack" onSubmit={handleUserSubmit}>
+              <section className={`settings-collapsible-card stack compact${addUserOpen ? " settings-collapsible-card--open" : ""}`}>
+                <h3>
+                  <button
+                    aria-expanded={addUserOpen}
+                    className="collapsible-heading-button"
+                    type="button"
+                    onClick={() => setAddUserOpen((current) => !current)}
+                  >
+                    <span>Add User</span>
+                    <span className="collapsible-heading-button__chevron" aria-hidden="true">⌄</span>
+                  </button>
+                </h3>
+              {addUserOpen ? <form className="stack" onSubmit={handleUserSubmit}>
                 <div className="field-grid">
                   <div className="field">
                     <label htmlFor="new_first_name">First Name</label>
@@ -944,12 +1051,24 @@ export default function OrganisationSettingsPage() {
                     {savingSection === "user-create" ? "Adding..." : "Add User"}
                   </button>
                 </div>
-              </form>
+              </form> : null}
+              </section>
+
+              <div className="field settings-user-search">
+                <label htmlFor="organisation-user-search">Search Users</label>
+                <input
+                  id="organisation-user-search"
+                  placeholder="Search by first name, surname, or email"
+                  type="search"
+                  value={userSearchQuery}
+                  onChange={(event) => setUserSearchQuery(event.target.value)}
+                />
+              </div>
 
               <div className="dashboard-list">
-                {users.length === 0 ? (
-                  <div className="dashboard-empty">No organisation users found.</div>
-                ) : users.map((user) => (
+                {sortedFilteredUsers.length === 0 ? (
+                  <div className="dashboard-empty">{users.length ? "No users match that search." : "No organisation users found."}</div>
+                ) : sortedFilteredUsers.map((user) => (
                   <article className="dashboard-item" key={user.id}>
                     <div className="dashboard-item-head">
                       <strong>{formatUserDisplayName(user) || user.username}</strong>

@@ -216,22 +216,70 @@
   color: var(--muted, #496b91);
 }
 
+.collapsible-panel {
+  align-self: start;
+}
+
+.collapsible-heading-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.collapsible-heading-button:hover {
+  color: #1274d0;
+}
+
+.collapsible-heading-button:focus-visible {
+  border-radius: 7px;
+  outline: 2px solid rgba(18, 116, 208, 0.35);
+  outline-offset: 4px;
+}
+
+.collapsible-heading-button__chevron {
+  color: #1274d0;
+  font-size: 1.15rem;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform 160ms ease;
+}
+
+.collapsible-heading-button[aria-expanded="true"] .collapsible-heading-button__chevron {
+  transform: rotate(0deg);
+}
+
+.tournament-summary-expandable {
+  animation: tournament-summary-expand 150ms ease-out;
+}
+
+@keyframes tournament-summary-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .tournament-selected-layout,
 .tournament-selected-summary,
 .tournament-next-stage--wide {
   width: 100%;
 }
 
-.tournament-details-toggle {
-  justify-self: start;
-  min-height: 0;
-  padding: 0.45rem 0.8rem;
-  border: 1px solid rgba(18, 116, 208, 0.3);
-  border-radius: 999px;
-  background: rgba(18, 116, 208, 0.07);
-  color: #0b5fb3;
-  font-size: 0.8rem;
-  font-weight: 800;
+.tournament-selected-summary .dashboard-item-head .panel-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.tournament-selected-summary .dashboard-item-head h2 {
+  overflow-wrap: anywhere;
 }
 
 .tournament-summary-actions {
@@ -2396,7 +2444,9 @@ textarea {
   padding-right: 11px;
 }
 
-.club-page-header__notification-button {
+.club-page-header__notification-button,
+.club-page-header__profile-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2412,14 +2462,43 @@ textarea {
   padding: 0;
 }
 
-.club-page-header__notification-icon {
+.club-page-header__notification-icon,
+.club-page-header__profile-icon {
   width: 20px;
   height: 20px;
   display: block;
 }
 
-.club-page-header__notification-button:hover {
+.club-page-header__notification-button:hover,
+.club-page-header__profile-button:hover,
+.club-page-header__profile-button--active {
   background: rgba(18, 116, 208, 0.08);
+}
+
+.club-page-header__profile-button::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  right: 0;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #102a43;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.club-page-header__profile-button:hover::after,
+.club-page-header__profile-button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .club-page-header__notification-button--unread {
@@ -3688,6 +3767,28 @@ textarea {
 
 .dashboard-section-link:hover {
   color: #0f5fad;
+}
+
+.dashboard-heading-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.dashboard-heading-link:hover {
+  color: #1274d0;
+}
+
+.dashboard-heading-link:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid rgba(18, 116, 208, 0.35);
+  outline-offset: 3px;
 }
 
 .dashboard-carousel {
@@ -6271,12 +6372,14 @@ textarea {
     padding-top: 8px;
   }
 
-  .club-page-header__notification-button {
+  .club-page-header__notification-button,
+  .club-page-header__profile-button {
     width: 30px;
     height: 30px;
   }
 
-  .club-page-header__notification-icon {
+  .club-page-header__notification-icon,
+  .club-page-header__profile-icon {
     width: 18px;
     height: 18px;
   }
@@ -7079,6 +7182,56 @@ textarea {
 .settings-profile-grid {
   grid-template-columns: repeat(2, minmax(0, 360px));
   justify-content: start;
+}
+
+.settings-member-lookup {
+  position: relative;
+  align-content: start;
+}
+
+.settings-member-lookup__option strong,
+.settings-member-lookup__option span {
+  display: block;
+}
+
+.settings-member-lookup__option span {
+  margin-top: 2px;
+  color: #627d98;
+  font-size: 0.78rem;
+}
+
+.field-hint {
+  color: #627d98;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.field-hint--warning {
+  color: #9f4c00;
+  font-weight: 700;
+}
+
+.settings-collapsible-card {
+  padding: 16px 18px;
+  border: 1px solid #d8e2ec;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.settings-collapsible-card h3 {
+  margin: 0;
+}
+
+.settings-user-search {
+  width: min(100%, 620px);
+}
+
+.profile-page-panel {
+  width: 100%;
+}
+
+.profile-page-panel select {
+  width: 100%;
 }
 
 .settings-profile-field--solo {

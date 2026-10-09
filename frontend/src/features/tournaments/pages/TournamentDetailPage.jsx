@@ -28,6 +28,7 @@ const EMPTY_ENTRY = {
   home_club_name: "",
   ability_level: "",
 };
+const SUMMARY_COLLAPSE_MS = 5 * 60 * 1000;
 
 const ABILITY_OPTIONS = [
   { value: "1", grade: "A", label: "Advanced player", detail: "Experienced league or tournament competitor." },
@@ -237,6 +238,12 @@ export default function TournamentDetailPage() {
   const [scheduleForm, setScheduleForm] = useState({ court_id: "", best_of: "3", score_type: "11" });
   const [matchActionSaving, setMatchActionSaving] = useState(false);
   const searchRequestRef = useRef(0);
+
+  useEffect(() => {
+    if (!detailsOpen) return undefined;
+    const timeoutId = window.setTimeout(() => setDetailsOpen(false), SUMMARY_COLLAPSE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [detailsOpen]);
 
   const load = useCallback(async () => {
     if (!tournamentId || !organizationId) return;
@@ -709,65 +716,69 @@ export default function TournamentDetailPage() {
             <article className="panel stack tournament-selected-summary">
               <div className="dashboard-item-head">
                 <div className="panel-heading">
-                  <h2>{tournament.name}</h2>
+                  <h2>
+                    <button
+                      aria-expanded={detailsOpen}
+                      className="collapsible-heading-button"
+                      type="button"
+                      onClick={() => setDetailsOpen((current) => !current)}
+                    >
+                      <span>{tournament.name}</span>
+                      <span className="collapsible-heading-button__chevron" aria-hidden="true">⌄</span>
+                    </button>
+                  </h2>
                 </div>
                 <span className={`status-pill${publishedDrawMissing ? " warning" : tournament.status === "draw_published" ? " status-pill--live" : ""}`}>
                   {displayStatus}
                 </span>
               </div>
-              <button
-                aria-expanded={detailsOpen}
-                className="tournament-details-toggle"
-                type="button"
-                onClick={() => setDetailsOpen((current) => !current)}
-              >
-                {detailsOpen ? "Hide tournament details" : "View tournament details"}
-              </button>
               {detailsOpen ? (
-                <div className="tournament-summary-details">
-                  <span>{optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}</span>
-                  <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
-                  <span>Start: {tournament.starts_on || "Not set"} · End: {tournament.ends_on || "Not set"}</span>
-                  <span>{tournament.audience === "open" ? "Open tournament" : "Internal tournament"}</span>
-                  <span>{tournament.graded_enabled ? "Graded tournament" : "Ungraded tournament"}</span>
-                  <span>{tournament.draw_size_limit ? `Size limit: ${tournament.draw_size_limit} entries` : "No size limit"}</span>
-                </div>
-              ) : null}
-              {tournament.status === "draw_published" ? (
-                <div className="tournament-summary-actions">
-                  <div className="tournament-public-toggle-row">
-                    <span>
-                      <strong>Public access</strong>
-                      <small>Allow anyone with the draw key to view this tournament.</small>
-                    </span>
-                    <label className={`tournament-public-switch${!isAdmin ? " tournament-public-switch--readonly" : ""}`}>
-                      <input
-                        aria-label="Public draw access"
-                        checked={Boolean(tournament.public_draw_enabled)}
-                        disabled={!isAdmin || drawing}
-                        role="switch"
-                        type="checkbox"
-                        onChange={handlePublicAccessChange}
-                      />
-                      <span aria-hidden="true"><span /></span>
-                    </label>
+                <div className="stack compact tournament-summary-expandable">
+                  <div className="tournament-summary-details">
+                    <span>{optionLabel(TOURNAMENT_SPORTS, tournament.sport)} · {optionLabel(TOURNAMENT_FORMATS, tournament.draw_format)}</span>
+                    <span>Venue: {tournament.venue_name || session?.organization_name || "Not set"}</span>
+                    <span>Start: {tournament.starts_on || "Not set"} · End: {tournament.ends_on || "Not set"}</span>
+                    <span>{tournament.audience === "open" ? "Open tournament" : "Internal tournament"}</span>
+                    <span>{tournament.graded_enabled ? "Graded tournament" : "Ungraded tournament"}</span>
+                    <span>{tournament.draw_size_limit ? `Size limit: ${tournament.draw_size_limit} entries` : "No size limit"}</span>
                   </div>
-                  <div className="tournament-public-details">
-                    <code>{tournament.public_draw_enabled ? tournament.public_draw_key || "Unavailable" : "Disabled"}</code>
-                    {publicDrawUrl ? <a href={publicDrawUrl} target="_blank" rel="noreferrer">Open Public Draw</a> : null}
-                    {isAdmin ? (
-                      <button
-                        aria-label="Return Draw to Draft"
-                        className="tournament-draft-edit-button"
-                        disabled={drawing}
-                        type="button"
-                        onClick={handleReturnToDraft}
-                      >
-                        <EditIcon />
-                        <span>Return to draft</span>
-                      </button>
-                    ) : null}
-                  </div>
+                  {tournament.status === "draw_published" ? (
+                    <div className="tournament-summary-actions">
+                      <div className="tournament-public-toggle-row">
+                        <span>
+                          <strong>Public access</strong>
+                          <small>Allow anyone with the draw key to view this tournament.</small>
+                        </span>
+                        <label className={`tournament-public-switch${!isAdmin ? " tournament-public-switch--readonly" : ""}`}>
+                          <input
+                            aria-label="Public draw access"
+                            checked={Boolean(tournament.public_draw_enabled)}
+                            disabled={!isAdmin || drawing}
+                            role="switch"
+                            type="checkbox"
+                            onChange={handlePublicAccessChange}
+                          />
+                          <span aria-hidden="true"><span /></span>
+                        </label>
+                      </div>
+                      <div className="tournament-public-details">
+                        <code>{tournament.public_draw_enabled ? tournament.public_draw_key || "Unavailable" : "Disabled"}</code>
+                        {publicDrawUrl ? <a href={publicDrawUrl} target="_blank" rel="noreferrer">Open Public Draw</a> : null}
+                        {isAdmin ? (
+                          <button
+                            aria-label="Return Draw to Draft"
+                            className="tournament-draft-edit-button"
+                            disabled={drawing}
+                            type="button"
+                            onClick={handleReturnToDraft}
+                          >
+                            <EditIcon />
+                            <span>Return to draft</span>
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </article>
