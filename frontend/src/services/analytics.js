@@ -11,6 +11,24 @@ function measurementId() {
   return import.meta.env.VITE_GOOGLE_ANALYTICS_ID || DEFAULT_MEASUREMENT_ID;
 }
 
+function clearAnalyticsCookies() {
+  const cookieNames = document.cookie
+    .split(";")
+    .map((cookie) => cookie.split("=")[0].trim())
+    .filter((name) => name === "_ga" || name.startsWith("_ga_"));
+  const hostnameParts = window.location.hostname.split(".");
+  const parentDomains = hostnameParts.length > 1
+    ? hostnameParts.slice(0, -1).map((_, index) => hostnameParts.slice(index).join("."))
+    : [];
+
+  cookieNames.forEach((name) => {
+    document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+    parentDomains.forEach((domain) => {
+      document.cookie = `${name}=; Max-Age=0; path=/; domain=.${domain}; SameSite=Lax`;
+    });
+  });
+}
+
 export function getAnalyticsConsent() {
   try {
     const storedValue = window.localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY);
@@ -31,6 +49,11 @@ export function setAnalyticsConsent(value) {
     // A blocked storage API should not prevent the visitor using the app.
   }
 
+  window[`ga-disable-${measurementId()}`] = value === "denied";
+  if (value === "denied") {
+    clearAnalyticsCookies();
+  }
+
   if (typeof window.gtag === "function") {
     window.gtag("consent", "update", {
       analytics_storage: value,
@@ -49,6 +72,7 @@ export function initializeAnalytics() {
   }
 
   analyticsInitialized = true;
+  window[`ga-disable-${measurementId()}`] = false;
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function gtag() {
     window.dataLayer.push(arguments);
