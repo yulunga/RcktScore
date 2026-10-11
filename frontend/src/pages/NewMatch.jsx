@@ -93,6 +93,10 @@ function inferOrganizationType(session) {
   return Number(session?.organization_id) >= 50000 ? "personal" : "club";
 }
 
+function normalizePersonName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
 export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
@@ -105,6 +109,7 @@ export default function NewMatch() {
   const [openShirtPicker, setOpenShirtPicker] = useState("");
   const [playerSuggestions, setPlayerSuggestions] = useState([]);
   const [refereeSuggestions, setRefereeSuggestions] = useState([]);
+  const [refereeIsMe, setRefereeIsMe] = useState(false);
   const [activeLookupField, setActiveLookupField] = useState("");
   const [playerCountryQueries, setPlayerCountryQueries] = useState({
     player1: "",
@@ -152,6 +157,23 @@ export default function NewMatch() {
       : usesCustomHandicap
         ? `Custom start: Player 1 starts ${formState.player1_offset || 0}, Player 2 starts ${formState.player2_offset || 0}.`
         : "Select both bands to see the starting offset for each player.";
+  const loggedInUserName = useMemo(() => {
+    const fullName = String(session?.full_name || "").trim();
+    if (fullName) return fullName;
+    const profileName = [session?.first_name, session?.surname].filter(Boolean).join(" ").trim();
+    if (profileName) return profileName;
+    return String(session?.username || session?.email || "").split("@")[0].trim();
+  }, [session?.email, session?.first_name, session?.full_name, session?.surname, session?.username]);
+  const normalizedLoggedInUserName = normalizePersonName(loggedInUserName);
+  const participantNames = [
+    [formState.player1_name, formState.player1_surname],
+    [formState.player2_name, formState.player2_surname],
+    [formState.player3_name, formState.player3_surname],
+    [formState.player4_name, formState.player4_surname],
+  ].map((parts) => normalizePersonName(parts.filter(Boolean).join(" "))).filter(Boolean);
+  const loggedInUserIsPlaying = Boolean(
+    normalizedLoggedInUserName && participantNames.includes(normalizedLoggedInUserName),
+  );
   const playerDisplayName = (playerKey, fallback) => formState[`${playerKey}_name`].trim() || fallback;
   const player1LookupQuery = useMemo(
     () => [formState.player1_name, formState.player1_surname].filter(Boolean).join(" ").trim(),
@@ -539,6 +561,13 @@ export default function NewMatch() {
     return () => window.clearTimeout(timeoutId);
   }, [activeLookupField, formState.referee_name, isPersonalAccount, organizationId]);
 
+  useEffect(() => {
+    if (!refereeIsMe || !loggedInUserIsPlaying) return;
+    setRefereeIsMe(false);
+    setFormState((current) => ({ ...current, referee_name: "" }));
+    setSetupNotice("You cannot referee a match that you are playing in.");
+  }, [loggedInUserIsPlaying, refereeIsMe]);
+
   function handleCourtChange(value) {
     const selectedCourt = availableCourts.find((court) => String(court.id) === value);
     setFormState((current) => ({
@@ -566,6 +595,22 @@ export default function NewMatch() {
     }));
     setRefereeSuggestions([]);
     setActiveLookupField("");
+    setRefereeIsMe(false);
+  }
+
+  function handleRefereeMeToggle(checked) {
+    if (checked && loggedInUserIsPlaying) {
+      setSetupNotice("You cannot referee a match that you are playing in.");
+      return;
+    }
+    setRefereeIsMe(checked);
+    setFormState((current) => ({
+      ...current,
+      referee_name: checked ? loggedInUserName : "",
+    }));
+    setRefereeSuggestions([]);
+    setActiveLookupField("");
+    if (checked) setSetupNotice("");
   }
 
   function handleHandicapBandChange(name, value) {
@@ -631,11 +676,10 @@ export default function NewMatch() {
     const selectedColor = PLAYER_SHIRT_COLORS.find((color) => color.value === formState[fieldName]) || PLAYER_SHIRT_COLORS[0];
     const isOpen = openShirtPicker === fieldName;
     return (
-      <div className="field shirt-color-field">
-        <label>{label}</label>
+      <div className="shirt-color-field shirt-color-field--heading">
         <button
           aria-expanded={isOpen}
-          aria-label={`Change ${label}, currently ${selectedColor.label}`}
+          aria-label={`Change ${label} shirt color, currently ${selectedColor.label}`}
           className="shirt-color-trigger"
           type="button"
           onClick={() => setOpenShirtPicker((current) => current === fieldName ? "" : fieldName)}
@@ -645,7 +689,6 @@ export default function NewMatch() {
             className="shirt-color-swatch"
             style={{ background: selectedColor.background, borderColor: selectedColor.border }}
           />
-          <span>{selectedColor.label}</span>
           <span className="shirt-color-trigger__chevron" aria-hidden="true">⌄</span>
         </button>
         {isOpen ? <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
@@ -657,6 +700,7 @@ export default function NewMatch() {
                 className={`shirt-color-option${selected ? " shirt-color-option--selected" : ""}`}
                 key={`${fieldName}-${color.value}`}
                 role="radio"
+                aria-label={color.label}
                 type="button"
                 onClick={() => {
                   handleChange(fieldName, color.value);
@@ -671,7 +715,6 @@ export default function NewMatch() {
                     borderColor: color.border,
                   }}
                 />
-                <span>{color.label}</span>
               </button>
             );
           })}
@@ -707,7 +750,10 @@ export default function NewMatch() {
     const displayName = fallbackPlayerLabel ? `${teamLabel} · ${playerName}` : playerName;
     return (
       <section className="panel stack compact tennis-participant-card" data-testid={`${playerKey}-card`}>
-        <div className="panel-heading"><h3>{displayName}</h3></div>
+        <div className="panel-heading match-player-heading">
+          <h3>{displayName}</h3>
+          {renderShirtColorField(playerKey, playerName)}
+        </div>
         <div className="field-grid">
           <div className="field">
             <label htmlFor={`${playerKey}_name`}>First Name<span className="required-mark"> *</span></label>
@@ -729,7 +775,6 @@ export default function NewMatch() {
             />
           </div>
         </div>
-        {renderShirtColorField(playerKey, `${playerName} Shirt`)}
       </section>
     );
   }
@@ -743,6 +788,15 @@ export default function NewMatch() {
 
     if (personalActiveMatch) {
       setSetupNotice("You already have an active match running. End it before starting a new personal match.");
+      return;
+    }
+
+    if (
+      !isPersonalAccount
+      && loggedInUserIsPlaying
+      && normalizePersonName(formState.referee_name) === normalizedLoggedInUserName
+    ) {
+      setSetupNotice("You cannot referee a match that you are playing in.");
       return;
     }
 
@@ -865,7 +919,10 @@ export default function NewMatch() {
 
         <div className="match-setup-grid">
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">{isTennisDoubles ? `Team 1 · ${playerDisplayName("player1", "Player 1")}` : playerDisplayName("player1", "Player 1")}</div>
+            <div className="match-setup-section-title match-player-heading">
+              <span>{isTennisDoubles ? `Team 1 · ${playerDisplayName("player1", "Player 1")}` : playerDisplayName("player1", "Player 1")}</span>
+              {canChooseShirtColors ? renderShirtColorField("player1", playerDisplayName("player1", "Player 1")) : null}
+            </div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -907,12 +964,6 @@ export default function NewMatch() {
               </label>
             </div>
           </div>
-
-          {canChooseShirtColors ? (
-            <div className="match-setup-row match-setup-row--player-accessory">
-              {renderShirtColorField("player1", `${playerDisplayName("player1", "Player 1")} Shirt`)}
-            </div>
-          ) : null}
 
           <div className="match-setup-row match-setup-row--country">
             <div className="field">
@@ -985,7 +1036,10 @@ export default function NewMatch() {
           ) : null}
 
           <div className="match-setup-row match-setup-row--title">
-            <div className="match-setup-section-title">{isTennisDoubles ? `Team 1 · ${playerDisplayName("player2", "Player 2")}` : playerDisplayName("player2", "Player 2")}</div>
+            <div className="match-setup-section-title match-player-heading">
+              <span>{isTennisDoubles ? `Team 1 · ${playerDisplayName("player2", "Player 2")}` : playerDisplayName("player2", "Player 2")}</span>
+              {canChooseShirtColors ? renderShirtColorField("player2", playerDisplayName("player2", "Player 2")) : null}
+            </div>
           </div>
 
           <div className="match-setup-row match-setup-row--player">
@@ -1027,12 +1081,6 @@ export default function NewMatch() {
               </label>
             </div>
           </div>
-
-          {canChooseShirtColors ? (
-            <div className="match-setup-row match-setup-row--player-accessory">
-              {renderShirtColorField("player2", `${playerDisplayName("player2", "Player 2")} Shirt`)}
-            </div>
-          ) : null}
 
           <div className="match-setup-row match-setup-row--country">
             <div className="field">
@@ -1181,15 +1229,6 @@ export default function NewMatch() {
               </select>
             </div>
 
-            {!isTennisStyleMatch ? (
-              renderOptionSwitch({
-                id: "handicap_enabled",
-                label: "Handicap Match",
-                description: "Give players different starting scores to create a balanced match.",
-                checked: formState.handicap_enabled,
-                onChange: handleHandicapToggle,
-              })
-            ) : null}
           </div>
 
           {isTennisStyleMatch ? (
@@ -1231,6 +1270,13 @@ export default function NewMatch() {
                 <h2>{selectedSportOption?.label || "Racket Sport"} Rules</h2>
                 <p className="helper-text">These choices are stored with this match and apply on web and iOS.</p>
               </div>
+              {renderOptionSwitch({
+                id: "handicap_enabled",
+                label: "Handicap Match",
+                description: "Give players different starting scores to create a balanced match.",
+                checked: formState.handicap_enabled,
+                onChange: handleHandicapToggle,
+              })}
               {renderOptionSwitch({
                 id: "racket_golden_point",
                 label: `Golden Point at ${formState.score_type - 1}-all`,
@@ -1385,16 +1431,35 @@ export default function NewMatch() {
         {!isPersonalAccount ? (
           <>
             <div className="match-setup-row match-setup-row--referee">
-              <div className="field">
+              <div className="field match-referee-field">
                 <label htmlFor="referee_name">Referee</label>
-                <input
-                  id="referee_name"
-                  name="referee_name"
-                  placeholder="Match official"
-                  value={formState.referee_name}
-                  onFocus={() => setActiveLookupField("referee")}
-                  onChange={(event) => handleChange("referee_name", event.target.value)}
-                />
+                <div className="match-referee-field__controls">
+                  <input
+                    id="referee_name"
+                    name="referee_name"
+                    placeholder="Match official"
+                    value={formState.referee_name}
+                    onFocus={() => setActiveLookupField("referee")}
+                    onChange={(event) => {
+                      setRefereeIsMe(false);
+                      handleChange("referee_name", event.target.value);
+                    }}
+                  />
+                  <label className={`match-referee-me${loggedInUserIsPlaying ? " match-referee-me--disabled" : ""}`} htmlFor="referee_me">
+                    <span>Me</span>
+                    <span className="match-option-switch__control">
+                      <input
+                        checked={refereeIsMe}
+                        disabled={loggedInUserIsPlaying || !loggedInUserName}
+                        id="referee_me"
+                        type="checkbox"
+                        onChange={(event) => handleRefereeMeToggle(event.target.checked)}
+                      />
+                      <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+                    </span>
+                  </label>
+                </div>
+                {loggedInUserIsPlaying ? <small className="helper-text">You are listed as a player, so you cannot referee this match.</small> : null}
               </div>
             </div>
 

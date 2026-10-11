@@ -112,6 +112,7 @@ function liveTennisMatch() {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+    window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
 });
 

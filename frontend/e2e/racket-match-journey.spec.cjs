@@ -56,6 +56,7 @@ function freshRacketMatch(sport = "squash", timedBreaks = false) {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+    window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
 });
 
@@ -91,9 +92,10 @@ for (const sport of ["squash", "racketball"]) {
     await page.goto(`/match/new/setup?sport=${sport}`);
     await expect(page.getByRole("heading", { name: `${sport === "racketball" ? "Racketball" : "Squash"} Match Setup` })).toBeVisible();
     await expect(page.getByText(/Create a New .* Match/)).toHaveCount(0);
-    await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt shirt color" })).toHaveCount(0);
-    await page.getByRole("button", { name: /Change Player 1 Shirt, currently Navy/ }).click();
-    await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt shirt color" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Player 1 shirt color" })).toHaveCount(0);
+    await page.getByRole("button", { name: /Change Player 1 shirt color, currently Navy/ }).click();
+    await expect(page.getByRole("radiogroup", { name: "Player 1 shirt color" })).toBeVisible();
+    await expect(page.locator(".shirt-color-option").first()).toHaveText("");
     await page.getByRole("radio", { name: "Navy" }).click();
     await expect(page.getByLabel("Timed warm-up and 90-second game breaks")).toBeChecked();
     await page.locator("#player1_name").fill("Alex");
@@ -120,6 +122,60 @@ for (const sport of ["squash", "racketball"]) {
     await expect(page.getByText("Warm-Up Ready", { exact: true })).toBeVisible();
   });
 }
+
+test("club setup keeps shirt colours compact and prevents a playing user from refereeing @racket", async ({ page }) => {
+  const clubSession = {
+    ...session,
+    first_name: "Web",
+    surname: "Player",
+    organization_id: 42,
+    organization_name: "Test Club",
+    organization_type: "club",
+    plan: "club_pro",
+  };
+
+  await page.addInitScript((storedSession) => {
+    window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+  }, clubSession);
+  await page.route("**/organization_settings/42", async (route) => {
+    await route.fulfill({ json: envelope({ organizationSettings: {
+      organization: {
+        id: 42,
+        org_type: "club",
+        plan: "club_pro",
+        enabled_sports: ["squash"],
+        timed_break_defaults: { squash: false },
+      },
+      users: [],
+      courts: [{ id: 7, court_name: "Court 1", court_alias: "Court 1" }],
+    } }) });
+  });
+  await page.route("**/dashboard/42*", async (route) => {
+    await route.fulfill({ json: envelope({ dashboard: { active_matches: [], scheduled_matches: [], recent_matches: [] } }) });
+  });
+
+  await page.setViewportSize({ width: 414, height: 896 });
+  await page.goto("/match/new/setup?sport=squash");
+
+  await page.locator("#player1_name").fill("Dave");
+  await page.locator("#player1_surname").fill("Williams");
+  const daveHeading = page.locator(".match-setup-section-title").filter({ hasText: "Dave" }).first();
+  await expect(daveHeading.getByRole("button", { name: /Change Dave shirt color/ })).toBeVisible();
+  await expect(page.getByText("Dave Shirt", { exact: true })).toHaveCount(0);
+
+  await page.getByLabel("Me", { exact: true }).check();
+  await expect(page.locator("#referee_name")).toHaveValue("Web Player");
+
+  await page.locator("#player1_name").fill("Web");
+  await page.locator("#player1_surname").fill("Player");
+  await expect(page.getByLabel("Me", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Me", { exact: true })).not.toBeChecked();
+  await expect(page.locator("#referee_name")).toHaveValue("");
+  await expect(page.getByText("You are listed as a player, so you cannot referee this match.")).toBeVisible();
+
+  const rulesCard = page.locator(".tennis-rules-card");
+  await expect(rulesCard.getByLabel("Handicap Match")).toBeVisible();
+});
 
 test("Personal Free can create a squash handicap match @racket", async ({ page }) => {
   let createPayload;

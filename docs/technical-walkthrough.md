@@ -415,10 +415,16 @@ The root-admin club page marks these shared calls as root-admin requests in the 
    - searches current org-user usernames for referee suggestions
 4. The API returns `data.lookups`.
 
+On the React club setup screen, the `Me` referee switch fills the referee field
+from the authenticated profile. The client disables and clears that switch if
+the same full name is entered as any singles or doubles participant, and repeats
+the validation before submission. This is client-side validation over the
+existing `referee_name` field and does not add a lookup or match-create route.
+
 ## 11. Match Creation Flow
 
 The React tennis setup mirrors the native lineup contract: singles or doubles,
-four named doubles participants with individual shirt colours, Golden Point, an
+four named doubles participants with adjacent colour-only shirt controls, Golden Point, an
 optional final-set 10-point match tiebreak, and timed 90-second odd-game
 changeovers plus 120-second set breaks. Before play begins, the web scorer asks
 for a named opening server and receiver and submits the same participant IDs,
@@ -452,7 +458,7 @@ the same action twice.
 
 ### Current path
 
-1. The operator submits player, court, referee, sport, score type, best-of, optional handicap data, Golden Point, and the per-match timing choice. Both clients initialise timing from `organization.timed_break_defaults` for the selected sport, but the operator may override it before starting.
+1. The operator submits player, court, referee, sport, score type, best-of, optional handicap data, Golden Point, and the per-match timing choice. On web, Squash/Racketball handicap is presented inside the same compact rules card as the other per-match switches. Both clients initialise timing from `organization.timed_break_defaults` for the selected sport, but the operator may override it before starting.
 2. The frontend calls `POST /start_match`.
 3. [backend/functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py) authorizes the org-user session.
 4. [backend/common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py):

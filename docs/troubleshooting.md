@@ -319,6 +319,7 @@ What to check:
 
 - tenant plan and organisation type
 - the submitted `player1_shirt_color` and `player2_shirt_color` values, plus all four `team{1|2}_player{1|2}_shirt_color` values for tennis doubles (all personal and club plans may set them)
+- if the web referee `Me` switch is disabled or clears itself, compare the signed-in profile first name and surname with every entered participant; a player cannot referee the same match
 - `matches.sport` and the tenant `enabled_sports` list
 - court conflict behavior
 - latest `match_events` entries
@@ -549,7 +550,7 @@ aws sns list-subscriptions-by-topic --topic-arn <ProductionAlarmTopicArn> --regi
 
 These are current product limitations, not accidental breakage:
 
-- handicap setup is intentionally shown only for Squash/Racketball, but it is available on every account tier for those sports
+- handicap setup is intentionally shown only for Squash/Racketball, inside the web rules card, but it is available on every account tier for those sports
 - per-sport timer defaults in Game Settings are persisted by migration `029_timed_break_defaults.sql`; if a setup toggle has the wrong initial value, inspect `organization.timed_break_defaults` from `GET /organization_settings/{organization_id}`. The setting preselects timing but never prevents a per-match override
 - Personal Plus scheduling is available on web and iOS. If `Start` is disabled with “Finish active match first,” end the current personal match first; direct activation correctly returns `409 ACTIVE_MATCH_EXISTS`. Personal Free does not receive the scheduling control
 - reporting rows remain placeholders in native settings; Analytics now contains working basic scored-match stats plus Personal Plus personal performance, while deeper federation-style association integrations remain incomplete

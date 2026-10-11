@@ -2130,6 +2130,20 @@ textarea {
   color: #102a43;
 }
 
+.match-player-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.match-player-heading > h3,
+.match-player-heading > span:first-child {
+  min-width: 0;
+  margin: 0;
+}
+
 .match-setup-row--player {
   grid-template-columns: 220px 220px auto;
   align-items: end;
@@ -2168,11 +2182,42 @@ textarea {
 }
 
 .match-setup-row--referee {
-  grid-template-columns: 220px 220px auto;
+  grid-template-columns: minmax(0, 454px) auto;
 }
 
 .match-setup-row--referee .field:first-child {
   grid-column: 1;
+}
+
+.match-referee-field__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.match-referee-field__controls > input {
+  min-width: 0;
+}
+
+.match-referee-me {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid #cbd2d9;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #102a43;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.match-referee-me--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .match-setup-row--lookup {
@@ -3938,6 +3983,12 @@ textarea {
   align-content: start;
 }
 
+.shirt-color-field--heading {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .shirt-color-grid {
   display: grid;
   gap: 8px;
@@ -3964,6 +4015,45 @@ textarea {
   margin-left: auto;
   color: #486581;
   font-size: 1rem;
+}
+
+.shirt-color-field--heading .shirt-color-trigger {
+  width: auto;
+  min-width: 54px;
+  min-height: 36px;
+  gap: 7px;
+  padding: 6px 9px;
+}
+
+.shirt-color-field--heading .shirt-color-trigger__chevron {
+  margin-left: 0;
+}
+
+.shirt-color-field--heading .shirt-color-grid {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 222px;
+  grid-template-columns: repeat(5, 34px);
+  justify-content: start;
+  padding: 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(16, 42, 67, 0.18);
+}
+
+.shirt-color-field--heading .shirt-color-option {
+  width: 34px;
+  min-height: 34px;
+  justify-content: center;
+  padding: 6px;
+}
+
+.shirt-color-field--heading .shirt-color-option .shirt-color-swatch {
+  width: 20px;
+  height: 20px;
 }
 
 .shirt-color-option {
