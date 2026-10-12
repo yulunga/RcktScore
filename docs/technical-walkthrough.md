@@ -442,8 +442,16 @@ Live tennis and Padel matches render through
 `frontend/src/components/TennisScoreboard.jsx`, separately from the generic
 squash/racketball `Scoreboard`. The component displays the backend engine's
 tennis point labels, set games, sets won, tiebreak mode, named participant-level
-server and receiver, Deuce/Ad court, completed sets, point timeline and final
+server and receiver, Right/Left service side, completed sets, point timeline and final
 result. It intentionally omits Stroke, Let and manual service-box controls.
+The live-match shared header omits redundant description copy, standard scoring
+is presented as `Standard advantage scoring`, and the opening-order confirmation
+uses the same branded primary action treatment as the rest of the web client.
+The tennis format heading also names the physical venue court. Game Settings
+keeps each shirt palette collapsed behind its current colour, contains the
+existing club spectator URL/display code, and shares the live screen with a
+compact Match Actions menu for Undo and End Match Early instead of permanent
+full-width destructive buttons.
 `MatchScreen.jsx` retains shared loading, mutation, undo, match timer and network
 plumbing and starts a 90-second break only after an odd completed game, or a
 120-second break after a completed set, when `tennis_timed_breaks` is enabled.

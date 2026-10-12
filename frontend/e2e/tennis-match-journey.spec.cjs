@@ -95,8 +95,10 @@ function liveTennisMatch() {
   return {
     ...match,
     id: "web-tennis-live-1",
+    tennis_no_ad_scoring: false,
     state: {
       ...match.state,
+      tennis_no_ad_scoring: false,
       player1_score: 4,
       player2_score: 3,
       player1_score_label: "Ad",
@@ -249,7 +251,10 @@ test("tennis singles derives the receiver from the opening server @tennis", asyn
   await expect(page.getByRole("heading", { name: "Opening Server" })).toBeVisible();
   await expect(page.getByLabel("Opening receiver")).toHaveCount(0);
   await page.getByLabel("Opening server").selectOption("team1_player1");
-  await page.getByRole("button", { name: "Begin Match" }).click();
+  const beginMatchButton = page.getByRole("button", { name: "Begin Match" });
+  await expect(beginMatchButton).toHaveClass(/opening-match-submit/);
+  await expect(beginMatchButton).toHaveCSS("color", "rgb(255, 255, 255)");
+  await beginMatchButton.click();
 
   await expect.poll(() => openingPayload).toBeTruthy();
   expect(openingPayload).toMatchObject({
@@ -257,6 +262,42 @@ test("tennis singles derives the receiver from the opening server @tennis", asyn
     current_receiver_participant_id: "team2_player1",
     current_receiver_side: "player2",
   });
+});
+
+test("keeps club spectator details inside game settings @tennis", async ({ page }) => {
+  const clubSession = {
+    ...session,
+    organization_id: 42,
+    organization_name: "Centre Club",
+    organization_type: "club",
+    plan: "club_pro",
+  };
+  const match = {
+    ...liveTennisMatch(),
+    id: "web-tennis-club-live-1",
+    tenant_id: "42",
+    court_name: "Court 3",
+    court_alias: "Centre Court",
+  };
+
+  await page.addInitScript((storedSession) => {
+    window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
+  }, clubSession);
+  await page.route("**/get_score/web-tennis-club-live-1", async (route) => {
+    await route.fulfill({ json: envelope({ match }) });
+  });
+  await page.route("**/match_display_access/web-tennis-club-live-1", async (route) => {
+    await route.fulfill({ json: envelope({ displayAccess: { display_code: "CENTRE42" } }) });
+  });
+
+  await page.goto("/match/web-tennis-club-live-1");
+  await expect(page.getByText(/Tennis · Court 3 · Centre Court/)).toBeVisible();
+  await expect(page.locator(".match-secondary-column")).toHaveCount(0);
+  await expect(page.locator(".match-detail-panel")).toBeHidden();
+  await page.getByLabel("Game settings").click();
+  await expect(page.getByRole("heading", { name: "Spectator Display" })).toBeVisible();
+  await expect(page.getByLabel("Spectator display URL")).toHaveValue(/\/scoreboard$/);
+  await expect(page.getByLabel("Court Display Code")).toHaveValue("CENTRE42");
 });
 
 test("creates doubles-only Padel and chooses the Golden Point receiver @padel", async ({ page }) => {
@@ -397,14 +438,30 @@ test("presents tennis points, rotation and timed changeovers without racket acti
 
   await page.goto("/match/web-tennis-live-1");
   await expect(page.getByTestId("tennis-scoreboard")).toBeVisible();
+  await expect(page.getByText(/Tennis · Personal Match · Best of 3 sets/)).toBeVisible();
   await expect(page.getByTestId("tennis-score-player1")).toContainText("Ad");
   await expect(page.getByTestId("tennis-score-player2")).toContainText("40");
   await expect(page.getByTestId("tennis-serve-status")).toContainText("Serving: Blair Backhand");
   await expect(page.getByTestId("tennis-serve-status")).toContainText("Receiving: Drew Deuce");
-  await expect(page.getByTestId("tennis-serve-status")).toContainText("Ad court");
+  await expect(page.getByTestId("tennis-serve-status")).toContainText("Service side: Left");
   await expect(page.getByText("Set 1: 6–4")).toBeVisible();
   await expect(page.getByRole("button", { name: "Stroke P1" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Let", exact: true })).toHaveCount(0);
+
+  await page.getByLabel("Game settings").click();
+  await expect(page.getByRole("heading", { name: "Game Settings" })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt colour" })).toHaveCount(0);
+  await page.getByRole("button", { name: /Change Player 1 Shirt colour/ }).click();
+  await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt colour" })).toBeVisible();
+  await page.getByRole("radio", { name: "Blue" }).click();
+  await expect(page.getByRole("radiogroup", { name: "Player 1 Shirt colour" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByLabel("Match actions").click();
+  await expect(page.getByRole("heading", { name: "Match Actions" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Undo Last Action/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /End Match Early/ })).toBeVisible();
+  await page.getByLabel("Close match actions").click();
 
   await page.getByTestId("tennis-score-player1").click();
   await expect.poll(() => scorePayload).toBeTruthy();
@@ -416,7 +473,9 @@ test("presents tennis points, rotation and timed changeovers without racket acti
   await expect(changeover.getByRole("button", { name: "01:30" })).toBeVisible();
   await changeover.getByRole("button", { name: "Skip Break" }).click();
   await expect(page.getByTestId("tennis-serve-status")).toContainText("Serving: Casey Court");
-  await expect(page.getByTestId("tennis-serve-status")).toContainText("Deuce court");
+  await expect(page.getByTestId("tennis-serve-status")).toContainText("Service side: Right");
+  await expect(page.getByText("Manage the live scoring session.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Standard advantage scoring/)).toBeVisible();
 
   await page.getByTestId("tennis-score-player2").click();
   const setBreak = page.locator(".overlay-panel", { has: page.getByRole("heading", { name: "Set Break" }) });

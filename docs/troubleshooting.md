@@ -312,6 +312,8 @@ Common symptoms:
 - tennis appears in setup but cannot be created
 - the wrong sport's courts appear in setup, or match creation rejects the selected court
 - tennis score labels or server rotation look wrong during tie-breaks
+- tennis shows an unexpected service side or scoring-mode label
+- the live Game Settings modal is missing shirt choices or club Spectator Display access
 - Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
@@ -327,6 +329,8 @@ What to check:
 - latest `match_events` entries
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
 - whether the action used `score_point` or `event_action`
+- the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
+- shirt palettes are intentionally hidden until their current-colour selector is opened; Spectator Display appears inside Game Settings only for club matches and still depends on `GET /match_display_access/{match_id}` returning a court display code
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
 - whether migration `021_tennis_scoring_formats.sql` is present and the match row contains the expected tennis flags; tennis should accept the deciding point immediately from the Right service side, while padel must have a `receiver_choice` event identifying the selected receiving partner's court first

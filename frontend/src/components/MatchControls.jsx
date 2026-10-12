@@ -11,11 +11,17 @@ export default function MatchControls({
   showRacketActions = true,
 }) {
   const matchComplete = match?.state?.match_complete || match?.status === "completed";
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const [showEndMatchConfirm, setShowEndMatchConfirm] = useState(false);
 
   async function handleConfirmEndMatch() {
     await onEndMatch({ ended_early: true, reason: "Ended by operator" });
     setShowEndMatchConfirm(false);
+  }
+
+  async function handleUndo() {
+    await onUndo();
+    setShowActionMenu(false);
   }
 
   return (
@@ -52,6 +58,46 @@ export default function MatchControls({
         </div>
       ) : null}
 
+      {showActionMenu ? (
+        <div className="overlay-backdrop">
+          <div className="overlay-panel overlay-panel--match-actions stack">
+            <div className="settings-header-row">
+              <h2>Match Actions</h2>
+              <button
+                aria-label="Close match actions"
+                className="help-close-button"
+                type="button"
+                onClick={() => setShowActionMenu(false)}
+              >
+                &times;
+              </button>
+            </div>
+            <button
+              className="match-action-menu__button"
+              disabled={disabled || undoDisabled}
+              title={undoDisabled ? "Undo is only available for 5 minutes after match completion." : undefined}
+              type="button"
+              onClick={handleUndo}
+            >
+              <span aria-hidden="true">↶</span>
+              <span><strong>Undo Last Action</strong><small>Remove the most recent scoring action.</small></span>
+            </button>
+            <button
+              className="match-action-menu__button match-action-menu__button--danger"
+              disabled={disabled || matchComplete}
+              type="button"
+              onClick={() => {
+                setShowActionMenu(false);
+                setShowEndMatchConfirm(true);
+              }}
+            >
+              <span aria-hidden="true">■</span>
+              <span><strong>End Match Early</strong><small>Stop scoring and record the match as ended.</small></span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="match-control-grid">
         {showRacketActions ? <button
           className="secondary match-control-grid__stroke-left"
@@ -75,13 +121,18 @@ export default function MatchControls({
           Stroke P2
         </button> : null}
         <button
-          className="danger match-control-grid__undo"
-          disabled={disabled || undoDisabled}
-          onClick={onUndo}
-          title={undoDisabled ? "Undo is only available for 5 minutes after match completion." : undefined}
+          aria-label="Match actions"
+          className="secondary match-control-grid__actions"
+          disabled={disabled || (matchComplete && undoDisabled)}
+          onClick={() => setShowActionMenu(true)}
+          title="Match actions"
           type="button"
         >
-          Undo Last Action
+          <svg aria-hidden="true" className="match-control-grid__actions-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
         </button>
         <button
           aria-label="Game settings"
@@ -94,13 +145,6 @@ export default function MatchControls({
           <svg aria-hidden="true" className="match-control-grid__settings-icon" viewBox="0 0 24 24">
             <path d="M10.67 2.52a1 1 0 0 1 .99-.82h.68a1 1 0 0 1 .99.82l.33 2.18a7.9 7.9 0 0 1 1.78.74l1.82-1.24a1 1 0 0 1 1.28.12l.48.48a1 1 0 0 1 .12 1.28L17.9 7.9c.28.57.53 1.16.74 1.79l2.18.33a1 1 0 0 1 .82.99v.68a1 1 0 0 1-.82.99l-2.18.33a7.92 7.92 0 0 1-.74 1.78l1.24 1.82a1 1 0 0 1-.12 1.28l-.48.48a1 1 0 0 1-1.28.12l-1.82-1.24a7.9 7.9 0 0 1-1.78.74l-.33 2.18a1 1 0 0 1-.99.82h-.68a1 1 0 0 1-.99-.82l-.33-2.18a7.9 7.9 0 0 1-1.79-.74l-1.82 1.24a1 1 0 0 1-1.28-.12l-.48-.48a1 1 0 0 1-.12-1.28l1.24-1.82a7.9 7.9 0 0 1-.74-1.78l-2.18-.33a1 1 0 0 1-.82-.99v-.68a1 1 0 0 1 .82-.99l2.18-.33c.21-.63.46-1.22.74-1.79L4.86 6.08a1 1 0 0 1 .12-1.28l.48-.48a1 1 0 0 1 1.28-.12L8.56 5.44c.57-.28 1.16-.53 1.79-.74l.32-2.18ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
           </svg>
-        </button>
-        <button
-          className="danger match-control-grid__end"
-          disabled={disabled || matchComplete}
-          onClick={() => setShowEndMatchConfirm(true)}
-        >
-          End Match Early
         </button>
       </div>
     </>

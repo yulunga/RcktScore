@@ -2127,6 +2127,38 @@ textarea {
   width: min(100%, 34rem);
 }
 
+.opening-match-submit {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1682e2, #075cab);
+  box-shadow: 0 10px 24px rgba(18, 116, 208, 0.25);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition: box-shadow 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+
+.opening-match-submit:hover:not(:disabled) {
+  box-shadow: 0 13px 28px rgba(18, 116, 208, 0.34);
+  transform: translateY(-1px);
+}
+
+.opening-match-submit:focus-visible {
+  outline: 3px solid rgba(233, 70, 134, 0.48);
+  outline-offset: 3px;
+}
+
+.opening-match-submit:disabled {
+  background: #a9bacb;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .padel-receiver-choice {
   border-color: rgba(233, 70, 134, 0.4);
 }
@@ -5754,16 +5786,12 @@ textarea {
   grid-column: 3;
 }
 
-.match-control-grid__undo {
+.match-control-grid__actions {
   grid-column: 1;
 }
 
-.match-control-grid__end {
-  grid-column: 3;
-}
-
+.match-control-grid__actions,
 .match-control-grid__settings {
-  grid-column: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5776,6 +5804,11 @@ textarea {
   line-height: 1;
 }
 
+.match-control-grid__settings {
+  grid-column: 2;
+}
+
+.match-control-grid__actions-icon,
 .match-control-grid__settings-icon {
   width: 24px;
   height: 24px;
@@ -5786,7 +5819,12 @@ textarea {
 }
 
 .overlay-panel--game-settings {
-  width: min(420px, 100%);
+  width: min(520px, 100%);
+  border-radius: 22px;
+}
+
+.overlay-panel--match-actions {
+  width: min(390px, 100%);
   border-radius: 22px;
 }
 
@@ -5805,7 +5843,106 @@ textarea {
 .game-settings-shirt-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shirt-color-field--settings {
+  position: relative;
+}
+
+.shirt-color-field__label {
+  font-weight: 700;
+}
+
+.shirt-color-trigger--settings {
+  width: 100%;
+}
+
+.shirt-color-field--settings .shirt-color-grid {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 222px;
+  grid-template-columns: repeat(5, 34px);
+  justify-content: start;
+  padding: 10px;
+  border: 1px solid #d9e2ec;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(16, 42, 67, 0.18);
+}
+
+.shirt-color-field--settings .shirt-color-option {
+  width: 34px;
+  min-height: 34px;
+  justify-content: center;
+  padding: 6px;
+}
+
+.shirt-color-field--settings .shirt-color-option span:last-child:not(.shirt-color-swatch) {
+  display: none;
+}
+
+.shirt-color-field--settings .shirt-color-option .shirt-color-swatch {
+  width: 20px;
+  height: 20px;
+}
+
+.game-settings-spectator {
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #d9e2ec;
+}
+
+.game-settings-spectator h3 {
+  margin: 0;
+}
+
+.match-action-menu__button {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d7e3f0;
+  border-radius: 16px;
+  background: #f6f9fd;
+  color: #102a43;
+  cursor: pointer;
+  text-align: left;
+}
+
+.match-action-menu__button > span:first-child {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dcecff;
+  color: #0b5fb3;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.match-action-menu__button > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.match-action-menu__button small {
+  color: #486581;
+}
+
+.match-action-menu__button--danger > span:first-child {
+  background: #fde5e5;
+  color: #b42323;
+}
+
+.match-action-menu__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .game-settings-actions {
@@ -6030,6 +6167,10 @@ textarea {
 .match-meta-toggle-wrap {
   display: none;
   justify-content: flex-start;
+}
+
+.match-detail-panel {
+  display: none;
 }
 
 .display-timeline-toggle-wrap {
@@ -7067,6 +7208,7 @@ textarea {
     font-size: 0.82rem;
   }
 
+  .match-control-grid .match-control-grid__actions,
   .match-control-grid .match-control-grid__settings {
     width: 44px;
     height: 44px;
@@ -7078,7 +7220,8 @@ textarea {
   .settings-profile-grid,
   .match-setup-row,
   .settings-field-grid-tight,
-  .game-settings-match-grid {
+  .game-settings-match-grid,
+  .game-settings-shirt-grid {
     grid-template-columns: 1fr;
   }
 
@@ -7382,6 +7525,7 @@ textarea {
   }
 
   .match-detail-panel {
+    display: grid;
     gap: 8px;
     padding: 14px;
   }
@@ -7426,6 +7570,7 @@ textarea {
     font-size: 0.76rem;
   }
 
+  .match-control-grid .match-control-grid__actions,
   .match-control-grid .match-control-grid__settings {
     width: 44px;
     height: 44px;

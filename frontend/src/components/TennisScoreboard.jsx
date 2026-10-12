@@ -45,13 +45,16 @@ export default function TennisScoreboard({ match, disabled = false, onScorePoint
   const complete = match?.status === "completed" || live.match_complete;
   const player1Name = teamName(match, live, "player1");
   const player2Name = teamName(match, live, "player2");
+  const courtName = [match?.court_name, match?.court_alias]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join(" · ");
   const modeLabel = live.is_match_tiebreak
     ? "Final-set match tiebreak · First to 10, win by 2"
-    : `${isPadel ? "Padel" : "Tennis"} · Best of ${live.best_of ?? match.best_of ?? 3} sets · First to 6 games`
-      + (live.tennis_no_ad_scoring ? " · Golden Point" : " · Advantage")
+    : `${isPadel ? "Padel" : "Tennis"}${courtName ? ` · ${courtName}` : ""} · Best of ${live.best_of ?? match.best_of ?? 3} sets · First to 6 games`
+      + (live.tennis_no_ad_scoring ? " · Golden Point" : " · Standard advantage scoring")
       + (live.tennis_timed_breaks ? " · Timed breaks" : "");
   const pointMode = live.is_match_tiebreak ? "Match tiebreak" : (live.is_tie_break ? "Tiebreak" : "Points");
-  const courtLabel = String(live.service_side || "Right").toLowerCase() === "left" ? "Ad court" : "Deuce court";
+  const serviceSideLabel = String(live.service_side || "Right").toLowerCase() === "left" ? "Left" : "Right";
 
   useEffect(() => {
     if (timelineRef.current) timelineRef.current.scrollTop = timelineRef.current.scrollHeight;
@@ -125,7 +128,7 @@ export default function TennisScoreboard({ match, disabled = false, onScorePoint
       <div className="tennis-serve-status" data-testid="tennis-serve-status">
         <span><b>Serving:</b> {live.current_server || "Not set"}</span>
         <span><b>Receiving:</b> {live.current_receiver || "Not set"}</span>
-        <span><b>Court:</b> {courtLabel}</span>
+        <span><b>Service side:</b> {serviceSideLabel}</span>
       </div>
 
       <div className="tennis-participant-lineups" aria-label="Player lineups">

@@ -281,6 +281,7 @@ export default function MatchScreen() {
   const [selectedOpeningReceiver, setSelectedOpeningReceiver] = useState("");
   const [activeIntervalSeconds, setActiveIntervalSeconds] = useState(INTERVAL_SECONDS);
   const [showGameSettingsOverlay, setShowGameSettingsOverlay] = useState(false);
+  const [openSettingsShirtPicker, setOpenSettingsShirtPicker] = useState("");
   const [gameSettingsForm, setGameSettingsForm] = useState({
     score_type: 15,
     best_of: 5,
@@ -694,6 +695,7 @@ export default function MatchScreen() {
         ?? currentMatch?.state?.player2_shirt_color
         ?? DEFAULT_PLAYER_SHIRT_COLORS.player2,
     });
+    setOpenSettingsShirtPicker("");
     setShowGameSettingsOverlay(true);
   }
 
@@ -712,31 +714,52 @@ export default function MatchScreen() {
     const updatedMatch = await sendEventAction(matchId, "match_settings", settingsPayload);
 
     if (updatedMatch) {
+      setOpenSettingsShirtPicker("");
       setShowGameSettingsOverlay(false);
     }
   }
 
   function renderShirtColorField(playerKey, label) {
     const fieldName = `${playerKey}_shirt_color`;
+    const selectedColor = PLAYER_SHIRT_COLORS.find((color) => color.value === gameSettingsForm[fieldName])
+      || PLAYER_SHIRT_COLORS[0];
+    const isOpen = openSettingsShirtPicker === fieldName;
     return (
-      <div className="field shirt-color-field">
-        <label>{label}</label>
-        <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} shirt color`}>
+      <div className="field shirt-color-field shirt-color-field--settings">
+        <span className="shirt-color-field__label">{label}</span>
+        <button
+          aria-expanded={isOpen}
+          aria-label={`Change ${label} colour, currently ${selectedColor.label}`}
+          className="shirt-color-trigger shirt-color-trigger--settings"
+          type="button"
+          onClick={() => setOpenSettingsShirtPicker((current) => current === fieldName ? "" : fieldName)}
+        >
+          <span
+            aria-hidden="true"
+            className="shirt-color-swatch"
+            style={{ background: selectedColor.background, borderColor: selectedColor.border }}
+          />
+          <span>{selectedColor.label}</span>
+          <span className="shirt-color-trigger__chevron" aria-hidden="true">⌄</span>
+        </button>
+        {isOpen ? <div className="shirt-color-grid" role="radiogroup" aria-label={`${label} colour`}>
           {PLAYER_SHIRT_COLORS.map((color) => {
             const selected = gameSettingsForm[fieldName] === color.value;
             return (
               <button
                 aria-checked={selected}
+                aria-label={color.label}
                 className={`shirt-color-option${selected ? " shirt-color-option--selected" : ""}`}
                 key={`${fieldName}-${color.value}`}
                 role="radio"
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setGameSettingsForm((current) => ({
                     ...current,
                     [fieldName]: color.value,
-                  }))
-                }
+                  }));
+                  setOpenSettingsShirtPicker("");
+                }}
               >
                 <span
                   aria-hidden="true"
@@ -750,7 +773,7 @@ export default function MatchScreen() {
               </button>
             );
           })}
-        </div>
+        </div> : null}
       </div>
     );
   }
@@ -843,7 +866,6 @@ export default function MatchScreen() {
     <main className="page-shell stack match-screen-shell">
       <ClubPageHeader
         className="club-page-header--match"
-        subtitle="Manage the live scoring session."
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
 
@@ -886,7 +908,14 @@ export default function MatchScreen() {
                         </select>
                       </div>
                     ) : null}
-                    <button disabled={loading || !selectedOpeningServer || (isTennisDoubles && !selectedOpeningReceiver)} type="button" onClick={handleChooseTennisOpeningOrder}>Begin Match</button>
+                    <button
+                      className="opening-match-submit"
+                      disabled={loading || !selectedOpeningServer || (isTennisDoubles && !selectedOpeningReceiver)}
+                      type="button"
+                      onClick={handleChooseTennisOpeningOrder}
+                    >
+                      {loading ? "Beginning..." : "Begin Match"}
+                    </button>
                   </div>
                 ) : (
                 <div className="first-server-options">
@@ -991,7 +1020,10 @@ export default function MatchScreen() {
                 aria-label="Close game settings"
                 className="help-close-button"
                 type="button"
-                onClick={() => setShowGameSettingsOverlay(false)}
+                onClick={() => {
+                  setOpenSettingsShirtPicker("");
+                  setShowGameSettingsOverlay(false);
+                }}
               >
                 &times;
               </button>
@@ -1042,6 +1074,24 @@ export default function MatchScreen() {
                 {renderShirtColorField("player2", "Player 2 Shirt")}
               </div>
             ) : null}
+            {!isPersonalAccount ? (
+              <section className="game-settings-spectator stack">
+                <h3>Spectator Display</h3>
+                <p className="helper-text">
+                  Open this URL on the venue display, TV browser, or secondary tablet, then enter the court display code.
+                </p>
+                <input aria-label="Spectator display URL" className="read-only-input" readOnly value={scoreboardUrl} />
+                <div className="field">
+                  <label htmlFor="spectator_display_code">Court Display Code</label>
+                  <input
+                    className="read-only-input"
+                    id="spectator_display_code"
+                    readOnly
+                    value={displayCode || "Generate a display code for this court in Settings."}
+                  />
+                </div>
+              </section>
+            ) : null}
             {error ? <div className="notice error">{error}</div> : null}
             <div className="button-row game-settings-actions">
               <button disabled={loading} type="submit">
@@ -1051,7 +1101,10 @@ export default function MatchScreen() {
                 className="secondary"
                 disabled={loading}
                 type="button"
-                onClick={() => setShowGameSettingsOverlay(false)}
+                onClick={() => {
+                  setOpenSettingsShirtPicker("");
+                  setShowGameSettingsOverlay(false);
+                }}
               >
                 Cancel
               </button>
@@ -1197,27 +1250,6 @@ export default function MatchScreen() {
             </>
           ) : null}
         </section>
-      ) : null}
-
-      {!isPersonalAccount ? (
-      <div className="stack match-secondary-column">
-        <section className="panel stack">
-          <h2>Spectator Display</h2>
-          <p className="helper-text">
-            Open this URL on the venue display, TV browser, or secondary tablet, then enter the court display code below.
-          </p>
-          <input className="read-only-input" readOnly value={scoreboardUrl} />
-          <div className="field">
-            <label htmlFor="spectator_display_code">Court Display Code</label>
-            <input
-              className="read-only-input"
-              id="spectator_display_code"
-              readOnly
-              value={displayCode || "Generate a display code for this court in Settings."}
-            />
-          </div>
-        </section>
-      </div>
       ) : null}
 
       <div className="stack match-bottom-stack">
