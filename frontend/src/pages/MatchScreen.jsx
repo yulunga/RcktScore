@@ -238,6 +238,12 @@ export default function MatchScreen() {
     ...(tennisTeams.player1 || []).map((participant) => ({ ...participant, side: "player1" })),
     ...(tennisTeams.player2 || []).map((participant) => ({ ...participant, side: "player2" })),
   ];
+  const isTennisDoubles = isTennisMatch && (
+    isPadelMatch
+    || live.team_format === "doubles"
+    || (tennisTeams.player1 || []).length > 1
+    || (tennisTeams.player2 || []).length > 1
+  );
   const padelReceivingSide = live.current_receiver_side
     || (live.current_server_side === "player2" ? "player1" : "player2");
   const padelReceivingParticipants = tennisParticipants.filter((participant) => participant.side === padelReceivingSide);
@@ -795,7 +801,9 @@ export default function MatchScreen() {
 
   async function handleChooseTennisOpeningOrder() {
     const server = tennisParticipants.find((participant) => participant.id === selectedOpeningServer);
-    const receiver = tennisParticipants.find((participant) => participant.id === selectedOpeningReceiver);
+    const receiver = isTennisDoubles
+      ? tennisParticipants.find((participant) => participant.id === selectedOpeningReceiver)
+      : tennisParticipants.find((participant) => participant.side !== server?.side);
     if (!server || !receiver || server.side === receiver.side) return;
 
     const serverTeamReceiver = tennisParticipants.find((participant) => participant.side === server.side);
@@ -844,10 +852,12 @@ export default function MatchScreen() {
           <div className="overlay-panel overlay-panel--warmup stack">
             {showFirstServerOverlay && currentMatch ? (
               <>
-                <h2>{isTennisMatch ? "Opening Serve & Receive" : "First Server"}</h2>
+                <h2>{isTennisMatch ? (isTennisDoubles ? "Opening Serve & Receive" : "Opening Server") : "First Server"}</h2>
                 <p className="helper-text">
                   {isTennisMatch
-                    ? "Choose the opening server and receiver. This establishes the service and receiving rotation."
+                    ? (isTennisDoubles
+                      ? "Choose the opening server and receiver. This establishes the service and receiving rotation."
+                      : "Choose the opening server. The other player will receive automatically.")
                     : "Choose which player starts serving. The match begins after this selection."}
                 </p>
                 {isTennisMatch ? (
@@ -862,19 +872,21 @@ export default function MatchScreen() {
                         {tennisParticipants.map((participant) => <option key={participant.id} value={participant.id}>{participantName(participant)}</option>)}
                       </select>
                     </div>
-                    <div className="field">
-                      <label htmlFor="opening_receiver">Opening receiver</label>
-                      <select id="opening_receiver" disabled={!selectedOpeningServer} value={selectedOpeningReceiver} onChange={(event) => setSelectedOpeningReceiver(event.target.value)}>
-                        <option value="">Choose receiver</option>
-                        {tennisParticipants
-                          .filter((participant) => {
-                            const server = tennisParticipants.find((item) => item.id === selectedOpeningServer);
-                            return server && participant.side !== server.side;
-                          })
-                          .map((participant) => <option key={participant.id} value={participant.id}>{participantName(participant)}</option>)}
-                      </select>
-                    </div>
-                    <button disabled={loading || !selectedOpeningServer || !selectedOpeningReceiver} type="button" onClick={handleChooseTennisOpeningOrder}>Begin Match</button>
+                    {isTennisDoubles ? (
+                      <div className="field">
+                        <label htmlFor="opening_receiver">Opening receiver</label>
+                        <select id="opening_receiver" disabled={!selectedOpeningServer} value={selectedOpeningReceiver} onChange={(event) => setSelectedOpeningReceiver(event.target.value)}>
+                          <option value="">Choose receiver</option>
+                          {tennisParticipants
+                            .filter((participant) => {
+                              const server = tennisParticipants.find((item) => item.id === selectedOpeningServer);
+                              return server && participant.side !== server.side;
+                            })
+                            .map((participant) => <option key={participant.id} value={participant.id}>{participantName(participant)}</option>)}
+                        </select>
+                      </div>
+                    ) : null}
+                    <button disabled={loading || !selectedOpeningServer || (isTennisDoubles && !selectedOpeningReceiver)} type="button" onClick={handleChooseTennisOpeningOrder}>Begin Match</button>
                   </div>
                 ) : (
                 <div className="first-server-options">

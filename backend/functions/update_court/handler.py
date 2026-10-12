@@ -38,6 +38,8 @@ def lambda_handler(event, context):
                 court_id,
                 payload["court_name"],
                 payload.get("court_alias"),
+                payload.get("sport"),
+                update_sport="sport" in payload,
             )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

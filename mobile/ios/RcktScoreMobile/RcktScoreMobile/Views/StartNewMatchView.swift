@@ -1493,7 +1493,10 @@ struct StartNewMatchView: View {
         do {
             let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
             await MainActor.run {
-                availableCourts = settings.courts
+                availableCourts = settings.courts.filter { court in
+                    guard let courtSport = court.sport?.lowercased(), !courtSport.isEmpty else { return true }
+                    return courtSport == selectedSport.rawValue
+                }
                 loadedOrganizationType = settings.organization.organizationType
                 loadedTimedBreakDefaults = settings.organization.timedBreakDefaults
                 let sessionSports = Set(session?.normalizedEnabledSports ?? [])

@@ -141,6 +141,27 @@ function resultForSegment(gameHistory, number) {
   return gameHistory.find((result) => Number(result.game_number ?? result.gameNumber) === number) || null;
 }
 
+function eventServerName(event, match, player1Name, player2Name) {
+  const payload = event.payload || {};
+  const participantId = payloadValue(payload, "point_server_participant_id", "pointServerParticipantId");
+  if (participantId) {
+    const participants = [
+      ...(match?.state?.tennis_teams?.player1 || []),
+      ...(match?.state?.tennis_teams?.player2 || []),
+    ];
+    const participant = participants.find((item) => item.id === participantId);
+    if (participant) return participantName(participant);
+  }
+  const explicitName = payloadValue(payload, "point_server", "pointServer")
+    || payloadValue(payload, "current_server", "currentServer");
+  if (explicitName) return explicitName;
+  const side = payloadValue(payload, "point_server_side", "pointServerSide")
+    || payloadValue(payload, "current_server_side", "currentServerSide");
+  if (side === "player1") return player1Name;
+  if (side === "player2") return player2Name;
+  return "Not recorded";
+}
+
 export default function HistoricMatchPage() {
   const { matchId } = useParams();
   const navigate = useNavigate();
@@ -225,6 +246,11 @@ export default function HistoricMatchPage() {
   const gameDetails = tennisStyle
     ? `Best of ${bestOf} sets • ${noAd ? "Golden Point" : "Advantage scoring"}`
     : `${handicapEnabled ? `Handicap ${player1Offset} | ${player2Offset}` : "No handicap"} • Best of ${bestOf} games • PAR-${scoreType}`;
+  const player1GamesWon = Number(live.player1_games_won ?? match?.player1_games_won ?? 0);
+  const player2GamesWon = Number(live.player2_games_won ?? match?.player2_games_won ?? 0);
+  const winnerSide = match?.winner_side
+    || live.winner_side
+    || (player1GamesWon === player2GamesWon ? "" : (player1GamesWon > player2GamesWon ? "player1" : "player2"));
 
   function winnerName(side) {
     return side === "player2" ? player2Name : player1Name;
@@ -247,19 +273,21 @@ export default function HistoricMatchPage() {
       {match ? (
         <>
           <section className="panel historic-match-summary" aria-label="Match result">
-            <div className="historic-match-summary__player">
+            <div className={`historic-match-summary__player${winnerSide === "player1" ? " is-winner" : ""}`}>
               <strong>{player1Name}</strong>
-              <span>{live.player1_games_won ?? match.player1_games_won ?? 0}</span>
+              {winnerSide === "player1" ? <small>Winner</small> : null}
+              <span>{player1GamesWon}</span>
             </div>
             <div className="historic-match-summary__divider" aria-hidden="true">–</div>
-            <div className="historic-match-summary__player historic-match-summary__player--right">
+            <div className={`historic-match-summary__player historic-match-summary__player--right${winnerSide === "player2" ? " is-winner" : ""}`}>
               <strong>{player2Name}</strong>
-              <span>{live.player2_games_won ?? match.player2_games_won ?? 0}</span>
+              {winnerSide === "player2" ? <small>Winner</small> : null}
+              <span>{player2GamesWon}</span>
             </div>
           </section>
 
           <section className="panel stack historic-match-section">
-            <h2>Match Information</h2>
+            <h2>Match Details</h2>
             <div className="historic-match-meta-grid">
               <div><span>Sport</span><strong>{sportName(match.sport)}</strong></div>
               <div><span>Game Details</span><strong>{gameDetails}</strong></div>
@@ -268,9 +296,6 @@ export default function HistoricMatchPage() {
               <div><span>Court</span><strong>{[match.court_name, match.court_alias].filter(Boolean).join(" • ") || "Not available"}</strong></div>
               <div><span>Referee</span><strong>{match.referee_name || "Not added"}</strong></div>
             </div>
-          </section>
-
-          <section className="panel stack historic-match-section">
             <button
               aria-expanded={showDurations}
               className="historic-match-time-toggle"
@@ -322,25 +347,23 @@ export default function HistoricMatchPage() {
                           || payloadValue(payload, "service_side", "serviceSide");
                         const serverSide = payloadValue(payload, "point_server_side", "pointServerSide")
                           || payloadValue(payload, "current_server_side", "currentServerSide");
+                        const serverName = eventServerName(event, match, player1Name, player2Name);
                         return (
                           <React.Fragment key={event.id || `${event.created_at}-${side}`}>
-                            <div className={`historic-point historic-point--${tennisStyle ? "tennis" : "racket"}`}>
-                              {!tennisStyle ? (
-                                <span className={`historic-point__serve${serverSide === "player1" ? " is-active" : ""}`}>
-                                  {serverSide === "player1" ? String(serviceSide || "").slice(0, 1).toUpperCase() : ""}
-                                </span>
-                              ) : null}
+                            <div className={`historic-point historic-point--${tennisStyle ? "tennis" : "racket"}${serverSide ? ` historic-point--server-${serverSide}` : ""}`}>
+                              <span className={`historic-point__serve${serverSide === "player1" ? " is-active" : ""}`}>
+                                {serverSide === "player1" ? (tennisStyle ? "S" : String(serviceSide || "").slice(0, 1).toUpperCase()) : ""}
+                              </span>
                               <div className="historic-point__detail">
+                                <span className="historic-point__server">Serving: {serverName}</span>
                                 <small>{eventTitle(event)}</small>
                                 <strong>{winnerName(side)}</strong>
                                 <b>{tennisStyle ? tennisScore(event) : racketScore(event)}</b>
                                 <time>{formatTime(event.created_at)}</time>
                               </div>
-                              {!tennisStyle ? (
-                                <span className={`historic-point__serve${serverSide === "player2" ? " is-active" : ""}`}>
-                                  {serverSide === "player2" ? String(serviceSide || "").slice(0, 1).toUpperCase() : ""}
-                                </span>
-                              ) : null}
+                              <span className={`historic-point__serve${serverSide === "player2" ? " is-active" : ""}`}>
+                                {serverSide === "player2" ? (tennisStyle ? "S" : String(serviceSide || "").slice(0, 1).toUpperCase()) : ""}
+                              </span>
                             </div>
                             {tennisStyle && gameCompleted ? (
                               <div className="historic-completion-divider historic-completion-divider--game" data-testid="historic-game-divider">

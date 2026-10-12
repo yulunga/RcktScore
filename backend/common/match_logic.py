@@ -130,6 +130,33 @@ def create_match(connection, payload, source="api"):
     if normalized_sport not in enabled_sports:
         sport_label = SPORT_LABELS.get(normalized_sport, normalized_sport.replace("_", " ").title())
         raise ValueError(f"{sport_label} is not enabled for this account or club")
+    court_id = payload.get("court_id")
+    if court_id:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, court_name, court_alias, sport
+                FROM "SkwshCourts"
+                WHERE id = %(court_id)s
+                  AND organization_name = %(organization_id)s
+                LIMIT 1
+                """,
+                {
+                    "court_id": int(court_id),
+                    "organization_id": int(payload.get("tenant_id")),
+                },
+            )
+            court = cursor.fetchone()
+        if not court:
+            raise ValueError("The selected court does not belong to this account or club")
+        if court.get("sport") and court["sport"] != normalized_sport:
+            court_sport = SPORT_LABELS.get(court["sport"], str(court["sport"]).replace("_", " ").title())
+            raise ValueError(f"The selected court is configured for {court_sport}")
+        payload = {
+            **payload,
+            "court_name": court.get("court_name") or payload.get("court_name"),
+            "court_alias": court.get("court_alias"),
+        }
     engine = resolve_engine_module(normalized_sport)
     return engine.create_match(
         connection,

@@ -310,6 +310,7 @@ Common symptoms:
 - score or server state looks wrong after undo
 - a selected shirt colour is replaced by the default colour
 - tennis appears in setup but cannot be created
+- the wrong sport's courts appear in setup, or match creation rejects the selected court
 - tennis score labels or server rotation look wrong during tie-breaks
 - Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
@@ -321,6 +322,7 @@ What to check:
 - the submitted `player1_shirt_color` and `player2_shirt_color` values, plus all four `team{1|2}_player{1|2}_shirt_color` values for tennis doubles (all personal and club plans may set them)
 - if the web referee `Me` switch is disabled or clears itself, compare the signed-in profile first name and surname with every entered participant; a player cannot referee the same match
 - `matches.sport` and the tenant `enabled_sports` list
+- whether migration `037_court_sports.sql` is deployed and the selected `SkwshCourts.sport` is either null (legacy/all sports) or matches `matches.sport`
 - court conflict behavior
 - latest `match_events` entries
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
@@ -328,6 +330,7 @@ What to check:
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
 - whether migration `021_tennis_scoring_formats.sql` is present and the match row contains the expected tennis flags; tennis should accept the deciding point immediately from the Right service side, while padel must have a `receiver_choice` event identifying the selected receiving partner's court first
+- in web tennis singles, only the opening server is selected and the other participant is submitted as receiver automatically; explicit receiver selection remains a doubles-only step
 
 Important current truths:
 

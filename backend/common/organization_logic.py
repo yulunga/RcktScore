@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
-from common.sport_config import constrain_enabled_sports, normalize_enabled_sports
+from common.sport_config import constrain_enabled_sports, normalize_enabled_sports, normalize_sport_id
 from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
 
 VALID_ROLES = {"admin", "user"}
@@ -257,6 +257,7 @@ def _serialize_court(row, *, include_display_code=True):
         "id": row["id"],
         "court_name": row.get("court_name") or "",
         "court_alias": row.get("court_alias") or "",
+        "sport": row.get("sport") or None,
         "display_code_enabled": bool(row.get("display_code_enabled")),
         "created_at": created_at.isoformat() if created_at else None,
         "display_code_created_at": display_code_created_at.isoformat() if display_code_created_at else None,
@@ -379,6 +380,7 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 id,
                 court_name,
                 court_alias,
+                sport,
                 created_at,
                 display_code,
                 display_code_enabled,
@@ -951,11 +953,14 @@ def approve_organization_user_by_id(connection, organization_id, user_id):
     return _serialize_user(updated_row)
 
 
-def create_court(connection, organization_id, court_name, court_alias=None):
+def create_court(connection, organization_id, court_name, court_alias=None, sport=None):
     org_id = int(organization_id)
     trimmed_name = court_name.strip()
     if not trimmed_name:
         raise ValueError("court_name is required")
+    normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
+    if sport and not normalized_sport:
+        raise ValueError("sport must be a supported racket sport")
     created_at = _utcnow()
     display_code = generate_unique_display_code(connection)
 
@@ -966,6 +971,7 @@ def create_court(connection, organization_id, court_name, court_alias=None):
                 created_at,
                 court_name,
                 court_alias,
+                sport,
                 organization_name,
                 display_code,
                 display_code_enabled,
@@ -975,6 +981,7 @@ def create_court(connection, organization_id, court_name, court_alias=None):
                 %(created_at)s,
                 %(court_name)s,
                 %(court_alias)s,
+                %(sport)s,
                 %(organization_id)s,
                 %(display_code)s,
                 TRUE,
@@ -984,6 +991,7 @@ def create_court(connection, organization_id, court_name, court_alias=None):
                 id,
                 court_name,
                 court_alias,
+                sport,
                 created_at,
                 display_code,
                 display_code_enabled,
@@ -994,6 +1002,7 @@ def create_court(connection, organization_id, court_name, court_alias=None):
                 "created_at": created_at,
                 "court_name": trimmed_name,
                 "court_alias": (court_alias or "").strip() or None,
+                "sport": normalized_sport,
                 "organization_id": org_id,
                 "display_code": display_code,
                 "display_code_created_at": created_at,
@@ -1005,24 +1014,38 @@ def create_court(connection, organization_id, court_name, court_alias=None):
     return _serialize_court(court_row)
 
 
-def update_court(connection, organization_id, court_id, court_name, court_alias=None):
+def update_court(
+    connection,
+    organization_id,
+    court_id,
+    court_name,
+    court_alias=None,
+    sport=None,
+    *,
+    update_sport=False,
+):
     org_id = int(organization_id)
     trimmed_name = court_name.strip()
     if not trimmed_name:
         raise ValueError("court_name is required")
+    normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
+    if update_sport and sport and not normalized_sport:
+        raise ValueError("sport must be a supported racket sport")
 
     with connection.cursor() as cursor:
         cursor.execute(
             """
             UPDATE "SkwshCourts"
             SET court_name = %(court_name)s,
-                court_alias = %(court_alias)s
+                court_alias = %(court_alias)s,
+                sport = CASE WHEN %(update_sport)s THEN %(sport)s ELSE sport END
             WHERE id = %(court_id)s
               AND organization_name = %(organization_id)s
             RETURNING
                 id,
                 court_name,
                 court_alias,
+                sport,
                 created_at,
                 display_code,
                 display_code_enabled,
@@ -1034,6 +1057,8 @@ def update_court(connection, organization_id, court_id, court_name, court_alias=
                 "organization_id": org_id,
                 "court_name": trimmed_name,
                 "court_alias": (court_alias or "").strip() or None,
+                "sport": normalized_sport,
+                "update_sport": bool(update_sport),
             },
         )
         court_row = cursor.fetchone()

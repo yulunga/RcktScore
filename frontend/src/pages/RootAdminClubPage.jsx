@@ -49,6 +49,7 @@ const emptyUserForm = {
 };
 
 const emptyCourtForm = {
+  sport: "squash",
   court_name: "",
   court_alias: "",
 };
@@ -90,6 +91,10 @@ export default function RootAdminClubPage() {
   const [savingSection, setSavingSection] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const courtSportOptions = useMemo(
+    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value)),
+    [enabledSports],
+  );
   const scoreboardUrl = useMemo(() => {
     if (typeof window === "undefined") {
       return "/scoreboard";
@@ -132,6 +137,7 @@ export default function RootAdminClubPage() {
         (nextSettings?.courts || []).map((court) => [
           court.id,
           {
+            sport: court.sport || "",
             court_name: court.court_name || "",
             court_alias: court.court_alias || "",
           },
@@ -143,6 +149,15 @@ export default function RootAdminClubPage() {
     );
     setEnabledSports(normalizeEnabledSports(nextSettings?.organization?.enabled_sports));
   }, []);
+
+  useEffect(() => {
+    const fallbackSport = courtSportOptions[0]?.value || "squash";
+    setCourtForm((current) => (
+      courtSportOptions.some((sport) => sport.value === current.sport)
+        ? current
+        : { ...current, sport: fallbackSport }
+    ));
+  }, [courtSportOptions]);
 
   const loadSettings = useCallback(async () => {
     if (!organizationId) {
@@ -271,6 +286,7 @@ export default function RootAdminClubPage() {
       () => createOrganizationCourt(
         {
           organization_id: organizationId,
+          sport: courtForm.sport,
           court_name: courtForm.court_name,
           court_alias: courtForm.court_alias,
         },
@@ -278,7 +294,7 @@ export default function RootAdminClubPage() {
       ),
       "Court created.",
     );
-    setCourtForm(emptyCourtForm);
+    setCourtForm({ ...emptyCourtForm, sport: courtSportOptions[0]?.value || "squash" });
   }
 
   async function handleCourtSave(courtId) {
@@ -288,6 +304,7 @@ export default function RootAdminClubPage() {
         courtId,
         {
           organization_id: organizationId,
+          sport: courtDrafts[courtId]?.sport || null,
           court_name: courtDrafts[courtId]?.court_name || "",
           court_alias: courtDrafts[courtId]?.court_alias || "",
         },
@@ -570,11 +587,24 @@ export default function RootAdminClubPage() {
         <section className="panel stack">
           <div className="panel-heading">
             <h2>Courts</h2>
-            <p className="helper-text">Manage court names and aliases for this club.</p>
+            <p className="helper-text">Manage sport-specific court names and aliases for this club.</p>
           </div>
 
           <form className="stack" onSubmit={handleCourtCreate}>
             <div className="field-grid settings-field-grid-tight">
+              <div className="field">
+                <label htmlFor="court_sport">Racket Sport</label>
+                <select
+                  id="court_sport"
+                  required
+                  value={courtForm.sport}
+                  onChange={(event) => setCourtForm((current) => ({ ...current, sport: event.target.value }))}
+                >
+                  {courtSportOptions.map((sport) => (
+                    <option key={sport.value} value={sport.value}>{sport.label}</option>
+                  ))}
+                </select>
+              </div>
               <div className="field">
                 <label htmlFor="court_name">Court Name</label>
                 <input
@@ -608,6 +638,26 @@ export default function RootAdminClubPage() {
               courts.map((court) => (
                 <article className="dashboard-item" key={court.id}>
                   <div className="field-grid settings-field-grid-tight">
+                    <div className="field">
+                      <label htmlFor={`court_sport_${court.id}`}>Racket Sport</label>
+                      <select
+                        id={`court_sport_${court.id}`}
+                        value={courtDrafts[court.id]?.sport || ""}
+                        onChange={(event) =>
+                          setCourtDrafts((current) => ({
+                            ...current,
+                            [court.id]: {
+                              ...current[court.id],
+                              sport: event.target.value,
+                            },
+                          }))}
+                      >
+                        <option value="">All sports (legacy)</option>
+                        {courtSportOptions.map((sport) => (
+                          <option key={sport.value} value={sport.value}>{sport.label}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="field">
                       <label htmlFor={`court_name_${court.id}`}>Court Name</label>
                       <input

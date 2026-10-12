@@ -399,7 +399,9 @@ export default function NewMatch() {
       try {
         const response = await getOrganizationSettings(organizationId);
         const organizationSettings = response?.organizationSettings || {};
-        const courts = organizationSettings?.courts || [];
+        const courts = (organizationSettings?.courts || []).filter((court) => (
+          !court.sport || court.sport === selectedSport
+        ));
         const timedBreakDefaults = organizationSettings?.organization?.timed_break_defaults || {};
         const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);
         const nextOrganizationPlan = organizationSettings?.organization?.plan || session?.plan || "";
@@ -894,22 +896,20 @@ export default function NewMatch() {
               <h2>Players</h2>
               <p className="helper-text">Choose singles or doubles before entering the line-up.</p>
             </div>
-            <div className="tennis-format-options" role="radiogroup" aria-label="Tennis match type">
-              <button
-                aria-checked={formState.team_format === "singles"}
-                className={formState.team_format === "singles" ? "secondary active" : "secondary"}
-                role="radio"
-                type="button"
-                onClick={() => handleChange("team_format", "singles")}
-              >Singles</button>
-              <button
-                aria-checked={formState.team_format === "doubles"}
-                className={formState.team_format === "doubles" ? "secondary active" : "secondary"}
-                role="radio"
-                type="button"
-                onClick={() => handleChange("team_format", "doubles")}
-              >Doubles</button>
-            </div>
+            <label className="tennis-match-type-toggle" htmlFor="tennis_doubles_toggle">
+              <span className={formState.team_format === "singles" ? "is-selected" : ""}>Singles</span>
+              <span className="match-option-switch__control">
+                <input
+                  aria-label="Doubles match"
+                  checked={formState.team_format === "doubles"}
+                  id="tennis_doubles_toggle"
+                  type="checkbox"
+                  onChange={(event) => handleChange("team_format", event.target.checked ? "doubles" : "singles")}
+                />
+                <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+              </span>
+              <span className={formState.team_format === "doubles" ? "is-selected" : ""}>Doubles</span>
+            </label>
           </section>
         ) : null}
 
@@ -1234,8 +1234,7 @@ export default function NewMatch() {
           {isTennisStyleMatch ? (
             <section className="panel stack compact tennis-rules-card">
               <div className="panel-heading">
-                <h2>{isPadelMatch ? "Padel Rules" : "Tennis Rules"}</h2>
-                <p className="helper-text">These choices are stored with the match and apply on every client.</p>
+                <h2>Match Rules &amp; Options</h2>
               </div>
               {renderOptionSwitch({
                 id: "tennis_no_ad_scoring",
@@ -1267,8 +1266,7 @@ export default function NewMatch() {
           {!isTennisStyleMatch ? (
             <section className="panel stack compact tennis-rules-card">
               <div className="panel-heading">
-                <h2>{selectedSportOption?.label || "Racket Sport"} Rules</h2>
-                <p className="helper-text">These choices are stored with this match and apply on web and iOS.</p>
+                <h2>Match Rules &amp; Options</h2>
               </div>
               {renderOptionSwitch({
                 id: "handicap_enabled",
@@ -1445,7 +1443,11 @@ export default function NewMatch() {
                       handleChange("referee_name", event.target.value);
                     }}
                   />
-                  <label className={`match-referee-me${loggedInUserIsPlaying ? " match-referee-me--disabled" : ""}`} htmlFor="referee_me">
+                  <label
+                    className={`match-referee-me${loggedInUserIsPlaying ? " match-referee-me--disabled" : ""}`}
+                    data-tooltip={`${loggedInUserName}${session?.email || session?.username ? ` • ${session?.email || session?.username}` : ""}`}
+                    htmlFor="referee_me"
+                  >
                     <span>Me</span>
                     <span className="match-option-switch__control">
                       <input

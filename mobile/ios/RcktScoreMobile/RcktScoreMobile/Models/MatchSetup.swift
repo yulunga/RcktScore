@@ -136,6 +136,7 @@ struct CourtSummary: Decodable, Identifiable, Hashable {
     let id: Int
     let courtName: String
     let courtAlias: String
+    let sport: String?
     let displayCode: String?
     let displayCodeEnabled: Bool
     let createdAt: String?
@@ -146,6 +147,7 @@ struct CourtSummary: Decodable, Identifiable, Hashable {
         case id
         case courtName = "court_name"
         case courtAlias = "court_alias"
+        case sport
         case displayCode = "display_code"
         case displayCodeEnabled = "display_code_enabled"
         case createdAt = "created_at"
@@ -158,6 +160,7 @@ struct CourtSummary: Decodable, Identifiable, Hashable {
         id = try container.decode(Int.self, forKey: .id)
         courtName = try container.decodeIfPresent(String.self, forKey: .courtName) ?? ""
         courtAlias = try container.decodeIfPresent(String.self, forKey: .courtAlias) ?? ""
+        sport = try container.decodeIfPresent(String.self, forKey: .sport)
         displayCode = try container.decodeIfPresent(String.self, forKey: .displayCode)
         displayCodeEnabled = try container.decodeIfPresent(Bool.self, forKey: .displayCodeEnabled) ?? false
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)

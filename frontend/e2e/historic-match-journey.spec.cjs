@@ -80,6 +80,8 @@ test("shows a dedicated Squash historic match with game durations and a structur
   await expect(page.getByText("32:00")).toBeVisible();
   await expect(page.getByText("Game 1", { exact: true })).toBeVisible();
   await expect(page.getByText("Stroke to", { exact: true })).toBeVisible();
+  await expect(page.getByText("Serving: Alex Ace", { exact: true }).first()).toBeVisible();
+  await expect(page.locator(".historic-match-summary")).toHaveCSS("position", "sticky");
 
   await page.getByRole("button", { name: /Match Time/ }).click();
   const durations = page.getByTestId("historic-segment-durations");
@@ -116,10 +118,10 @@ test("uses tennis terminology, point labels, and separate game/set dividers @his
       ],
       events: [
         { id: "start", event_type: "match_started", created_at: "2026-09-21T13:00:00Z", payload: {} },
-        { id: "s1-p1", event_type: "score_point", created_at: "2026-09-21T13:02:00Z", payload: { game_number: 1, scorer: "player1", point_player1_score_label: "15", point_player2_score_label: "0" } },
-        { id: "s1-game", event_type: "score_point", created_at: "2026-09-21T13:27:00Z", payload: { game_number: 1, scorer: "player1", point_player1_score_label: "Game", point_player2_score_label: "30", tennis_game_completed: true, completed_game_player1_games: 6, completed_game_player2_games: 4, set_completed: true } },
-        { id: "s2-p1", event_type: "score_point", created_at: "2026-09-21T13:31:00Z", payload: { game_number: 2, scorer: "player2", point_player1_score_label: "40", point_player2_score_label: "Ad" } },
-        { id: "s2-game", event_type: "score_point", created_at: "2026-09-21T14:00:00Z", payload: { game_number: 2, scorer: "player1", point_player1_score_label: "Game", point_player2_score_label: "40", tennis_game_completed: true, completed_game_player1_games: 7, completed_game_player2_games: 5, set_completed: true, match_completed: true } },
+        { id: "s1-p1", event_type: "score_point", created_at: "2026-09-21T13:02:00Z", payload: { game_number: 1, scorer: "player1", point_server_side: "player1", point_server_participant_id: "team1_player1", point_player1_score_label: "15", point_player2_score_label: "0" } },
+        { id: "s1-game", event_type: "score_point", created_at: "2026-09-21T13:27:00Z", payload: { game_number: 1, scorer: "player1", point_server_side: "player1", point_server_participant_id: "team1_player1", point_player1_score_label: "Game", point_player2_score_label: "30", tennis_game_completed: true, completed_game_player1_games: 6, completed_game_player2_games: 4, set_completed: true } },
+        { id: "s2-p1", event_type: "score_point", created_at: "2026-09-21T13:31:00Z", payload: { game_number: 2, scorer: "player2", point_server_side: "player2", point_server_participant_id: "team2_player1", point_player1_score_label: "40", point_player2_score_label: "Ad" } },
+        { id: "s2-game", event_type: "score_point", created_at: "2026-09-21T14:00:00Z", payload: { game_number: 2, scorer: "player1", point_server_side: "player2", point_server_participant_id: "team2_player1", point_player1_score_label: "Game", point_player2_score_label: "40", tennis_game_completed: true, completed_game_player1_games: 7, completed_game_player2_games: 5, set_completed: true, match_completed: true } },
       ],
     },
   };
@@ -133,6 +135,8 @@ test("uses tennis terminology, point labels, and separate game/set dividers @his
   await expect(page.getByText("Best of 3 sets • Advantage scoring")).toBeVisible();
   await expect(page.getByText("Set 1", { exact: true })).toBeVisible();
   await expect(page.getByText("40–Ad", { exact: true })).toBeVisible();
+  await expect(page.getByText("Serving: Alex Ace", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Serving: Blair Backhand", { exact: true }).first()).toBeVisible();
   await expect(page.getByTestId("historic-game-divider")).toHaveCount(2);
   await expect(page.getByTestId("historic-set-divider")).toHaveCount(1);
   await expect(page.getByText("Game, Set and Match", { exact: true })).toBeVisible();

@@ -71,6 +71,25 @@ function freshDoublesMatch() {
   };
 }
 
+function freshSinglesMatch() {
+  const match = freshDoublesMatch();
+  return {
+    ...match,
+    id: "web-tennis-singles-1",
+    player1_name: "Alex",
+    player2_name: "Blair",
+    state: {
+      ...match.state,
+      team_format: "singles",
+      tennis_timed_breaks: false,
+      tennis_teams: {
+        player1: [match.state.tennis_teams.player1[0]],
+        player2: [match.state.tennis_teams.player2[0]],
+      },
+    },
+  };
+}
+
 function liveTennisMatch() {
   const match = freshDoublesMatch();
   return {
@@ -161,7 +180,7 @@ test("creates tennis doubles metadata and configures the opening order @tennis",
   });
 
   await page.goto("/match/new/setup?sport=tennis");
-  await page.getByRole("radio", { name: "Doubles" }).click();
+  await page.getByLabel("Doubles match").check();
   await page.locator("#player1_name").fill("Alex");
   await page.locator("#player1_surname").fill("Ace");
   await page.locator("#player2_name").fill("Blair");
@@ -211,6 +230,33 @@ test("creates tennis doubles metadata and configures the opening order @tennis",
     serve_order: ["team1_player2", "team2_player1", "team1_player1", "team2_player2"],
   });
   await expect(page.getByTestId("tennis-opening-order")).toBeHidden();
+});
+
+test("tennis singles derives the receiver from the opening server @tennis", async ({ page }) => {
+  let openingPayload;
+  let match = freshSinglesMatch();
+
+  await page.route("**/get_score/web-tennis-singles-1", async (route) => {
+    await route.fulfill({ json: envelope({ match }) });
+  });
+  await page.route("**/event_action", async (route) => {
+    openingPayload = route.request().postDataJSON();
+    match = { ...match, state: { ...match.state, events: [{ id: "started", event_type: "server", payload: openingPayload }] } };
+    await route.fulfill({ json: envelope({ match }) });
+  });
+
+  await page.goto("/match/web-tennis-singles-1");
+  await expect(page.getByRole("heading", { name: "Opening Server" })).toBeVisible();
+  await expect(page.getByLabel("Opening receiver")).toHaveCount(0);
+  await page.getByLabel("Opening server").selectOption("team1_player1");
+  await page.getByRole("button", { name: "Begin Match" }).click();
+
+  await expect.poll(() => openingPayload).toBeTruthy();
+  expect(openingPayload).toMatchObject({
+    current_server_participant_id: "team1_player1",
+    current_receiver_participant_id: "team2_player1",
+    current_receiver_side: "player2",
+  });
 });
 
 test("creates doubles-only Padel and chooses the Golden Point receiver @padel", async ({ page }) => {
