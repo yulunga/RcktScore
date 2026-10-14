@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -114,6 +114,7 @@ export default function OrganisationSettingsPage() {
   const [editingCourtId, setEditingCourtId] = useState(null);
   const [courtSportFilter, setCourtSportFilter] = useState("");
   const [activeGameSettingsTile, setActiveGameSettingsTile] = useState("");
+  const settingsTabRefs = useRef({});
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
     SETTINGS_TABS.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
@@ -303,6 +304,18 @@ export default function OrganisationSettingsPage() {
       setSearchParams({ tab: "organisation" }, { replace: true });
     }
   }, [activeTab, searchParams, setSearchParams, settings, tournamentManagerEnabled, visibleAdminTabs]);
+
+  useEffect(() => {
+    if (isPersonalAccount) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      settingsTabRefs.current[activeTab]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab, isPersonalAccount, settings, visibleAdminTabs]);
 
   async function runMutation(section, task, successMessage) {
     setSavingSection(section);
@@ -842,6 +855,9 @@ export default function OrganisationSettingsPage() {
                 key={tab.id}
                 aria-pressed={activeTab === tab.id}
                 className={activeTab === tab.id ? "active" : ""}
+                ref={(element) => {
+                  settingsTabRefs.current[tab.id] = element;
+                }}
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
               >

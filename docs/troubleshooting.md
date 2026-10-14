@@ -632,6 +632,10 @@ club membership first. Organisation Users are sorted by surname and filtered
 client-side by the Search Users field. The Add User and Add Court forms appear
 before their search/filter controls, reset their timers while being edited, and
 collapse after one inactive minute or when another Settings section is selected.
+On phone widths, selecting a partly hidden Settings section automatically scrolls
+the single-row control to centre that section. If it remains clipped, confirm the
+section container still has horizontal overflow and the button has not regained
+the legacy wrapping layout.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.

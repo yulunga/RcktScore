@@ -470,6 +470,20 @@ test("does not repeat the Home button in organisation settings tabs @header", as
       scrollWidth: element.scrollWidth,
     }));
     expect(overflow.scrollWidth).toBeGreaterThan(overflow.clientWidth);
+    await settingsMenu.evaluate((element) => { element.scrollLeft = 0; });
+    await settingsMenu.getByRole("button", { name: "Game Settings", exact: true }).evaluate((button) => button.click());
+    await expect.poll(async () => settingsMenu.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await expect.poll(async () => settingsMenu.evaluate((element) => {
+      const selected = element.querySelector('button[aria-pressed="true"]');
+      const menuBox = element.getBoundingClientRect();
+      const selectedBox = selected.getBoundingClientRect();
+      return selectedBox.right - menuBox.right;
+    })).toBeLessThanOrEqual(1);
+    const selectedPosition = await settingsMenu.evaluate((element) => {
+      const selected = element.querySelector('button[aria-pressed="true"]');
+      return selected.getBoundingClientRect().left - element.getBoundingClientRect().left;
+    });
+    expect(selectedPosition).toBeGreaterThanOrEqual(-1);
   }
 });
 
