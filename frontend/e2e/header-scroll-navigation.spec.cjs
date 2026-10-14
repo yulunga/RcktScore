@@ -293,6 +293,13 @@ test("opens all recent matches from the heading on the Matches history tab @head
   await expect(historyCards).toHaveCount(11);
   await page.getByLabel("Search match history").fill("");
   await page.getByRole("button", { name: "Filter match history" }).click();
+  if (page.viewportSize().width <= 640) {
+    const fromDateBox = await page.getByLabel("From").boundingBox();
+    const toDateBox = await page.getByLabel("To", { exact: true }).boundingBox();
+    expect(toDateBox.y).toBeGreaterThanOrEqual(fromDateBox.y + fromDateBox.height);
+    expect(toDateBox.x).toBeGreaterThanOrEqual(fromDateBox.x - 1);
+    expect(toDateBox.x + toDateBox.width).toBeLessThanOrEqual(fromDateBox.x + fromDateBox.width + 1);
+  }
   await page.getByLabel("Racket Sport").selectOption("tennis");
   await expect(historyCards).toHaveCount(11);
   await page.getByLabel("From").fill("2026-09-29");
@@ -449,9 +456,21 @@ test("opens the shared sport chooser from the responsive new-match menu action @
 
 test("does not repeat the Home button in organisation settings tabs @header", async ({ page }) => {
   await page.goto("/settings");
-  await expect(page.locator(".root-admin-tab-row")).toBeVisible();
-  await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Back to dashboard" })).toHaveCount(0);
-  await expect(page.locator(".root-admin-tab-row").getByRole("button", { name: "Organisation", exact: true })).toBeVisible();
+  const settingsMenu = page.locator(".root-admin-tab-row");
+  await expect(settingsMenu).toBeVisible();
+  await expect(settingsMenu.getByRole("button", { name: "Back to dashboard" })).toHaveCount(0);
+  await expect(settingsMenu.getByRole("button", { name: "Organisation", exact: true })).toBeVisible();
+  const menuTops = await settingsMenu.getByRole("button").evaluateAll((buttons) => (
+    buttons.map((button) => Math.round(button.getBoundingClientRect().top))
+  ));
+  expect(new Set(menuTops).size).toBe(1);
+  if (page.viewportSize().width <= 640) {
+    const overflow = await settingsMenu.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(overflow.scrollWidth).toBeGreaterThan(overflow.clientWidth);
+  }
 });
 
 test("uses a club-member primary contact and searchable surname-sorted users @header", async ({ page }) => {

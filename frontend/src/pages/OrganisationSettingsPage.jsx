@@ -1161,7 +1161,6 @@ export default function OrganisationSettingsPage() {
               <div className="panel-heading settings-section-heading">
                 <div>
                   <h2>Courts</h2>
-                  <p className="helper-text">View courts first, filter by sport, or open a court to edit its details and display access.</p>
                 </div>
                 <button
                   aria-expanded={addCourtOpen}

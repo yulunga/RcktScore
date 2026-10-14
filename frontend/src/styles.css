@@ -3780,6 +3780,21 @@ textarea {
   background: #f8fbff;
 }
 
+.dashboard-history-filters .field,
+.dashboard-history-filters input,
+.dashboard-history-filters select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.dashboard-history-filters input[type="date"] {
+  box-sizing: border-box;
+  min-height: 48px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .dashboard-history-clear-filters {
   min-height: 48px;
   border: 1px solid #7aa5d8;
@@ -3792,12 +3807,16 @@ textarea {
 
 @media (max-width: 640px) {
   .dashboard-history-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .dashboard-history-filters .field:nth-child(3),
+  .dashboard-history-filters .field,
   .dashboard-history-clear-filters {
     grid-column: 1 / -1;
+  }
+
+  .dashboard-history-filters input[type="date"] {
+    display: block;
   }
 }
 
@@ -7691,12 +7710,16 @@ textarea {
 
 .settings-category-switch {
   display: flex;
+  flex-wrap: nowrap;
   width: 100%;
   max-width: none;
   justify-content: flex-start;
   overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-category-switch button {
