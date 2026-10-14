@@ -629,8 +629,9 @@ linked-account and approved-member indicators sit beneath the club line.
 In club Settings, Primary Contact can only be selected from approved members in
 the organisation-settings response. If a person is missing, add and approve their
 club membership first. Organisation Users are sorted by surname and filtered
-client-side by the Search Users field; the Add User form starts collapsed and an
-untouched expanded form closes after five minutes.
+client-side by the Search Users field. The Add User and Add Court forms appear
+before their search/filter controls, reset their timers while being edited, and
+collapse after one inactive minute or when another Settings section is selected.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.

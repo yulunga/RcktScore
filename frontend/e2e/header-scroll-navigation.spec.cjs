@@ -519,4 +519,16 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
   await expect(userCards).toHaveCount(1);
   await expect(userCards.first()).toContainText("Alex");
   await expect(userCards.first()).toContainText("Zephyr");
+
+  await page.getByRole("button", { name: "Courts", exact: true }).click();
+  const addCourtToggle = page.getByRole("button", { name: "Add Court", exact: true });
+  await expect(addCourtToggle).toHaveAttribute("aria-expanded", "false");
+  await addCourtToggle.click();
+  const addCourtForm = page.getByRole("heading", { name: "Add Court", exact: true }).locator("..");
+  const courtFilter = page.getByLabel("Filter by Racket Sport");
+  const [addCourtBox, courtFilterBox] = await Promise.all([addCourtForm.boundingBox(), courtFilter.boundingBox()]);
+  expect(courtFilterBox.y).toBeGreaterThanOrEqual(addCourtBox.y + addCourtBox.height);
+
+  await page.getByRole("button", { name: "Users", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Add User", exact: true })).toHaveAttribute("aria-expanded", "false");
 });

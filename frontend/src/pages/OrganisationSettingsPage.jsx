@@ -54,7 +54,7 @@ const SETTINGS_TABS = [
   { id: "game-social", label: "Game Settings" },
   { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
-const EMPTY_FORM_COLLAPSE_MS = 5 * 60 * 1000;
+const ADD_FORM_INACTIVITY_MS = 60 * 1000;
 
 function formatDate(value) {
   if (!value) {
@@ -107,8 +107,10 @@ export default function OrganisationSettingsPage() {
   const [primaryContactUserId, setPrimaryContactUserId] = useState(null);
   const [showPrimaryContactSuggestions, setShowPrimaryContactSuggestions] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUserActivity, setAddUserActivity] = useState(0);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [addCourtOpen, setAddCourtOpen] = useState(false);
+  const [addCourtActivity, setAddCourtActivity] = useState(0);
   const [editingCourtId, setEditingCourtId] = useState(null);
   const [courtSportFilter, setCourtSportFilter] = useState("");
   const [activeGameSettingsTile, setActiveGameSettingsTile] = useState("");
@@ -191,13 +193,17 @@ export default function OrganisationSettingsPage() {
     String(left.sport || "").localeCompare(String(right.sport || ""))
     || String(left.court_name || "").localeCompare(String(right.court_name || ""), undefined, { sensitivity: "base" })
   )), [courtSportFilter, courts]);
-  const userFormHasData = JSON.stringify(userForm) !== JSON.stringify(emptyUserForm);
+  useEffect(() => {
+    if (!addUserOpen) return undefined;
+    const timeoutId = window.setTimeout(() => setAddUserOpen(false), ADD_FORM_INACTIVITY_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [addUserActivity, addUserOpen]);
 
   useEffect(() => {
-    if (!addUserOpen || userFormHasData) return undefined;
-    const timeoutId = window.setTimeout(() => setAddUserOpen(false), EMPTY_FORM_COLLAPSE_MS);
+    if (!addCourtOpen) return undefined;
+    const timeoutId = window.setTimeout(() => setAddCourtOpen(false), ADD_FORM_INACTIVITY_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [addUserOpen, userFormHasData]);
+  }, [addCourtActivity, addCourtOpen]);
 
   useEffect(() => {
     if (!showCountrySuggestions || filteredCountries.length === 0) {
@@ -213,6 +219,9 @@ export default function OrganisationSettingsPage() {
   }
 
   function handleTabChange(nextTab) {
+    setAddUserOpen(false);
+    setAddCourtOpen(false);
+    setEditingCourtId(null);
     setActiveTab(nextTab);
     setSearchParams({ tab: nextTab }, { replace: true });
   }
@@ -1030,7 +1039,10 @@ export default function OrganisationSettingsPage() {
                   className="settings-add-button"
                   disabled={!isAdmin}
                   type="button"
-                  onClick={() => setAddUserOpen((current) => !current)}
+                  onClick={() => {
+                    setAddUserActivity(Date.now());
+                    setAddUserOpen((current) => !current);
+                  }}
                 >
                   {addUserOpen ? "×" : "+"}
                 </button>
@@ -1038,7 +1050,12 @@ export default function OrganisationSettingsPage() {
 
               {addUserOpen ? <section className="settings-collapsible-card stack compact settings-collapsible-card--open">
                 <h3>Add User</h3>
-                <form className="stack" onSubmit={handleUserSubmit}>
+                <form
+                  className="stack"
+                  onFocus={() => setAddUserActivity(Date.now())}
+                  onInput={() => setAddUserActivity(Date.now())}
+                  onSubmit={handleUserSubmit}
+                >
                 <div className="field-grid">
                   <div className="field">
                     <label htmlFor="new_first_name">First Name</label>
@@ -1164,25 +1181,25 @@ export default function OrganisationSettingsPage() {
                 </div>
                 <button
                   aria-expanded={addCourtOpen}
-                  aria-label={addCourtOpen ? "Close add court form" : "Add court"}
+                  aria-label={addCourtOpen ? "Close Add Court form" : "Add Court"}
                   className="settings-add-button"
                   disabled={!isAdmin}
                   type="button"
-                  onClick={() => setAddCourtOpen((current) => !current)}
+                  onClick={() => {
+                    setAddCourtActivity(Date.now());
+                    setAddCourtOpen((current) => !current);
+                  }}
                 >
                   {addCourtOpen ? "×" : "+"}
                 </button>
               </div>
 
-              <div className="field settings-court-filter">
-                <label htmlFor="court-sport-filter">Filter by Racket Sport</label>
-                <select id="court-sport-filter" value={courtSportFilter} onChange={(event) => setCourtSportFilter(event.target.value)}>
-                  <option value="">All available sports</option>
-                  {courtSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
-                </select>
-              </div>
-
-              {addCourtOpen ? <form className="settings-collapsible-card stack" onSubmit={handleCourtCreate}>
+              {addCourtOpen ? <form
+                className="settings-collapsible-card stack"
+                onFocus={() => setAddCourtActivity(Date.now())}
+                onInput={() => setAddCourtActivity(Date.now())}
+                onSubmit={handleCourtCreate}
+              >
                 <h3>Add Court</h3>
                 <div className="field-grid">
                   <div className="field">
@@ -1222,6 +1239,14 @@ export default function OrganisationSettingsPage() {
                   </button>
                 </div>
               </form> : null}
+
+              <div className="field settings-court-filter">
+                <label htmlFor="court-sport-filter">Filter by Racket Sport</label>
+                <select id="court-sport-filter" value={courtSportFilter} onChange={(event) => setCourtSportFilter(event.target.value)}>
+                  <option value="">All available sports</option>
+                  {courtSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
+                </select>
+              </div>
 
               <div className="settings-compact-list settings-court-list">
                 {filteredCourts.length ? <div aria-hidden="true" className="settings-court-row settings-list-header"><span>Sport</span><span>Name</span><span>Alias</span><span /></div> : null}
