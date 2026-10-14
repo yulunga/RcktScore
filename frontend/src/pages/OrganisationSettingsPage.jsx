@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { COUNTRIES } from "../constants/countries";
-import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchSports";
+import { MATCH_SPORT_OPTIONS, getMatchSportOption, normalizeEnabledSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
 import {
   createOrganizationCourt,
@@ -51,7 +51,7 @@ const SETTINGS_TABS = [
   { id: "organisation", label: "Organisation" },
   { id: "courts", label: "Courts" },
   { id: "users", label: "Users" },
-  { id: "game-social", label: "Game & Social" },
+  { id: "game-social", label: "Game Settings" },
   { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
 const EMPTY_FORM_COLLAPSE_MS = 5 * 60 * 1000;
@@ -73,6 +73,10 @@ function formatUserDisplayName(user) {
 
 function primaryContactValue(user) {
   return formatUserDisplayName(user) || user?.username || "";
+}
+
+function getMatchSportLabel(value) {
+  return getMatchSportOption(value)?.label || (value ? String(value) : "All sports");
 }
 
 export default function OrganisationSettingsPage() {
@@ -104,6 +108,10 @@ export default function OrganisationSettingsPage() {
   const [showPrimaryContactSuggestions, setShowPrimaryContactSuggestions] = useState(false);
   const [addUserOpen, setAddUserOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [addCourtOpen, setAddCourtOpen] = useState(false);
+  const [editingCourtId, setEditingCourtId] = useState(null);
+  const [courtSportFilter, setCourtSportFilter] = useState("");
+  const [activeGameSettingsTile, setActiveGameSettingsTile] = useState("");
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
     SETTINGS_TABS.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
@@ -176,6 +184,13 @@ export default function OrganisationSettingsPage() {
     () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value)),
     [enabledSports],
   );
+  const courts = settings?.courts || [];
+  const filteredCourts = useMemo(() => courts.filter((court) => (
+    !courtSportFilter || court.sport === courtSportFilter || !court.sport
+  )).sort((left, right) => (
+    String(left.sport || "").localeCompare(String(right.sport || ""))
+    || String(left.court_name || "").localeCompare(String(right.court_name || ""), undefined, { sensitivity: "base" })
+  )), [courtSportFilter, courts]);
   const userFormHasData = JSON.stringify(userForm) !== JSON.stringify(emptyUserForm);
 
   useEffect(() => {
@@ -419,6 +434,7 @@ export default function OrganisationSettingsPage() {
       ...emptyCourtForm,
       sport: courtSportOptions[0]?.value || "squash",
     });
+    setAddCourtOpen(false);
   }
 
   async function handleCourtSave(courtId) {
@@ -432,6 +448,7 @@ export default function OrganisationSettingsPage() {
       }),
       "Court updated.",
     );
+    setEditingCourtId(null);
   }
 
   async function handleCourtDelete(courtId) {
@@ -440,6 +457,7 @@ export default function OrganisationSettingsPage() {
       () => deleteOrganizationCourt(courtId, { organization_id: organizationId }),
       "Court deleted.",
     );
+    setEditingCourtId(null);
   }
 
   async function handleCourtDisplayCode(courtId) {
@@ -450,7 +468,6 @@ export default function OrganisationSettingsPage() {
     );
   }
 
-  const courts = settings?.courts || [];
   const currentPersonalUser = users.find(
     (user) => user.username?.toLowerCase() === session?.username?.toLowerCase(),
   ) || {};
@@ -810,11 +827,12 @@ export default function OrganisationSettingsPage() {
         </section>
       ) : (
         <>
-          <section className="root-admin-tab-row" aria-label="Organisation settings sections">
+          <section className="root-admin-tab-row matches-category-switch settings-category-switch" aria-label="Organisation settings sections" role="tablist">
             {visibleAdminTabs.map((tab) => (
               <button
                 key={tab.id}
-                className={`root-admin-tab ${activeTab === tab.id ? "active" : ""}`}
+                aria-pressed={activeTab === tab.id}
+                className={activeTab === tab.id ? "active" : ""}
                 type="button"
                 onClick={() => handleTabChange(tab.id)}
               >
@@ -983,29 +1001,44 @@ export default function OrganisationSettingsPage() {
                   <div className="dashboard-empty">Save an address to show the venue map.</div>
                 )}
               </section>
+
+              <section className="panel stack">
+                <div className="panel-heading">
+                  <h2>Social Profiles</h2>
+                  <p className="helper-text">Social profile storage is being prepared; these organisation fields are not editable yet.</p>
+                </div>
+                <div className="field-grid">
+                  <div className="field"><label htmlFor="facebook_profile">Facebook</label><input className="read-only-input" disabled id="facebook_profile" placeholder="Coming soon" value="" /></div>
+                  <div className="field"><label htmlFor="instagram_profile">Instagram</label><input className="read-only-input" disabled id="instagram_profile" placeholder="Coming soon" value="" /></div>
+                  <div className="field"><label htmlFor="x_profile">X / Twitter</label><input className="read-only-input" disabled id="x_profile" placeholder="Coming soon" value="" /></div>
+                  <div className="field"><label htmlFor="youtube_profile">YouTube</label><input className="read-only-input" disabled id="youtube_profile" placeholder="Coming soon" value="" /></div>
+                </div>
+              </section>
             </section>
           ) : null}
 
           {activeTab === "users" ? (
             <section className="panel stack">
-              <div className="panel-heading">
-                <h2>Organisation Users</h2>
-                <p className="helper-text">Search existing members or add a new user with club access.</p>
+              <div className="panel-heading settings-section-heading">
+                <div>
+                  <h2>Organisation Users</h2>
+                  <p className="helper-text">Search existing members or add a new user with club access.</p>
+                </div>
+                <button
+                  aria-expanded={addUserOpen}
+                  aria-label={addUserOpen ? "Close Add User form" : "Add User"}
+                  className="settings-add-button"
+                  disabled={!isAdmin}
+                  type="button"
+                  onClick={() => setAddUserOpen((current) => !current)}
+                >
+                  {addUserOpen ? "×" : "+"}
+                </button>
               </div>
 
-              <section className={`settings-collapsible-card stack compact${addUserOpen ? " settings-collapsible-card--open" : ""}`}>
-                <h3>
-                  <button
-                    aria-expanded={addUserOpen}
-                    className="collapsible-heading-button"
-                    type="button"
-                    onClick={() => setAddUserOpen((current) => !current)}
-                  >
-                    <span>Add User</span>
-                    <span className="collapsible-heading-button__chevron" aria-hidden="true">⌄</span>
-                  </button>
-                </h3>
-              {addUserOpen ? <form className="stack" onSubmit={handleUserSubmit}>
+              {addUserOpen ? <section className="settings-collapsible-card stack compact settings-collapsible-card--open">
+                <h3>Add User</h3>
+                <form className="stack" onSubmit={handleUserSubmit}>
                 <div className="field-grid">
                   <div className="field">
                     <label htmlFor="new_first_name">First Name</label>
@@ -1067,8 +1100,8 @@ export default function OrganisationSettingsPage() {
                     {savingSection === "user-create" ? "Adding..." : "Add User"}
                   </button>
                 </div>
-              </form> : null}
-              </section>
+                </form>
+              </section> : null}
 
               <div className="field settings-user-search">
                 <label htmlFor="organisation-user-search">Search Users</label>
@@ -1081,33 +1114,41 @@ export default function OrganisationSettingsPage() {
                 />
               </div>
 
-              <div className="dashboard-list">
+              <div className="settings-compact-list settings-user-list">
+                {sortedFilteredUsers.length ? <div aria-hidden="true" className="settings-user-row settings-list-header">
+                  <div className="settings-user-row__identity"><span>First name</span><span>Surname</span><span>Username</span><span>Email</span></div>
+                  <span>Role / Status</span>
+                </div> : null}
                 {sortedFilteredUsers.length === 0 ? (
                   <div className="dashboard-empty">{users.length ? "No users match that search." : "No organisation users found."}</div>
                 ) : sortedFilteredUsers.map((user) => (
-                  <article className="dashboard-item" key={user.id}>
-                    <div className="dashboard-item-head">
-                      <strong>{formatUserDisplayName(user) || user.username}</strong>
-                      <div className="dashboard-status-group">
-                        <button
-                          className="status-pill status-pill-button status-pill-button--accent"
-                          disabled={!isAdmin}
-                          type="button"
-                          onClick={() => navigate(`/settings/users/${user.id}`)}
-                        >
-                          Manage User
-                        </button>
-                        <span className="status-pill">{user.role}</span>
-                        <span className={`status-pill ${user.status === "pending" ? "warning" : ""}`}>
-                          {user.status || "approved"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="dashboard-item-meta">
-                      <span>First Name: {user.first_name || "Not set"}</span>
-                      <span>Surname: {user.surname || "Not set"}</span>
+                  <article className="settings-user-row" key={user.id}>
+                    <div className="settings-user-row__identity">
+                      <strong>{user.first_name || "—"}</strong>
+                      <strong>{user.surname || "—"}</strong>
                       <span>{user.username}</span>
-                      {user.status === "pending" ? <span>Awaiting email approval</span> : null}
+                      <span>{user.email || user.username}</span>
+                    </div>
+                    <div className="settings-row-actions">
+                      <span className="settings-role-badge" title={`Role: ${user.role}`}>{user.role || "user"}</span>
+                      <span
+                        aria-label={user.status === "pending" ? "Approval pending" : "Approved"}
+                        className={`settings-status-icon${user.status === "pending" ? " pending" : ""}`}
+                        role="img"
+                        title={user.status === "pending" ? "Approval pending" : "Approved"}
+                      >
+                        {user.status === "pending" ? "!" : "✓"}
+                      </span>
+                      <button
+                        aria-label={`Edit ${formatUserDisplayName(user) || user.username}`}
+                        className="settings-edit-button"
+                        disabled={!isAdmin}
+                        title="Edit user"
+                        type="button"
+                        onClick={() => navigate(`/settings/users/${user.id}`)}
+                      >
+                        ✎
+                      </button>
                     </div>
                   </article>
                 ))}
@@ -1117,12 +1158,33 @@ export default function OrganisationSettingsPage() {
 
           {activeTab === "courts" ? (
             <section className="panel stack">
-              <div className="panel-heading">
-                <h2>Courts</h2>
-                <p className="helper-text">Create, edit, and remove sport-specific court records for this organisation.</p>
+              <div className="panel-heading settings-section-heading">
+                <div>
+                  <h2>Courts</h2>
+                  <p className="helper-text">View courts first, filter by sport, or open a court to edit its details and display access.</p>
+                </div>
+                <button
+                  aria-expanded={addCourtOpen}
+                  aria-label={addCourtOpen ? "Close add court form" : "Add court"}
+                  className="settings-add-button"
+                  disabled={!isAdmin}
+                  type="button"
+                  onClick={() => setAddCourtOpen((current) => !current)}
+                >
+                  {addCourtOpen ? "×" : "+"}
+                </button>
               </div>
 
-              <form className="stack" onSubmit={handleCourtCreate}>
+              <div className="field settings-court-filter">
+                <label htmlFor="court-sport-filter">Filter by Racket Sport</label>
+                <select id="court-sport-filter" value={courtSportFilter} onChange={(event) => setCourtSportFilter(event.target.value)}>
+                  <option value="">All available sports</option>
+                  {courtSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
+                </select>
+              </div>
+
+              {addCourtOpen ? <form className="settings-collapsible-card stack" onSubmit={handleCourtCreate}>
+                <h3>Add Court</h3>
                 <div className="field-grid">
                   <div className="field">
                     <label htmlFor="court_sport">Racket Sport</label>
@@ -1157,16 +1219,33 @@ export default function OrganisationSettingsPage() {
                 </div>
                 <div className="button-row">
                   <button disabled={!isAdmin || savingSection === "court-create"} type="submit">
-                    {savingSection === "court-create" ? "Adding..." : "Add Court"}
+                    {savingSection === "court-create" ? "Adding..." : "Create Court"}
                   </button>
                 </div>
-              </form>
+              </form> : null}
 
-              <div className="dashboard-list">
-                {courts.length === 0 ? (
-                  <div className="dashboard-empty">No courts configured yet.</div>
-                ) : courts.map((court) => (
-                  <article className="dashboard-item" key={court.id}>
+              <div className="settings-compact-list settings-court-list">
+                {filteredCourts.length ? <div aria-hidden="true" className="settings-court-row settings-list-header"><span>Sport</span><span>Name</span><span>Alias</span><span /></div> : null}
+                {filteredCourts.length === 0 ? (
+                  <div className="dashboard-empty">{courts.length ? "No courts match this sport filter." : "No courts configured yet."}</div>
+                ) : filteredCourts.map((court) => (
+                  <article className="settings-court-row" key={court.id}>
+                    <span className="settings-court-row__sport">{getMatchSportLabel(court.sport)}</span>
+                    <strong>{court.court_name || "Unnamed court"}</strong>
+                    <span>{court.court_alias || "No alias"}</span>
+                    <button
+                      aria-expanded={editingCourtId === court.id}
+                      aria-label={`Edit ${court.court_name || "court"}`}
+                      className="settings-edit-button"
+                      disabled={!isAdmin}
+                      title="Edit court"
+                      type="button"
+                      onClick={() => setEditingCourtId((current) => current === court.id ? null : court.id)}
+                    >
+                      ✎
+                    </button>
+
+                    {editingCourtId === court.id ? <div className="settings-court-editor">
                     <div className="field-grid settings-field-grid-tight">
                       <div className="field">
                         <label htmlFor={`court-sport-${court.id}`}>Racket Sport</label>
@@ -1227,7 +1306,7 @@ export default function OrganisationSettingsPage() {
                           "Not generated yet"
                         )}
                       </span>
-                      <span>Screen URL: {scoreboardUrl}</span>
+                      <span>Scoreboard URL: <a href={scoreboardUrl} rel="noreferrer" target="_blank">{scoreboardUrl}</a></span>
                     </div>
                     <div className="button-row">
                       <button
@@ -1258,6 +1337,7 @@ export default function OrganisationSettingsPage() {
                         {savingSection === `court-delete-${court.id}` ? "Deleting..." : "Delete Court"}
                       </button>
                     </div>
+                    </div> : null}
                   </article>
                 ))}
               </div>
@@ -1265,85 +1345,49 @@ export default function OrganisationSettingsPage() {
           ) : null}
 
           {activeTab === "game-social" ? (
-            <section className="settings-grid">
-              <section className="panel stack">
-                <div className="panel-heading">
-                  <h2>Game Settings</h2>
-                  <p className="helper-text">
-                    Set the defaults used when players create matches for this organisation.
-                  </p>
-                </div>
+            <section className="panel stack">
+              <div className="panel-heading">
+                <h2>Game Settings</h2>
+                <p className="helper-text">Choose a settings tile to manage current options. More game settings can be added here later.</p>
+              </div>
+              <div className="settings-tile-grid">
+                <button
+                  aria-expanded={activeGameSettingsTile === "sports"}
+                  className={`settings-option-tile${activeGameSettingsTile === "sports" ? " active" : ""}`}
+                  type="button"
+                  onClick={() => setActiveGameSettingsTile((current) => current === "sports" ? "" : "sports")}
+                >
+                  <span className="settings-option-tile__icon" aria-hidden="true">◎</span>
+                  <span><strong>Racket Sports</strong><small>Choose sports available for match setup.</small></span>
+                  <span aria-hidden="true">›</span>
+                </button>
+                <button
+                  aria-expanded={activeGameSettingsTile === "timers"}
+                  className={`settings-option-tile${activeGameSettingsTile === "timers" ? " active" : ""}`}
+                  type="button"
+                  onClick={() => setActiveGameSettingsTile((current) => current === "timers" ? "" : "timers")}
+                >
+                  <span className="settings-option-tile__icon" aria-hidden="true">◷</span>
+                  <span><strong>Default Timers</strong><small>Preselect warm-ups and timed breaks by sport.</small></span>
+                  <span aria-hidden="true">›</span>
+                </button>
+              </div>
 
-                {renderTimedBreakDefaults()}
-
-                <div className="panel-heading">
-                  <h3>Racket Sports</h3>
-                  <p className="helper-text">
-                    Control which racket sports this organisation can see when starting a new match.
-                  </p>
-                </div>
-
+              {activeGameSettingsTile === "sports" ? <section className="settings-tile-detail stack">
+                <div className="panel-heading"><h3>Racket Sports</h3><p className="helper-text">Control which racket sports this organisation can see when starting a new match.</p></div>
                 <div className="sport-grid">
                   {MATCH_SPORT_OPTIONS.map((sport) => {
                     const enabled = enabledSports.includes(sport.value);
-                    return (
-                    <article
-                      className={`sport-option${enabled ? " active" : " disabled"}`}
-                      key={sport.value}
-                    >
-                      <strong>{sport.label}</strong>
-                      <span>{enabled ? "Enabled" : "Disabled"}</span>
-                      <p>{sport.note}</p>
-                      <button
-                        type="button"
-                        className={enabled ? "secondary" : ""}
-                        disabled={!isAdmin || savingSection === "enabled-sports"}
-                        onClick={() => toggleEnabledSport(sport.value)}
-                      >
-                        {enabled ? "Disable" : "Enable"}
-                      </button>
-                    </article>
-                    );
+                    return <article className={`sport-option${enabled ? " active" : " disabled"}`} key={sport.value}>
+                      <strong>{sport.label}</strong><span>{enabled ? "Enabled" : "Disabled"}</span><p>{sport.note}</p>
+                      <button className={enabled ? "secondary" : ""} disabled={!isAdmin || savingSection === "enabled-sports"} type="button" onClick={() => toggleEnabledSport(sport.value)}>{enabled ? "Disable" : "Enable"}</button>
+                    </article>;
                   })}
                 </div>
+                {isAdmin ? <div className="button-row"><button disabled={savingSection === "enabled-sports"} type="button" onClick={handleEnabledSportsSave}>{savingSection === "enabled-sports" ? "Saving..." : "Save Racket Sports"}</button></div> : null}
+              </section> : null}
 
-                {isAdmin ? (
-                  <div className="button-row">
-                    <button
-                      type="button"
-                      disabled={savingSection === "enabled-sports"}
-                      onClick={handleEnabledSportsSave}
-                    >
-                      {savingSection === "enabled-sports" ? "Saving..." : "Save Racket Sports"}
-                    </button>
-                  </div>
-                ) : null}
-              </section>
-
-              <section className="panel stack">
-                <div className="panel-heading">
-                  <h2>Social Profiles</h2>
-                  <p className="helper-text">UI placeholders are ready. Database-backed social profile storage is still pending.</p>
-                </div>
-                <div className="field-grid">
-                  <div className="field">
-                    <label htmlFor="facebook_profile">Facebook</label>
-                    <input className="read-only-input" disabled id="facebook_profile" placeholder="Coming soon" value="" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="instagram_profile">Instagram</label>
-                    <input className="read-only-input" disabled id="instagram_profile" placeholder="Coming soon" value="" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="x_profile">X / Twitter</label>
-                    <input className="read-only-input" disabled id="x_profile" placeholder="Coming soon" value="" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="youtube_profile">YouTube</label>
-                    <input className="read-only-input" disabled id="youtube_profile" placeholder="Coming soon" value="" />
-                  </div>
-                </div>
-              </section>
+              {activeGameSettingsTile === "timers" ? <section className="settings-tile-detail stack">{renderTimedBreakDefaults()}</section> : null}
             </section>
           ) : null}
         </>

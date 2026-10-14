@@ -1160,6 +1160,7 @@ export default function NewMatch() {
           ) : null}
 
           {!isPersonalAccount ? (
+            <div className="stack compact">
             <div className="match-setup-row match-setup-row--court-controls">
               <div className="field">
                 <label htmlFor="court_id">Court ID<span className="required-mark"> *</span></label>
@@ -1192,6 +1193,17 @@ export default function NewMatch() {
                   value={formState.court_alias}
                 />
               </div>
+            </div>
+            {!courtLoading && availableCourts.length === 0 ? (
+              <div className="notice match-setup-court-notice">
+                <span>
+                  {selectedSportOption?.label || "This sport"} access is enabled, but this club has no matching court. Add a {selectedSportOption?.label || "sport"} court before starting the match.
+                </span>
+                {session?.role === "admin" ? (
+                  <button className="secondary" type="button" onClick={() => navigate("/settings?tab=courts")}>Open Court Settings</button>
+                ) : null}
+              </div>
+            ) : null}
             </div>
           ) : null}
 

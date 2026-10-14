@@ -288,6 +288,18 @@ test("opens all recent matches from the heading on the Matches history tab @head
   await expect(page.getByRole("button", { name: "Completed matches page 2" })).toBeVisible();
   await page.getByRole("button", { name: "Completed matches page 2" }).click();
   await expect(historyCards).toHaveCount(5);
+
+  await page.getByLabel("Search match history").fill("tennis");
+  await expect(historyCards).toHaveCount(11);
+  await page.getByLabel("Search match history").fill("");
+  await page.getByRole("button", { name: "Filter match history" }).click();
+  await page.getByLabel("Racket Sport").selectOption("tennis");
+  await expect(historyCards).toHaveCount(11);
+  await page.getByLabel("From").fill("2026-09-29");
+  await page.getByLabel("To", { exact: true }).fill("2026-09-29");
+  await expect(historyCards).toHaveCount(1);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(historyCards).toHaveCount(20);
 });
 
 test("opens Current and Scheduled matches from their dashboard headings @header", async ({ page }) => {
@@ -476,12 +488,16 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
   await addUserToggle.click();
   await expect(page.getByLabel("First Name")).toBeVisible();
 
-  const userCards = page.locator(".dashboard-list .dashboard-item");
+  const userCards = page.locator(".settings-user-row:not(.settings-list-header)");
   await expect(userCards).toHaveCount(3);
-  await expect(userCards.nth(0)).toContainText("Zoe Alpha");
-  await expect(userCards.nth(1)).toContainText("Header Tester");
-  await expect(userCards.nth(2)).toContainText("Alex Zephyr");
+  await expect(userCards.nth(0)).toContainText("Zoe");
+  await expect(userCards.nth(0)).toContainText("Alpha");
+  await expect(userCards.nth(1)).toContainText("Header");
+  await expect(userCards.nth(1)).toContainText("Tester");
+  await expect(userCards.nth(2)).toContainText("Alex");
+  await expect(userCards.nth(2)).toContainText("Zephyr");
   await page.getByLabel("Search Users").fill("Zephyr");
   await expect(userCards).toHaveCount(1);
-  await expect(userCards.first()).toContainText("Alex Zephyr");
+  await expect(userCards.first()).toContainText("Alex");
+  await expect(userCards.first()).toContainText("Zephyr");
 });

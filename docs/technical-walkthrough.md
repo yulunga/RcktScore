@@ -228,8 +228,9 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - map preview
    - persisted racket-sport visibility controls
    - persisted per-sport timer defaults under Game Settings
-   - scaffold-only social profile fields
-5. For club admins, Address follows Club Name and Primary Contact is chosen from the approved users returned in the same response rather than entered as arbitrary text. The Users section starts with a collapsed Add User form, then provides a local first-name/surname/email search over a surname-sorted membership list. An untouched open Add User form collapses after five minutes.
+   - scaffold-only social profile fields under Organisation
+5. For club admins, Address follows Club Name and Primary Contact is chosen from the approved users returned in the same response rather than entered as arbitrary text. The horizontally scrollable section control follows the Matches segmented style. Users and Courts show compact rows first, use a circular `+` to reveal their add forms, and expose editing only for the selected row; court editing includes its scoreboard URL and display-code controls. Users retain local first-name/surname/email search and surname sorting, plus compact role/approval/edit indicators. An untouched open Add User form collapses after five minutes.
+6. Game Settings uses separate Racket Sports and Default Timers tiles. These retain the existing organisation-details persistence routes and only change the client presentation.
 
 ### Current limitation
 

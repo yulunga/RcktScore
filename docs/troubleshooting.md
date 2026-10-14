@@ -638,6 +638,15 @@ The eight migration `033` Demo PlayOne–Demo PlayEight accounts follow the same
 password-disabled rule and do not become usable logins until an administrator
 sets their passwords.
 
+If a sport is shown as enabled in Root Admin but cannot be started by a club
+member, verify every independent gate: the platform's web list, the club's
+`enabled_sports`, the active membership's `enabled_sports_web`, and an approved
+current session created after the last access change. Match creation also needs a
+court whose `sport` matches the requested sport, or a legacy court with null
+`sport`. The web setup now reports this court condition directly and links club
+admins to Settings → Courts. Also verify the exact username: similarly named
+accounts are separate memberships.
+
 If adding an entrant unexpectedly creates or reuses an identity, inspect
 `players.email`, `registered_username`, and `claim_status`. Email is
 the current strong deduplication key; name-only duplicate review and merge tooling

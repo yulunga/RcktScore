@@ -82,6 +82,7 @@ def _serialize_user(row):
     return {
         "id": row["id"],
         "username": row["clubusername"],
+        "email": row["clubusername"],
         "role": row.get("role") or "user",
         "status": row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": row.get("first_name") or "",

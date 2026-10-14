@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
-import { getPlayableMatchSports } from "../constants/matchSports";
+import { MATCH_SPORT_OPTIONS, getMatchSportOption, getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
 import {
   endMatch,
@@ -170,6 +170,15 @@ function clampPageIndex(index, totalPages) {
   return Math.min(index, totalPages - 1);
 }
 
+function historyMatchDateValue(match) {
+  const value = match?.completed_at || match?.updated_at || match?.created_at;
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000));
+  return offsetDate.toISOString().slice(0, 10);
+}
+
 export default function DashboardPage({ screenMode = "dashboard" }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -184,6 +193,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [activePage, setActivePage] = useState(0);
   const [scheduledPage, setScheduledPage] = useState(0);
   const [historySearch, setHistorySearch] = useState("");
+  const [historyFiltersOpen, setHistoryFiltersOpen] = useState(false);
+  const [historySport, setHistorySport] = useState("");
+  const [historyDateFrom, setHistoryDateFrom] = useState("");
+  const [historyDateTo, setHistoryDateTo] = useState("");
   const [showSportOverlay, setShowSportOverlay] = useState(false);
   const [liveTournaments, setLiveTournaments] = useState([]);
   const [tournamentManagerEnabled, setTournamentManagerEnabled] = useState(false);
@@ -397,7 +410,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const dashboardSubtitle = screenMode === "matches"
     ? ""
     : screenMode === "history"
-      ? "Search completed matches by player name, surname, or date."
+      ? "Search and filter completed matches by player, racket sport, or date."
       : "";
 
   const historyPreviewLimit = organizationPlan === "personal_free"
@@ -411,19 +424,21 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const showScheduledSection = screenMode === "dashboard" || (showMatchesOnly && matchesCategory === "scheduled");
   const showingHistory = showHistoryOnly || (showMatchesOnly && matchesCategory === "history");
   const historyCollection = showingHistory ? recentMatches : historyMatches;
-  const filteredHistoryMatches = useMemo(() => {
-    if (!normalizedHistorySearch) {
-      return historyCollection;
-    }
-
-    return historyCollection.filter((match) => {
+  const filteredHistoryMatches = useMemo(() => historyCollection.filter((match) => {
+      const sport = String(match.sport || "squash").toLowerCase();
+      const sportLabel = getMatchSportOption(sport)?.label?.toLowerCase() || sport;
+      const matchDate = historyMatchDateValue(match);
+      if (historySport && sport !== historySport) return false;
+      if (historyDateFrom && matchDate < historyDateFrom) return false;
+      if (historyDateTo && matchDate > historyDateTo) return false;
+      if (!normalizedHistorySearch) return true;
       const player1 = `${match.player1_name || ""} ${match.player1_surname || ""}`.trim().toLowerCase();
       const player2 = `${match.player2_name || ""} ${match.player2_surname || ""}`.trim().toLowerCase();
       const dateText = formatDate(match.updated_at).toLowerCase();
       const winner = (match?.winner_name || match?.state?.winner_name || "").toLowerCase();
-      return [player1, player2, dateText, winner].some((value) => value.includes(normalizedHistorySearch));
-    });
-  }, [historyCollection, normalizedHistorySearch]);
+      return [player1, player2, dateText, winner, sport, sportLabel]
+        .some((value) => value.includes(normalizedHistorySearch));
+    }), [historyCollection, historyDateFrom, historyDateTo, historySport, normalizedHistorySearch]);
   const historyPageSize = showingHistory ? MATCHES_HISTORY_PAGE_SIZE : DASHBOARD_HISTORY_PAGE_SIZE;
   const historyPages = chunkItems(filteredHistoryMatches, historyPageSize);
   const visibleHistoryPage = historyPages[clampPageIndex(historyPage, historyPages.length)] || [];
@@ -443,7 +458,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
   useEffect(() => {
     setHistoryPage(0);
-  }, [matchesCategory, normalizedHistorySearch, screenMode]);
+  }, [historyDateFrom, historyDateTo, historySport, matchesCategory, normalizedHistorySearch, screenMode]);
 
   useEffect(() => {
     setActivePage((current) => clampPageIndex(current, activePages.length));
@@ -908,13 +923,60 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           </div>
 
           {showingHistory ? (
-            <div className="dashboard-history-search">
-              <input
-                type="search"
-                placeholder="Search player name, surname, or date"
-                value={historySearch}
-                onChange={(event) => setHistorySearch(event.target.value)}
-              />
+            <div className="dashboard-history-tools">
+              <div className="dashboard-history-search">
+                <input
+                  aria-label="Search match history"
+                  type="search"
+                  placeholder="Search player, sport, or date"
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                />
+                <button
+                  aria-expanded={historyFiltersOpen}
+                  aria-label="Filter match history"
+                  className={`dashboard-history-filter-button${historyFiltersOpen ? " active" : ""}`}
+                  type="button"
+                  onClick={() => setHistoryFiltersOpen((current) => !current)}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M4 6h16M7 12h10M10 18h4" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                  </svg>
+                </button>
+              </div>
+              {historyFiltersOpen ? (
+                <div className="dashboard-history-filters" aria-label="Match history filters">
+                  <div className="field">
+                    <label htmlFor="history-date-from">From</label>
+                    <input id="history-date-from" type="date" value={historyDateFrom} onChange={(event) => setHistoryDateFrom(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="history-date-to">To</label>
+                    <input id="history-date-to" min={historyDateFrom || undefined} type="date" value={historyDateTo} onChange={(event) => setHistoryDateTo(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="history-sport">Racket Sport</label>
+                    <select id="history-sport" value={historySport} onChange={(event) => setHistorySport(event.target.value)}>
+                      <option value="">All sports</option>
+                      {MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented).map((sport) => (
+                        <option key={sport.value} value={sport.value}>{sport.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="dashboard-history-clear-filters"
+                    disabled={!historyDateFrom && !historyDateTo && !historySport}
+                    type="button"
+                    onClick={() => {
+                      setHistoryDateFrom("");
+                      setHistoryDateTo("");
+                      setHistorySport("");
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

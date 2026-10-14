@@ -1,0 +1,93 @@
+flowchart TD
+    A([Set up a racket sports match]) --> B["Sign in on web or iOS<br/>Select club or personal membership if prompted"]
+    B --> C["Open Start New Match<br/>Web: dashboard button or header +<br/>iOS: native match setup"]
+    C --> D{"Choose sport"}
+    D -->|Squash| SQ[Squash singles]
+    D -->|Racketball| RB[Racketball singles]
+    D -->|Tennis| TN{"Singles or doubles?"}
+    D -->|Padel| PD[Padel doubles only]
+    D -->|Table Tennis| TT[Table Tennis placeholder]
+    D -->|Badminton| BM[Badminton placeholder]
+    D -->|Pickleball| PB[Pickleball placeholder]
+    TT --> NA["Not implemented<br/>Cannot create or start a match"]
+    BM --> NA
+    PB --> NA
+    NA --> C
+    SQ --> ACCESS
+    RB --> ACCESS
+    TN -->|Singles| TS[Tennis singles]
+    TN -->|Doubles| TD[Tennis doubles]
+    TS --> ACCESS
+    TD --> ACCESS
+    PD --> ACCESS
+    ACCESS{"Sport enabled for this platform,<br/>account and membership?"}
+    ACCESS -->|No| HIDDEN["Sport unavailable or hidden<br/>Choose another enabled sport"]
+    HIDDEN --> C
+    ACCESS -->|Yes| ACCOUNT{"Club or personal account?"}
+    ACCOUNT -->|Club| COURT["Select a court available for this sport<br/>A court without a sport can be used by any sport"]
+    ACCOUNT -->|Personal| PERSONAL[Use personal match court]
+    COURT --> LINEUP
+    PERSONAL --> LINEUP
+    LINEUP{"Selected match format?"}
+    LINEUP -->|Singles| TWO["Enter or select two players<br/>Set shirt colours<br/>Squash / Racketball: check handedness"]
+    LINEUP -->|Doubles| FOUR["Enter or select four players<br/>Assign two players to each team<br/>Set each participant's shirt colour"]
+    TWO --> RULES
+    FOUR --> RULES
+    RULES{"Which sport rules?"}
+    RULES -->|Squash or Racketball| RFORMAT["Choose best of 1, 3 or 5 games<br/>Choose PAR-11 or PAR-15 for standard scoring"]
+    RFORMAT --> HC{"Enable handicap?"}
+    HC -->|Yes| HCM{"Handicap method?"}
+    HCM -->|Custom| CUSTOM[Enter both players' starting score offsets]
+    HCM -->|Matrix| MATRIX["Select both players' ability bands<br/>Review calculated starting offsets"]
+    HC -->|No| ROPTIONS
+    CUSTOM --> ROPTIONS
+    MATRIX --> ROPTIONS["Choose Golden Point on or off<br/>Choose timed warm-up and 90-second game breaks<br/>Saved timer preference is only a default"]
+    RULES -->|Tennis| TFORMAT["Choose best of 1, 3 or 5 sets<br/>Choose first to 4 or 6 games per set"]
+    TFORMAT --> TOPTIONS["Choose standard advantage or Golden Point<br/>Golden Point uses the Right service side<br/>Optionally replace deciding set with a 10-point match tiebreak<br/>Deciding-set option requires best of 3 or 5"]
+    TOPTIONS --> TBREAKS
+    RULES -->|Padel| PFORMAT["Choose best of 1, 3 or 5 sets<br/>Choose first to 4 or 6 games per set"]
+    PFORMAT --> POPTIONS["Choose standard advantage or Golden Point<br/>At Golden Point the receiving team chooses its receiver"]
+    POPTIONS --> TBREAKS["Choose timed breaks on or off<br/>90-second odd-game changeovers<br/>120-second set breaks"]
+    ROPTIONS --> REF
+    TBREAKS --> REF
+    REF["Club: optionally select a referee<br/>Use Me only if you are not a participant<br/>Personal: continue without a referee"] --> REVIEW
+    REVIEW["Review players, teams, court and rules<br/>Complete required fields and correct validation errors"] --> WHEN{"Start now or schedule?"}
+    WHEN -->|Schedule| PLAN{"Club account or Personal Plus?"}
+    PLAN -->|No: Personal Free| UPGRADE["Scheduling requires an upgrade<br/>Choose Start now or upgrade"]
+    UPGRADE --> WHEN
+    PLAN -->|Yes| SAVE[Save scheduled match]
+    SAVE --> OPEN[Open scheduled match when ready]
+    OPEN --> FREE{"Starting slot available?<br/>Personal: no other active match<br/>Club: selected court available"}
+    FREE -->|No| WAIT[Finish existing match or wait for court]
+    WAIT --> FREE
+    FREE -->|Yes| ACTIVATE[Activate scheduled match while online]
+    WHEN -->|Start now| BUSY{"Existing active match blocks start?"}
+    BUSY -->|No| CREATE[Create active match while online]
+    BUSY -->|Personal account: Yes| BLOCK["Finish existing personal match<br/>Personal Plus may schedule instead"]
+    BLOCK --> WHEN
+    BUSY -->|Club court: Yes| AUTO[Save as scheduled for the occupied court]
+    AUTO --> OPEN
+    CREATE --> PREPLAY
+    ACTIVATE --> PREPLAY
+    PREPLAY{"Selected sport?"}
+    PREPLAY -->|Squash or Racketball| TIMER{"Timed warm-up enabled?"}
+    TIMER -->|Yes| WSPORT{"Warm-up sport?"}
+    WSPORT -->|Squash| SW[Run 5-minute warm-up]
+    WSPORT -->|Racketball| RW["Run 60 seconds on side 1<br/>Swap sides and run 60 seconds on side 2"]
+    SW --> FIRST[Choose first server]
+    RW --> FIRST
+    FIRST --> LIVE
+    TIMER -->|No| DIRECT["Open live scoring directly<br/>Check server and service box before first point<br/>Handicap starting scores are retained"]
+    DIRECT --> LIVE
+    PREPLAY -->|Tennis singles| SSERVER["Choose opening server<br/>Other player receives automatically"]
+    PREPLAY -->|Tennis doubles or Padel| DSERVER["Choose opening server and opposing receiver<br/>Confirm opening serve and receive rotation"]
+    SSERVER --> BEGIN[Confirm Begin Match]
+    DSERVER --> BEGIN
+    BEGIN --> LIVE([Game started: ready to score the first point])
+
+    classDef startEnd fill:#dbeafe,stroke:#2563eb,color:#172554;
+    classDef unavailable fill:#f3f4f6,stroke:#9ca3af,color:#374151;
+    classDef decision fill:#fff7ed,stroke:#ea580c,color:#431407;
+    class A,LIVE startEnd;
+    class TT,BM,PB,NA,HIDDEN unavailable;
+    class D,TN,ACCESS,ACCOUNT,LINEUP,RULES,HC,HCM,WHEN,PLAN,FREE,BUSY,PREPLAY,TIMER,WSPORT decision;
