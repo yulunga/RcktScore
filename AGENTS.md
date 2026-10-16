@@ -83,6 +83,7 @@ What is real and implemented:
 - native Help & Feedback includes an in-app privacy and data page, and the iOS target includes a privacy manifest for its required-reason UserDefaults access
 - immediate self-service personal-account registration with emailed password setup, controlled club-interest registration, password reset, and feedback email flows
 - the public web login and `Want In` registration states omit internal package-version/build details
+- the public app login card keeps only its Help link; public Tournament Draw and Scoreboard Display entry points live in the standalone landing-page footer
 - the responsive app `/help` route is the single public Help Centre and knowledge base, with web and iPhone registration/sign-in guides, password reset, legal pages, and a footer matching the public website; public landing-page help, privacy, and cookie links route into it rather than maintaining a duplicate landing Help page
 - the React web client uses the same privacy-choice presentation as the public landing page and loads Google Analytics 4 only after explicit `Allow all` consent; SPA page views use sanitised route templates that exclude query strings, account/user/match/tournament identifiers and public draw keys, while advertising storage and personalisation signals remain disabled
 - the app Help Centre uses the same fixed, scroll-compacting header behaviour as the public landing page, and its logo/wordmark returns to `https://www.hitnscore.com/`

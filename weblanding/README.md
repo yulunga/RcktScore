@@ -27,5 +27,6 @@ This split means changes in `frontend/` do not alter the landing page unless you
   pickleball, and badminton
 - Responsive iPhone and iPad product mockups
 - Consent panel with all/essential choices and expandable details
+- Footer links to the public tournament-draw lookup and court scoreboard display
 - Separate comparison and help pages retained for later release decisions, but
   not linked from the main header

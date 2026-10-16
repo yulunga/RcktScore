@@ -6,6 +6,7 @@ test("login page loads @smoke", async ({ page }) => {
   await expect(page.getByLabel("Username")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View tournament draw" })).toHaveCount(0);
 });
 
 test("dashboard redirects anonymous users back to login @smoke", async ({ page }) => {

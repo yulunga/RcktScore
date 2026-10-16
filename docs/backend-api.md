@@ -185,6 +185,8 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 
 The public web login and `Want In` presentations omit package-version/build details. This is a client-only display rule and does not change the `POST /login` or `POST /register_interest` contracts.
 
+The login card keeps its public Help entry but no longer links to Tournament Draw. The standalone `weblanding/` footer provides the public Tournament Draw and Scoreboard Display links to `https://app.hitnscore.com/tournament-draw` and `https://app.hitnscore.com/scoreboard`; these are static navigation changes and add no API route.
+
 The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, is also client-only. Consolidating the former landing Help page into the app does not add or change an API route; password reset and feedback continue to use the endpoints listed above.
 
 The app shell and public landing homepage use the same browser title and description metadata. This is static client markup and has no backend API effect.

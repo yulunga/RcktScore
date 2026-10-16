@@ -498,7 +498,6 @@ export default function LoginPage() {
             </div>
 
             <div className="login-help-link">
-              <Link to="/tournament-draw">View tournament draw</Link>
               <Link to="/help">Need help?</Link>
             </div>
           </section>
