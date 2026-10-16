@@ -19,6 +19,17 @@ test("dashboard redirects anonymous users back to login @smoke", async ({ page }
 test("help page opens password reset section @smoke", async ({ page }) => {
   await page.goto("/help");
 
+  const footer = page.locator(".public-site-footer");
+  await expect(footer).toBeVisible();
+  await expect(footer.getByRole("link", { name: "HitNScore home" })).toHaveAttribute("href", "https://www.hitnscore.com/");
+  await expect(footer.getByText("Racket-sport scoring for players and clubs.")).toBeVisible();
+  await expect(footer.getByRole("link", { name: "HitNScore on the App Store, coming soon" })).toBeVisible();
+  await expect(footer.getByRole("link", { name: "Tournament draw" })).toHaveAttribute("href", "/tournament-draw");
+  await expect(footer.getByRole("link", { name: "Scoreboard display" })).toHaveAttribute("href", "/scoreboard");
+  await expect(footer.getByRole("link", { name: "Help & feedback" })).toHaveAttribute("href", "/help");
+  await expect(footer.getByRole("link", { name: "Privacy & terms" })).toHaveAttribute("href", "/help?section=privacy");
+  await expect(footer.getByRole("link", { name: "Cookie settings" })).toHaveAttribute("href", "/help?section=cookies");
+
   await page.getByRole("button", { name: "Reset Password" }).click();
   await expect(page.getByRole("heading", { name: "Password Reset" })).toBeVisible();
   await expect(page.getByLabel("Account email")).toBeVisible();
@@ -32,6 +43,7 @@ test("display page loads the scoreboard entry experience @smoke", async ({ page 
   expect(scoreboardHeaderBox.width).toBeCloseTo(page.viewportSize().width, 0);
   await expect(page.getByRole("heading", { name: "Open a Court Scoreboard" })).toBeVisible();
   await expect(page.getByText("Live Scoreboard", { exact: true })).toBeVisible();
+  await expect(page.locator(".public-access-header__brand-stack small")).toHaveCSS("font-weight", "600");
   await expect(page.getByLabel("Scoreboard Display Code")).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Scoreboard" })).toBeVisible();
   await expect(page.getByText("Enter a court display code to open the live scoreboard.")).toHaveCount(0);
@@ -55,6 +67,7 @@ test("public tournament page uses the compact public entry experience @smoke", a
   expect(tournamentHeaderBox.x).toBeCloseTo(0, 0);
   expect(tournamentHeaderBox.width).toBeCloseTo(page.viewportSize().width, 0);
   await expect(page.getByText("Tournament", { exact: true })).toBeVisible();
+  await expect(page.locator(".public-access-header__brand-stack small")).toHaveCSS("font-weight", "600");
   await expect(page.getByRole("link", { name: "HitNScore home" })).toHaveAttribute("href", "https://www.hitnscore.com/");
   await expect(page.getByRole("heading", { name: "View a Tournament Draw" })).toBeVisible();
   await expect(page.getByLabel("Tournament Draw Key")).toBeVisible();
