@@ -265,7 +265,7 @@ Social-profile fields and the web Subscriptions payment experience are still UI 
    Matches. The Live Tournaments heading opens Tournament Manager without a separate
    View all action. The club Settings page also shows its administrator entry point; the
    backend repeats the same feature check on every tournament request.
-5. The unauthenticated Tournament Draw lookup and Scoreboard Display entry use the same permanently compact public header and centred key/code card. Their logo links to the public landing page, their small product label sits beneath the HitnScore wordmark, and the header contains no page-description copy.
+5. The unauthenticated Tournament Draw lookup and Scoreboard Display entry use the same permanently compact, full-width public header and compact key/code card. The scoreboard card is centred in the available space below its header. Their logo links to the public landing page, their small product label sits beneath the HitnScore wordmark, and the header contains no page-description copy.
 5. A club admin expands the New Tournament heading and creates a draft through
    `POST /organizations/{organization_id}/tournaments`, classifying it as internal
    or open and optionally enabling A–D grading or an entry-size limit. Creation

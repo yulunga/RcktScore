@@ -187,7 +187,7 @@ The public web login and `Want In` presentations omit package-version/build deta
 
 The login card keeps its public Help entry but no longer links to Tournament Draw. The standalone `weblanding/` footer provides the public Tournament Draw and Scoreboard Display links to `https://app.hitnscore.com/tournament-draw` and `https://app.hitnscore.com/scoreboard`; these are static navigation changes and add no API route.
 
-Tournament Draw and Scoreboard Display use the same permanently compact public header and centred access-code card. The brand logo returns to the landing site, `Tournament` or `Live Scoreboard` appears beneath the wordmark, and page-description copy is intentionally excluded from public headers. This is client-only and does not change public draw-key or scoreboard-session contracts.
+Tournament Draw and Scoreboard Display use the same permanently compact, full-viewport-width public header and compact access-code card. The scoreboard code card is centred in the available space below its header. The header has the landing site's square edges, the brand logo returns to the landing site, `Tournament` or `Live Scoreboard` appears beneath the wordmark, and page-description copy is intentionally excluded from public headers. This is client-only and does not change public draw-key or scoreboard-session contracts.
 
 Standalone landing-page actions labelled Start Scoring route to the plain `https://app.hitnscore.com/login` state. Only explicitly labelled account-creation, registration and club-interest actions route to `?interest=1#want-in`.
 

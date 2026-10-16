@@ -330,6 +330,7 @@ What to check:
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
 - whether the action used `score_point` or `event_action`
 - the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
+- before a display code is entered, `/scoreboard` and `/display` use a compact code card centred in the space below the fixed-height public header; if it appears stretched or offset, verify the `display-session-inactive` grid and `scoreboard-entry-card` styles before changing the live-display layout
 - shirt palettes are intentionally hidden until their current-colour selector is opened; Spectator Display appears inside Game Settings only for club matches and still depends on `GET /match_display_access/{match_id}` returning a court display code
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`

@@ -642,18 +642,24 @@
   max-width: 1880px;
 }
 
+.page-shell.public-tournament-page,
+.page-shell.display-shell {
+  padding-top: 0;
+}
+
 .public-access-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  width: 100%;
+  width: 100vw;
   height: 76px;
   min-height: 76px;
+  margin-left: calc(50% - 50vw);
   padding: 0 24px;
   overflow: hidden;
   border-top: 3px solid #061f36;
-  border-radius: 0 0 18px 18px;
+  border-radius: 0;
   background: #fff;
   box-shadow: 0 8px 24px rgba(9, 39, 67, 0.09);
 }
@@ -712,6 +718,16 @@
 .public-access-key-card {
   width: min(100%, 620px);
   margin: clamp(30px, 8vh, 76px) auto 0;
+  padding: clamp(20px, 2.4vw, 28px);
+  gap: 16px;
+}
+
+.public-access-key-card .panel-heading {
+  gap: 8px;
+}
+
+.public-access-key-card form {
+  gap: 14px;
 }
 
 .public-tournament-key-card {
@@ -2899,10 +2915,20 @@ textarea {
 }
 
 .display-shell.display-session-active {
-  height: calc(100vh - 28px);
-  min-height: calc(100vh - 28px);
+  height: calc(100vh - 14px);
+  min-height: calc(100vh - 14px);
   overflow: hidden;
   align-content: stretch;
+}
+
+.display-shell.display-session-inactive {
+  grid-template-rows: 76px minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.display-shell.display-session-inactive > .scoreboard-entry-card {
+  align-self: center;
+  margin: 0 auto;
 }
 
 .display-shell.display-session-active.display-mode-standard,
@@ -6801,7 +6827,7 @@ textarea {
     min-height: 68px;
     gap: 8px;
     padding: 0 12px;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0;
   }
 
   .public-access-header__brand {
@@ -6863,6 +6889,10 @@ textarea {
   .display-shell.display-session-active > .public-access-header {
     min-height: 68px;
     max-height: 68px;
+  }
+
+  .display-shell.display-session-inactive {
+    grid-template-rows: 68px minmax(0, 1fr);
   }
 
   .club-page-header {
