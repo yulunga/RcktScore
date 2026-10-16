@@ -23,6 +23,7 @@ This split means changes in `frontend/` do not alter the landing page unless you
 - Single-page responsive marketing experience with no menu navigation
 - Large fixed white brand header that compacts after scrolling
 - Public personal-registration calls to action
+- Start Scoring calls to action open the standard app login; explicitly labelled account-creation and club-interest actions open `Want In`
 - High-resolution court imagery for squash, tennis, Padel, table tennis,
   pickleball, and badminton
 - Responsive iPhone and iPad product mockups

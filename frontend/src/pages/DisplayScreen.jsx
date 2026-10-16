@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import AppFooter from "../components/AppFooter";
+import PublicAccessHeader from "../components/PublicAccessHeader";
 import Scoreboard from "../components/Scoreboard";
 import {
   createScoreboardDisplaySession,
@@ -85,24 +86,14 @@ export default function DisplayScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [displayMode, setDisplayMode] = useState(() => readStoredDisplayMode());
-  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [allGamesPage, setAllGamesPage] = useState(0);
 
   const pollIntervalSeconds = displaySession?.poll_interval_seconds || 5;
-  const scoreboardUrl = useMemo(() => {
-    if (typeof window === "undefined") {
-      return "/scoreboard";
-    }
-
-    return `${window.location.origin}/scoreboard`;
-  }, []);
-
   const clearDisplaySession = useCallback(() => {
     setDisplaySession(null);
     setCourt(null);
     setCurrentMatch(null);
     setClubMatches([]);
-    setLastUpdatedAt(null);
     storeDisplaySession(null);
   }, []);
 
@@ -121,7 +112,6 @@ export default function DisplayScreen() {
     setCourt(payload?.court || null);
     setCurrentMatch(payload?.match || null);
     setClubMatches(payload?.club_matches || []);
-    setLastUpdatedAt(new Date());
   }, [displaySession?.display_session_token, pollIntervalSeconds]);
 
   const loadCurrent = useCallback(async (displaySessionToken, options = {}) => {
@@ -200,9 +190,6 @@ export default function DisplayScreen() {
     await loadCurrent(displaySession.display_session_token, { silent: true });
   }
 
-  const statusMessage = lastUpdatedAt
-    ? `Auto-refreshing every ${pollIntervalSeconds}s • Last updated ${lastUpdatedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
-    : `Auto-refreshing every ${pollIntervalSeconds}s after sign-in.`;
   const allGamesPageCount = Math.max(1, Math.ceil(clubMatches.length / ALL_GAMES_PAGE_SIZE));
   const visibleClubMatches = displayMode === "all-games"
     ? clubMatches.slice(
@@ -229,32 +216,8 @@ export default function DisplayScreen() {
 
   return (
     <main className={`page-shell stack display-shell display-mode-${displayMode} ${displaySession?.display_session_token ? "display-session-active" : "display-session-inactive"}`}>
-      <section className="hero-card display-header-card">
-        <div className="display-header-card__top">
-          <div className="display-header-card__branding">
-            <div className="display-header-card__brand-row">
-              <img
-                className="display-header-card__logo"
-                src="/branding/logo/brand-logo.png"
-                alt="Hit n Score"
-              />
-              <div className="display-header-card__brand-stack">
-                <h1 className="display-header-card__wordmark" aria-label="HitnScore">
-                  <span className="display-header-card__wordmark-hit">Hit</span>
-                  <span className="display-header-card__wordmark-n">n</span>
-                  <span className="display-header-card__wordmark-score">Score</span>
-                </h1>
-                <span className="display-header-card__subheading">Live Scoreboard</span>
-              </div>
-            </div>
-            {!displaySession?.display_session_token ? (
-              <p className="helper-text scoreboard-shell__status">
-                Enter a court display code to open the live scoreboard.
-              </p>
-            ) : null}
-          </div>
-          <div className="display-header-card__controls">
-            <div className="button-row display-header-card__actions">
+      <PublicAccessHeader label="Live Scoreboard">
+        <div className="button-row display-header-card__actions">
               {displaySession?.display_session_token ? (
                 <>
                   <button
@@ -279,25 +242,20 @@ export default function DisplayScreen() {
                   <option value="minimal">Minimal</option>
                 </select>
               </label>
-            </div>
-            {displaySession?.display_session_token ? (
-              <p className="helper-text display-header-card__status-note">{statusMessage}</p>
-            ) : null}
-          </div>
         </div>
-      </section>
+      </PublicAccessHeader>
 
       {!displaySession?.display_session_token ? (
-        <section className="panel stack scoreboard-entry-card">
+        <section className="panel stack public-access-key-card scoreboard-entry-card">
           <div className="panel-heading">
-            <h2>Open A Court Scoreboard</h2>
+            <h1>Open a Court Scoreboard</h1>
             <p className="helper-text">
-              Enter the 12-character court code. This screen is read-only and opens on {scoreboardUrl}.
+              Enter the display code supplied by your club. No login is required.
             </p>
           </div>
           <form className="stack" onSubmit={handleCodeSubmit}>
             <div className="field">
-              <label htmlFor="scoreboard_code">Display Code</label>
+              <label htmlFor="scoreboard_code">Scoreboard Display Code</label>
               <input
                 autoCapitalize="characters"
                 autoCorrect="off"

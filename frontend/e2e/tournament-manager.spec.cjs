@@ -428,7 +428,7 @@ test("opens a published draw without login using its public key @tournament", as
 
   await page.goto("/tournament-draw/DRAWKEY23456");
 
-  await expect(page.getByText("Public Tournament Draw", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tournament", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match")).toContainText("Public One");
 });

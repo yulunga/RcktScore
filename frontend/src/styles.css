@@ -638,28 +638,84 @@
 }
 
 .public-tournament-page {
-  max-width: 1500px;
+  width: calc(100vw - 24px);
+  max-width: 1880px;
 }
 
-.public-tournament-header {
+.public-access-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  height: 76px;
+  min-height: 76px;
+  padding: 0 24px;
+  overflow: hidden;
+  border-top: 3px solid #061f36;
+  border-radius: 0 0 18px 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(9, 39, 67, 0.09);
 }
 
-.public-tournament-header a {
-  color: #1274d0;
+.public-access-header__brand {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
   text-decoration: none;
-  font-size: clamp(1.8rem, 5vw, 3rem);
 }
 
-.public-tournament-header a span {
-  color: #ef4d9a;
+.public-access-header__brand > img {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.public-access-header__brand-stack {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.public-access-header__brand-stack > strong {
+  display: inline-flex;
+  color: #1675cf;
+  font-size: clamp(1.45rem, 2.3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.public-access-header__brand-stack i {
+  color: #ee5eaa;
+  font-style: normal;
+}
+
+.public-access-header__brand-stack small {
+  color: #486581;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.public-access-header__controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.public-access-key-card {
+  width: min(100%, 620px);
+  margin: clamp(30px, 8vh, 76px) auto 0;
 }
 
 .public-tournament-key-card {
   width: min(100%, 620px);
-  margin: 8vh auto 0;
 }
 
 .tournament-next-stage button:disabled {
@@ -2798,81 +2854,6 @@ textarea {
   margin: 0;
 }
 
-.display-header-card {
-  min-height: 118px;
-}
-
-.display-header-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 92px;
-  gap: 20px;
-}
-
-.display-header-card__branding {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.display-header-card__brand-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-}
-
-.display-header-card__logo {
-  width: 68px;
-  height: 68px;
-  object-fit: contain;
-  flex: 0 0 auto;
-}
-
-.display-header-card__brand-stack {
-  display: grid;
-  gap: 4px;
-  align-content: center;
-  min-width: 0;
-}
-
-.display-header-card__wordmark {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-  margin: 0;
-  color: #0b5fb3;
-  font-size: clamp(2.25rem, 3.6vw, 3.4rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 0.94;
-}
-
-.display-header-card__wordmark-hit,
-.display-header-card__wordmark-score {
-  color: #0b5fb3;
-}
-
-.display-header-card__wordmark-n {
-  color: #ec5ea8;
-}
-
-.display-header-card__subheading {
-  color: #486581;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.display-header-card__controls {
-  display: grid;
-  justify-items: end;
-  align-content: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
 .display-header-card__actions {
   display: flex;
   align-items: center;
@@ -2908,12 +2889,6 @@ textarea {
   box-shadow: 0 10px 24px rgba(16, 42, 67, 0.08);
 }
 
-.display-header-card__status-note {
-  margin: 0;
-  font-size: 0.82rem;
-  text-align: right;
-}
-
 .display-shell {
   width: calc(100vw - 24px);
   max-width: 1880px;
@@ -2933,16 +2908,16 @@ textarea {
 .display-shell.display-session-active.display-mode-standard,
 .display-shell.display-session-active.display-mode-large-scores,
 .display-shell.display-session-active.display-mode-minimal {
-  grid-template-rows: 118px minmax(0, 1fr);
+  grid-template-rows: 76px minmax(0, 1fr);
 }
 
 .display-shell.display-session-active.display-mode-all-games {
-  grid-template-rows: 118px minmax(0, 1fr) minmax(188px, 27vh);
+  grid-template-rows: 76px minmax(0, 1fr) minmax(188px, 27vh);
 }
 
-.display-shell.display-session-active > .display-header-card {
-  min-height: 118px;
-  max-height: 118px;
+.display-shell.display-session-active > .public-access-header {
+  min-height: 76px;
+  max-height: 76px;
   overflow: hidden;
 }
 
@@ -2951,10 +2926,6 @@ textarea {
   min-height: 0;
   height: 100%;
   align-self: stretch;
-}
-
-.display-shell .hero-card {
-  padding: 12px 18px;
 }
 
 .display-shell .app-footer {
@@ -2979,10 +2950,6 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-}
-
-.scoreboard-shell__status {
-  margin: 0;
 }
 
 .scoreboard-shell__actions {
@@ -6331,29 +6298,6 @@ textarea {
     display: none;
   }
 
-  .display-header-card__top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .display-header-card__controls {
-    width: 100%;
-    justify-content: flex-start;
-    justify-items: start;
-  }
-
-  .display-header-card__actions {
-    justify-content: flex-start;
-  }
-
-  .display-layout-control {
-    margin-left: 0;
-  }
-
-  .display-header-card__status-note {
-    text-align: left;
-  }
-
   .scoreboard-session-card__top {
     flex-direction: column;
     align-items: flex-start;
@@ -6850,6 +6794,75 @@ textarea {
   .session-bar {
     padding: 16px;
     border-radius: 22px;
+  }
+
+  .public-access-header {
+    height: 68px;
+    min-height: 68px;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .public-access-header__brand {
+    gap: 7px;
+  }
+
+  .public-access-header__brand > img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .public-access-header__brand-stack > strong {
+    font-size: 1.36rem;
+  }
+
+  .public-access-header__brand-stack small {
+    font-size: 0.58rem;
+  }
+
+  .public-access-header__controls {
+    overflow-x: auto;
+  }
+
+  .public-access-header .display-header-card__actions {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .public-access-header .button-row button {
+    min-height: 40px;
+    padding: 9px 12px;
+    white-space: nowrap;
+  }
+
+  .public-access-header .display-layout-control {
+    margin-left: 0;
+  }
+
+  .public-access-header .display-layout-control__label {
+    display: none;
+  }
+
+  .public-access-header .display-layout-control select {
+    min-height: 40px;
+    max-width: 118px;
+    padding: 8px 34px 8px 12px;
+  }
+
+  .display-shell.display-session-active.display-mode-standard,
+  .display-shell.display-session-active.display-mode-large-scores,
+  .display-shell.display-session-active.display-mode-minimal {
+    grid-template-rows: 68px minmax(0, 1fr);
+  }
+
+  .display-shell.display-session-active.display-mode-all-games {
+    grid-template-rows: 68px minmax(0, 1fr) minmax(188px, 27vh);
+  }
+
+  .display-shell.display-session-active > .public-access-header {
+    min-height: 68px;
+    max-height: 68px;
   }
 
   .club-page-header {

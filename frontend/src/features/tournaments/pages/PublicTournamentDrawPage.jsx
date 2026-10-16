@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import PublicAccessHeader from "../../../components/PublicAccessHeader";
 import { getPublicTournamentDraw } from "../../../services/api";
 import TournamentBracket from "../components/TournamentBracket";
 import { optionLabel, TOURNAMENT_FORMATS, TOURNAMENT_SPORTS } from "../tournamentOptions";
@@ -45,13 +46,10 @@ export default function PublicTournamentDrawPage() {
 
   return (
     <main className="page-shell public-tournament-page stack">
-      <header className="panel public-tournament-header">
-        <a href="https://www.hitnscore.com/" aria-label="HitNScore home"><strong>Hit<span>n</span>Score</strong></a>
-        <p>Public Tournament Draw</p>
-      </header>
+      <PublicAccessHeader label="Tournament" />
 
       {!accessKey ? (
-        <section className="panel public-tournament-key-card stack">
+        <section className="panel public-access-key-card public-tournament-key-card stack">
           <div className="panel-heading">
             <h1>View a Tournament Draw</h1>
             <p className="helper-text">Enter the draw key supplied by the tournament organiser. No login is required.</p>
