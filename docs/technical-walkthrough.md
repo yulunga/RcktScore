@@ -228,13 +228,15 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - map preview
    - persisted racket-sport visibility controls
    - persisted per-sport timer defaults under Game Settings
+   - a frontend-only club Subscriptions preview
    - scaffold-only social profile fields under Organisation
 5. For club admins, Address follows Club Name and Primary Contact is chosen from the approved users returned in the same response rather than entered as arbitrary text. The single-row, horizontally scrollable section control follows the Matches segmented style and scrolls its selected section into the visible centre on narrow screens and direct `?tab=` navigation. Users and Courts show compact rows first, use a circular `+` to reveal an add form before the corresponding search/filter control, and expose editing only for the selected row; court editing includes its scoreboard URL and display-code controls. Users retain local first-name/surname/email search and surname sorting, plus compact role/approval/edit indicators. Both add forms reset their inactivity timer during editing and collapse after one inactive minute or when the user changes Settings section.
 6. Game Settings uses separate Racket Sports and Default Timers tiles. These retain the existing organisation-details persistence routes and only change the client presentation.
+7. Subscriptions shows the current club plan, monthly/annual presentation, Club Essentials/Club Pro comparison and a disabled checkout review. It is an experience prototype only: it does not load Stripe, create a checkout session, update a subscription or change an entitlement, and undecided pricing and Club Pro details are explicitly marked to be confirmed.
 
 ### Current limitation
 
-Social-profile fields are still UI scaffolds and are not persisted/enforced. There is intentionally no organisation-level handicap setting: Squash/Racketball handicap scoring is available to Personal Free, Personal Plus, and club accounts.
+Social-profile fields and the web Subscriptions payment experience are still UI scaffolds and are not persisted/enforced. There is intentionally no organisation-level handicap setting: Squash/Racketball handicap scoring is available to Personal Free, Personal Plus, and club accounts.
 
 ## 7. Personal Profile Update Flow
 

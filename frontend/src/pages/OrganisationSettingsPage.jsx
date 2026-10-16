@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
+import SubscriptionPreview from "../components/SubscriptionPreview";
 import { COUNTRIES } from "../constants/countries";
 import { MATCH_SPORT_OPTIONS, getMatchSportOption, normalizeEnabledSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
@@ -52,6 +53,7 @@ const SETTINGS_TABS = [
   { id: "courts", label: "Courts" },
   { id: "users", label: "Users" },
   { id: "game-social", label: "Game Settings" },
+  { id: "subscriptions", label: "Subscriptions" },
   { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
 const ADD_FORM_INACTIVITY_MS = 60 * 1000;
@@ -1429,6 +1431,13 @@ export default function OrganisationSettingsPage() {
 
               {activeGameSettingsTile === "timers" ? <section className="settings-tile-detail stack">{renderTimedBreakDefaults()}</section> : null}
             </section>
+          ) : null}
+
+          {activeTab === "subscriptions" ? (
+            <SubscriptionPreview
+              accountEmail={settings?.organization?.org_email || session?.email || session?.username || ""}
+              currentPlan={settings?.organization?.plan || "club_essentials"}
+            />
           ) : null}
         </>
       )}
