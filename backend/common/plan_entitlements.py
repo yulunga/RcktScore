@@ -2,10 +2,12 @@ PERSONAL_PLAN_ENTITLEMENTS = {
     "personal_free": {
         "history_limit": 3,
         "performance_enabled": False,
+        "remote_match_viewing_enabled": False,
     },
     "personal_plus": {
         "history_limit": 100,
         "performance_enabled": True,
+        "remote_match_viewing_enabled": True,
     },
 }
 

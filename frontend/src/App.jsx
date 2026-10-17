@@ -29,6 +29,7 @@ import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
 import RootAdminSubscriptionsPage from "./pages/RootAdminSubscriptionsPage";
 import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
 import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
+import RemoteMatchPage from "./pages/RemoteMatchPage";
 import TournamentDetailPage from "./features/tournaments/pages/TournamentDetailPage";
 import TournamentListPage from "./features/tournaments/pages/TournamentListPage";
 import PublicTournamentDrawPage from "./features/tournaments/pages/PublicTournamentDrawPage";
@@ -129,6 +130,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <DashboardPage screenMode="matches" />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/matches/watch/:watchCode"
+        element={(
+          <ProtectedRoute>
+            <RemoteMatchPage />
           </ProtectedRoute>
         )}
       />

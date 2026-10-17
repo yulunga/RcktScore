@@ -11,6 +11,7 @@ struct DashboardView: View {
     @State private var activeMatches: [MatchSummary] = []
     @State private var scheduledMatches: [MatchSummary] = []
     @State private var recentMatches: [MatchSummary] = []
+    @State private var viewedMatches: [MatchSummary] = []
     @State private var performanceSummary: PersonalPerformanceSummary?
     @State private var organizationSummary: DashboardOrganizationSummary?
     @State private var organizationSettings: OrganizationSettings?
@@ -61,6 +62,7 @@ struct DashboardView: View {
     @State private var notifications: [AppNotification] = []
     @State private var notificationErrorMessage: String?
     @State private var selectedMatchesCategory: MatchesCategory = .current
+    @State private var matchWatchCode = ""
     @State private var selectedAnalyticsCategory: AnalyticsCategory = .stats
     @State private var showsManageSubscriptions = false
     @State private var isPersonalPlusOptionsExpanded = false
@@ -322,6 +324,14 @@ struct DashboardView: View {
                         .environmentObject(container)
                     }
                     .presentationDetents([.large])
+                case .watchMatch(let code):
+                    NavigationStack {
+                        RemoteMatchWatchView(code: code) {
+                            Task { await loadDashboard() }
+                        }
+                        .environmentObject(container)
+                    }
+                    .presentationDetents([.large])
                 }
             }
             .toolbar {
@@ -537,11 +547,77 @@ struct DashboardView: View {
                     }
                 }
             } else {
+                if isPersonalPlus {
+                    matchWatchSection
+                }
                 dashboardSection(
                     title: "Current Matches",
                     subtitle: isPersonalAccount ? "Your matches currently in progress." : "All active matches recorded under this club account."
                 ) {
                     activeMatchesContent(matches: activeMatches)
+                }
+            }
+        }
+    }
+
+    private var matchWatchSection: some View {
+        dashboardSection(
+            title: "Watch a Match",
+            systemImage: "dot.radiowaves.left.and.right",
+            subtitle: "Enter the code shared by the scorer to follow a match remotely."
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                TextField("ABCD2345", text: $matchWatchCode)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: matchWatchCode) { _, newValue in
+                        let normalized = String(newValue.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(8))
+                        if normalized != newValue {
+                            matchWatchCode = normalized
+                        }
+                    }
+                    .accessibilityLabel("Match viewing code")
+
+                Button("Watch Match") {
+                    let normalized = matchWatchCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                    guard normalized.count == 8 else {
+                        errorMessage = "Enter the 8-character match viewing code."
+                        return
+                    }
+                    activeSheet = .watchMatch(normalized)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(matchWatchCode.count != 8 || !isOnline)
+
+                if !viewedMatches.isEmpty {
+                    Divider()
+                    Text("Viewed Matches")
+                        .font(.subheadline.weight(.bold))
+                    ForEach(viewedMatches) { match in
+                        Button {
+                            guard let code = match.viewerCode, !code.isEmpty else { return }
+                            activeSheet = .watchMatch(code)
+                        } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(matchDisplayName(for: match))
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(match.status.lowercased() == "completed" ? "Finished" : "Live")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(Color.dashboardBrand)
+                            }
+                            .padding(12)
+                            .background(Color.dashboardInnerCardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -3612,6 +3688,7 @@ struct DashboardView: View {
                 activeMatches = dashboard.activeMatches
                 scheduledMatches = dashboard.scheduledMatches
                 recentMatches = dashboard.recentMatches
+                viewedMatches = dashboard.viewedMatches
                 isLoading = false
                 print(
                     "DASHBOARD LOAD: active=\(dashboard.activeMatches.count) " +
@@ -4737,11 +4814,14 @@ private enum MatchPresentation: Hashable {
 
 private enum DashboardSheet: Identifiable {
     case newMatch
+    case watchMatch(String)
 
     var id: String {
         switch self {
         case .newMatch:
             return "new-match"
+        case .watchMatch(let code):
+            return "watch-match-\(code)"
         }
     }
 }

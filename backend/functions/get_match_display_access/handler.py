@@ -1,5 +1,6 @@
 from aws_lambda_powertools import Logger
 
+from common.match_watch_logic import MatchWatchError, ensure_match_watch_code
 from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, path_parameter, success_response
@@ -8,7 +9,7 @@ from common.utils import error_response, path_parameter, success_response
 logger = Logger(service="get_match_display_access")
 
 
-def _fetch_match_display_access(connection, match_id):
+def _fetch_match_display_access(connection, match_id, viewer_code=""):
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -42,6 +43,7 @@ def _fetch_match_display_access(connection, match_id):
         "court_alias": row.get("court_alias") or "",
         "display_code": row.get("display_code") or "",
         "display_code_enabled": bool(row.get("display_code_enabled")),
+        "viewer_code": viewer_code or "",
     }
 
 
@@ -53,9 +55,12 @@ def lambda_handler(event, context):
     try:
         with get_db_connection() as connection:
             authorize_match_session(connection, event, match_id)
-            display_access = _fetch_match_display_access(connection, match_id)
+            viewer_code = ensure_match_watch_code(connection, match_id)
+            display_access = _fetch_match_display_access(connection, match_id, viewer_code)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
+    except MatchWatchError as watch_error:
+        return error_response(watch_error.status_code, watch_error.code, watch_error.message)
 
     if not display_access:
         return error_response(404, "MATCH_NOT_FOUND", "Match not found")

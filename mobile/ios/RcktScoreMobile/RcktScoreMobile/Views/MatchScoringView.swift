@@ -139,6 +139,9 @@ struct MatchScoringView: View {
             ?? match?.courtDisplayCode
             ?? ""
     }
+    private var viewerCode: String {
+        displayAccess?.viewerCode ?? ""
+    }
 
     private var isMatchComplete: Bool {
         live?.matchComplete == true || match?.status.lowercased() == "completed"
@@ -1671,6 +1674,15 @@ struct MatchScoringView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("Remote Match Viewing")
+                    .font(.headline)
+                Text("Share this match-specific code with a Personal Plus user so they can follow the score remotely.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                detailItem("Match Viewing Code", value: viewerCode.isEmpty ? "Not available" : viewerCode)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Event Timeline")
                     .font(.headline)
 
@@ -2169,7 +2181,7 @@ struct MatchScoringView: View {
     }
 
     private func loadDisplayAccessIfNeeded() async {
-        guard isOnline, !isPersonalAccount else {
+        guard isOnline else {
             await MainActor.run {
                 displayAccess = nil
             }

@@ -587,6 +587,20 @@ export function getMatchDisplayAccess(matchId) {
   return apiRequest(`/match_display_access/${matchId}`);
 }
 
+export function getWatchedMatch(payload) {
+  return apiRequest("/match_watch/lookup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function saveWatchedMatch(payload) {
+  return apiRequest("/match_watch/save", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createScoreboardDisplaySession(payload) {
   return apiRequest("/scoreboard_display/session", {
     method: "POST",

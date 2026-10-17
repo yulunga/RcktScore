@@ -73,6 +73,9 @@ Current runtime path:
   - plan-aware history limits
 - [common/plan_entitlements.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/plan_entitlements.py)
   - authoritative Personal Free/Personal Plus history and performance contract
+- [common/match_watch_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_watch_logic.py)
+  - Personal Plus entitlement enforcement for remote match lookup
+  - match-specific viewing-code generation and Viewed Matches persistence
 - [common/notification_center_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/notification_center_logic.py)
   - audience-targeted notification publishing, inbox listing, and cross-device read state
 - [common/match_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_logic.py)
@@ -420,10 +423,21 @@ Current organisation-settings behavior:
 - `POST /start_scheduled_match`
 - `GET /get_score/{match_id}`
 - `GET /match_display_access/{match_id}`
+- `POST /match_watch/lookup`
+- `POST /match_watch/save`
 - `POST /score_point`
 - `POST /event_action`
 - `POST /undo_action`
 - `POST /end_match`
+
+`GET /match_display_access/{match_id}` now returns `viewer_code` as well as the
+club court-display fields. The match-specific eight-character code remains valid
+after completion so the same read-only view can show the result and timeline.
+`POST /match_watch/lookup` and `POST /match_watch/save` require an authenticated
+Personal Plus membership and accept `organization_id` plus `code`; neither route
+grants scoring or tenant-edit access. Save creates an idempotent account-level
+Viewed Matches link. Migration `038_personal_plus_match_watch.sql` adds the code
+and saved-view tables.
 
 ### Display and WebSocket helper routes
 
@@ -489,12 +503,14 @@ Current behavior:
   - `active_matches`
   - `scheduled_matches`
   - `recent_matches`
+  - `viewed_matches` for Personal Plus accounts
   - `performance` for Personal Plus accounts
 - `organization.completed_match_count` and `organization.locked_history_count` describe retained and entitlement-locked history
 - `organization.entitlements` is the client-facing copy of the same server contract used to cap queries
 - `organization.available_plan_entitlements` exposes both Personal plans so upgrade copy does not duplicate limit constants in clients
 - Personal Free responses contain the latest three completed matches and a redacted fourth preview when more history exists
 - Personal Plus responses contain at most the latest 100 completed matches and include performance data
+- Personal Plus responses include saved live or completed remote matches in `viewed_matches`; these are separate from matches owned by the personal tenant
 - `GET /get_score/{match_id}` enforces the current personal plan's completed-history window, so a previously known match ID cannot bypass either the Free three-match or Plus 100-match boundary
 - Personal Plus performance is computed from retained match state and event actions, including results, games/points, serve points, playing time, close games/sets, streaks, scorelines, opponents, sport splits, and weekly/monthly summaries
 

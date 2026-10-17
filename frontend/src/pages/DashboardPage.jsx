@@ -201,6 +201,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [liveTournaments, setLiveTournaments] = useState([]);
   const [tournamentManagerEnabled, setTournamentManagerEnabled] = useState(false);
   const [matchesCategory, setMatchesCategory] = useState("current");
+  const [watchCode, setWatchCode] = useState("");
   const scheduledDetailsTimeoutsRef = useRef({});
 
   useEffect(() => {
@@ -371,6 +372,16 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     navigate(`/match/new/setup?sport=${encodeURIComponent(sport)}`);
   }
 
+  function handleWatchMatch(event) {
+    event.preventDefault();
+    const normalized = watchCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (normalized.length !== 8) {
+      setActionError("Enter the 8-character match viewing code.");
+      return;
+    }
+    navigate(`/matches/watch/${normalized}`);
+  }
+
   function toggleScheduledDetails(matchId) {
     setExpandedScheduledMatches((current) => {
       const isOpening = !current[matchId];
@@ -400,6 +411,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const activeMatches = dashboard?.active_matches || [];
   const scheduledMatches = dashboard?.scheduled_matches || [];
   const recentMatches = dashboard?.recent_matches || [];
+  const viewedMatches = dashboard?.viewed_matches || [];
   const organization = dashboard?.organization || {};
   const organizationType = organization.type || inferOrganizationType(session);
   const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
@@ -787,6 +799,52 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       ) : null}
 
       <section className="dashboard-grid">
+        {screenMode === "matches" && matchesCategory === "current" && isPersonalPlus ? (
+          <section className="panel stack match-watch-entry" id="watch-match-section">
+            <div className="panel-heading">
+              <h2>Watch a Match</h2>
+              <p className="helper-text">Enter the code shared by the scorer to follow the match remotely.</p>
+            </div>
+            <form className="match-watch-entry__form" onSubmit={handleWatchMatch}>
+              <div className="field">
+                <label htmlFor="match-watch-code">Match viewing code</label>
+                <input
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  id="match-watch-code"
+                  inputMode="text"
+                  placeholder="ABCD2345"
+                  value={watchCode}
+                  onChange={(event) => setWatchCode(
+                    event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8),
+                  )}
+                />
+              </div>
+              <button type="submit">Watch Match</button>
+            </form>
+
+            {viewedMatches.length ? (
+              <div className="match-watch-saved-list">
+                <h3>Viewed Matches</h3>
+                {viewedMatches.map((match) => (
+                  <button
+                    className="match-watch-saved-row"
+                    key={match.id}
+                    type="button"
+                    onClick={() => navigate(`/matches/watch/${match.viewer_code}`)}
+                  >
+                    <span>
+                      <strong>{formatPlayers(match)}</strong>
+                      <small>{formatSportName(match.sport)} · {match.status === "completed" ? "Finished" : "Live"}</small>
+                    </span>
+                    <b aria-hidden="true">›</b>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         {showCurrentSection ? (
         <section className="panel stack" id="active-matches-section">
           <div className="panel-heading">

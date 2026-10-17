@@ -1,9 +1,10 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from psycopg.errors import UndefinedTable
+from psycopg.errors import UndefinedColumn, UndefinedTable
 
 from common.match_logic import list_matches
+from common.match_watch_logic import list_saved_watched_matches
 from common.plan_entitlements import PERSONAL_PLAN_ENTITLEMENTS, personal_plan_contract, personal_plan_entitlements
 
 
@@ -21,6 +22,15 @@ def _safe_list_matches(connection, organization_id, status, limit):
             limit=limit,
         )
     except UndefinedTable:
+        connection.rollback()
+        return []
+
+
+def _safe_list_saved_watched_matches(connection, organization_id):
+    """Keep dashboards usable during a staggered deployment of migration 038."""
+    try:
+        return list_saved_watched_matches(connection, organization_id)
+    except (UndefinedColumn, UndefinedTable):
         connection.rollback()
         return []
 
@@ -809,7 +819,9 @@ def get_dashboard_data(
         recent_matches = [*recent_matches[:history_limit], _locked_history_preview(recent_matches[history_limit])]
 
     performance = None
+    viewed_matches = []
     if org_type == "personal" and plan == "personal_plus":
+        viewed_matches = _safe_list_saved_watched_matches(connection, organization_id)
         analytics_matches = _safe_list_matches(
             connection,
             organization_id=organization_id,
@@ -895,6 +907,7 @@ def get_dashboard_data(
         "active_matches": active_matches,
         "scheduled_matches": scheduled_matches,
         "recent_matches": recent_matches,
+        "viewed_matches": viewed_matches,
         "app_analytics": app_analytics,
         "player_analytics": player_analytics,
         "club_analytics": club_analytics,

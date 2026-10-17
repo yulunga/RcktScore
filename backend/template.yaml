@@ -666,6 +666,30 @@ Resources:
             Path: /get_score/{match_id}
             Method: GET
 
+  GetWatchedMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_watched_match/handler.lambda_handler
+      Events:
+        GetWatchedMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /match_watch/lookup
+            Method: POST
+
+  SaveWatchedMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/save_watched_match/handler.lambda_handler
+      Events:
+        SaveWatchedMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /match_watch/save
+            Method: POST
+
   GetDashboardFunction:
     Type: AWS::Serverless::Function
     Properties:

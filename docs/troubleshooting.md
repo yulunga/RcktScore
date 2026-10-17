@@ -76,6 +76,10 @@ Current/Scheduled/History controls in both light and dark colour schemes.
 They should remain white with a thin blue outer border, blue labels, a light-blue
 selected item and a two-pixel pink selection marker at iPhone and desktop widths.
 
+Use `npm run test:e2e:watch-match:watch` to exercise the Personal Plus match-code
+entry, live read-only score, saved Viewed Matches state, and completed result
+timeline with API-mocked data that does not alter live matches.
+
 Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
 Tennis views. The fixtures verify match start time and duration, game/set
 durations, sport terminology, the grouped scoring timeline, and separate
@@ -247,6 +251,9 @@ What to check:
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
 - for Personal Free, confirm the dashboard returns no more than three readable completed matches and only a redacted `locked: true` fourth preview
 - for Personal Plus statistics, verify the registered first name and surname exactly match player details stored on completed matches; otherwise those matches appear in `unclassified_match_count`
+- for Personal Plus remote viewing, apply migration `038_personal_plus_match_watch.sql`, verify `GET /match_display_access/{match_id}` returns `viewer_code`, and confirm lookup sends the viewer's own `organization_id` with an eight-character code to `POST /match_watch/lookup`
+- `PERSONAL_PLUS_REQUIRED` means the authenticated membership is not a personal tenant currently on `personal_plus`; `WATCH_CODE_INVALID` means the normalized code is not eight characters, and `WATCH_MATCH_NOT_FOUND` means no non-archived match owns it
+- saved remote matches are returned in dashboard `viewed_matches`, not `recent_matches`; saving is idempotent and does not copy or transfer ownership of the match
 - if point or serving percentages are unexpectedly empty, inspect the retained `match_events` payloads because those figures come from scoring actions rather than the final score alone
 - `platform_settings.enabled_sports_web` / `enabled_sports_ios`, the organisation `enabled_sports`, and the membership's matching client column all contain the sport
 - whether the UI control is real or scaffold-only
@@ -497,7 +504,7 @@ What to check:
 
 - whether `POST /login` returned `data.session` or `data.organizationSelection`
 - whether the account hit `ACTIVE_SESSION_EXISTS` for `client_type = mobile_app`
-- whether the match has a court display code and `GET /match_display_access/{match_id}` is succeeding
+- whether `GET /match_display_access/{match_id}` is succeeding; it supplies the court display code where applicable and the match-specific Personal Plus viewing code for every live match
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
 - whether `NetworkMonitor.swift` has marked the device offline
 - whether `OfflineMatchStore.swift` contains a cached match for the same username and organisation membership

@@ -19,6 +19,7 @@ struct DashboardResponse: Decodable {
     let activeMatches: [MatchSummary]
     let scheduledMatches: [MatchSummary]
     let recentMatches: [MatchSummary]
+    let viewedMatches: [MatchSummary]
     let performance: PersonalPerformanceSummary?
 
     enum CodingKeys: String, CodingKey {
@@ -26,6 +27,7 @@ struct DashboardResponse: Decodable {
         case activeMatches = "active_matches"
         case scheduledMatches = "scheduled_matches"
         case recentMatches = "recent_matches"
+        case viewedMatches = "viewed_matches"
         case performance
     }
 
@@ -35,8 +37,30 @@ struct DashboardResponse: Decodable {
         activeMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .activeMatches) ?? []
         scheduledMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .scheduledMatches) ?? []
         recentMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .recentMatches) ?? []
+        viewedMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .viewedMatches) ?? []
         performance = try container.decodeIfPresent(PersonalPerformanceSummary.self, forKey: .performance)
     }
+}
+
+struct MatchWatchPayload: Decodable {
+    let code: String
+    let saved: Bool
+    let finished: Bool
+    let match: MatchDetail
+}
+
+private struct MatchWatchRequest: Encodable {
+    let organizationID: Int
+    let code: String
+
+    enum CodingKeys: String, CodingKey {
+        case organizationID = "organization_id"
+        case code
+    }
+}
+
+private struct MatchWatchResponseData: Decodable {
+    let watch: MatchWatchPayload
 }
 
 struct PersonalPerformanceSummary: Decodable {
@@ -727,6 +751,32 @@ final class APIClient {
         }
 
         return dashboard
+    }
+
+    func getWatchedMatch(organizationID: Int, code: String) async throws -> MatchWatchPayload {
+        let request = try makeRequest(
+            path: "/match_watch/lookup",
+            method: "POST",
+            body: MatchWatchRequest(organizationID: organizationID, code: code)
+        )
+        let envelope: APIEnvelope<MatchWatchResponseData> = try await send(request)
+        guard let watch = envelope.data?.watch else {
+            throw APIErrorResponse(code: "empty_response", message: "No watched match was returned.", details: nil)
+        }
+        return watch
+    }
+
+    func saveWatchedMatch(organizationID: Int, code: String) async throws -> MatchWatchPayload {
+        let request = try makeRequest(
+            path: "/match_watch/save",
+            method: "POST",
+            body: MatchWatchRequest(organizationID: organizationID, code: code)
+        )
+        let envelope: APIEnvelope<MatchWatchResponseData> = try await send(request)
+        guard let watch = envelope.data?.watch else {
+            throw APIErrorResponse(code: "empty_response", message: "No watched match was returned.", details: nil)
+        }
+        return watch
     }
 
     func getAppleSubscriptionContext(organizationID: Int) async throws -> AppleSubscriptionContext {

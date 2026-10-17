@@ -272,6 +272,7 @@ export default function MatchScreen() {
   const scoreboardUrl = !isPersonalAccount ? `${window.location.origin}/scoreboard` : "";
   const [displayAccess, setDisplayAccess] = useState(null);
   const displayCode = displayAccess?.display_code || currentMatch?.court_display_code || "";
+  const viewerCode = displayAccess?.viewer_code || "";
   const [timerPhase, setTimerPhase] = useState("warmup_ready");
   const [timerSeconds, setTimerSeconds] = useState(WARMUP_SECONDS);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -302,7 +303,7 @@ export default function MatchScreen() {
   }, [connectRealtime, loadMatch, matchId]);
 
   useEffect(() => {
-    if (!matchId || isPersonalAccount) {
+    if (!matchId) {
       setDisplayAccess(null);
       return;
     }
@@ -1092,6 +1093,21 @@ export default function MatchScreen() {
                 </div>
               </section>
             ) : null}
+            <section className="game-settings-spectator stack">
+              <h3>Remote Match Viewing</h3>
+              <p className="helper-text">
+                Share this match-specific code with a Personal Plus user so they can follow the score remotely.
+              </p>
+              <div className="field">
+                <label htmlFor="match_viewer_code">Match Viewing Code</label>
+                <input
+                  className="read-only-input"
+                  id="match_viewer_code"
+                  readOnly
+                  value={viewerCode || "Viewing code unavailable."}
+                />
+              </div>
+            </section>
             {error ? <div className="notice error">{error}</div> : null}
             <div className="button-row game-settings-actions">
               <button disabled={loading} type="submit">

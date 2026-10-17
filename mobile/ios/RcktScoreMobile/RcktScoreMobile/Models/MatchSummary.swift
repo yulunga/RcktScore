@@ -17,6 +17,7 @@ struct MatchSummary: Decodable, Identifiable {
     let winnerName: String?
     let state: MatchState?
     let locked: Bool
+    let viewerCode: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -36,6 +37,7 @@ struct MatchSummary: Decodable, Identifiable {
         case winnerName = "winner_name"
         case state
         case locked
+        case viewerCode = "viewer_code"
     }
 
     init(from decoder: Decoder) throws {
@@ -57,6 +59,7 @@ struct MatchSummary: Decodable, Identifiable {
         winnerName = try container.decodeIfPresent(String.self, forKey: .winnerName)
         state = try container.decodeIfPresent(MatchState.self, forKey: .state)
         locked = try container.decodeIfPresent(Bool.self, forKey: .locked) ?? false
+        viewerCode = try container.decodeIfPresent(String.self, forKey: .viewerCode)
     }
 }
 
@@ -641,6 +644,7 @@ struct MatchDisplayAccess: Decodable {
     let courtAlias: String
     let displayCode: String
     let displayCodeEnabled: Bool
+    let viewerCode: String?
 
     enum CodingKeys: String, CodingKey {
         case matchID = "match_id"
@@ -650,5 +654,6 @@ struct MatchDisplayAccess: Decodable {
         case courtAlias = "court_alias"
         case displayCode = "display_code"
         case displayCodeEnabled = "display_code_enabled"
+        case viewerCode = "viewer_code"
     }
 }

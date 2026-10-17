@@ -285,10 +285,12 @@ def test_personal_contract_caps_history_server_side():
     assert personal_plan_entitlements("personal_free") == {
         "history_limit": 3,
         "performance_enabled": False,
+        "remote_match_viewing_enabled": False,
     }
     assert personal_plan_entitlements("personal_plus") == {
         "history_limit": 100,
         "performance_enabled": True,
+        "remote_match_viewing_enabled": True,
     }
     assert personal_plan_contract()["personal_free"]["history_limit"] == 3
     assert personal_plan_contract()["personal_plus"]["history_limit"] == 100
