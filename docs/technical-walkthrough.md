@@ -459,6 +459,8 @@ full-width destructive buttons.
 `MatchScreen.jsx` retains shared loading, mutation, undo, match timer and network
 plumbing and starts a 90-second break only after an odd completed game, or a
 120-second break after a completed set, when `tennis_timed_breaks` is enabled.
+Migration `039_match_timed_breaks.sql` adds this per-match flag; it is separate
+from the setup default stored by migration `029_timed_break_defaults.sql`.
 Every web scoring mutation also sends a client-generated UUID through the
 existing `client_action_id` contract so a retried browser request cannot apply
 the same action twice.

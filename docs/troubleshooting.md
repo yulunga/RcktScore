@@ -452,6 +452,7 @@ If behavior seems impossible:
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
+- if match creation fails with an `UndefinedColumn` error for `tennis_timed_breaks`, apply migration `039_match_timed_breaks.sql`; migration `029_timed_break_defaults.sql` only adds the organisation-level setup default and does not add the per-match column
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
