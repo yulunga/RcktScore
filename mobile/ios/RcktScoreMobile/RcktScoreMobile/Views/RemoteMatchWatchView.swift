@@ -61,7 +61,7 @@ struct RemoteMatchWatchView: View {
                         HStack {
                             Label(isFinished ? "This match has finished" : "Updating automatically", systemImage: isFinished ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(isFinished ? Color.dashboardBrand : Color.green)
+                                .foregroundStyle(isFinished ? Color.remoteWatchBrand : Color.green)
                             Spacer()
                             Text((match.sport ?? "Match").replacingOccurrences(of: "_", with: " ").capitalized)
                                 .font(.caption.weight(.bold))
@@ -71,7 +71,7 @@ struct RemoteMatchWatchView: View {
                         if watch?.saved == true {
                             Label("Added to Viewed Matches", systemImage: "bookmark.fill")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.dashboardBrand)
+                                .foregroundStyle(Color.remoteWatchBrand)
                         } else {
                             Button {
                                 Task { await saveToProfile() }
@@ -84,7 +84,7 @@ struct RemoteMatchWatchView: View {
                         }
                     }
                     .padding(16)
-                    .background(Color.dashboardCardBackground)
+                    .background(Color.remoteWatchCardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                     scoreCard
@@ -93,7 +93,7 @@ struct RemoteMatchWatchView: View {
             }
             .padding(18)
         }
-        .background(Color.dashboardBackgroundStart.ignoresSafeArea())
+        .background(Color.remoteWatchBackground.ignoresSafeArea())
         .task(id: code) {
             await loadWatch()
             while !Task.isCancelled, watch?.finished != true {
@@ -113,7 +113,7 @@ struct RemoteMatchWatchView: View {
             scoreColumn(name: player2Name, points: player2Points, games: player2Games)
         }
         .padding(14)
-        .background(Color.dashboardCardBackground)
+        .background(Color.remoteWatchCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
@@ -125,14 +125,14 @@ struct RemoteMatchWatchView: View {
                 .multilineTextAlignment(.center)
             Text(isFinished ? String(games) : points)
                 .font(.system(size: 52, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.dashboardBrand)
+                .foregroundStyle(Color.remoteWatchBrand)
             Text("\(games) \(games == 1 ? "game" : "games")")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
-        .background(Color.dashboardInnerCardBackground)
+        .background(Color.remoteWatchInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -161,17 +161,17 @@ struct RemoteMatchWatchView: View {
                         Spacer()
                         Text(eventScore(event))
                             .font(.headline.monospacedDigit())
-                            .foregroundStyle(Color.dashboardBrand)
+                            .foregroundStyle(Color.remoteWatchBrand)
                     }
                     .padding(12)
-                    .background(Color.dashboardInnerCardBackground)
+                    .background(Color.remoteWatchInnerCardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color.dashboardCardBackground)
+        .background(Color.remoteWatchCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
@@ -231,4 +231,17 @@ struct RemoteMatchWatchView: View {
         }
         isSaving = false
     }
+}
+
+private extension Color {
+    static let remoteWatchBrand = Color(red: 18 / 255, green: 116 / 255, blue: 208 / 255)
+    static let remoteWatchBackground = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 14 / 255, green: 22 / 255, blue: 33 / 255, alpha: 1)
+                : UIColor(red: 233 / 255, green: 242 / 255, blue: 250 / 255, alpha: 1)
+        }
+    )
+    static let remoteWatchCardBackground = Color(UIColor.secondarySystemGroupedBackground)
+    static let remoteWatchInnerCardBackground = Color(UIColor.tertiarySystemGroupedBackground)
 }
