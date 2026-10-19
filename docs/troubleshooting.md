@@ -113,10 +113,14 @@ On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
 On the native Historic Match screen, Match Information should initially be
-collapsed. If timeline rows show empty opponent circles, repeated surnames, or
-large gaps, inspect `HistoricMatchView`: inactive sides should render no marker,
-names should be normalized before display, and point rows should use the compact
-three-point stack spacing.
+collapsed, and the Match Time disclosure should remain a shallow, low-padding
+card in its closed state. Each game header should show player one, its completed point score,
+and player two on one row; point rows should centre only the winner and time,
+and a coloured cumulative games-score row should follow each completed
+squash/racketball game. If timeline rows show empty opponent circles, repeated
+surnames, redundant Point labels, or large gaps, inspect `HistoricMatchView`:
+inactive sides should render no marker, names should be normalized before
+display, and point rows should use the compact three-point stack spacing.
 Matches History uses 20-card pages that form exactly ten
 two-card desktop rows. If full-width cards repeat below those rows, inspect the
 desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until

@@ -237,7 +237,7 @@ struct HistoricMatchView: View {
     }
 
     private func timeCard(_ match: MatchDetail) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showGameTimes.toggle()
@@ -259,9 +259,10 @@ struct HistoricMatchView: View {
                         .font(.title3)
                         .foregroundStyle(Color.rcktBlue)
                 }
-                .padding(16)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
                 .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -279,20 +280,20 @@ struct HistoricMatchView: View {
                                     .font(.caption.weight(.bold))
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 7)
                             .background(Color(.secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
                 }
             }
         }
-        .padding(18)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.rcktCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
     }
@@ -313,20 +314,20 @@ struct HistoricMatchView: View {
                             HStack {
                                 Text("\(isTennisStyle ? "Set" : "Game") \(game.gameNumber)")
                                     .font(.subheadline.weight(.bold))
-                                Spacer()
-                                if let result = game.result {
-                                    Text("\(result.player1Score)-\(result.player2Score)")
-                                        .font(.subheadline.weight(.bold))
-                                        .foregroundStyle(Color.rcktBlue)
-                                }
                             }
 
-                            HStack {
-                                Text(match.player1Name)
+                            HStack(spacing: 8) {
+                                Text(fullName(firstName: match.player1Name, surname: match.player1Surname))
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(match.player2Name)
+
+                                Text(game.result.map { "\($0.player1Score)-\($0.player2Score)" } ?? "")
+                                    .font(.subheadline.weight(.heavy))
+                                    .foregroundStyle(Color.rcktBlue)
+                                    .frame(minWidth: 48)
+
+                                Text(fullName(firstName: match.player2Name, surname: match.player2Surname))
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -338,21 +339,18 @@ struct HistoricMatchView: View {
                                     if isTennisStyle {
                                         HStack(spacing: 8) {
                                             VStack(alignment: .leading, spacing: 0) {
-                                                Text(entry.title)
-                                                    .font(.caption2.weight(.semibold))
-                                                    .foregroundStyle(.secondary)
                                                 Text(timelineWinnerName(entry, match: match))
                                                     .font(.caption.weight(.bold))
                                                     .lineLimit(1)
+
+                                                if let timestamp = entry.timestamp {
+                                                    Text(formatTimeOnly(timestamp))
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.secondary)
+                                                }
                                             }
 
                                             Spacer(minLength: 4)
-
-                                            if let timestamp = entry.timestamp {
-                                                Text(formatTimeOnly(timestamp))
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            }
 
                                             if let score = entry.score {
                                                 Text(score)
@@ -361,18 +359,15 @@ struct HistoricMatchView: View {
                                             }
                                         }
                                         .frame(maxWidth: .infinity)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
                                         .background(Color(.secondarySystemBackground))
                                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     } else {
-                                        HStack(alignment: .center, spacing: 8) {
+                                        HStack(alignment: .center, spacing: 6) {
                                             historicTimelineSide(playerSide: "player1", entry: entry, tint: Color.rcktBlue, serveFirst: true)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .frame(width: 58, alignment: .leading)
                                             VStack(spacing: 0) {
-                                                Text(entry.title)
-                                                    .font(.caption2.weight(.semibold))
-                                                    .foregroundStyle(.secondary)
                                                 Text(timelineWinnerName(entry, match: match))
                                                     .font(.caption.weight(.bold))
                                                     .multilineTextAlignment(.center)
@@ -381,12 +376,12 @@ struct HistoricMatchView: View {
                                                     Text(formatTimeOnly(timestamp)).font(.caption2).foregroundStyle(.secondary)
                                                 }
                                             }
-                                            .frame(minWidth: 76)
+                                            .frame(maxWidth: .infinity)
                                             historicTimelineSide(playerSide: "player2", entry: entry, tint: Color.rcktSlate, serveFirst: false)
-                                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                                .frame(width: 58, alignment: .trailing)
                                         }
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
                                         .background(Color(.secondarySystemBackground))
                                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                                     }
@@ -407,6 +402,16 @@ struct HistoricMatchView: View {
                                         )
                                     }
                                 }
+                            }
+
+                            if !isTennisStyle, game.result != nil {
+                                Text("Games \(completedGamesScore(after: game.gameNumber))")
+                                    .font(.subheadline.weight(.heavy))
+                                    .foregroundStyle(Color.rcktBlue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 5)
+                                    .background(Color.rcktBlue.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
                         }
                         .padding(.bottom, 6)
@@ -492,7 +497,7 @@ struct HistoricMatchView: View {
     private func historicServeMarker(label: String?) -> some View {
         Circle()
             .fill(Color.rcktServe)
-            .frame(width: 20, height: 20)
+            .frame(width: 18, height: 18)
             .overlay(
                 Group {
                     if let label, !label.isEmpty {
@@ -508,7 +513,7 @@ struct HistoricMatchView: View {
         HStack(spacing: 6) {
             Circle()
                 .fill(tint)
-                .frame(width: 32, height: 32)
+                .frame(width: 28, height: 28)
                 .overlay(
                     Group {
                         if let score {
@@ -521,6 +526,15 @@ struct HistoricMatchView: View {
                     }
                 )
         }
+    }
+
+    private func completedGamesScore(after gameNumber: Int) -> String {
+        let completedGames = (live?.gameHistory ?? [])
+            .filter { $0.gameNumber <= gameNumber }
+
+        let player1Games = completedGames.filter { $0.player1Score > $0.player2Score }.count
+        let player2Games = completedGames.filter { $0.player2Score > $0.player1Score }.count
+        return "\(player1Games)–\(player2Games)"
     }
 
     private func gameDetailsLine(for match: MatchDetail) -> String {
