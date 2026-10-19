@@ -506,6 +506,11 @@ former Edit/Start labels. It does not show readiness copy or the creation time.
 3. The backend authenticates that personal membership, verifies its current plan is `personal_plus`, resolves the code globally, and returns a read-only serialized match. This deliberately does not grant access to any scoring mutation.
 4. Both clients refresh the lookup every five seconds while the match is active. Once complete, the same response sets `finished` and supplies the retained result and event timeline.
 5. `POST /match_watch/save` idempotently links that match to the viewer's personal organisation. `GET /dashboard/{organization_id}` then returns it in `viewed_matches` across web and iOS.
+
+The native completed-match screen opens with Match Information collapsed. Its
+point timeline shows `Point`, `Stroke`, or `Let` followed by one normalized
+player name, renders markers only on the awarded player's side, and uses tight
+row spacing so substantially more events fit before scrolling.
 6. Migration `038_personal_plus_match_watch.sql` supplies `matches.viewer_code` and `match_view_profiles` and must be applied before deploying the new endpoints.
 
 ## 12. Match Load and Scoring Flow

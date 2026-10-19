@@ -112,6 +112,11 @@ the Active Matches and Scheduled Matches headings open their corresponding tabs.
 On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
+On the native Historic Match screen, Match Information should initially be
+collapsed. If timeline rows show empty opponent circles, repeated surnames, or
+large gaps, inspect `HistoricMatchView`: inactive sides should render no marker,
+names should be normalized before display, and point rows should use the compact
+three-point stack spacing.
 Matches History uses 20-card pages that form exactly ten
 two-card desktop rows. If full-width cards repeat below those rows, inspect the
 desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until
