@@ -109,6 +109,9 @@ Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with six-card pages over at most 24 records,
 forming three complete two-card desktop rows. Its heading opens Matches → History;
 the Active Matches and Scheduled Matches headings open their corresponding tabs.
+On native iOS, a scheduled card should show the court only once, omit the
+creation timestamp and readiness label, and expose circular pencil and play
+controls with accessible Edit/Start labels.
 Matches History uses 20-card pages that form exactly ten
 two-card desktop rows. If full-width cards repeat below those rows, inspect the
 desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until

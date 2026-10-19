@@ -495,6 +495,9 @@ can be prepared while another match is live. The dashboard/Matches view lists
 it and calls `POST /start_scheduled_match` later. Activation is disabled in the
 web UI and rejected server-side with `ACTIVE_MATCH_EXISTS` until the current
 personal match has ended.
+The native scheduled list keeps each row compact: court and format appear once,
+the two player names share one line, and circular pencil/play icons replace the
+former Edit/Start labels. It does not show readiness copy or the creation time.
 
 ### Personal Plus remote viewing
 

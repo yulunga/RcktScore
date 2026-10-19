@@ -415,6 +415,7 @@ Current organisation-settings behavior:
 - Personal Free, Personal Plus, and club Squash/Racketball matches may persist `handicap_enabled`, bands, and starting offsets. Handicap scoring is not plan-gated and has no organisation-level entitlement switch. Fresh-match detection compares the live score with those offsets so a selected warm-up still starts correctly for handicap matches
 - Personal Plus may create any implemented sport with `status: scheduled`, even while its single permitted active match is still running. Personal Free creation remains active-only. `POST /start_scheduled_match` returns `409 ACTIVE_MATCH_EXISTS` if a personal account tries to activate a scheduled match before ending its current active match
 - Personal Plus may create and list scheduled personal matches; Personal Free remains server-restricted to immediate active matches even if a client submits `status: scheduled`.
+- native iOS presents each scheduled response as a compact card using the existing court, player and format fields; it intentionally omits `updated_at` from that card and activates or edits through icon-only controls without changing the API contract.
 - at a tennis Golden Point 40-40 score, the next point is accepted immediately and is played from the normal 40-40/Right service side; padel instead requires `POST /event_action` with `action_type: receiver_choice` before the point, using `side: Right` or `side: Left` to identify the selected receiving partner's court
 
 ### Match and scoring routes

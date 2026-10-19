@@ -2948,73 +2948,83 @@ struct DashboardView: View {
     private func scheduledMatchCard(_ match: MatchSummary, action: @escaping () -> Void) -> some View {
         let player1 = splitPlayerName(match.player1Name, surname: match.player1Surname)
         let player2 = splitPlayerName(match.player2Name, surname: match.player2Surname)
+        let player1DisplayName = [player1.firstName, player1.surname]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let player2DisplayName = [player2.firstName, player2.surname]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let courtName = match.courtName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let formatDescription = "Best of \(match.bestOf ?? 3)"
 
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                if let courtName = match.courtName, !courtName.isEmpty {
-                    Text(courtName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Text("Ready to start")
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(courtName.isEmpty ? formatDescription : "\(courtName) • \(formatDescription)")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.dashboardBrand)
-            }
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
 
-            HStack(alignment: .center, spacing: 12) {
-                playerColumn(firstName: player1.firstName, surname: player1.surname, alignment: .leading)
+                HStack(spacing: 6) {
+                    Text(player1DisplayName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-                Spacer(minLength: 4)
-
-                VStack(spacing: 4) {
-                    Text(match.courtName ?? "Court")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.dashboardInk.opacity(0.64))
-                    Text("Best of \(match.bestOf ?? 3)")
+                    Text("vs")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                }
 
-                Spacer(minLength: 4)
-
-                playerColumn(firstName: player2.firstName, surname: player2.surname, alignment: .trailing)
-
-                VStack(spacing: 8) {
-                    Button(startingScheduledMatchID == match.id ? "Starting..." : "Start") {
-                        action()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.dashboardBrand)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
-                    .buttonStyle(.plain)
-                    .disabled(startingScheduledMatchID != nil)
-                    .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
-
-                    Button("Edit") {
-                        navigationTarget = MatchRoute(id: match.id, presentation: .live(openSettingsOnLoad: true))
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.dashboardBrand)
-                    .buttonStyle(.plain)
+                    Text(player2DisplayName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
                 }
             }
 
-            if let updatedAt = match.updatedAt {
-                Text("Scheduled \(formatDate(updatedAt))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+
+            HStack(spacing: 8) {
+                Button {
+                    navigationTarget = MatchRoute(id: match.id, presentation: .live(openSettingsOnLoad: true))
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                        .frame(width: 38, height: 38)
+                        .background(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.92))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit scheduled match")
+
+                Button {
+                    action()
+                } label: {
+                    Group {
+                        if startingScheduledMatchID == match.id {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "play.fill")
+                                .font(.subheadline.weight(.bold))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.dashboardBrand)
+                    .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(startingScheduledMatchID == match.id ? "Starting scheduled match" : "Start scheduled match")
+                .disabled(startingScheduledMatchID != nil)
+                .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
             }
         }
-        .padding(16)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func recentMatchCard(_ match: MatchSummary) -> some View {

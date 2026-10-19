@@ -402,6 +402,10 @@ struct MatchResponseData: Decodable {
     let match: MatchDetail
 }
 
+private struct APIErrorEnvelope: Decodable {
+    let error: APIErrorResponse?
+}
+
 struct MatchDisplayAccessResponseData: Decodable {
     let displayAccess: MatchDisplayAccess
 }
@@ -1397,19 +1401,29 @@ final class APIClient {
             throw APIErrorResponse(code: "network_error", message: "Invalid network response.", details: nil)
         }
 
-        let envelope = try decoder.decode(APIEnvelope<T>.self, from: data)
+        guard (200..<300).contains(http.statusCode) else {
+            if let errorEnvelope = try? decoder.decode(APIErrorEnvelope.self, from: data),
+               let error = errorEnvelope.error {
+                handleSessionInvalidationIfNeeded(statusCode: http.statusCode, error: error)
+                throw error
+            }
 
-        if (200..<300).contains(http.statusCode), envelope.success {
-            return envelope
+            throw APIErrorResponse(
+                code: "http_\(http.statusCode)",
+                message: "The server could not complete the request (HTTP \(http.statusCode)). Please try again.",
+                details: nil
+            )
         }
 
-        let error = envelope.error ?? APIErrorResponse(
-            code: "request_failed",
-            message: "Request failed.",
-            details: "HTTP \(http.statusCode)"
-        )
-        handleSessionInvalidationIfNeeded(statusCode: http.statusCode, error: error)
-        throw error
+        let envelope = try decoder.decode(APIEnvelope<T>.self, from: data)
+        guard envelope.success else {
+            throw envelope.error ?? APIErrorResponse(
+                code: "request_failed",
+                message: "Request failed.",
+                details: "HTTP \(http.statusCode)"
+            )
+        }
+        return envelope
     }
 
     private func handleSessionInvalidationIfNeeded(statusCode: Int, error: APIErrorResponse) {
