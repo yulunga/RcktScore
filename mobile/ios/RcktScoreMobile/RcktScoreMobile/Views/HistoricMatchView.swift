@@ -77,11 +77,11 @@ struct HistoricMatchView: View {
     }
     private var historicMatchDurationSeconds: Int {
         let recordedDuration = match?.matchDurationSeconds ?? live?.matchDurationSeconds ?? 0
-        if recordedDuration > 0 {
-            return recordedDuration
-        }
+        let derivedGameDuration = gameDurations.reduce(0) { $0 + $1.seconds }
 
-        return gameDurations.reduce(0) { $0 + $1.seconds }
+        // Older matches can contain a stale recorded timer value. The total
+        // shown above the game rows must never be shorter than those rows.
+        return max(0, max(recordedDuration, derivedGameDuration))
     }
 
     var body: some View {
@@ -491,6 +491,10 @@ struct HistoricMatchView: View {
                     Spacer(minLength: 0)
                 }
             }
+        } else {
+            Color.clear
+                .frame(width: 1, height: 28)
+                .accessibilityHidden(true)
         }
     }
 
@@ -716,8 +720,9 @@ struct HistoricMatchView: View {
     }
 
     private func formatSeconds(_ value: Int) -> String {
-        let minutes = String(max(0, value) / 60).padding(toLength: 2, withPad: "0", startingAt: 0)
-        let seconds = String(max(0, value) % 60).padding(toLength: 2, withPad: "0", startingAt: 0)
+        let clampedValue = max(0, value)
+        let minutes = String(format: "%02d", clampedValue / 60)
+        let seconds = String(format: "%02d", clampedValue % 60)
         return "\(minutes):\(seconds)"
     }
 

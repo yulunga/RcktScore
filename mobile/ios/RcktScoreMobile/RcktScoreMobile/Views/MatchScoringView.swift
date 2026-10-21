@@ -147,6 +147,10 @@ struct MatchScoringView: View {
         live?.matchComplete == true || match?.status.lowercased() == "completed"
     }
 
+    private var isScheduledMatch: Bool {
+        match?.status.lowercased() == "scheduled"
+    }
+
     private var undoLocked: Bool {
         guard isMatchComplete, let completedAt = parseISODate(match?.completedAt) else {
             return false
@@ -156,7 +160,7 @@ struct MatchScoringView: View {
     }
 
     private var canToggleCurrentServeSide: Bool {
-        guard !isTennisMatch else {
+        guard !isTennisMatch, !isScheduledMatch else {
             return false
         }
 
@@ -913,7 +917,7 @@ struct MatchScoringView: View {
                 scoreSummaryBanner(match, compact: compact)
             }
 
-            if match.status.lowercased() == "scheduled" {
+            if isScheduledMatch {
                 HStack {
                     Spacer()
 
@@ -942,7 +946,7 @@ struct MatchScoringView: View {
                     state: live,
                     compact: compact,
                     landscapeTablet: landscapeTablet,
-                    scoringDisabled: isMutating || isMatchComplete || timerPhase != .matchLive,
+                    scoringDisabled: isMutating || isMatchComplete || isScheduledMatch || timerPhase != .matchLive,
                     onScore: { side in Task { await addPoint(for: side) } },
                     onChooseReceiverCourt: { side in Task { await chooseNoAdReceiverCourt(side) } }
                 )
@@ -1079,8 +1083,8 @@ struct MatchScoringView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
             .buttonStyle(.plain)
-            .disabled(isMatchComplete || timerPhase == .firstServer)
-            .opacity((isMatchComplete || timerPhase == .firstServer) ? 0.8 : 1)
+            .disabled(isMatchComplete || isScheduledMatch || timerPhase == .firstServer)
+            .opacity((isMatchComplete || isScheduledMatch || timerPhase == .firstServer) ? 0.8 : 1)
             .accessibilityIdentifier("scoring.timerButton")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1112,6 +1116,8 @@ struct MatchScoringView: View {
         }
         .buttonStyle(.plain)
         .frame(width: isTabletLandscape ? 170 : (compactLayout ? 116 : 132))
+        .disabled(isScheduledMatch)
+        .opacity(isScheduledMatch ? 0.72 : 1)
         .accessibilityIdentifier("scoring.actionButton")
     }
 
@@ -1985,11 +1991,11 @@ struct MatchScoringView: View {
 
             if canChoosePlayerShirtColors {
                 shirtColorEditor(
-                    title: "Player 1 Shirt",
+                    title: playerShirtLabel(for: "player1"),
                     selection: $gameSettingsForm.player1ShirtColor
                 )
                 shirtColorEditor(
-                    title: "Player 2 Shirt",
+                    title: playerShirtLabel(for: "player2"),
                     selection: $gameSettingsForm.player2ShirtColor
                 )
             }
@@ -2062,39 +2068,62 @@ struct MatchScoringView: View {
     }
 
     private func shirtColorEditor(title: String, selection: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 12) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10) {
+            Spacer(minLength: 8)
+
+            Menu {
                 ForEach(shirtColorOptions) { option in
                     Button {
                         selection.wrappedValue = option.value
                     } label: {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(option.fill)
-                                .frame(width: 18, height: 18)
-                                .overlay(Circle().stroke(option.border, lineWidth: 1))
-                            Text(option.label)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.primary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(selection.wrappedValue == option.value ? Color.rcktBlue.opacity(0.12) : Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(selection.wrappedValue == option.value ? Color.rcktBlue : Color.rcktBorder, lineWidth: 1.5)
-                        )
+                        shirtColorMenuIcon(for: option)
                     }
-                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.label)
                 }
+            } label: {
+                let selectedOption = shirtColorOptions.first(where: { $0.value == selection.wrappedValue })
+                    ?? shirtColorOptions[0]
+
+                Circle()
+                    .fill(selectedOption.fill)
+                    .frame(width: 24, height: 24)
+                    .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
             }
+            .accessibilityLabel("\(title) colour")
+            .accessibilityValue(shirtColorOptions.first(where: { $0.value == selection.wrappedValue })?.label ?? "Navy")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func playerShirtLabel(for side: String) -> String {
+        guard let match else {
+            return side == "player2" ? "Player 2 Shirt" : "Player 1 Shirt"
+        }
+
+        let name = side == "player2"
+            ? fullName(firstName: match.player2Name, surname: match.player2Surname)
+            : fullName(firstName: match.player1Name, surname: match.player1Surname)
+        return "\(name) Shirt"
+    }
+
+    private func shirtColorMenuIcon(for option: ShirtColorOption) -> Image {
+        let size = CGSize(width: 18, height: 18)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            let circleRect = CGRect(x: 1, y: 1, width: 16, height: 16)
+            UIColor(option.fill).setFill()
+            context.cgContext.fillEllipse(in: circleRect)
+            UIColor(option.border).setStroke()
+            context.cgContext.setLineWidth(1)
+            context.cgContext.strokeEllipse(in: circleRect)
+        }
+
+        return Image(uiImage: image).renderingMode(.original)
     }
 
     private func dashboardLikeError(_ message: String) -> some View {
@@ -2257,6 +2286,14 @@ struct MatchScoringView: View {
         await performMutation {
             try await container.apiClient.startScheduledMatch(matchID: matchID)
         }
+
+        guard let updatedMatch = match,
+              updatedMatch.status.lowercased() != "scheduled" else {
+            return
+        }
+
+        bootstrappedMatchID = nil
+        bootstrapTimerIfNeeded(for: updatedMatch)
     }
 
     private func bootstrapTimerIfNeeded(for match: MatchDetail) {
@@ -2268,6 +2305,15 @@ struct MatchScoringView: View {
         previousGameHistoryCount = live?.gameHistory.count ?? 0
         previousTennisGameCompletionSignature = latestTennisGameCompletionSignature
         durationSyncedMatchID = nil
+
+        if match.status.lowercased() == "scheduled" {
+            clearStoredTimerState(matchID: match.id)
+            timerPhase = .matchLive
+            timerSeconds = 0
+            matchDurationSeconds = 0
+            timerRunning = false
+            return
+        }
 
         if let storedState = readStoredTimerState(matchID: match.id) {
             let optionalTimerPhase = [
@@ -2412,6 +2458,11 @@ struct MatchScoringView: View {
             return
         }
 
+        if match.status.lowercased() == "scheduled" {
+            clearStoredTimerState(matchID: match.id)
+            return
+        }
+
         if isMatchComplete {
             clearStoredTimerState(matchID: match.id)
             return
@@ -2429,7 +2480,7 @@ struct MatchScoringView: View {
     }
 
     private func advanceTimerTick() {
-        guard timerRunning else {
+        guard timerRunning, match?.status.lowercased() != "scheduled" else {
             return
         }
 
@@ -2606,7 +2657,7 @@ struct MatchScoringView: View {
     }
 
     private func addPoint(for side: String) async {
-        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         guard !(isPadelMatch
             && live?.tennisNoAdScoring == true
             && live?.isTieBreak == false
@@ -2619,7 +2670,7 @@ struct MatchScoringView: View {
     }
 
     private func chooseNoAdReceiverCourt(_ side: String) async {
-        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .receiverChoice,
@@ -2630,14 +2681,14 @@ struct MatchScoringView: View {
     }
 
     private func awardStroke(to side: String) async {
-        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .stroke, matchID: matchID, playerSide: side)
         }
     }
 
     private func callLet(awardedTo side: String? = nil) async {
-        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .letCall,
@@ -2665,7 +2716,7 @@ struct MatchScoringView: View {
     }
 
     private func toggleServeSide(current: String) async {
-        guard !isMutating, !isMatchComplete, timerPhase == .matchLive else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         let nextSide = current.lowercased() == "left" ? "Right" : "Left"
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .serveSide, matchID: matchID, side: nextSide)
@@ -2690,7 +2741,7 @@ struct MatchScoringView: View {
     }
 
     private func endMatchEarly() async {
-        guard !isMutating, !isMatchComplete else { return }
+        guard !isMutating, !isMatchComplete, !isScheduledMatch else { return }
 
         let finalDuration = max(0, resolveMatchDurationSeconds())
         timerRunning = false

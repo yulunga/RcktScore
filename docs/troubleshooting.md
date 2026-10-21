@@ -119,8 +119,24 @@ and player two on one row; point rows should centre only the winner and time,
 and a coloured cumulative games-score row should follow each completed
 squash/racketball game. If timeline rows show empty opponent circles, repeated
 surnames, redundant Point labels, or large gaps, inspect `HistoricMatchView`:
-inactive sides should render no marker, names should be normalized before
-display, and point rows should use the compact three-point stack spacing.
+inactive sides should render an invisible fixed-width spacer rather than a
+marker, names should be normalized before display, and point rows should use
+the compact three-point stack spacing. The equal left/right slots are required
+to keep the winner column centred regardless of which player won the point.
+All duration values must use normalized `MM:SS`; for example, seven seconds is
+`07`, never `70`. The Match Time total uses the greater of the recorded
+`match_duration_seconds` value or the sum of event-derived game/set durations,
+so it cannot be shorter than the expanded timing rows. If it is, inspect
+`HistoricMatchView.formatSeconds`, `gameDurations`, and
+`historicMatchDurationSeconds`.
+
+When opening a scheduled native match through its edit control, its clock must
+remain at `00:00` and its timer, score, and action controls must remain disabled
+until Start Match succeeds. If elapsed time appears before activation, inspect
+`bootstrapTimerIfNeeded`, `persistTimerState`, and `advanceTimerTick` for the
+explicit `scheduled` guard and clear the match-specific `rcktscore.matchTimer`
+snapshot. Match Settings should label the shirt rows with the saved player
+names and show only the selected colour dot until its menu is opened.
 Matches History uses 20-card pages that form exactly ten
 two-card desktop rows. If full-width cards repeat below those rows, inspect the
 desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until
