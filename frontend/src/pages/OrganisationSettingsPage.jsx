@@ -141,12 +141,6 @@ export default function OrganisationSettingsPage() {
     return `${window.location.origin}/scoreboard`;
   }, []);
 
-  useEffect(() => {
-    if (organizationId && !isAdmin && !isPersonalSession) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [isAdmin, isPersonalSession, navigate, organizationId]);
-
   const mapUrl = useMemo(() => {
     const address = organizationForm.org_address || settings?.organization?.org_address;
     if (!address) {
@@ -216,10 +210,6 @@ export default function OrganisationSettingsPage() {
 
     setActiveCountryIndex(0);
   }, [filteredCountries, showCountrySuggestions]);
-
-  if (organizationId && !isAdmin && !isPersonalSession) {
-    return null;
-  }
 
   function handleTabChange(nextTab) {
     setAddUserOpen(false);

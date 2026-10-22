@@ -31,7 +31,7 @@ test("shows a dedicated Squash historic match with game durations and a structur
     status: "completed",
     created_at: "2026-09-20T09:00:00Z",
     completed_at: "2026-09-20T09:32:00Z",
-    match_duration_seconds: 1920,
+    match_duration_seconds: 1200,
     court_name: "Court 1",
     player1_name: "Alex",
     player1_surname: "Ace",
@@ -48,7 +48,7 @@ test("shows a dedicated Squash historic match with game durations and a structur
       player2_games_won: 0,
       best_of: 3,
       score_type: 15,
-      match_duration_seconds: 1920,
+      match_duration_seconds: 1200,
       game_history: [
         { game_number: 1, player1_score: 15, player2_score: 10 },
         { game_number: 2, player1_score: 15, player2_score: 12 },
@@ -73,14 +73,22 @@ test("shows a dedicated Squash historic match with game durations and a structur
   await expect(page.getByText("Historic Match", { exact: true })).toHaveCount(0);
   await expect(page.getByText("A read-only record of the completed match.", { exact: true })).toHaveCount(0);
   await expect(page.locator(".dashboard-menu-row")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Expand match information" })).toBeVisible();
+  await expect(page.getByTestId("historic-match-information")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand match information" }).click();
   await expect(page.getByText("Squash", { exact: true })).toBeVisible();
   await expect(page.getByText("Handicap -2 | 2 • Best of 3 games • PAR-15")).toBeVisible();
   await expect(page.getByText(/20 Sep(?:t)? 2026/)).toBeVisible();
   await expect(page.getByText("10:00")).toBeVisible();
-  await expect(page.getByText("32:00")).toBeVisible();
+  await expect(page.getByText("25:00")).toBeVisible();
   await expect(page.getByText("Game 1", { exact: true })).toBeVisible();
-  await expect(page.getByText("Stroke to", { exact: true })).toBeVisible();
-  await expect(page.getByText("Serving: Alex Ace", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Point to", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Stroke to", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Serving: Alex Ace", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".historic-point__serve").first()).toHaveText("R");
+  await expect(page.locator(".historic-point__score--player1").first()).toHaveText("1–2");
+  await expect(page.getByTestId("historic-games-divider")).toHaveCount(2);
+  await expect(page.getByTestId("historic-games-divider").last()).toHaveText("Games 2–0");
   await expect(page.locator(".historic-match-summary")).toHaveCSS("position", "sticky");
 
   await page.getByRole("button", { name: /Match Time/ }).click();
@@ -131,12 +139,14 @@ test("uses tennis terminology, point labels, and separate game/set dividers @his
   });
 
   await page.goto("/match/historic-tennis-1/history");
+  await page.getByRole("button", { name: "Expand match information" }).click();
   await expect(page.getByText("Tennis", { exact: true })).toBeVisible();
   await expect(page.getByText("Best of 3 sets • Advantage scoring")).toBeVisible();
   await expect(page.getByText("Set 1", { exact: true })).toBeVisible();
   await expect(page.getByText("40–Ad", { exact: true })).toBeVisible();
-  await expect(page.getByText("Serving: Alex Ace", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Serving: Blair Backhand", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Serving: Alex Ace", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Serving: Blair Backhand", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".historic-point__tennis-score--player1").first()).toHaveText("15–0");
   await expect(page.getByTestId("historic-game-divider")).toHaveCount(2);
   await expect(page.getByTestId("historic-set-divider")).toHaveCount(1);
   await expect(page.getByText("Game, Set and Match", { exact: true })).toBeVisible();

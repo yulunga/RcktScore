@@ -83,7 +83,9 @@ timeline with API-mocked data that does not alter live matches.
 Use `npm run test:e2e:history:watch` to watch dedicated completed Squash and
 Tennis views. The fixtures verify match start time and duration, game/set
 durations, sport terminology, the grouped scoring timeline, and separate
-tennis game/set dividers. The web detail must use the plain shared header without
+tennis game/set dividers. The web view should match the native compact result,
+collapsed Match Information, shallow Match Time and dense timeline cards. The
+web detail must use the plain shared header without
 Historic Match copy or a separate History/Matches action row. Completed-match cards should navigate to
 `/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
 
@@ -112,13 +114,14 @@ the Active Matches and Scheduled Matches headings open their corresponding tabs.
 On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
-On the native Historic Match screen, Match Information should initially be
+On both native and web Historic Match screens, Match Information should initially be
 collapsed, and the Match Time disclosure should remain a shallow, low-padding
 card in its closed state. Each game header should show player one, its completed point score,
 and player two on one row; point rows should centre only the winner and time,
 and a coloured cumulative games-score row should follow each completed
 squash/racketball game. If timeline rows show empty opponent circles, repeated
-surnames, redundant Point labels, or large gaps, inspect `HistoricMatchView`:
+surnames, redundant Point labels, server-name copy, or large gaps, inspect
+`HistoricMatchView` and `HistoricMatchPage`:
 inactive sides should render an invisible fixed-width spacer rather than a
 marker, names should be normalized before display, and point rows should use
 the compact three-point stack spacing. The equal left/right slots are required
@@ -127,8 +130,8 @@ All duration values must use normalized `MM:SS`; for example, seven seconds is
 `07`, never `70`. The Match Time total uses the greater of the recorded
 `match_duration_seconds` value or the sum of event-derived game/set durations,
 so it cannot be shorter than the expanded timing rows. If it is, inspect
-`HistoricMatchView.formatSeconds`, `gameDurations`, and
-`historicMatchDurationSeconds`.
+`HistoricMatchView.formatSeconds`, `gameDurations`,
+`historicMatchDurationSeconds`, `formatDuration`, and `segmentDuration`.
 
 When opening a scheduled native match through its edit control, its clock must
 remain at `00:00` and its timer, score, and action controls must remain disabled
@@ -266,6 +269,7 @@ Common symptoms:
 - dashboard loads but lists are empty
 - personal history seems unexpectedly short
 - settings load but some controls do not persist
+- selecting Settings from the Android/Chrome responsive menu returns to the dashboard
 
 What to check:
 
@@ -285,6 +289,7 @@ What to check:
 - if point or serving percentages are unexpectedly empty, inspect the retained `match_events` payloads because those figures come from scoring actions rather than the final score alone
 - `platform_settings.enabled_sports_web` / `enabled_sports_ios`, the organisation `enabled_sports`, and the membership's matching client column all contain the sport
 - whether the UI control is real or scaffold-only
+- for a non-admin club member, confirm `/settings` remains loaded with the view-only notice and disabled mutation controls; an immediate return to `/dashboard` indicates the obsolete client-side admin redirect is still deployed
 
 Important current truth:
 

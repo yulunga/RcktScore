@@ -23,7 +23,8 @@
     "test:e2e:history": "playwright test -c playwright.config.cjs e2e/historic-match-journey.spec.cjs --project=desktop-chromium",
     "test:e2e:history:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/historic-match-journey.spec.cjs --project=desktop-chromium --headed --workers=1",
     "test:e2e:header": "playwright test -c playwright.config.cjs e2e/header-scroll-navigation.spec.cjs --project=desktop-chromium",
-    "test:e2e:header:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/header-scroll-navigation.spec.cjs --project=desktop-chromium --headed --workers=1"
+    "test:e2e:header:watch": "E2E_SLOW_MO=350 playwright test -c playwright.config.cjs e2e/header-scroll-navigation.spec.cjs --project=desktop-chromium --headed --workers=1",
+    "test:e2e:mobile-settings": "playwright test -c playwright.config.cjs e2e/mobile-settings-navigation.spec.cjs --project=mobile-android"
   },
   "dependencies": {
     "react": "^18.3.1",
