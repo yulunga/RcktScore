@@ -33,9 +33,9 @@ test("shows a dedicated Squash historic match with game durations and a structur
     completed_at: "2026-09-20T09:32:00Z",
     match_duration_seconds: 1200,
     court_name: "Court 1",
-    player1_name: "Alex",
+    player1_name: "Alex Ace",
     player1_surname: "Ace",
-    player2_name: "Blair",
+    player2_name: "Blair Backhand",
     player2_surname: "Backhand",
     referee_name: "Sam Referee",
     score_type: 15,
@@ -82,6 +82,8 @@ test("shows a dedicated Squash historic match with game durations and a structur
   await expect(page.getByText("10:00")).toBeVisible();
   await expect(page.getByText("25:00")).toBeVisible();
   await expect(page.getByText("Game 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Alex Ace Ace", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Blair Backhand Backhand", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Point to", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Stroke to", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Serving: Alex Ace", { exact: true })).toHaveCount(0);

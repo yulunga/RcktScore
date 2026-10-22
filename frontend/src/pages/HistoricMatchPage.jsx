@@ -37,7 +37,22 @@ function formatDuration(value) {
 }
 
 function fullName(firstName, surname) {
-  return [firstName, surname].filter(Boolean).join(" ") || "Unknown player";
+  const trimmedFirstName = String(firstName || "").trim();
+  const trimmedSurname = String(surname || "").trim();
+
+  if (!trimmedFirstName) {
+    return trimmedSurname || "Unknown player";
+  }
+  if (!trimmedSurname) {
+    return trimmedFirstName;
+  }
+
+  const existingSurname = trimmedFirstName.split(/\s+/).at(-1);
+  if (existingSurname?.localeCompare(trimmedSurname, undefined, { sensitivity: "accent" }) === 0) {
+    return trimmedFirstName;
+  }
+
+  return `${trimmedFirstName} ${trimmedSurname}`;
 }
 
 function sportName(value) {
