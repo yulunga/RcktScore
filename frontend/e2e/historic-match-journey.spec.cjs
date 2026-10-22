@@ -74,6 +74,7 @@ test("shows a dedicated Squash historic match with game durations and a structur
   await expect(page.getByText("A read-only record of the completed match.", { exact: true })).toHaveCount(0);
   await expect(page.locator(".dashboard-menu-row")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Expand match information" })).toBeVisible();
+  await expect(page.locator(".historic-match-disclosure__icon")).toHaveCount(2);
   await expect(page.getByTestId("historic-match-information")).toHaveCount(0);
   await page.getByRole("button", { name: "Expand match information" }).click();
   await expect(page.getByText("Squash", { exact: true })).toBeVisible();
@@ -149,6 +150,10 @@ test("uses tennis terminology, point labels, and separate game/set dividers @his
   await expect(page.getByText("Serving: Alex Ace", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Serving: Blair Backhand", { exact: true })).toHaveCount(0);
   await expect(page.locator(".historic-point__tennis-score--player1").first()).toHaveText("15–0");
+  await expect(page.locator(".historic-point--tennis").first().locator(".historic-point__detail strong")).toHaveCount(0);
+  await expect(page.locator(".historic-point--tennis").first().locator(".historic-point__rail--left .historic-point__tennis-ball")).toHaveCount(1);
+  await expect(page.locator(".historic-point__tennis-score").nth(1)).toHaveText("Game");
+  await expect(page.getByText("Game–30", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("historic-game-divider")).toHaveCount(2);
   await expect(page.getByTestId("historic-set-divider")).toHaveCount(1);
   await expect(page.getByText("Game, Set and Match", { exact: true })).toBeVisible();

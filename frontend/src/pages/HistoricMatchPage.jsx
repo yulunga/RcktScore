@@ -87,6 +87,9 @@ function tennisScore(event) {
   const player1Label = payloadValue(payload, "point_player1_score_label", "pointPlayer1ScoreLabel");
   const player2Label = payloadValue(payload, "point_player2_score_label", "pointPlayer2ScoreLabel");
   if (player1Label != null && player2Label != null) {
+    if (String(player1Label).toLowerCase() === "game" || String(player2Label).toLowerCase() === "game") {
+      return "Game";
+    }
     return `${player1Label}–${player2Label}`;
   }
 
@@ -152,6 +155,15 @@ function courtName(match) {
       (candidate) => String(candidate || "").toLowerCase() === String(value).toLowerCase(),
     ) === index)
     .join(" • ") || "Not available";
+}
+
+function TennisBallIcon() {
+  return (
+    <svg aria-label="Serving" className="historic-point__tennis-ball" role="img" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M5.2 4.9c3.9 2 6.1 6.4 5.1 10.7a10.5 10.5 0 0 1-2.4 4.6M18.8 19.1c-3.9-2-6.1-6.4-5.1-10.7a10.5 10.5 0 0 1 2.4-4.6" />
+    </svg>
+  );
 }
 
 export default function HistoricMatchPage() {
@@ -297,7 +309,7 @@ export default function HistoricMatchPage() {
               onClick={() => setShowMatchInformation((current) => !current)}
             >
               <strong>Match Information</strong>
-              <span aria-hidden="true">{showMatchInformation ? "⌃" : "⌄"}</span>
+              <span className="historic-match-disclosure__icon" aria-hidden="true">{showMatchInformation ? "−" : "+"}</span>
             </button>
             {showMatchInformation ? (
               <div className="historic-match-meta-grid" data-testid="historic-match-information">
@@ -319,7 +331,7 @@ export default function HistoricMatchPage() {
               onClick={() => setShowDurations((current) => !current)}
             >
               <span><small>Match Time</small><strong>{formatDuration(matchDuration)}</strong></span>
-              <span aria-hidden="true">{showDurations ? "−" : "+"}</span>
+              <span className="historic-match-disclosure__icon" aria-hidden="true">{showDurations ? "−" : "+"}</span>
             </button>
             {showDurations ? (
               <div className="historic-match-duration-grid" data-testid="historic-segment-durations">
@@ -371,11 +383,16 @@ export default function HistoricMatchPage() {
                             <div className={`historic-point historic-point--${tennisStyle ? "tennis" : "racket"}`}>
                               {tennisStyle ? (
                                 <>
-                                  <div className="historic-point__detail">
-                                    <strong>{winnerName(side)}</strong>
+                                  <div className="historic-point__rail historic-point__rail--left">
+                                    {serverSide === "player1" ? <TennisBallIcon /> : null}
+                                  </div>
+                                  <div className="historic-point__detail historic-point__detail--tennis">
+                                    {score ? <b className={`historic-point__tennis-score historic-point__tennis-score--${side}`}>{score}</b> : null}
                                     <time>{formatTime(event.created_at)}</time>
                                   </div>
-                                  {score ? <b className={`historic-point__tennis-score historic-point__tennis-score--${side}`}>{score}</b> : null}
+                                  <div className="historic-point__rail historic-point__rail--right">
+                                    {serverSide === "player2" ? <TennisBallIcon /> : null}
+                                  </div>
                                 </>
                               ) : (
                                 <>

@@ -9143,8 +9143,9 @@ textarea {
   font-size: 1.08rem;
 }
 
-.historic-match-disclosure > span {
+.historic-match-disclosure__icon {
   display: grid;
+  flex: 0 0 30px;
   width: 30px;
   height: 30px;
   place-items: center;
@@ -9210,18 +9211,6 @@ textarea {
 .historic-match-time-toggle > span:first-child strong {
   color: var(--historic-blue);
   font-size: 1.35rem;
-}
-
-.historic-match-time-toggle > span:last-child {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--historic-blue) 14%, transparent);
-  color: var(--historic-blue);
-  font-size: 1.1rem;
-  font-weight: 800;
 }
 
 .historic-match-duration-grid {
@@ -9308,7 +9297,7 @@ textarea {
 }
 
 .historic-point--tennis {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
 }
 
 .historic-point__detail {
@@ -9318,6 +9307,11 @@ textarea {
 }
 
 .historic-point--racket .historic-point__detail {
+  justify-items: center;
+  text-align: center;
+}
+
+.historic-point__detail--tennis {
   justify-items: center;
   text-align: center;
 }
@@ -9397,6 +9391,25 @@ textarea {
   color: var(--historic-slate);
 }
 
+.historic-point__tennis-ball {
+  width: 22px;
+  height: 22px;
+  overflow: visible;
+}
+
+.historic-point__tennis-ball circle {
+  fill: #d8ed2f;
+  stroke: #a6bd00;
+  stroke-width: 1;
+}
+
+.historic-point__tennis-ball path {
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
 .historic-completion-divider {
   display: grid;
   justify-items: center;
@@ -9461,6 +9474,11 @@ textarea {
   }
 
   .historic-point--racket {
+    grid-template-columns: 58px minmax(0, 1fr) 58px;
+    padding-inline: 7px;
+  }
+
+  .historic-point--tennis {
     grid-template-columns: 58px minmax(0, 1fr) 58px;
     padding-inline: 7px;
   }

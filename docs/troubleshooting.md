@@ -85,6 +85,11 @@ Tennis views. The fixtures verify match start time and duration, game/set
 durations, sport terminology, the grouped scoring timeline, and separate
 tennis game/set dividers. The web view should match the native compact result,
 collapsed Match Information, shallow Match Time and dense timeline cards. The
+two disclosure cards must use the same circular plus/minus control. Tennis and
+Padel point rows should contain only a centred score and time, with one tennis
+ball on the recorded server's side; game-winning rows should say `Game`, not a
+mixed value such as `Game–30`. Squash and Racketball keep their winner-name,
+score and orange service-side-marker layout. The
 web detail must use the plain shared header without
 Historic Match copy or a separate History/Matches action row. Completed-match cards should navigate to
 `/match/{match_id}/history`; `/match/{match_id}` is reserved for live scoring.
