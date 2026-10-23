@@ -21,6 +21,8 @@ class ApiClient(
     private val httpClient: OkHttpClient,
     private val json: Json,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /** Called when the backend reports the session has ended, as iOS `onSessionInvalidated`. */
+    private val onSessionInvalidated: (code: String) -> Unit = {},
 ) {
     private val parser = ApiResponseParser(json)
 
@@ -32,9 +34,15 @@ class ApiClient(
         body: B,
         bodySerializer: SerializationStrategy<B>,
         deserializer: DeserializationStrategy<T>,
+        /** Overrides the signed-in token, e.g. to log out a session already cleared locally. */
+        bearerToken: String? = null,
     ): ApiResult<T> = execute(
-        Request.Builder().url(urlFor(path)).post(encode(body, bodySerializer)).build(),
+        Request.Builder().url(urlFor(path)).post(encode(body, bodySerializer))
+            .apply { bearerToken?.let { header("Authorization", "Bearer $it") } }
+            .build(),
         deserializer,
+        // An explicit token belongs to a session already ended locally: never sign out the current one.
+        reportSessionInvalidation = bearerToken == null,
     )
 
     suspend fun <B, T> put(
@@ -58,14 +66,19 @@ class ApiClient(
     private suspend fun <T> execute(
         request: Request,
         deserializer: DeserializationStrategy<T>,
+        reportSessionInvalidation: Boolean = true,
     ): ApiResult<T> = withContext(ioDispatcher) {
-        try {
+        val result = try {
             httpClient.newCall(request).execute().use { response ->
                 parser.parse(response.code, response.body.string(), deserializer)
             }
         } catch (e: IOException) {
             ApiResult.Failure(ApiError.Network(e))
         }
+        if (reportSessionInvalidation && result is ApiResult.Failure && result.error is ApiError.SessionInvalid) {
+            onSessionInvalidated((result.error as ApiError.SessionInvalid).code)
+        }
+        result
     }
 
     private companion object {

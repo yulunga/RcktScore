@@ -14,12 +14,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hitnscore.mobile.core.session.SessionState
-import com.hitnscore.mobile.feature.auth.LoginFrameworkScreen
+import com.hitnscore.mobile.feature.auth.LockScreen
+import com.hitnscore.mobile.feature.auth.LoginScreen
 import com.hitnscore.mobile.feature.shell.AppShellScreen
 
 @Composable
 fun HitNScoreApp(viewModel: AppViewModel) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
+    val biometricUnlockEnabled by viewModel.biometricUnlockEnabled.collectAsStateWithLifecycle()
 
     // Auth gate, like iOS ContentView: sign-in is never left on the back stack.
     AnimatedContent(
@@ -35,12 +37,18 @@ fun HitNScoreApp(viewModel: AppViewModel) {
                     .background(MaterialTheme.colorScheme.background),
             )
 
-            SessionState.SignedOut -> LoginFrameworkScreen(
-                onOpenPreview = viewModel::startPreviewSession,
+            is SessionState.SignedOut -> LoginScreen(signOutReason = state.reason)
+
+            is SessionState.Locked -> LockScreen(
+                displayName = state.displayName,
+                onUnlocked = viewModel::unlock,
+                onUsePassword = viewModel::signOut,
             )
 
             is SessionState.SignedIn -> AppShellScreen(
                 session = state,
+                biometricUnlockEnabled = biometricUnlockEnabled,
+                onBiometricUnlockChange = viewModel::setBiometricUnlockEnabled,
                 onContextSelected = viewModel::selectContext,
                 onSignOut = viewModel::signOut,
             )

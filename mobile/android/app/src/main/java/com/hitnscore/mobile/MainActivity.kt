@@ -1,17 +1,18 @@
 package com.hitnscore.mobile
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import com.hitnscore.mobile.app.AppViewModel
 import com.hitnscore.mobile.app.HitNScoreApp
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.session.SessionState
 
-class MainActivity : ComponentActivity() {
+/** FragmentActivity (a ComponentActivity) because BiometricPrompt requires it. */
+class MainActivity : FragmentActivity() {
     private val appViewModel: AppViewModel by viewModels { AppViewModel.Factory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,5 +29,15 @@ class MainActivity : ComponentActivity() {
                 HitNScoreApp(viewModel = appViewModel)
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        appViewModel.onAppForegrounded()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) appViewModel.onAppBackgrounded()
     }
 }

@@ -1,11 +1,20 @@
 package com.hitnscore.mobile.app
 
+import android.content.Context
+import com.hitnscore.mobile.core.auth.AuthService
+import com.hitnscore.mobile.core.auth.EncryptedSessionStore
+import com.hitnscore.mobile.core.auth.KeystoreCipher
+import com.hitnscore.mobile.core.auth.RemoteAuthService
+import com.hitnscore.mobile.core.auth.SharedSessionPreferences
 import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.network.AuthInterceptor
-import com.hitnscore.mobile.core.session.PreviewSessionRepository
+import com.hitnscore.mobile.core.session.AuthSessionRepository
 import com.hitnscore.mobile.core.session.SessionRepository
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 
@@ -13,15 +22,17 @@ import okhttp3.OkHttpClient
  * Manual dependency container, the Android counterpart of iOS `AppContainer.swift`.
  * Kept deliberately small; move to Hilt only if wiring grows beyond a single module.
  */
-class AppContainer {
+class AppContainer(context: Context) {
+    private val appContext = context.applicationContext
+
     val environment: AppEnvironment = AppEnvironment
+
+    /** Work that must outlive a screen, such as telling the backend about a sign-out. */
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val json: Json = Json {
         ignoreUnknownKeys = true
     }
-
-    // M1 replaces this with the encrypted, backend-backed session repository.
-    val sessionRepository: SessionRepository = PreviewSessionRepository()
 
     val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -34,6 +45,28 @@ class AppContainer {
     }
 
     val apiClient: ApiClient by lazy {
-        ApiClient(baseUrl = environment.apiBaseUrl, httpClient = httpClient, json = json)
+        ApiClient(
+            baseUrl = environment.apiBaseUrl,
+            httpClient = httpClient,
+            json = json,
+            onSessionInvalidated = { code -> sessionRepository.onSessionInvalidated(code) },
+        )
+    }
+
+    val authService: AuthService by lazy { RemoteAuthService(apiClient) }
+
+    val sessionRepository: SessionRepository by lazy {
+        AuthSessionRepository(
+            authService = authService,
+            sessionStore = EncryptedSessionStore(
+                preferences = appContext.getSharedPreferences("hitnscore_session", Context.MODE_PRIVATE),
+                cipher = KeystoreCipher(),
+                json = json,
+            ),
+            preferences = SharedSessionPreferences(
+                appContext.getSharedPreferences("hitnscore_preferences", Context.MODE_PRIVATE),
+            ),
+            backgroundScope = applicationScope,
+        )
     }
 }

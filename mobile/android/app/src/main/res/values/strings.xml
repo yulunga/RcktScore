@@ -2,12 +2,51 @@
 <resources>
     <!-- app_name is generated per environment flavour in app/build.gradle.kts. -->
     <string name="brand_name" translatable="false">HitNScore</string>
+    <string name="brand_hit" translatable="false">Hit </string>
+    <string name="brand_n" translatable="false">n</string>
+    <string name="brand_score" translatable="false"> Score</string>
 
-    <!-- Sign-in placeholder (replaced by real sign-in in M1) -->
-    <string name="login_subtitle">Racket sports scoring</string>
-    <string name="login_environment_ready">Connected to the %1$s API. Sign-in arrives in the next build.</string>
+    <!-- Sign in -->
+    <string name="login_username">Username</string>
+    <string name="login_username_hint">Enter username</string>
+    <string name="login_password">Password</string>
+    <string name="login_password_hint">Enter password</string>
+    <string name="login_show_password">Show password</string>
+    <string name="login_hide_password">Hide password</string>
+    <string name="login_sign_in">Sign in</string>
+    <string name="login_need_help">Need Help? Reset your password</string>
+    <string name="login_notice_expired">Your saved session has expired. Please sign in again.</string>
+    <string name="login_notice_replaced">You were signed out because this account signed in on another device.</string>
+    <string name="login_notice_ended">Your session has ended. Please sign in again.</string>
     <string name="login_environment_missing">The %1$s API address is not configured for this build.</string>
-    <string name="login_preview_button">Preview app navigation</string>
+    <string name="login_build_info">Version %1$s · %2$s</string>
+
+    <string name="conflict_title">Already signed in</string>
+    <string name="conflict_confirm">Sign out there and continue</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+
+    <string name="choose_account_title">Choose Account</string>
+    <string name="choose_account_body">This email is linked to more than one club or account. Choose where you want to sign in.</string>
+
+    <string name="reset_title">Password Reset</string>
+    <string name="reset_body">Enter the email address used for your account. If it is registered, we will send a reset link.</string>
+    <string name="reset_email">Account email</string>
+    <string name="reset_send">Send reset link</string>
+    <string name="reset_sent">If that email is registered, a reset link is on its way. Check your inbox.</string>
+
+    <!-- Lock -->
+    <string name="lock_welcome">Welcome back, %1$s</string>
+    <string name="lock_body">Unlock to continue to HitNScore.</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_use_password">Sign in with password instead</string>
+    <string name="lock_prompt_title">Unlock HitNScore</string>
+    <string name="lock_unavailable">Fingerprint, face or screen lock is not available right now. Sign in with your password.</string>
+
+    <!-- Biometric setting -->
+    <string name="biometric_setting_title">Quick unlock</string>
+    <string name="biometric_setting_body">Use fingerprint, face or screen lock to reopen the app.</string>
+    <string name="biometric_enable_prompt">Turn on quick unlock</string>
 
     <!-- Tabs -->
     <string name="tab_home">Home</string>
@@ -22,7 +61,9 @@
     <string name="context_switch_description">Change account context, currently %1$s</string>
 
     <!-- Placeholder tab bodies -->
+    <string name="home_welcome">Welcome, %1$s</string>
     <string name="home_placeholder">New matches will use %1$s. Change context before choosing a racket sport.</string>
     <string name="tab_placeholder">This screen is being built to match the iOS app.</string>
+    <string name="settings_signed_in_as">Signed in as %1$s</string>
     <string name="sign_out">Sign out</string>
 </resources>

@@ -3,7 +3,7 @@
 Native Android app for HitNScore. It is a separate Gradle project beside
 `mobile/ios/`; it does not alter or wrap the iOS workspace.
 
-## Current Status (M0 foundation, October 2026)
+## Current Status (M1 sign-in, October 2026)
 
 In place:
 
@@ -12,24 +12,33 @@ In place:
   app name and application ID suffix
 - brand splash screen (held until the stored session is read), adaptive and
   themed (monochrome) launcher icon made from the iOS brand artwork
-- auth-gated app root, like iOS `ContentView`: splash, sign-in placeholder, or
-  the signed-in shell
-- one `Scaffold` and bottom bar for the whole signed-in session, with the five
-  iOS tabs (Home, Matches, Analytics, Settings, Need Help) and Material icons
-- account-context switcher backed by a `SessionRepository` `StateFlow`
-- API layer for the v2 backend: `{ success, data, error, meta }` envelope,
-  bearer-token interceptor, typed errors (including the iOS session-invalidation
-  codes), OkHttp + kotlinx.serialization
-- HitNScore colour tokens and type scale, including tabular score numerals
-- release hardening: R8 shrinking, optional upload-key signing, CI-supplied
-  version codes, HTTPS-only network security config, no cloud backup or
-  device transfer of app data
-- unit tests (navigation, API parsing, session state) and a Compose smoke test
+- **sign-in against the v2 backend** as the `mobile_app` client, like iOS:
+  identity-first memberships, the legacy organisation chooser, the
+  "already signed in on another device" question with force sign-out, and
+  password-reset requests
+- **session** kept AES-256-GCM encrypted with an Android Keystore key, checked
+  against the server expiry on launch and on return to the app, and cleared
+  when the backend reports `SESSION_EXPIRED`, `SESSION_REPLACED`,
+  `SESSION_INVALID` or `SESSION_REQUIRED`
+- optional **quick unlock** (fingerprint, face or screen lock, Android 9+),
+  turned on in Settings; re-locks after 5 minutes in the background, as iOS
+- account-context switching between the user's real memberships, persisted
+- one `Scaffold` and bottom bar for the signed-in session, with the five iOS
+  tabs; tab bodies are placeholders until M2
+- API layer: `{ success, data, error, meta }` envelope, bearer-token
+  interceptor, typed errors, OkHttp + kotlinx.serialization
+- release hardening: R8, optional upload-key signing, CI version codes,
+  HTTPS-only, no cloud backup or device transfer of app data
+- unit tests (login decoding, session repository, API parsing, navigation)
+  and a Compose sign-in screen smoke test
 - a GitHub Actions workflow template in `ci/`
 
-Not yet built: real sign-in, persistence, dashboard data, scoring, offline
-queue, settings, billing. See the milestone plan in the Android review doc and
-`docs/mobile/android-parity-plan.md`.
+Not yet built: dashboard data, matches, scoring, offline queue, settings
+pages, help/feedback flows, "Want In" registration, billing.
+
+Sign-in is tested manually until a staging backend exists, because the dev
+build talks to the production API. Use the agreed test accounts (personal,
+club user, club admin); never commit their passwords.
 
 ## Requirements
 
@@ -114,9 +123,11 @@ mobile/android/
     app/                      AppContainer, AppViewModel, root composable, navigation
     core/config/              build environment
     core/designsystem/        colours, type scale, theme
+    core/auth/                login models, auth service, encrypted session store
     core/network/             API envelope, client, errors, auth header
     core/session/             session state, repository, context switcher
-    feature/auth/             sign-in (placeholder until M1)
+    feature/auth/             sign-in, lock screen, biometric prompt
+    feature/settings/         settings rows (quick unlock)
     feature/shell/            signed-in shell and tab placeholders
   app/src/test/               JVM unit tests
   app/src/androidTest/        Compose UI tests
@@ -126,5 +137,5 @@ mobile/android/
 ```
 
 Dependencies are wired by hand in `AppContainer`, mirroring iOS
-`AppContainer.swift`. Add Room, DataStore, WorkManager, biometrics and billing
+`AppContainer.swift`. Add Room, DataStore, WorkManager and billing
 only when their first feature is implemented.

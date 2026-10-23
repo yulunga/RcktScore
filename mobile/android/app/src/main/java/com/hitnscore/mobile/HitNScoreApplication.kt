@@ -5,5 +5,5 @@ import com.hitnscore.mobile.app.AppContainer
 
 class HitNScoreApplication : Application() {
     /** App-wide singletons. Survives rotation; recreated after process death. */
-    val container: AppContainer by lazy { AppContainer() }
+    val container: AppContainer by lazy { AppContainer(this) }
 }

@@ -30,6 +30,8 @@ import com.hitnscore.mobile.core.session.SessionState
 @Composable
 fun AppShellScreen(
     session: SessionState.SignedIn,
+    biometricUnlockEnabled: Boolean,
+    onBiometricUnlockChange: (Boolean) -> Unit,
     onContextSelected: (AccountContext) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -62,6 +64,8 @@ fun AppShellScreen(
         HitNScoreTabNavHost(
             navController = navController,
             session = session,
+            biometricUnlockEnabled = biometricUnlockEnabled,
+            onBiometricUnlockChange = onBiometricUnlockChange,
             onContextSelected = onContextSelected,
             onSignOut = onSignOut,
             modifier = Modifier

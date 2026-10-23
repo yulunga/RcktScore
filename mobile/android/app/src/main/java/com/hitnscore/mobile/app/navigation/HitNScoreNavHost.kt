@@ -4,6 +4,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -18,10 +20,20 @@ import com.hitnscore.mobile.feature.shell.TabPlaceholderScreen
 fun HitNScoreTabNavHost(
     navController: NavHostController,
     session: SessionState.SignedIn,
+    biometricUnlockEnabled: Boolean,
+    onBiometricUnlockChange: (Boolean) -> Unit,
     onContextSelected: (AccountContext) -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Read through updated state so a context switch recomposes the tab without
+    // rebuilding the navigation graph (which would reset the selected tab).
+    val currentSession by rememberUpdatedState(session)
+    val currentBiometric by rememberUpdatedState(biometricUnlockEnabled)
+    val currentOnBiometricChange by rememberUpdatedState(onBiometricUnlockChange)
+    val currentOnContextSelected by rememberUpdatedState(onContextSelected)
+    val currentOnSignOut by rememberUpdatedState(onSignOut)
+
     NavHost(
         navController = navController,
         startDestination = AppDestination.Home.route,
@@ -35,9 +47,11 @@ fun HitNScoreTabNavHost(
             composable(destination.route) {
                 TabPlaceholderScreen(
                     destination = destination,
-                    session = session,
-                    onContextSelected = onContextSelected,
-                    onSignOut = onSignOut,
+                    session = currentSession,
+                    biometricUnlockEnabled = currentBiometric,
+                    onBiometricUnlockChange = { currentOnBiometricChange(it) },
+                    onContextSelected = { currentOnContextSelected(it) },
+                    onSignOut = { currentOnSignOut() },
                 )
             }
         }

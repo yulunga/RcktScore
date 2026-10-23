@@ -19,12 +19,15 @@ import com.hitnscore.mobile.app.navigation.AppDestination
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.AccountContextSwitcher
 import com.hitnscore.mobile.core.session.SessionState
+import com.hitnscore.mobile.feature.settings.QuickUnlockSetting
 
 /** Stand-in for each tab until its iOS-parity feature is built (M2 onward). */
 @Composable
 fun TabPlaceholderScreen(
     destination: AppDestination,
     session: SessionState.SignedIn,
+    biometricUnlockEnabled: Boolean,
+    onBiometricUnlockChange: (Boolean) -> Unit,
     onContextSelected: (AccountContext) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -54,6 +57,13 @@ fun TabPlaceholderScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
+            if (destination == AppDestination.Home) {
+                Text(
+                    text = stringResource(R.string.home_welcome, session.displayName),
+                    modifier = Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             Text(
                 text = if (destination == AppDestination.Home) {
                     stringResource(R.string.home_placeholder, session.activeContext.name)
@@ -65,6 +75,16 @@ fun TabPlaceholderScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (destination == AppDestination.Settings) {
+                Text(
+                    text = stringResource(R.string.settings_signed_in_as, session.username),
+                    modifier = Modifier.padding(top = 20.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                QuickUnlockSetting(
+                    enabled = biometricUnlockEnabled,
+                    onEnabledChange = onBiometricUnlockChange,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
                 OutlinedButton(onClick = onSignOut, modifier = Modifier.padding(top = 24.dp)) {
                     Text(stringResource(R.string.sign_out))
                 }
