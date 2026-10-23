@@ -1,5 +1,6 @@
 package com.hitnscore.mobile.feature.matches
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +70,9 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
     var startDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var endDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    // Collapsed by default, as iOS: the filter button reveals search and filters.
+    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+    val filtersActive = search.isNotBlank() || sportFilter != null || startDateMillis != null
 
     val recent = dashboard?.recentMatches.orEmpty()
     val sports = remember(recent) { recent.filterNot { it.locked }.map { it.sport ?: "squash" }.distinct().sorted() }
@@ -149,6 +154,39 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                             if (!state.isOnline) {
                                 OfflineState(stringResource(R.string.offline_history))
                             } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        when {
+                                            state.isLoading && recent.isEmpty() -> ""
+                                            filtersActive -> stringResource(R.string.history_filters_active) + " · " +
+                                                stringResource(R.string.history_count, filtered.size)
+                                            else -> stringResource(R.string.history_count, filtered.size)
+                                        },
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (filtersActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (filtersActive) {
+                                        TextButton(onClick = {
+                                            search = ""
+                                            sportFilter = null
+                                            startDateMillis = null
+                                            endDateMillis = null
+                                        }) { Text(stringResource(R.string.history_clear_all)) }
+                                    }
+                                    FilledTonalIconToggleButton(
+                                        checked = filtersExpanded || filtersActive,
+                                        onCheckedChange = { filtersExpanded = !filtersExpanded },
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.ic_filter_list),
+                                            contentDescription = stringResource(
+                                                if (filtersExpanded) R.string.history_hide_filters else R.string.history_show_filters,
+                                            ),
+                                        )
+                                    }
+                                }
+                                AnimatedVisibility(visible = filtersExpanded) {
                                 HistoryFilters(
                                     search = search,
                                     onSearchChange = { search = it },
@@ -163,15 +201,11 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                                         endDateMillis = null
                                     },
                                 )
+                                }
                                 when {
                                     state.isLoading && recent.isEmpty() -> SkeletonRows(3)
                                     filtered.isEmpty() -> EmptyState(
                                         stringResource(if (recent.isEmpty()) R.string.empty_recent else R.string.history_no_results),
-                                    )
-                                    else -> Text(
-                                        stringResource(R.string.history_count, filtered.size),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }

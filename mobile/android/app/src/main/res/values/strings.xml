@@ -107,6 +107,10 @@
     <string name="history_no_results">No completed matches match those filters.</string>
     <string name="history_count">%1$d matches</string>
     <string name="ok">OK</string>
+    <string name="history_show_filters">Show search and filters</string>
+    <string name="history_hide_filters">Hide search and filters</string>
+    <string name="history_filters_active">Filters on</string>
+    <string name="history_clear_all">Clear all</string>
 
     <!-- Historic match -->
     <string name="historic_match">Match</string>
