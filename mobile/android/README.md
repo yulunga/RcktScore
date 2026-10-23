@@ -3,7 +3,7 @@
 Native Android app for HitNScore. It is a separate Gradle project beside
 `mobile/ios/`; it does not alter or wrap the iOS workspace.
 
-## Current Status (M2 read-only screens, October 2026)
+## Current Status (M4 tennis and Padel, October 2026)
 
 In place:
 
@@ -40,15 +40,33 @@ In place:
   sign out
 - switching account context clears every screen before loading the new
   organisation, so data from one account never appears under another
+- **Start New Match** button on Home and Matches, sport picker with the iOS
+  ball artwork for squash, racketball, tennis and Padel
+- **match setup** for squash and racketball: player and referee look-ups,
+  court (busy court schedules the match), shirt colours, handicap bands and
+  offsets, Golden Point, timed warm-up and game breaks, scheduling
+- **live scorer**: warm-up, first server, tap a player panel to score, swipe
+  down to undo (with confirmation), point rail, serve-side changes, stroke and
+  let, undo, end early, game breaks, in-match Game Settings, start scheduled
+  matches, completion card; the clock survives leaving the app
+- **tennis and Padel**: singles or doubles setup (Padel is always doubles),
+  Golden Point, final-set 10-point tiebreak, timed breaks; scorer with point
+  labels (15/30/40/Ad, tiebreak counts), games and sets, opening server and
+  receiver, serving/receiving line, point timeline with game dividers, Padel
+  Golden Point receiver choice, 5-minute warm-up, 90 s changeovers and 120 s
+  set breaks
+- ongoing "match in progress" notification, screen kept on, phones held in
+  portrait, haptics on points and games
 - API layer: `{ success, data, error, meta }` envelope, bearer-token
   interceptor, typed errors, OkHttp + kotlinx.serialization
 - release hardening: R8, optional upload-key signing, CI version codes,
   HTTPS-only, no cloud backup or device transfer of app data
-- unit tests (login decoding, session repository, API parsing, navigation)
+- unit tests (login decoding, session repository, API parsing, navigation,
+  match clock, squash point rail, tennis/Padel rules)
   and a Compose sign-in screen smoke test
 - a GitHub Actions workflow template in `ci/`
 
-Not yet built: match setup and live scoring (M3/M4), offline queue (M5),
+Not yet built: offline queue and optimistic scoring (M5),
 settings editing, help/feedback flows and "Want In" registration (M6),
 Watch a Match, billing.
 
@@ -149,6 +167,8 @@ mobile/android/
     feature/auth/             sign-in, lock screen, biometric prompt
     feature/home/             Home tab
     feature/matches/          Matches tab, history filters, match view, timeline
+    feature/newmatch/         sport picker, match setup, handicap table
+    feature/scoring/          live scorer, clock, point rail, notification
     feature/notifications/    notification inbox
     feature/analytics/        Analytics tab
     feature/settings/         Settings tab and pages, quick unlock

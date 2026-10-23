@@ -2,6 +2,7 @@ package com.hitnscore.mobile.feature.shell
 
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -19,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.hitnscore.mobile.R
 import com.hitnscore.mobile.app.navigation.AppDestination
 import com.hitnscore.mobile.app.navigation.HitNScoreTabNavHost
 import com.hitnscore.mobile.app.navigation.ShellRoutes
@@ -48,7 +50,11 @@ fun AppShellScreen(
     val actions = remember(navController, shellViewModel) {
         ShellActions(
             onRefresh = shellViewModel::refresh,
-            onOpenMatch = { navController.navigate(ShellRoutes.match(it.matchId)) },
+            // Live and scheduled matches open the scorer; finished ones open the match view.
+            onOpenMatch = { match ->
+                val route = if (match.status.equals("completed", ignoreCase = true)) ShellRoutes.match(match.matchId) else ShellRoutes.score(match.matchId)
+                navController.navigate(route)
+            },
             onOpenNotifications = { navController.navigate(ShellRoutes.NOTIFICATIONS) { launchSingleTop = true } },
             onShowMatches = { category ->
                 shellViewModel.selectMatchesCategory(category)
@@ -60,10 +66,25 @@ fun AppShellScreen(
         )
     }
 
+    val fullScreen = ShellRoutes.isFullScreen(currentRoute)
+    val showStartButton = currentRoute == AppDestination.Home.route || currentRoute == AppDestination.Matches.route
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButton = {
+            // Approved UX change 1: a persistent Start button on Home and Matches.
+            if (showStartButton) {
+                ExtendedFloatingActionButton(
+                    onClick = { navController.navigate(ShellRoutes.NEW_MATCH) { launchSingleTop = true } },
+                    icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
+                    text = { Text(stringResource(R.string.start_new_match)) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+        },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+            if (!fullScreen) NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 AppDestination.topLevel.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute?.startsWith(destination.route) == true,

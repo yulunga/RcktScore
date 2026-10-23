@@ -6,8 +6,8 @@ def serialize_match(match_row, event_rows):
     return squash_logic._serialize_match(match_row, event_rows)
 
 
-def activate_scheduled_match(connection, match_id):
-    return squash_logic.activate_scheduled_match(connection, match_id)
+def activate_scheduled_match(connection, match_id, commit=True):
+    return squash_logic.activate_scheduled_match(connection, match_id, commit=commit)
 
 
 def unsupported_sport_error(display_name):

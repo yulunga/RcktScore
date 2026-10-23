@@ -12,17 +12,25 @@ def create_match(connection, payload, source="api"):
     unsupported_sport_error("Badminton")
 
 
-def score_point(connection, match_id, scorer, source="api"):
+def score_point(connection, match_id, scorer, source="api", commit=True):
     unsupported_sport_error("Badminton")
 
 
-def event_action(connection, match_id, action_type, payload, source="api"):
+def event_action(connection, match_id, action_type, payload, source="api", commit=True):
     unsupported_sport_error("Badminton")
 
 
-def undo_last_action(connection, match_id):
+def undo_last_action(connection, match_id, commit=True):
     unsupported_sport_error("Badminton")
 
 
-def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
+def end_match(
+    connection,
+    match_id,
+    source="api",
+    reason=None,
+    ended_early=None,
+    match_duration_seconds=None,
+    commit=True,
+):
     unsupported_sport_error("Badminton")

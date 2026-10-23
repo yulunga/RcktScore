@@ -10,6 +10,9 @@ import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.connectivity.AndroidConnectivityMonitor
 import com.hitnscore.mobile.core.connectivity.ConnectivityMonitor
 import com.hitnscore.mobile.data.remote.HitNScoreApi
+import com.hitnscore.mobile.feature.scoring.LiveMatchNotifier
+import com.hitnscore.mobile.feature.scoring.MatchTimerStore
+import com.hitnscore.mobile.feature.scoring.SharedPreferencesTimerStore
 import com.hitnscore.mobile.data.remote.RemoteHitNScoreApi
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.network.AuthInterceptor
@@ -64,6 +67,12 @@ class AppContainer(context: Context) {
     val api: HitNScoreApi by lazy { RemoteHitNScoreApi(apiClient) }
 
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
+
+    val timerStore: MatchTimerStore by lazy {
+        SharedPreferencesTimerStore(appContext.getSharedPreferences("hitnscore_match_timers", Context.MODE_PRIVATE), json)
+    }
+
+    val liveMatchNotifier: LiveMatchNotifier by lazy { LiveMatchNotifier(appContext) }
 
     val sessionRepository: SessionRepository by lazy {
         AuthSessionRepository(

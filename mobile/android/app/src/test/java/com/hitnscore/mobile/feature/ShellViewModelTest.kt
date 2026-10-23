@@ -9,7 +9,13 @@ import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.core.session.SignInResult
 import com.hitnscore.mobile.data.model.AppNotification
 import com.hitnscore.mobile.data.model.Dashboard
+import com.hitnscore.mobile.data.model.CreateMatchRequest
+import com.hitnscore.mobile.data.model.EndMatchRequest
+import com.hitnscore.mobile.data.model.EventActionRequest
 import com.hitnscore.mobile.data.model.MatchDetail
+import com.hitnscore.mobile.data.model.MatchIdRequest
+import com.hitnscore.mobile.data.model.MatchSetupLookups
+import com.hitnscore.mobile.data.model.ScorePointRequest
 import com.hitnscore.mobile.data.model.MatchSummary
 import com.hitnscore.mobile.data.model.OrganizationSettings
 import com.hitnscore.mobile.data.model.OrganizationSummary
@@ -71,6 +77,13 @@ class ShellViewModelTest {
             return ApiResult.Success(true)
         }
         override suspend fun organizationSettings(organizationId: Int): ApiResult<OrganizationSettings> = error("unused")
+        override suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups> = error("unused")
+        override suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail> = error("unused")
+        override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> = error("unused")
+        override suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail> = error("unused")
+        override suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail> = error("unused")
+        override suspend fun undo(request: MatchIdRequest): ApiResult<MatchDetail> = error("unused")
+        override suspend fun endMatch(request: EndMatchRequest): ApiResult<MatchDetail> = error("unused")
     }
 
     private class Online(value: Boolean = true) : ConnectivityMonitor {

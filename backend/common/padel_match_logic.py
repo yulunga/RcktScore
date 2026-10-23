@@ -22,19 +22,27 @@ def create_match(connection, payload, source="api"):
     return shared.create_match(connection, match_payload, source=source)
 
 
-def score_point(connection, match_id, scorer, source="api"):
-    return shared.score_point(connection, match_id, scorer, source=source)
+def score_point(connection, match_id, scorer, source="api", commit=True):
+    return shared.score_point(connection, match_id, scorer, source=source, commit=commit)
 
 
-def event_action(connection, match_id, action_type, payload, source="api"):
-    return shared.event_action(connection, match_id, action_type, payload, source=source)
+def event_action(connection, match_id, action_type, payload, source="api", commit=True):
+    return shared.event_action(connection, match_id, action_type, payload, source=source, commit=commit)
 
 
-def undo_last_action(connection, match_id):
-    return shared.undo_last_action(connection, match_id)
+def undo_last_action(connection, match_id, commit=True):
+    return shared.undo_last_action(connection, match_id, commit=commit)
 
 
-def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
+def end_match(
+    connection,
+    match_id,
+    source="api",
+    reason=None,
+    ended_early=None,
+    match_duration_seconds=None,
+    commit=True,
+):
     return shared.end_match(
         connection,
         match_id,
@@ -42,11 +50,12 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
         reason=reason,
         ended_early=ended_early,
         match_duration_seconds=match_duration_seconds,
+        commit=commit,
     )
 
 
-def activate_scheduled_match(connection, match_id):
-    return shared.activate_scheduled_match(connection, match_id)
+def activate_scheduled_match(connection, match_id, commit=True):
+    return shared.activate_scheduled_match(connection, match_id, commit=commit)
 
 
 def serialize_match(match_row, event_rows):

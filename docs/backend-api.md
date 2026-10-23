@@ -181,6 +181,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /health`
 - `POST /login`
 - `POST /logout`
+- `GET /session/status`
 - `POST /password_reset/request`
 - `POST /password_reset/confirm`
 - `GET /organization_users/approve`
@@ -636,6 +637,8 @@ Current behavior:
 - `POST /score_point`, `POST /event_action`, `POST /undo_action`, and `POST /end_match` accept an optional `client_action_id` UUID
 - when a `client_action_id` is supplied, the backend records it in `match_action_receipts`; replaying the same UUID for the same match action returns current match state without applying the action again
 - reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
+- start, score, event, undo, and end mutations acquire a PostgreSQL row lock on the match before rebuilding state from `match_events`; distinct concurrent actions are therefore applied serially rather than calculating from the same stale score
+- the receipt claim, event stream change, derived `matches` summary, and completed Tournament Manager result share one transaction. Any failure rolls the whole mutation back, while repeated tournament scoring synchronisation with the same winner and score is a no-op
 - native iOS serialises queued scoring requests, preserves any new action appended while a previous request is in flight, and retains failed actions for a safe retry with the same UUID; the client now surfaces the returned API or network error rather than describing every failure as an offline condition
 - the native scorer labels stroke choices as `Stroke Against <player>` but continues to send the opposite player as the awarded `player_side`; let choices include the selected player's name and retain the existing optional `player_side` request behavior
 - personal accounts can only have one active match at a time

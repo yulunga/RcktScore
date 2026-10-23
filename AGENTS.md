@@ -217,6 +217,7 @@ See the backend/API reference for the exact route list.
 - org-user session enforcement is real in `backend/common/session_logic.py`
 - org-user sessions expire after 30 days by default, configurable from one to 90 days, and cached native sessions cannot be reopened after their server-provided expiry
 - reconnect-safe scoring action UUIDs are recorded in `match_action_receipts`; duplicate retries return current match state without repeating the mutation
+- every state-derived match mutation locks its `matches` row with `SELECT ... FOR UPDATE` before rebuilding event state; the action receipt, event/undo, summary columns, and any completed tournament-fixture result are committed or rolled back together
 - scoring and organisation endpoints are tenant-aware through backend authorization checks
 - sport visibility is enforced before match creation as the intersection of platform client access, organisation `enabled_sports`, and per-membership web/iOS access
 - Tournament Manager access is club-only, requires an explicit `tournament_organization_features.web_enabled` record and is enforced by the backend in addition to conditional web navigation

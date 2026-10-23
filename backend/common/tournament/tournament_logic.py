@@ -1105,10 +1105,11 @@ def update_tournament_draw_slot(connection, tournament_id, match_id, organizatio
     return get_tournament(connection, event["id"], organization_id)
 
 
-def _fetch_fixture_context(connection, tournament_id, match_id, organization_id):
+def _fetch_fixture_context(connection, tournament_id, match_id, organization_id, for_update=False):
+    locking_clause = "FOR UPDATE OF fixture" if for_update else ""
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT fixture.*, draw.tournament_id, draw.name AS draw_name,
                    event.name AS tournament_name, event.sport, event.status AS tournament_status,
                    event.scoring_config, event.draw_format,
@@ -1125,6 +1126,7 @@ def _fetch_fixture_context(connection, tournament_id, match_id, organization_id)
               AND event.id = %(tournament_id)s
               AND event.organization_id = %(organization_id)s
             LIMIT 1
+            {locking_clause}
             """,
             {
                 "match_id": _uuid(match_id, "match_id"),
@@ -1247,8 +1249,24 @@ def _place_first_round_loser(cursor, fixture, loser_id, now):
         _propagate_byes(cursor, fixture["draw_id"], "plate", now, allow_plate=True)
 
 
-def record_tournament_match_result(connection, tournament_id, match_id, organization_id, payload, actor_username, is_admin=False, from_scoring=False):
-    fixture = _fetch_fixture_context(connection, tournament_id, match_id, organization_id)
+def record_tournament_match_result(
+    connection,
+    tournament_id,
+    match_id,
+    organization_id,
+    payload,
+    actor_username,
+    is_admin=False,
+    from_scoring=False,
+    commit=True,
+):
+    fixture = _fetch_fixture_context(
+        connection,
+        tournament_id,
+        match_id,
+        organization_id,
+        for_update=True,
+    )
     if not fixture:
         raise LookupError("Tournament match not found")
     if fixture["tournament_status"] != "draw_published":
@@ -1262,6 +1280,15 @@ def record_tournament_match_result(connection, tournament_id, match_id, organiza
     result = _score_result(payload.get("score"))
     winner_id = fixture[f"{result['winner_side']}_entry_id"]
     loser_id = fixture["player2_entry_id"] if result["winner_side"] == "player1" else fixture["player1_entry_id"]
+    if (
+        from_scoring
+        and fixture.get("status") == "completed"
+        and fixture.get("winner_entry_id") == winner_id
+        and fixture.get("score_summary") == result["summary"]
+    ):
+        if commit:
+            connection.commit()
+        return get_tournament(connection, tournament_id, organization_id)
     now = _utcnow()
     with connection.cursor() as cursor:
         _ensure_knockout_structure(cursor, fixture, now)
@@ -1335,11 +1362,12 @@ def record_tournament_match_result(connection, tournament_id, match_id, organiza
                 "created_at": now,
             },
         )
-    connection.commit()
+    if commit:
+        connection.commit()
     return get_tournament(connection, tournament_id, organization_id)
 
 
-def sync_tournament_scoring_result(connection, match):
+def sync_tournament_scoring_result(connection, match, commit=True):
     if not match or match.get("status") != "completed" or not match.get("tournament_match_id"):
         return
     winner_side = match.get("winner_side") or (match.get("state") or {}).get("winner_side")
@@ -1358,6 +1386,7 @@ def sync_tournament_scoring_result(connection, match):
         "scoring-app",
         is_admin=True,
         from_scoring=True,
+        commit=commit,
     )
 
 

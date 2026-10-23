@@ -19,12 +19,94 @@ def _serialize_match_row(connection, match_row):
     return engine.serialize_match(match_row, _fetch_match_events(connection, match_row["id"]))
 
 
-def _resolve_engine_for_match_id(connection, match_id):
-    match_row = _fetch_match_row(connection, match_id)
-    if not match_row:
-        return None, None
+def _lock_match_for_mutation(connection, match_id):
+    """Serialize every state-derived mutation for one match.
 
-    return resolve_engine_module(match_row.get("sport")), match_row
+    The lock must be acquired before an engine rebuilds state from match_events.
+    Locking later in _append_event would still allow two callers to calculate
+    transitions from the same stale event history.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT matches.id,
+                   matches.sport,
+                   matches.status,
+                   (
+                       matches.status = 'active'
+                       AND COALESCE(
+                           (
+                               SELECT MAX(match_events.created_at)
+                               FROM match_events
+                               WHERE match_events.match_id = matches.id
+                                 AND match_events.event_type = ANY(%(activity_event_types)s)
+                           ),
+                           matches.updated_at,
+                           matches.created_at
+                       ) <= (%(cutoff)s - (%(stale_hours)s * INTERVAL '1 hour'))
+                   ) AS is_stale
+            FROM matches
+            WHERE matches.id = %(match_id)s
+              AND COALESCE(matches.is_archived, false) = false
+            FOR UPDATE OF matches
+            """,
+            {
+                "match_id": match_id,
+                "activity_event_types": list(squash_logic.STALE_ACTIVITY_EVENT_TYPES),
+                "cutoff": squash_logic._utcnow(),
+                "stale_hours": squash_logic.STALE_ACTIVE_MATCH_HOURS,
+            },
+        )
+        return cursor.fetchone()
+
+
+def _run_match_mutation(
+    connection,
+    match_id,
+    operation,
+    sync_tournament=False,
+    auto_end_stale=True,
+):
+    """Run a match mutation and its derived writes in one transaction."""
+    transaction_committed = False
+    try:
+        match_row = _lock_match_for_mutation(connection, match_id)
+        if not match_row:
+            connection.rollback()
+            return None
+
+        engine = resolve_engine_module(match_row.get("sport"))
+        if auto_end_stale and match_row.get("is_stale"):
+            stale_match = engine.end_match(
+                connection,
+                match_id,
+                source="system",
+                reason=(
+                    "Automatically ended after "
+                    f"{squash_logic.STALE_ACTIVE_MATCH_HOURS} hours without match activity"
+                ),
+                ended_early=True,
+                commit=False,
+            )
+            if stale_match and stale_match.get("tournament_match_id"):
+                from common.tournament.tournament_logic import sync_tournament_scoring_result
+                sync_tournament_scoring_result(connection, stale_match, commit=False)
+            connection.commit()
+            transaction_committed = True
+            raise ValueError("Match is already complete")
+
+        match = operation(engine)
+        if sync_tournament and match and match.get("status") == "completed" and match.get("tournament_match_id"):
+            from common.tournament.tournament_logic import sync_tournament_scoring_result
+            sync_tournament_scoring_result(connection, match, commit=False)
+
+        connection.commit()
+        transaction_committed = True
+        return match
+    except Exception:
+        if not transaction_committed:
+            connection.rollback()
+        raise
 
 
 def _auto_end_stale_active_matches(connection, tenant_id=None, match_id=None):
@@ -169,57 +251,62 @@ def create_match(connection, payload, source="api"):
 
 
 def activate_scheduled_match(connection, match_id):
-    engine, _ = _resolve_engine_for_match_id(connection, match_id)
-    if engine is None:
-        return None
-    return engine.activate_scheduled_match(connection, match_id)
+    return _run_match_mutation(
+        connection,
+        match_id,
+        lambda engine: engine.activate_scheduled_match(connection, match_id, commit=False),
+    )
 
 
 def score_point(connection, match_id, scorer, source="api"):
-    engine, _ = _resolve_engine_for_match_id(connection, match_id)
-    if engine is None:
-        return None
-    match = engine.score_point(connection, match_id, scorer, source=source)
-    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
-        from common.tournament.tournament_logic import sync_tournament_scoring_result
-        sync_tournament_scoring_result(connection, match)
-    return match
+    return _run_match_mutation(
+        connection,
+        match_id,
+        lambda engine: engine.score_point(connection, match_id, scorer, source=source, commit=False),
+        sync_tournament=True,
+    )
 
 
 def event_action(connection, match_id, action_type, payload, source="api"):
-    engine, _ = _resolve_engine_for_match_id(connection, match_id)
-    if engine is None:
-        return None
-    match = engine.event_action(connection, match_id, action_type, payload, source=source)
-    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
-        from common.tournament.tournament_logic import sync_tournament_scoring_result
-        sync_tournament_scoring_result(connection, match)
-    return match
+    return _run_match_mutation(
+        connection,
+        match_id,
+        lambda engine: engine.event_action(
+            connection,
+            match_id,
+            action_type,
+            payload,
+            source=source,
+            commit=False,
+        ),
+        sync_tournament=True,
+    )
 
 
 def undo_last_action(connection, match_id):
-    engine, _ = _resolve_engine_for_match_id(connection, match_id)
-    if engine is None:
-        return None
-    return engine.undo_last_action(connection, match_id)
+    return _run_match_mutation(
+        connection,
+        match_id,
+        lambda engine: engine.undo_last_action(connection, match_id, commit=False),
+    )
 
 
 def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
-    engine, _ = _resolve_engine_for_match_id(connection, match_id)
-    if engine is None:
-        return None
-    match = engine.end_match(
+    return _run_match_mutation(
         connection,
         match_id,
-        source=source,
-        reason=reason,
-        ended_early=ended_early,
-        match_duration_seconds=match_duration_seconds,
+        lambda engine: engine.end_match(
+            connection,
+            match_id,
+            source=source,
+            reason=reason,
+            ended_early=ended_early,
+            match_duration_seconds=match_duration_seconds,
+            commit=False,
+        ),
+        sync_tournament=True,
+        auto_end_stale=False,
     )
-    if match and match.get("status") == "completed" and match.get("tournament_match_id"):
-        from common.tournament.tournament_logic import sync_tournament_scoring_result
-        sync_tournament_scoring_result(connection, match)
-    return match
 
 
 def is_personal_tenant(connection, tenant_id):

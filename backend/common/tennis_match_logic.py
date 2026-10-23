@@ -812,7 +812,16 @@ def _update_match_summary(connection, match_id, state, completed_at=None):
         )
 
 
-def _append_event(connection, match_id, event_type, payload, source="api", state_override=None, completed_at=None):
+def _append_event(
+    connection,
+    match_id,
+    event_type,
+    payload,
+    source="api",
+    state_override=None,
+    completed_at=None,
+    commit=True,
+):
     match_row = shared._fetch_match_row(connection, match_id)
     if not match_row:
         return None
@@ -849,7 +858,8 @@ def _append_event(connection, match_id, event_type, payload, source="api", state
                 {"updated_at": shared._utcnow(), "match_id": match_id},
             )
 
-    connection.commit()
+    if commit:
+        connection.commit()
     return get_match(connection, match_id)
 
 
@@ -1139,7 +1149,7 @@ def create_match(connection, payload, source="api"):
     return match
 
 
-def activate_scheduled_match(connection, match_id):
+def activate_scheduled_match(connection, match_id, commit=True):
     match_row = shared._fetch_match_row(connection, match_id)
     if not match_row:
         return None
@@ -1163,7 +1173,8 @@ def activate_scheduled_match(connection, match_id):
             },
         )
 
-    connection.commit()
+    if commit:
+        connection.commit()
     return get_match(connection, match_id)
 
 
@@ -1516,7 +1527,7 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
     }
 
 
-def score_point(connection, match_id, scorer, source="api"):
+def score_point(connection, match_id, scorer, source="api", commit=True):
     if scorer not in {"player1", "player2"}:
         raise ValueError("scorer must be 'player1' or 'player2'")
 
@@ -1539,10 +1550,11 @@ def score_point(connection, match_id, scorer, source="api"):
         source=source,
         state_override=transition["state"],
         completed_at=completed_at,
+        commit=commit,
     )
 
 
-def _update_match_settings(connection, match_id, payload, source="api"):
+def _update_match_settings(connection, match_id, payload, source="api", commit=True):
     match = get_match(connection, match_id)
     if not match:
         return None
@@ -1636,11 +1648,12 @@ def _update_match_settings(connection, match_id, payload, source="api"):
             },
         )
 
-    connection.commit()
+    if commit:
+        connection.commit()
     return get_match(connection, match_id)
 
 
-def _record_match_duration(connection, match_id, payload, source="api"):
+def _record_match_duration(connection, match_id, payload, source="api", commit=True):
     match = get_match(connection, match_id)
     if not match:
         return None
@@ -1664,6 +1677,7 @@ def _record_match_duration(connection, match_id, payload, source="api"):
         },
         source=source,
         state_override=state_override,
+        commit=commit,
     )
 
 
@@ -1756,22 +1770,29 @@ def _prepare_receiver_choice(match, payload):
     }, next_state
 
 
-def event_action(connection, match_id, action_type, payload, source="api"):
+def event_action(connection, match_id, action_type, payload, source="api", commit=True):
     if action_type not in ALLOWED_ACTION_TYPES:
         raise ValueError(f"action_type must be one of: {', '.join(sorted(ALLOWED_ACTION_TYPES))}")
 
     if action_type == "match_settings":
-        return _update_match_settings(connection, match_id, payload, source=source)
+        return _update_match_settings(connection, match_id, payload, source=source, commit=commit)
 
     if action_type == "timer":
-        return _record_match_duration(connection, match_id, payload, source=source)
+        return _record_match_duration(connection, match_id, payload, source=source, commit=commit)
 
     if action_type == "server":
         match = get_match(connection, match_id)
         if not match:
             return None
         prepared_payload = _prepare_server_selection(match, payload)
-        return _append_event(connection, match_id, action_type, prepared_payload, source=source)
+        return _append_event(
+            connection,
+            match_id,
+            action_type,
+            prepared_payload,
+            source=source,
+            commit=commit,
+        )
 
     if action_type == "receiver_choice":
         match = get_match(connection, match_id)
@@ -1785,12 +1806,13 @@ def event_action(connection, match_id, action_type, payload, source="api"):
             prepared_payload,
             source=source,
             state_override=next_state,
+            commit=commit,
         )
 
-    return _append_event(connection, match_id, action_type, payload, source=source)
+    return _append_event(connection, match_id, action_type, payload, source=source, commit=commit)
 
 
-def undo_last_action(connection, match_id):
+def undo_last_action(connection, match_id, commit=True):
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -1833,11 +1855,13 @@ def undo_last_action(connection, match_id):
 
     match = get_match(connection, match_id)
     if not match:
-        connection.commit()
+        if commit:
+            connection.commit()
         return None
 
     _update_match_summary(connection, match_id, match["state"])
-    connection.commit()
+    if commit:
+        connection.commit()
     return get_match(connection, match_id)
 
 
@@ -1854,7 +1878,15 @@ def _match_leader(match_like, state):
     return point_winner, _player_name(match_like, point_winner)
 
 
-def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
+def end_match(
+    connection,
+    match_id,
+    source="api",
+    reason=None,
+    ended_early=None,
+    match_duration_seconds=None,
+    commit=True,
+):
     match = get_match(connection, match_id)
     if not match:
         return None
@@ -1906,4 +1938,5 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
         source=source,
         state_override=final_state,
         completed_at=now,
+        commit=commit,
     )

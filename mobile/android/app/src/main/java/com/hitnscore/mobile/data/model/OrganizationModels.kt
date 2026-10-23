@@ -30,6 +30,8 @@ data class OrganizationProfile(
     @SerialName("org_type") val type: String = "club",
     val plan: String? = null,
     @SerialName("enabled_sports") val enabledSports: List<String> = listOf("squash", "racketball", "tennis"),
+    /** Per sport: whether timed warm-up and breaks are on by default. */
+    @SerialName("timed_break_defaults") val timedBreakDefaults: Map<String, Boolean> = emptyMap(),
 )
 
 @Serializable

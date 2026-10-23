@@ -544,8 +544,9 @@ row spacing so substantially more events fit before scrolling.
    - `POST /undo_action`
    - `POST /end_match`
 6. Native iOS supplies a stable `client_action_id` UUID for each queued mutation. `match_action_receipts` claims that UUID before the mutation so reconnect retries cannot duplicate a point or other action.
-7. Shared logic updates event history and match summary columns using the active sport engine.
-8. The web frontend updates local match state from the returned `data.match`. Native iOS caches the last server match, applies queued actions locally, and adopts each ordered server response during synchronisation. The queue re-reads its latest snapshot around every request so a timer or scoring action added during an in-flight request cannot be overwritten.
+7. Shared logic opens the mutation by locking the `matches` row with `SELECT ... FOR UPDATE`, then rebuilds and changes state through the active sport engine. This serialises distinct taps or devices for the same match instead of allowing both to derive a transition from the same event history.
+8. The action receipt, event or undo, derived match summary, and any completed tournament-fixture result remain in that transaction until one final commit. An exception rolls all of them back.
+9. The web frontend updates local match state from the returned `data.match`. Native iOS caches the last server match, applies queued actions locally, and adopts each ordered server response during synchronisation. The queue re-reads its latest snapshot around every request so a timer or scoring action added during an in-flight request cannot be overwritten.
 
 Current live sport engines:
 

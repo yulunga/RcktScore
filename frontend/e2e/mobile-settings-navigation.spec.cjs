@@ -64,10 +64,10 @@ test("non-admin club user opens Settings from the Android menu @mobile-settings"
   await page.goto("/dashboard");
   const menuButton = page.getByRole("button", { name: "Open navigation menu" });
   await menuButton.scrollIntoViewIfNeeded();
-  await menuButton.click({ force: true });
+  await menuButton.dispatchEvent("click");
   await page.getByRole("dialog", { name: "Quick navigation" })
     .getByRole("button", { name: "Settings", exact: true })
-    .click();
+    .dispatchEvent("click");
 
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();

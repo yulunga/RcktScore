@@ -14,7 +14,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.SessionState
+import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.feature.analytics.AnalyticsScreen
+import com.hitnscore.mobile.feature.newmatch.MatchSetupScreen
+import com.hitnscore.mobile.feature.newmatch.SetupArgs
+import com.hitnscore.mobile.feature.newmatch.SportPickerScreen
+import com.hitnscore.mobile.feature.newmatch.enabledSports
+import com.hitnscore.mobile.feature.scoring.ScoringScreen
+import com.hitnscore.mobile.feature.shell.MatchesCategory
 import com.hitnscore.mobile.feature.help.HelpScreen
 import com.hitnscore.mobile.feature.home.HomeScreen
 import com.hitnscore.mobile.feature.matches.MatchDetailScreen
@@ -27,11 +34,19 @@ import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellUiState
 
 object ShellRoutes {
+    const val NEW_MATCH = "newmatch"
+    const val SETUP = "newmatch/{sport}"
+    const val SCORE = "score/{matchId}"
     const val MATCH = "match/{matchId}"
     const val NOTIFICATIONS = "notifications"
     const val SETTINGS_PAGE = "settings/{page}"
 
     fun match(matchId: String) = "match/${Uri.encode(matchId)}"
+    fun setup(sport: String) = "newmatch/$sport"
+    fun score(matchId: String) = "score/${Uri.encode(matchId)}"
+
+    /** Full-screen flows hide the bottom bar and the Start button. */
+    fun isFullScreen(route: String?) = route?.startsWith(NEW_MATCH) == true || route?.startsWith("score/") == true
     fun settingsPage(page: SettingsPage) = "settings/${page.route}"
 }
 
@@ -91,6 +106,58 @@ fun HitNScoreTabNavHost(
         }
         composable(AppDestination.Help.route) {
             HelpScreen(currentSession, currentState, currentActions)
+        }
+        composable(ShellRoutes.NEW_MATCH) {
+            SportPickerScreen(
+                session = currentSession,
+                onContextSelected = { currentOnContextSelected(it) },
+                onChoose = { sport -> navController.navigate(ShellRoutes.setup(sport)) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(ShellRoutes.SETUP) { entry ->
+            val sport = entry.arguments?.getString("sport").orEmpty()
+            val session = currentSession
+            val args = SetupArgs(
+                sport = sport,
+                organizationId = session.activeContext.organizationId,
+                isPersonal = session.activeContext.type == AccountContextType.Personal,
+                isPersonalPlus = currentState.isPersonalPlus(session),
+                sessionSports = session.enabledSports(),
+                activeMatches = currentState.dashboard?.activeMatches.orEmpty(),
+            )
+            MatchSetupScreen(
+                args = args,
+                onBack = { navController.popBackStack() },
+                onOpenMatch = { matchId ->
+                    currentActions.onRefresh()
+                    navController.navigate(ShellRoutes.score(matchId)) {
+                        popUpTo(ShellRoutes.NEW_MATCH) { inclusive = true }
+                    }
+                },
+                onScheduled = {
+                    navController.popBackStack(ShellRoutes.NEW_MATCH, inclusive = true)
+                    currentActions.onRefresh()
+                    currentActions.onShowMatches(MatchesCategory.Scheduled)
+                },
+            )
+        }
+        composable(ShellRoutes.SCORE) { entry ->
+            val matchId = entry.arguments?.getString("matchId").orEmpty()
+            ScoringScreen(
+                matchId = matchId,
+                isOnline = currentState.isOnline,
+                onBack = {
+                    currentActions.onRefresh()
+                    navController.popBackStack()
+                },
+                onOpenMatchView = { id ->
+                    currentActions.onRefresh()
+                    navController.navigate(ShellRoutes.match(id)) {
+                        popUpTo(ShellRoutes.SCORE) { inclusive = true }
+                    }
+                },
+            )
         }
         composable(ShellRoutes.MATCH) { entry ->
             val matchId = entry.arguments?.getString("matchId").orEmpty()

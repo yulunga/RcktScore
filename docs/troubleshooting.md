@@ -397,6 +397,8 @@ What to check:
 - court conflict behavior
 - latest `match_events` entries
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
+- when two devices or taps appear to collide, verify the deployed `common/match_logic.py` acquires `SELECT ... FOR UPDATE` before dispatching to the sport engine; event, summary, receipt, and tournament-result writes should appear together or not at all
+- check for transaction errors or lock waits before repairing summary columns manually. A failed current mutation rolls back, and a later mutation rebuilds from the committed event stream
 - whether the action used `score_point` or `event_action`
 - the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
 - before a display code is entered, `/scoreboard` and `/display` use a compact code card centred in the space below the fixed-height public header; if it appears stretched or offset, verify the `display-session-inactive` grid and `scoreboard-entry-card` styles before changing the live-display layout
