@@ -127,6 +127,7 @@ export function AuthProvider({ children }) {
           username: response.organizationSelection.username || trimmedUsername,
           memberships: response.organizationSelection.memberships,
           session_token: response.organizationSelection.session_token || null,
+          session_expires_at: response.organizationSelection.session_expires_at || null,
           loggedInAt: new Date().toISOString(),
         };
         writeStoredAuthState({
@@ -169,9 +170,12 @@ export function AuthProvider({ children }) {
     }
 
     const sessionToken = pendingSelection?.session_token || null;
+    const sessionExpiresAt = pendingSelection?.session_expires_at || null;
     const nextSession = {
       ...membership,
+      available_memberships: pendingSelection?.memberships || [membership],
       ...(sessionToken ? { session_token: sessionToken } : {}),
+      ...(sessionExpiresAt ? { session_expires_at: sessionExpiresAt } : {}),
       loggedInAt: new Date().toISOString(),
     };
     writeStoredAuthState({

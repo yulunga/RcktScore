@@ -14,7 +14,7 @@ import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
 import MatchScreen from "./pages/MatchScreen";
 import NewMatch from "./pages/NewMatch";
 import NotificationsPage from "./pages/NotificationsPage";
-import OrganisationSettingsPage from "./pages/OrganisationSettingsPage";
+import SettingsHubPage from "./pages/SettingsHubPage";
 import OrganisationUserPage from "./pages/OrganisationUserPage";
 import PerformancePage from "./pages/PerformancePage";
 import PingUsPage from "./pages/PingUsPage";
@@ -177,7 +177,7 @@ export default function App() {
         path="/settings"
         element={(
           <ProtectedRoute>
-            <OrganisationSettingsPage />
+            <SettingsHubPage />
           </ProtectedRoute>
         )}
       />

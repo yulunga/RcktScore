@@ -5,8 +5,9 @@
 This is a practical, high-level plan for adding a native Android app that has
 the same user-visible capabilities as the current native iOS app.
 
-It is a plan only. There is no Android project or Android implementation in the
-repository yet.
+The initial Android Studio/Gradle framework now exists in `mobile/android/`.
+It contains the Compose application shell and project structure only; the
+product features described below remain to be implemented.
 
 "Identical" should mean the same accounts, entitlements, matches, scoring
 rules, offline guarantees, and settings outcomes. The Android interface should
@@ -100,10 +101,10 @@ iOS.
 
 ### 2. Scaffold The Android App
 
-Create one Android application module under `mobile/android/`, with environment
-configuration for development, staging, and production API base URLs. Keep
-secrets out of source control and use build configuration only for public
-environment values.
+The first Android application module now exists under `mobile/android/`, with a
+build-time API base URL and no stored secrets. The next foundation task is to
+formalise development, staging, and production configuration before connecting
+authentication.
 
 Suggested package areas:
 
@@ -355,4 +356,5 @@ When Android work begins, update these alongside each shipped capability:
 - `docs/technical-walkthrough.md` for lifecycle and replay changes
 - `docs/troubleshooting.md` for Android build, session, sync, and billing issues
 - `AGENTS.md` so it continues to describe only what is actually implemented
-- a new Android build/signing/release guide once the project exists
+- the Android workspace README and, before external testing, dedicated
+  build/signing/release guidance

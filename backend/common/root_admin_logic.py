@@ -172,6 +172,21 @@ def get_root_admin_dashboard(connection):
 
         cursor.execute(
             """
+            SELECT item->>'name' AS name,
+                   COALESCE(item->>'type', 'league') AS type,
+                   COUNT(*) AS club_count
+            FROM "SkwshOrgSettings" AS competition_org
+            CROSS JOIN LATERAL jsonb_array_elements(COALESCE(competition_org.association_competitions, '[]'::jsonb)) AS item
+            WHERE COALESCE(competition_org.org_type, 'club') = 'club'
+              AND NULLIF(BTRIM(item->>'name'), '') IS NOT NULL
+            GROUP BY item->>'name', COALESCE(item->>'type', 'league')
+            ORDER BY item->>'name'
+            """
+        )
+        competition_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
             SELECT COUNT(DISTINCT LOWER(clubusername)) AS total_user_count
             FROM "SkwshOrgUsers"
             """
@@ -244,7 +259,34 @@ def get_root_admin_dashboard(connection):
         },
         "platform_enabled_sports": platform_enabled_sports,
         "organizations": organizations,
+        "association_competitions": [
+            {"name": row.get("name") or "", "type": row.get("type") or "league", "club_count": row.get("club_count") or 0}
+            for row in competition_rows
+        ],
     }
+
+
+def delete_root_admin_association_competition(connection, competition_name):
+    target = str(competition_name or "").strip().casefold()
+    if not target:
+        raise ValueError("competition name is required")
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT id, association_competitions FROM "SkwshOrgSettings" WHERE jsonb_array_length(COALESCE(association_competitions, \'[]\'::jsonb)) > 0')
+        rows = cursor.fetchall()
+        affected = 0
+        for row in rows:
+            current = row.get("association_competitions") or []
+            filtered = [
+                item
+                for item in current
+                if not isinstance(item, dict)
+                or str(item.get("name") or "").strip().casefold() != target
+            ]
+            if len(filtered) != len(current):
+                cursor.execute('UPDATE "SkwshOrgSettings" SET association_competitions = %(competitions)s WHERE id = %(organization_id)s', {"competitions": Jsonb(filtered), "organization_id": row["id"]})
+                affected += 1
+    connection.commit()
+    return {"deleted_name": competition_name, "affected_organizations": affected}
 
 
 def get_root_admin_platform_sports(connection):

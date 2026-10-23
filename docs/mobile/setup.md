@@ -8,8 +8,8 @@ client in the `RcktScore` repository.
 ## Repository Areas
 
 - `mobile/ios/` native iOS workspace location
-- `docs/mobile/android-parity-plan.md` planned native Android parity approach;
-  there is no Android project yet
+- `mobile/android/` native Android/Compose project foundation
+- `docs/mobile/android-parity-plan.md` staged native Android parity approach
 - `mobile/shared/` shared mobile-facing contracts and state references
 - `docs/backend-api.md` backend endpoint and contract reference
 - `docs/technical-walkthrough.md` request lifecycle and end-to-end flows

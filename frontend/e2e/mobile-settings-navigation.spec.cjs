@@ -68,7 +68,19 @@ test("non-admin club user opens Settings from the Android menu @mobile-settings"
     .click();
 
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.getByText("You are in view-only mode. Only organisation admins can save changes.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Organisation Details" })).toBeVisible();
-  await expect(page.locator("#organization_name")).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
+  await expect(page.getByLabel("First Name")).toHaveAttribute("readonly", "");
+  await page.getByRole("button", { name: "Association", exact: true }).click();
+  await expect(page.getByText("You are in view-only mode. Only organisation admins can manage club settings.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Club Profile/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Courts/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Club Profile/ }).click();
+  await expect(page).toHaveURL(/club=1.*organizationId=42.*tab=organisation/);
+  await expect(page.getByRole("button", { name: /Settings Home/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Courts/ })).toHaveCount(0);
+
+  await page.goto("/settings?club=1&organizationId=42&tab=courts");
+  await expect(page).toHaveURL(/tab=organisation/);
+  await expect(page.getByRole("button", { name: /Courts/ })).toHaveCount(0);
 });

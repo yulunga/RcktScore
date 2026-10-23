@@ -454,12 +454,13 @@ test("opens the shared sport chooser from the responsive new-match menu action @
   await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
 });
 
-test("does not repeat the Home button in organisation settings tabs @header", async ({ page }) => {
+test("shows the personal-first single-row settings menu @header", async ({ page }) => {
   await page.goto("/settings");
   const settingsMenu = page.locator(".root-admin-tab-row");
   await expect(settingsMenu).toBeVisible();
   await expect(settingsMenu.getByRole("button", { name: "Back to dashboard" })).toHaveCount(0);
-  await expect(settingsMenu.getByRole("button", { name: "Organisation", exact: true })).toBeVisible();
+  await expect(settingsMenu.getByRole("button", { name: "Profile", exact: true })).toBeVisible();
+  await expect(settingsMenu.getByRole("button", { name: "Association", exact: true })).toBeVisible();
   const menuTops = await settingsMenu.getByRole("button").evaluateAll((buttons) => (
     buttons.map((button) => Math.round(button.getBoundingClientRect().top))
   ));
@@ -471,19 +472,8 @@ test("does not repeat the Home button in organisation settings tabs @header", as
     }));
     expect(overflow.scrollWidth).toBeGreaterThan(overflow.clientWidth);
     await settingsMenu.evaluate((element) => { element.scrollLeft = 0; });
-    await settingsMenu.getByRole("button", { name: "Game Settings", exact: true }).evaluate((button) => button.click());
-    await expect.poll(async () => settingsMenu.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
-    await expect.poll(async () => settingsMenu.evaluate((element) => {
-      const selected = element.querySelector('button[aria-pressed="true"]');
-      const menuBox = element.getBoundingClientRect();
-      const selectedBox = selected.getBoundingClientRect();
-      return selectedBox.right - menuBox.right;
-    })).toBeLessThanOrEqual(1);
-    const selectedPosition = await settingsMenu.evaluate((element) => {
-      const selected = element.querySelector('button[aria-pressed="true"]');
-      return selected.getBoundingClientRect().left - element.getBoundingClientRect().left;
-    });
-    expect(selectedPosition).toBeGreaterThanOrEqual(-1);
+    await settingsMenu.getByRole("button", { name: "App Settings", exact: true }).click();
+    await expect(page).toHaveURL(/section=app/);
   }
 });
 
@@ -494,7 +484,7 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
     await route.fulfill({ json: envelope({}) });
   });
 
-  await page.goto("/settings");
+  await page.goto("/settings?club=1&tab=organisation");
   const clubName = page.getByLabel("Club Name");
   const address = page.getByLabel("Address");
   const primaryContact = page.getByLabel("Primary Contact");
@@ -514,7 +504,8 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
   await expect(page.getByText("Organisation details updated.")).toBeVisible();
   expect(submittedOrganization.org_contact).toBe("Alex Zephyr");
 
-  await page.getByRole("button", { name: "Users", exact: true }).click();
+  const clubSettingsMenu = page.locator(".settings-category-switch");
+  await clubSettingsMenu.getByRole("button", { name: /Users/ }).click();
   const addUserToggle = page.getByRole("button", { name: "Add User", exact: true }).first();
   await expect(addUserToggle).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByLabel("First Name")).toHaveCount(0);
@@ -534,7 +525,7 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
   await expect(userCards.first()).toContainText("Alex");
   await expect(userCards.first()).toContainText("Zephyr");
 
-  await page.getByRole("button", { name: "Courts", exact: true }).click();
+  await clubSettingsMenu.getByRole("button", { name: /Courts/ }).click();
   const addCourtToggle = page.getByRole("button", { name: "Add Court", exact: true });
   await expect(addCourtToggle).toHaveAttribute("aria-expanded", "false");
   await addCourtToggle.click();
@@ -543,6 +534,6 @@ test("uses a club-member primary contact and searchable surname-sorted users @he
   const [addCourtBox, courtFilterBox] = await Promise.all([addCourtForm.boundingBox(), courtFilter.boundingBox()]);
   expect(courtFilterBox.y).toBeGreaterThanOrEqual(addCourtBox.y + addCourtBox.height);
 
-  await page.getByRole("button", { name: "Users", exact: true }).click();
+  await clubSettingsMenu.getByRole("button", { name: /Users/ }).click();
   await expect(page.getByRole("button", { name: "Add User", exact: true })).toHaveAttribute("aria-expanded", "false");
 });

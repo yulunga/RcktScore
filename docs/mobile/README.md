@@ -1,7 +1,8 @@
 # Mobile Docs
 
-This folder contains current mobile-platform notes for the native iOS app that
-ships from the same repository as the web and backend code.
+This folder contains current mobile-platform notes for the native iOS app and
+the initial Android foundation in the same repository as the web and backend
+code.
 
 Current documents:
 
@@ -10,7 +11,15 @@ Current documents:
 - `build.md`
 - `release-notes.md`
 - `ios-v1-plan.md`
-- `android-parity-plan.md` (planning only; no Android app exists yet)
+- `android-parity-plan.md` (the Android framework exists; feature work remains planned)
+
+## Current Android State
+
+An isolated Android Studio/Gradle project now exists in `mobile/android/`. It
+contains the Compose theme, app/navigation shell, environment configuration,
+five iOS-equivalent top-level destinations, and unit-test scaffolding. It does
+not yet implement authentication, backend access, persistence, scoring,
+settings, analytics, or Google Play Billing.
 
 ## Current iOS State
 

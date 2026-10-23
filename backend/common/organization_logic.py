@@ -37,6 +37,24 @@ def normalize_timed_break_defaults(value):
     }
 
 
+def normalize_association_competitions(value):
+    normalized = []
+    seen = set()
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        competition_type = str(item.get("type") or "league").strip().lower()
+        if not name or competition_type not in {"league", "interclub"}:
+            continue
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({"name": name[:120], "type": competition_type})
+    return normalized
+
+
 def _utcnow():
     return datetime.now(timezone.utc)
 
@@ -59,6 +77,7 @@ def _serialize_organization(row):
         "available_plan_entitlements": personal_plan_contract() if org_type == "personal" else None,
         "enabled_sports": normalize_enabled_sports(row.get("enabled_sports")),
         "timed_break_defaults": normalize_timed_break_defaults(row.get("timed_break_defaults")),
+        "association_competitions": normalize_association_competitions(row.get("association_competitions")),
         "features": {
             "tournament_manager": {
                 "web_enabled": bool(row.get("tournament_manager_web_enabled")),
@@ -329,6 +348,7 @@ def get_organization_settings(connection, organization_id, *, include_display_co
                 plan,
                 enabled_sports,
                 o.timed_break_defaults,
+                o.association_competitions,
                 o.is_hidden,
                 COALESCE(tournament_feature.web_enabled, false) AS tournament_manager_web_enabled
             FROM "SkwshOrgSettings" AS o
@@ -395,10 +415,26 @@ def get_organization_settings(connection, organization_id, *, include_display_co
         )
         court_rows = cursor.fetchall()
 
+        cursor.execute(
+            """
+            SELECT DISTINCT item->>'name' AS name, COALESCE(item->>'type', 'league') AS type
+            FROM "SkwshOrgSettings" AS catalog_org
+            CROSS JOIN LATERAL jsonb_array_elements(COALESCE(catalog_org.association_competitions, '[]'::jsonb)) AS item
+            WHERE COALESCE(catalog_org.org_type, 'club') = 'club'
+              AND NULLIF(BTRIM(item->>'name'), '') IS NOT NULL
+            ORDER BY name ASC
+            """
+        )
+        competition_catalog = cursor.fetchall()
+
     return {
         "organization": _serialize_organization(organization_row),
         "users": [_serialize_user(row) for row in user_rows],
         "courts": [_serialize_court(row, include_display_code=include_display_codes) for row in court_rows],
+        "competition_catalog": [
+            {"name": row.get("name") or "", "type": row.get("type") or "league"}
+            for row in competition_catalog
+        ],
     }
 
 
@@ -413,6 +449,8 @@ def update_organization_details(connection, organization_id, payload):
         updates["enabled_sports"] = constrain_enabled_sports(connection, payload.get("enabled_sports"))
     if "timed_break_defaults" in payload:
         updates["timed_break_defaults"] = normalize_timed_break_defaults(payload.get("timed_break_defaults"))
+    if "association_competitions" in payload:
+        updates["association_competitions"] = normalize_association_competitions(payload.get("association_competitions"))
 
     if updates:
         set_clause = ", ".join(f'{field} = %({field})s' for field in updates)
@@ -424,6 +462,8 @@ def update_organization_details(connection, organization_id, payload):
             params["enabled_sports"] = Jsonb(params["enabled_sports"])
         if "timed_break_defaults" in params:
             params["timed_break_defaults"] = Jsonb(params["timed_break_defaults"])
+        if "association_competitions" in params:
+            params["association_competitions"] = Jsonb(params["association_competitions"])
         with connection.cursor() as cursor:
             cursor.execute(
                 f'''

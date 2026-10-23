@@ -119,6 +119,20 @@ the Active Matches and Scheduled Matches headings open their corresponding tabs.
 On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
+
+Web Settings should open on Profile, not directly on club administration. Profile
+fields remain read-only until Edit is selected. Association cards depend on
+`available_memberships` retained by a fresh login; older browser sessions created
+before that field existed may show only the currently selected membership until
+the user signs in again. A club user sees only Club Profile and the view-only
+notice, while a club admin sees Courts, Users and Settings actions. Those actions
+must preserve `club=1` and the selected membership's `organizationId` in the query
+string or the page will return to the personal Settings hub or active login club.
+Opening a listed association does not switch the active scoring context. Profile
+images are intentionally browser-local. League/interclub
+search requires migration `040_association_competitions.sql`; if the Settings or
+root-admin dashboard request reports a missing `association_competitions` column,
+apply that migration before deploying the corresponding backend.
 On both native and web Historic Match screens, Match Information should initially be
 collapsed, and the Match Time disclosure should remain a shallow, low-padding
 card in its closed state. Each game header should show player one, its completed point score,

@@ -62,6 +62,7 @@ def lambda_handler(event, context):
     if len(memberships) == 1:
         user = {
             **memberships[0],
+            "available_memberships": memberships,
             "session_token": created_session["token"],
             "session_expires_at": created_session["expires_at"].isoformat(),
         }

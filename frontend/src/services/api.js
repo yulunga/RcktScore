@@ -212,6 +212,10 @@ export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
 }
 
+export function deleteRootAdminAssociationCompetition(name) {
+  return apiRequest(`/root_admin/association-competitions/${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
 export function getRootAdminNotifications() {
   return apiRequest("/root_admin/notifications");
 }

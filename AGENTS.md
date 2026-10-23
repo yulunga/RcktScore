@@ -23,6 +23,8 @@ Current stack:
 - Supabase Postgres as the primary datastore
 - AWS SAM for backend deployment
 - native iOS client in `mobile/ios/`
+- native Android/Compose foundation in `mobile/android/`; product feature
+  implementation has not started yet
 
 The old Flask code in `version1/` is reference-only and should not be treated as the active product.
 
@@ -41,8 +43,9 @@ What is real and implemented:
 - Personal Plus users can enter an eight-character match-specific viewing code from Matches on web or iOS, poll a live read-only score and timeline, see the final result after completion, and save the match to a cross-device Viewed Matches list; scorers find the code in live Game Settings
 - the Personal Free completed-history limit is enforced on both dashboard lists and direct authenticated match reads
 - organisation settings, user creation with first-name/surname fields, organisation-user detail editing and delete, user role updates, and sport-specific court CRUD; legacy courts without a sport remain available to every sport. The compact club-admin Courts view lists and filters courts before editing, opens add/edit forms on demand, and keeps scoreboard URL/display-code controls inside the selected court editor
-- web organisation settings place the venue address immediately after the club name, require Primary Contact selection from an approved member lookup, and use circular add controls for Users and Courts; each add form appears before its search/filter control, resets its inactivity timer while being edited, and collapses after one inactive minute or when its Settings section is left. User rows remain compact and surname-sorted with role, approval and edit indicators. Settings sections reuse the single-row, horizontally scrollable Matches segmented-control style and automatically centre the selected section on narrow screens, Social Profiles sits under Organisation, and Game Settings opens Racket Sports or Default Timers from separate tiles
-- club members without the admin role can open web Settings from the responsive menu and receive the existing view-only organisation presentation; save, add, edit, delete, sport and timer controls remain disabled, while club admins retain full settings access
+- web organisation settings place the venue address immediately after the club name, require Primary Contact selection from an approved member lookup, and use circular add controls for Users and Courts; each add form appears before its search/filter control, resets its inactivity timer while being edited, and collapses after one inactive minute or when its Settings section is left. User rows remain compact and surname-sorted with role, approval and edit indicators. Club-context sections reuse the single-row, horizontally scrollable Matches segmented-control style and automatically centre the selected section on narrow screens, Social Profiles sits under Club Profile, and club Settings opens Racket Sports or Default Timers from separate tiles
+- club members without the admin role can open web Settings from the responsive menu; their Association card exposes only the selected club's read-only Club Profile and omits Courts, Users and Settings. Direct query-string access is constrained to the same read-only pages, while club admins retain full club-context settings access
+- web Settings now opens on a personal-first, read-only Profile with explicit Edit mode, browser-local profile-image selection, and read-only club associations. Its single-row menu is Profile, Association, Subscription and App Settings. Approved memberships retained from login populate role-aware association cards; ordinary club users see only the read-only club profile and its view-only notice, while club admins can enter a club-context sub-menu for Settings Home, Club Profile, Courts, Users and Settings, including racket-sport enablement. Club profiles persist searchable league/interclub participation in `association_competitions`; root admin sees the combined directory and can remove an inappropriate name from every club. This association browsing does not switch the active scoring organisation
 - root-admin club management, including club-user invite email approval links and root-admin manual approval for pending organisation users
 - match create, schedule, start, score, event actions, undo, and end
 - sport-specific match engine dispatch with live squash/racketball and expanded tennis scoring, including native tennis doubles setup with per-participant shirt colours, automatic singles receiver selection from the opening server, explicit doubles serve/receive selection, optional Golden Point played automatically from the 40-40/Right service side, an optional final-set 10-point match tiebreak, and optional timed 90-second odd-game changeovers plus 120-second set breaks
@@ -142,6 +145,8 @@ What is still partial or risky:
   - SAM template in `template.yaml`
 - `mobile/`
   - iOS project in `ios/RcktScoreMobile/`
+  - isolated Android Gradle project and Compose navigation/theme foundation in
+    `android/`
   - mobile-facing shared references in `shared/`
   - offline active-match state and action queue in `ios/RcktScoreMobile/RcktScoreMobile/State/OfflineMatchStore.swift`
   - native tennis rules and score UI in `ios/RcktScoreMobile/RcktScoreMobile/State/TennisScoringReducer.swift` and `ios/RcktScoreMobile/RcktScoreMobile/Views/TennisScoringPresentation.swift`

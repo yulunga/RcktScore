@@ -369,6 +369,18 @@ Resources:
             Path: /root_admin/organizations
             Method: POST
 
+  DeleteRootAdminAssociationCompetitionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_root_admin_association_competition/handler.lambda_handler
+      Events:
+        DeleteRootAdminAssociationCompetition:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/association-competitions/{competition_name}
+            Method: DELETE
+
   CreateScoreboardDisplaySessionFunction:
     Type: AWS::Serverless::Function
     Properties:

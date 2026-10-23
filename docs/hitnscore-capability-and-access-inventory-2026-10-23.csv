@@ -1,0 +1,222 @@
+﻿ID,Category,Capability,Personal Free,Personal Plus,Club Member,Club Admin,Surface/status,Current behavior / qualification
+CAP-001,"Identity, membership and account context",Sign in with email and password,Yes,Yes,Yes,Yes,Web/iOS,Approved membership and valid session required.
+CAP-002,"Identity, membership and account context",Select between memberships at login,Yes,Yes,Yes,Yes,Web/iOS,Same email can have different roles in different organisations.
+CAP-003,"Identity, membership and account context",Switch membership from Association settings,Yes,Yes,Yes,Yes,iOS,Implemented native switch; equivalent persistent web switcher is not established by this review.
+CAP-004,"Identity, membership and account context",Personal workspace separate from club workspace,Yes,Yes,Yes,Yes,Backend,Personal accounts are stored as single-user personal organisations; club rights come from club membership.
+CAP-005,"Identity, membership and account context",Different role in each club,—,—,Member,Admin,Backend,Roles are user and admin; no custom permission designer.
+CAP-006,"Identity, membership and account context",Read another club without membership,No,No,No,No,Backend,Club authorization is tenant scoped.
+CAP-007,"Identity, membership and account context",Use unapproved club membership,—,—,No,No,Backend,Approval is checked before access.
+CAP-008,"Identity, membership and account context",Self-service personal registration,Yes,Yes,—,—,Web/iOS,Personal account is created immediately; password setup is emailed.
+CAP-009,"Identity, membership and account context",Submit club-interest enquiry,Yes,Yes,Yes,Yes,Web/iOS,"Enquiry process, not instant club provisioning or checkout."
+CAP-010,"Identity, membership and account context",Reset own password,Yes,Yes,Yes,Yes,Web/iOS,Email reset flow.
+CAP-011,"Identity, membership and account context",Edit own profile,Yes,Yes,Yes,Yes,Web/iOS,"Name, surname, email and supported contact/location fields; email change ends previous sessions."
+CAP-012,"Identity, membership and account context",Unlock saved session with biometrics,Yes,Yes,Yes,Yes,iOS,Device-local opt-in; saved session must remain unexpired.
+CAP-013,"Identity, membership and account context",Sign out,Yes,Yes,Yes,Yes,Web/iOS,Session-backed sign-out.
+CAP-014,"Identity, membership and account context",Delete own personal account,Yes,Yes,—,—,iOS/API,Personal owner only; native flow has two destructive confirmations.
+CAP-015,"Identity, membership and account context",Profile photo,Local,Local,Local,Local,iOS,"Device-local only, not a central shared profile image."
+CAP-016,"Dashboard, match discovery and history",View active matches in selected workspace,Yes,Yes,Yes,Yes,Web/iOS,"Club lists are club scoped, not limited to matches involving the signed-in player."
+CAP-017,"Dashboard, match discovery and history",View scheduled matches,Gate,Yes,Yes,Yes,Web/iOS,Personal Free sees upgrade presentation.
+CAP-018,"Dashboard, match discovery and history",View completed match history,Latest 3,Latest 100,Yes,Yes,Web/iOS/API,Club list request/page sizes are not established subscription retention limits.
+CAP-019,"Dashboard, match discovery and history",Open completed match by direct URL/API,Latest 3,Latest 100,Yes,Yes,Backend,Personal history limits also apply to direct authenticated reads.
+CAP-020,"Dashboard, match discovery and history",See redacted older-history teaser,Yes,—,—,—,Web/iOS,Older records remain stored; Free reads are restricted.
+CAP-021,"Dashboard, match discovery and history",Cross-device accessible history,Latest 3,Latest 100,Yes,Yes,Web/iOS,"Within the account or selected club, not an aggregate of every membership."
+CAP-022,"Dashboard, match discovery and history",Search completed history by text,Yes,Yes,Yes,Yes,Web,Only accessible records are exposed by history entitlement.
+CAP-023,"Dashboard, match discovery and history",Filter history by sport,Yes,Yes,Yes,Yes,Web,Sport availability also applies.
+CAP-024,"Dashboard, match discovery and history",Filter history by date or date range,Yes,Yes,Yes,Yes,Web,Filters do not upgrade history entitlement.
+CAP-025,"Dashboard, match discovery and history",Paginate match history,Yes,Yes,Yes,Yes,Web,20 cards per Matches History page; dashboard has a separate 24-entry display cap.
+CAP-026,"Dashboard, match discovery and history",Read final result and game/set scores,Yes,Yes,Yes,Yes,Web/iOS,Subject to match access/history limits.
+CAP-027,"Dashboard, match discovery and history",Read point-by-point historical timeline,Yes,Yes,Yes,Yes,Web/iOS,Sport-specific event presentation.
+CAP-028,"Dashboard, match discovery and history",Read match metadata and time breakdown,Yes,Yes,Yes,Yes,Web/iOS,Collapsed match information and timing disclosures.
+CAP-029,"Dashboard, match discovery and history",View live tournaments from dashboard,—,—,Enabled,Enabled,Web,Explicit per-club tournament feature required.
+CAP-030,"Match creation, scheduling and scoring permissions",Create an immediate match,Yes,Yes,Yes,Yes,Web/iOS,Enabled implemented sport required; club court must support sport or be unassigned.
+CAP-031,"Match creation, scheduling and scoring permissions",Have more than one active personal match,No,No,—,—,Backend,Both personal plans retain one active match at a time.
+CAP-032,"Match creation, scheduling and scoring permissions",Schedule a match for later,No,Yes,Yes,Yes,Web/iOS,Personal Free requests do not gain scheduled status.
+CAP-033,"Match creation, scheduling and scoring permissions",Schedule while personal match is active,No,Yes,—,—,Web/iOS,Activation still waits for current personal match to end.
+CAP-034,"Match creation, scheduling and scoring permissions",Activate scheduled match,—,Yes,Yes,Yes,Web/iOS,Backend enforces active personal-match restriction.
+CAP-035,"Match creation, scheduling and scoring permissions",Choose club court,—,—,Yes,Yes,Web/iOS,Club court availability and sport compatibility apply.
+CAP-036,"Match creation, scheduling and scoring permissions",Lookup existing player/referee names,Yes,Yes,Yes,Yes,Web/iOS/API,Setup lookup is available to approved members; not a full player CRM.
+CAP-037,"Match creation, scheduling and scoring permissions",Enter participant names manually,Yes,Yes,Yes,Yes,Web/iOS,Recorded names are not always linked account identities.
+CAP-038,"Match creation, scheduling and scoring permissions",Set club referee / Me option,—,—,Yes,Yes,Web,Me option uses profile and is disabled when user is a named participant.
+CAP-039,"Match creation, scheduling and scoring permissions",Choose participant shirt colours,Yes,Yes,Yes,Yes,Web/iOS,Not a Plus-only feature.
+CAP-040,"Match creation, scheduling and scoring permissions",Score points,Yes,Yes,Yes,Yes,Web/iOS/API,"Club authorization is membership based, not scorer assignment based."
+CAP-041,"Match creation, scheduling and scoring permissions",Use sport-specific scoring event actions,Yes,Yes,Yes,Yes,Web/iOS/API,"Includes applicable let, stroke, server and service-side actions."
+CAP-042,"Match creation, scheduling and scoring permissions",Undo scoring action,Yes,Yes,Yes,Yes,Web/iOS/API,No separate club-admin requirement in handler.
+CAP-043,"Match creation, scheduling and scoring permissions",End live match early,Yes,Yes,Yes,Yes,Web/iOS/API,No separate club-admin requirement in handler.
+CAP-044,"Match creation, scheduling and scoring permissions",Change supported live match settings,Yes,Yes,Yes,Yes,Web/iOS,Subject to scoring-state rules; no separate delegated scorer role.
+CAP-045,"Match creation, scheduling and scoring permissions",Use warm-up / match / break timers,Yes,Yes,Yes,Yes,Web/iOS,Applicable controls depend on sport and match setup.
+CAP-046,"Match creation, scheduling and scoring permissions",Receive completed-match summary,Yes,Yes,Yes,Yes,Web/iOS,Read-only historic presentation also available afterward.
+CAP-047,"Match creation, scheduling and scoring permissions",Archive or delete arbitrary match as club admin,No,No,No,No,Root-admin tool,Root-admin archive/delete exists; ordinary club role does not imply it.
+CAP-048,"Match creation, scheduling and scoring permissions",Restrict scoring to assigned scorer,Not built,Not built,Not built,Not built,Roadmap,Requires a new match-level permission and assignment model.
+CAP-049,Sports and rule configuration,Squash scoring,Enabled,Enabled,Enabled,Enabled,Web/iOS,"Platform, organisation and membership sport availability intersect."
+CAP-050,Sports and rule configuration,Racketball scoring,Enabled,Enabled,Enabled,Enabled,Web/iOS,Same availability rules.
+CAP-051,Sports and rule configuration,Tennis singles scoring,Enabled,Enabled,Enabled,Enabled,Web/iOS,Live set/game/point engine.
+CAP-052,Sports and rule configuration,Tennis doubles scoring,Enabled,Enabled,Enabled,Enabled,Web/iOS,Four participants and opening serve/receive order.
+CAP-053,Sports and rule configuration,Padel doubles scoring,Enabled,Enabled,Enabled,Enabled,Web/iOS,Explicitly enabled accounts only; doubles-only adapter.
+CAP-054,Sports and rule configuration,Table tennis scoring,Not built,Not built,Not built,Not built,Placeholder,"Fail-safe placeholder, not a sellable scoring feature."
+CAP-055,Sports and rule configuration,Badminton scoring,Not built,Not built,Not built,Not built,Placeholder,Fail-safe placeholder.
+CAP-056,Sports and rule configuration,Pickleball scoring,Not built,Not built,Not built,Not built,Placeholder,Fail-safe placeholder.
+CAP-057,Sports and rule configuration,Configure best-of match format,Yes,Yes,Yes,Yes,Web/iOS,Available sport-specific supported formats.
+CAP-058,Sports and rule configuration,Squash/racketball handicap,Yes,Yes,Yes,Yes,Web/iOS,"Sport capability, not plan entitlement or club toggle."
+CAP-059,Sports and rule configuration,Squash/racketball Golden Point,Yes,Yes,Yes,Yes,Web/iOS,Per-match rule option.
+CAP-060,Sports and rule configuration,Squash/racketball timed warm-up and game breaks,Yes,Yes,Yes,Yes,Web/iOS,Optional timing; game breaks are 90 seconds.
+CAP-061,Sports and rule configuration,Tennis advantage scoring,Yes,Yes,Yes,Yes,Web/iOS,Backend-authored score presentation.
+CAP-062,Sports and rule configuration,Tennis Golden Point,Yes,Yes,Yes,Yes,Web/iOS,40-40/Right service side.
+CAP-063,Sports and rule configuration,Tennis final-set 10-point match tiebreak,Yes,Yes,Yes,Yes,Web/iOS,Optional match rule.
+CAP-064,Sports and rule configuration,Tennis/Padel timed changeovers and set breaks,Yes,Yes,Yes,Yes,Web/iOS,90-second odd-game and 120-second set breaks.
+CAP-065,Sports and rule configuration,Padel receiving-partner choice at Golden Point,Enabled,Enabled,Enabled,Enabled,Web/iOS,Receiving team chooses Right/Left partner.
+CAP-066,Sports and rule configuration,Save per-sport timer defaults,Yes,Yes,Read only,Edit,Web/iOS/API,Default preselects match option and can be overridden per match.
+CAP-067,Sports and rule configuration,Change club enabled sports,—,—,No,Yes,Web/iOS,Cannot override platform restrictions.
+CAP-068,Sports and rule configuration,Change personal sport rollout access,Root managed,Root managed,—,—,Root admin,Do not assume upgrading automatically enables every sport.
+CAP-069,"App analytics — current web access, selected workspace",Choose 30 / 90 / 365 day or all-time period,Yes,Yes,Yes,Yes,Web,Extended analytics are requested by the analytics page.
+CAP-070,"App analytics — current web access, selected workspace",Match volume,Yes,Yes,Yes,Yes,Web/API,Workspace-wide; personal analytics totals can cover more than the readable history cards.
+CAP-071,"App analytics — current web access, selected workspace",Completed-match count and rate,Yes,Yes,Yes,Yes,Web/API,Derived from recorded statuses.
+CAP-072,"App analytics — current web access, selected workspace",Abandoned / uncompleted-started rate,Yes,Yes,Yes,Yes,Web/API,Active unfinished records are included; not a reliable explicit abandonment event.
+CAP-073,"App analytics — current web access, selected workspace",Match counts by sport,Yes,Yes,Yes,Yes,Web/API,Workspace-wide.
+CAP-074,"App analytics — current web access, selected workspace",Average match duration,Yes,Yes,Yes,Yes,Web/API,Valid duration records only.
+CAP-075,"App analytics — current web access, selected workspace",Longest match duration,Yes,Yes,Yes,Yes,Web/API,Selected period.
+CAP-076,"App analytics — current web access, selected workspace",Shortest completed match duration,Yes,Yes,Yes,Yes,Web/API,Zero durations excluded.
+CAP-077,"App analytics — current web access, selected workspace",Duration distribution bands,Yes,Yes,Yes,Yes,Web/API,"Under 30, 30–60, 60–90, over 90 minutes."
+CAP-078,"App analytics — current web access, selected workspace",Active weeks / returning usage,Yes,Yes,Yes,Yes,Web/API,"Activity weeks, not verified unique returning users."
+CAP-079,"App analytics — current web access, selected workspace",Average matches per active day/week,Yes,Yes,Yes,Yes,Web/API,Activity frequency.
+CAP-080,"App analytics — current web access, selected workspace",Day/hour activity heatmap,Yes,Yes,Yes,Yes,Web/API,Members currently see club-wide match timing patterns.
+CAP-081,"App analytics — current web access, selected workspace",Monthly scoring trend,Yes,Yes,Yes,Yes,Web/API,Workspace-wide.
+CAP-082,"App analytics — current web access, selected workspace",Web versus iOS scoring source,Partial,Partial,Partial,Partial,Web/API,New session-attributed events; older records remain unattributed.
+CAP-083,"App analytics — current web access, selected workspace",Most-used match format,Yes,Yes,Yes,Yes,Web/API,Derived from saved setup.
+CAP-084,"App analytics — current web access, selected workspace",Timed-break usage rate,Yes,Yes,Yes,Yes,Web/API,Saved match setting.
+CAP-085,"App analytics — current web access, selected workspace",Golden Point usage rate,Yes,Yes,Yes,Yes,Web/API,Saved match setting.
+CAP-086,"App analytics — current web access, selected workspace",Handicap usage rate,Yes,Yes,Yes,Yes,Web/API,Saved match setting.
+CAP-087,"App analytics — current web access, selected workspace",Final-set tiebreak usage rate,Yes,Yes,Yes,Yes,Web/API,Saved match setting.
+CAP-088,"App analytics — current web access, selected workspace",Close-match frequency,Yes,Yes,Yes,Yes,Web/API,"Engine-derived definition, not a rating system."
+CAP-089,"App analytics — current web access, selected workspace",Extra-points frequency,Yes,Yes,Yes,Yes,Web/API,Recorded match structure.
+CAP-090,"App analytics — current web access, selected workspace",Comeback-match frequency,Yes,Yes,Yes,Yes,Web/API,Derived from recorded progression.
+CAP-091,"App analytics — current web access, selected workspace",Longest game/set duration,Yes,Yes,Yes,Yes,Web/API,Requires usable event timing.
+CAP-092,"App analytics — current web access, selected workspace",Average games/sets per match by sport,Yes,Yes,Yes,Yes,Web/API,Sport-specific units.
+CAP-093,"App analytics — current web access, selected workspace",Average points per match by sport,Yes,Yes,Yes,Yes,Web/API,Recorded points.
+CAP-094,"App analytics — current web access, selected workspace",Average points per game/set by sport,Yes,Yes,Yes,Yes,Web/API,Recorded points and units.
+CAP-095,"App analytics — current web access, selected workspace",Unique participant-name count,Yes,Yes,Yes,Yes,Web/API,"Names, not guaranteed distinct account identities."
+CAP-096,"App analytics — current web access, selected workspace",Repeat-participant rate,Yes,Yes,Yes,Yes,Web/API,"Name reuse, not a verified member-retention metric."
+CAP-097,"App analytics — current web access, selected workspace",New-match setup completion/abandonment funnel,Untracked,Untracked,Untracked,Untracked,Placeholder metric,Setup-start/exit attribution is missing.
+CAP-098,"App analytics — current web access, selected workspace",Basic native activity statistics,Yes,Yes,Yes,Yes,iOS,"Completed count, average/longest duration, sport mix; duration calculations use loaded history."
+CAP-099,"App analytics — current web access, selected workspace",Full web App analytics parity on iOS,No,No,No,No,Platform gap,Do not treat basic native stats as the complete web reporting suite.
+CAP-100,Player analytics and Personal Plus performance,Basic profile-linked player statistics,No on web,Yes,Yes,Yes,Web/API,Club member/admin receive basic player stats regardless of separate personal subscription.
+CAP-101,Player analytics and Personal Plus performance,Matches played / won / lost and win percentage,No on web,Yes,Yes,Yes,Web/API,Club basic player stats are scoped to selected club.
+CAP-102,Player analytics and Personal Plus performance,Player points won,No on web,Yes,Yes,Yes,Web/API,Basic player statistics.
+CAP-103,Player analytics and Personal Plus performance,Player playing time and average duration,No on web,Yes,Yes,Yes,Web/API,Basic player statistics.
+CAP-104,Player analytics and Personal Plus performance,Player sport breakdown,No on web,Yes,Yes,Yes,Web/API,Basic player statistics.
+CAP-105,Player analytics and Personal Plus performance,Most-played opponent list,No on web,Yes,Yes,Yes,Web/API,Club basic player stats list frequent opponents.
+CAP-106,Player analytics and Personal Plus performance,Game win percentage,No,Yes,No,No,Web/iOS,Advanced personal performance is generated for personal_plus personal workspace.
+CAP-107,Player analytics and Personal Plus performance,Point win percentage,No,Yes,No,No,Web/iOS,Same personal performance gate.
+CAP-108,Player analytics and Personal Plus performance,Service-point win percentage,No,Yes,No,No,Web/iOS,Depends on recorded service events.
+CAP-109,Player analytics and Personal Plus performance,Close-game/set win percentage,No,Yes,No,No,Web/iOS,Classified personal matches.
+CAP-110,Player analytics and Personal Plus performance,Current and best winning streak,No,Yes,No,No,Web/iOS,Classified personal history.
+CAP-111,Player analytics and Personal Plus performance,Weekly and monthly progress summary,No,Yes,No,No,Web/iOS,Personal performance report.
+CAP-112,Player analytics and Personal Plus performance,Month-over-month sport improvement,No,Yes,No,No,Web/iOS,Needs consecutive-month data.
+CAP-113,Player analytics and Personal Plus performance,Winning scoreline distribution,No,Yes,No,No,Web/iOS,Personal report.
+CAP-114,Player analytics and Personal Plus performance,Per-sport personal win/loss reporting,No,Yes,Basic only,Basic only,Web/iOS,Advanced report remains personal Plus.
+CAP-115,Player analytics and Personal Plus performance,Opponent head-to-head win/loss records,No,Yes,No,No,Web/iOS,More detailed than basic most-played-opponents list.
+CAP-116,Player analytics and Personal Plus performance,Aggregate my performance across multiple clubs,Not built,Not built,Not built,Not built,Roadmap,Current reporting is tenant scoped; Plus alone does not aggregate memberships.
+CAP-117,Player analytics and Personal Plus performance,Stable account-linked player attribution everywhere,Partial,Partial,Partial,Partial,Data gap,Current analytics match profile first name/surname; names can collide or change.
+CAP-118,Player analytics and Personal Plus performance,Admin browse every member personal performance report,No,No,Not built,Not built,Roadmap,Admin operational reporting is not a personal performance directory.
+CAP-119,Dedicated club analytics — current web access,Club analytics tab / payload,—,—,No,Yes,Web/API,Backend includes club_analytics only for club admin.
+CAP-120,Dedicated club analytics — current web access,Club match volume summary,—,—,No,Yes,Web/API,Similar information is also visible to members in App analytics today.
+CAP-121,Dedicated club analytics — current web access,Club usage day/hour heatmap,—,—,No,Yes,Web/API,App heatmap overlaps this admin-only presentation.
+CAP-122,Dedicated club analytics — current web access,Peak hours / peak-time concentration,—,—,No,Yes,Web/API,Top three busiest hours derived from recorded activity.
+CAP-123,Dedicated club analytics — current web access,Off-peak match count,—,—,No,Yes,Web/API,Outside the three busiest hours; not a configured club tariff window.
+CAP-124,Dedicated club analytics — current web access,Court-level match counts,—,—,No,Yes,Web/API,"Recorded matches, not booking inventory."
+CAP-125,Dedicated club analytics — current web access,Court-level recorded playing hours,—,—,No,Yes,Web/API,Does not calculate occupancy against opening/available court hours.
+CAP-126,Dedicated club analytics — current web access,Court sport-demand breakdown,—,—,No,Yes,Web/API,Recorded sport mix by court.
+CAP-127,Dedicated club analytics — current web access,Maximum simultaneous match activity,—,—,No,Yes,Web/API,Derived overlap; not a live capacity guarantee.
+CAP-128,Dedicated club analytics — current web access,Scheduled-match demand list,—,—,No,Yes,Web/API,Uses saved match records; not a full calendar booking forecast.
+CAP-129,Dedicated club analytics — current web access,Monthly sport popularity trend,—,—,No,Yes,Web/API,Selected club records.
+CAP-130,Dedicated club analytics — current web access,Premium Club Digest text,—,—,No,Yes,Web/API,Generated summary exists; name does not establish a Club Pro entitlement gate.
+CAP-131,Dedicated club analytics — current web access,Active member count from scored actions,—,—,Untracked,Untracked,Placeholder metric,Per-member action attribution missing.
+CAP-132,Dedicated club analytics — current web access,Member adoption rate,—,—,Untracked,Untracked,Placeholder metric,Do not sell as an implemented insight.
+CAP-133,Dedicated club analytics — current web access,New member activation,—,—,Untracked,Untracked,Placeholder metric,Same attribution gap.
+CAP-134,Dedicated club analytics — current web access,Court booking occupancy percentage,—,—,Not built,Not built,Roadmap,"Needs opening hours, capacity and booking data."
+CAP-135,Dedicated club analytics — current web access,Download analytics / scheduled reports,Not built,Not built,Not built,Not built,Roadmap,No established reporting export feature in this review.
+CAP-136,"Club settings, member directory and administration",Open club Settings,—,—,View only,Edit,Web/iOS,Web members are explicitly allowed to open Settings.
+CAP-137,"Club settings, member directory and administration",View organisation name/address/contact details,—,—,Yes,Yes,Web/API,Read-only access is broader than just club name.
+CAP-138,"Club settings, member directory and administration",Edit organisation name/address/contact details,—,—,No,Yes,Web/iOS/API,Admin authorization.
+CAP-139,"Club settings, member directory and administration",Select club Primary Contact,—,—,No,Yes,Web,Approved-member lookup; primary contact is not a separate permission role.
+CAP-140,"Club settings, member directory and administration",View club user directory,—,—,Yes,Yes,Web/API,Settings response returns users for ordinary members.
+CAP-141,"Club settings, member directory and administration",View other users email/contact/location fields,—,—,API returns,API returns,API,"Serialization includes email, telephone, city/location and country; decide field-level visibility."
+CAP-142,"Club settings, member directory and administration",View roles and approval status,—,—,Yes,Yes,Web/API,Included in directory/settings data.
+CAP-143,"Club settings, member directory and administration",Create/invite club user,—,—,No,Yes,Web/iOS/API,Invitation approval/password setup flow.
+CAP-144,"Club settings, member directory and administration",Edit club-user details,—,—,No,Yes,Web/iOS/API,Membership-level administration.
+CAP-145,"Club settings, member directory and administration",Promote/demote club role,—,—,No,Yes,Web/iOS/API,user/admin only.
+CAP-146,"Club settings, member directory and administration",Delete club user membership,—,—,No,Yes,Web/iOS/API,Do not equate this with deleting every account association.
+CAP-147,"Club settings, member directory and administration",Remove/demote last club admin,—,—,No,No,Backend,At least one admin is retained.
+CAP-148,"Club settings, member directory and administration",Manually verify email / approve pending accounts,—,—,No,Root only,Root-admin tool,Do not package root-admin verification as a normal club capability.
+CAP-149,"Club settings, member directory and administration",View court list and sport assignments,—,—,Yes,Yes,Web/iOS/API,Members may use courts without editing them.
+CAP-150,"Club settings, member directory and administration",Create club court,—,—,No,Yes,Web/iOS/API,Admin mutation.
+CAP-151,"Club settings, member directory and administration",Edit court name/alias/sport,—,—,No,Yes,Web/iOS/API,Admin mutation.
+CAP-152,"Club settings, member directory and administration",Delete club court,—,—,No,Yes,Web/iOS/API,Admin mutation.
+CAP-153,"Club settings, member directory and administration",Generate/regenerate court display code,—,—,No,Yes,Web/API,Code generation has explicit admin requirement.
+CAP-154,"Club settings, member directory and administration",Read display codes from general Settings API,—,—,No,Yes,API,Codes omitted for ordinary club members on this endpoint.
+CAP-155,"Club settings, member directory and administration",Read display access from authorized match,Yes,Yes,Yes,Yes,API,Match display-access endpoint can return linked court code; separate policy from Settings code visibility.
+CAP-156,"Club settings, member directory and administration",View per-sport timer defaults,Yes,Yes,Yes,Yes,Web/iOS/API,Selected workspace.
+CAP-157,"Club settings, member directory and administration",Edit club timer defaults,—,—,No,Yes,Web/iOS/API,Per-sport persisted defaults.
+CAP-158,"Club settings, member directory and administration",View enabled racket sports,Yes,Yes,Yes,Yes,Web/iOS,Selected workspace/platform intersection.
+CAP-159,"Club settings, member directory and administration",Edit social profile links,Not built,Not built,Not built,Not built,UI scaffold,Fields exist as disabled coming-soon placeholders.
+CAP-160,"Club settings, member directory and administration",Manage federation associations,Not built,Not built,Not built,Not built,UI scaffold,Native Association membership switching exists; federation links do not.
+CAP-161,"Club settings, member directory and administration",Configure detailed per-role permission switches,—,—,Not built,Not built,Roadmap,Current admin/user model is coarse.
+CAP-162,"Spectators, remote viewing and offline use",Open match viewing code as remote viewer,No,Yes,No personal benefit,No personal benefit,Web/iOS,Remote viewer requires a Personal Plus personal membership context.
+CAP-163,"Spectators, remote viewing and offline use",Poll live read-only score and timeline,No,Yes,—,—,Web/iOS,"Code-based remote watching, distinct from scoring access."
+CAP-164,"Spectators, remote viewing and offline use",View final result from watched match,No,Yes,—,—,Web/iOS,Read-only viewer flow.
+CAP-165,"Spectators, remote viewing and offline use",Save watched match to Viewed Matches,No,Yes,—,—,Web/iOS,Cross-device saved list in viewer personal workspace.
+CAP-166,"Spectators, remote viewing and offline use",Get match-specific viewing code as scorer,Yes,Yes,Yes,Yes,Web/iOS/API,Viewer entitlement differs from scorer code access.
+CAP-167,"Spectators, remote viewing and offline use",Public scoreboard/display entry,Public,Public,Public,Public,Web,Key/code/URL based access; read-only public surface.
+CAP-168,"Spectators, remote viewing and offline use",Club spectator display access from scoring,—,—,Yes,Yes,Web,Linked club court/display controls.
+CAP-169,"Spectators, remote viewing and offline use",Guaranteed WebSocket realtime delivery,Partial,Partial,Partial,Partial,Infrastructure,Scaffold exists; not production-complete broadcast.
+CAP-170,"Spectators, remote viewing and offline use",Reopen previously loaded active match offline,Yes,Yes,Yes,Yes,iOS,Device must already have loaded the match.
+CAP-171,"Spectators, remote viewing and offline use",Score supported loaded match offline,Yes,Yes,Yes,Yes,iOS,"Native reducers/queue; squash, racketball, tennis and Padel adapter paths."
+CAP-172,"Spectators, remote viewing and offline use",Persist pending actions through restart,Yes,Yes,Yes,Yes,iOS,Offline action queue.
+CAP-173,"Spectators, remote viewing and offline use",Replay queued actions after reconnect,Yes,Yes,Yes,Yes,iOS/API,Client action UUIDs prevent duplicate mutations on retry.
+CAP-174,"Spectators, remote viewing and offline use",Create new match while offline,No,No,No,No,iOS limitation,Requires connectivity.
+CAP-175,"Spectators, remote viewing and offline use",Activate scheduled match while offline,No,No,No,No,iOS limitation,Requires connectivity.
+CAP-176,"Spectators, remote viewing and offline use",Browse uncached history/settings offline,No,No,No,No,iOS limitation,Not a general offline workspace.
+CAP-177,"Spectators, remote viewing and offline use",Web offline scoring equivalent to iOS,Not established,Not established,Not established,Not established,Platform gap,Do not assume native offline capability is shared by web.
+CAP-178,"Subscriptions, notifications and help",View current personal plan and benefits,Yes,Yes,—,—,Web/iOS,Free/Plus history and performance contract is server derived.
+CAP-179,"Subscriptions, notifications and help",Upgrade personal plan with Apple purchase,Eligible,Current,—,—,"iOS, release gated",New purchase offer is yearly; server verification and release gates apply.
+CAP-180,"Subscriptions, notifications and help",Restore Apple purchases,Eligible,Yes,—,—,iOS,Monthly legacy transactions still recognized for restore/lifecycle safety.
+CAP-181,"Subscriptions, notifications and help",Manage Apple subscription,Eligible,Yes,—,—,iOS,Apple subscription management flow.
+CAP-182,"Subscriptions, notifications and help",Web self-service paid checkout,Not built,Not built,—,—,Commercial gap,No established web payment checkout in current implementation.
+CAP-183,"Subscriptions, notifications and help",Club Essentials/Pro subscription comparison,—,—,Do not infer billing right,Preview,Web,Admin frontend preview; no payment or entitlement mutation.
+CAP-184,"Subscriptions, notifications and help",Paid club checkout / upgrade entitlement mutation,—,—,Not built,Not built,Commercial gap,No Stripe SDK/payment endpoint/persisted billing integration in preview.
+CAP-185,"Subscriptions, notifications and help",Enquire about Club Essentials/Pro,Yes,Yes,Yes,Yes,iOS/help,Enquiry captures contacts and emails requester/admin.
+CAP-186,"Subscriptions, notifications and help",Hard plan limit on club users,—,—,Not enforced,Not enforced,Packaging gap,Choose and implement any future cap explicitly.
+CAP-187,"Subscriptions, notifications and help",Hard plan limit on club courts,—,—,Not enforced,Not enforced,Packaging gap,No established Essentials/Pro court cap.
+CAP-188,"Subscriptions, notifications and help",Hard plan limit on club concurrency/schedules,—,—,Not enforced,Not enforced,Packaging gap,Operational court conflict handling is separate from tier limits.
+CAP-189,"Subscriptions, notifications and help",Read system notification inbox,Yes,Yes,Yes,Yes,Web/iOS,"Persisted messages, polled inbox."
+CAP-190,"Subscriptions, notifications and help",Mark notifications read across devices,Yes,Yes,Yes,Yes,Web/iOS,Explicit read state.
+CAP-191,"Subscriptions, notifications and help",Publish system messages to users/plans,No,No,No,No,Root admin,"Platform function, not club-admin messaging."
+CAP-192,"Subscriptions, notifications and help",Send club announcements to members,—,—,Not built,Not built,Roadmap,Do not infer from platform notification publisher.
+CAP-193,"Subscriptions, notifications and help",APNs push / background notification badges,Not built,Not built,Not built,Not built,Roadmap,Inbox polling exists.
+CAP-194,"Subscriptions, notifications and help",Use Help Centre and legal/privacy pages,Yes,Yes,Yes,Yes,Web/iOS,Public help plus native help/privacy access.
+CAP-195,"Subscriptions, notifications and help",Send feedback / Ping Us,Yes,Yes,Yes,Yes,Web/iOS,"Email-backed flow, not a ticketing service or priority support SLA."
+CAP-196,"Subscriptions, notifications and help",Choose website analytics cookie consent,Yes,Yes,Yes,Yes,Web,GA4 loaded after explicit Allow all consent.
+CAP-197,"Subscriptions, notifications and help",Native accessibility / Dynamic Type / dark mode,Yes,Yes,Yes,Yes,iOS,"Shared presentation capabilities, not subscription gates."
+CAP-198,"Subscriptions, notifications and help",Native Android product parity,Not built,Not built,Not built,Not built,Foundation,Compose/navigation foundation only.
+CAP-199,"Tournament Manager — web only, explicitly enabled clubs",View club tournament list/details,—,—,Enabled,Enabled,Web/API,"Feature flag required for club, independent of personal tier."
+CAP-200,"Tournament Manager — web only, explicitly enabled clubs",View draft event/draw in club manager,—,—,Enabled,Enabled,Web/API,Member read endpoint is not restricted to published events.
+CAP-201,"Tournament Manager — web only, explicitly enabled clubs",Create draft tournament,—,—,No,Enabled,Web/API,"Internal/open events, supported format/options."
+CAP-202,"Tournament Manager — web only, explicitly enabled clubs",Set grading and entry-size limits,—,—,No,Enabled,Web/API,Optional A–D grading and entry cap.
+CAP-203,"Tournament Manager — web only, explicitly enabled clubs",Search canonical accounts/reusable players,—,—,No,Enabled,Web/API,Admin entrant-management lookup.
+CAP-204,"Tournament Manager — web only, explicitly enabled clubs",Add/edit entrants and identity/ability/seed,—,—,No,Enabled,Web/API,Draft administration.
+CAP-205,"Tournament Manager — web only, explicitly enabled clubs",Import duplicate-reviewed CSV entrants,—,—,No,Enabled,Web,Import is implemented; report export is a different capability.
+CAP-206,"Tournament Manager — web only, explicitly enabled clubs",Generate reviewable knockout draw,—,—,No,Enabled,Web/API,Separated seed placement and top-seed byes.
+CAP-207,"Tournament Manager — web only, explicitly enabled clubs",Edit first-round draw positions,—,—,No,Enabled,Web/API,Draft draw editing.
+CAP-208,"Tournament Manager — web only, explicitly enabled clubs",View championship and plate brackets,—,—,Enabled,Enabled,Web,Horizontal bracket presentation.
+CAP-209,"Tournament Manager — web only, explicitly enabled clubs",Publish draw and lock entries,—,—,No,Enabled,Web/API,Publication creates Live state and public draw key.
+CAP-210,"Tournament Manager — web only, explicitly enabled clubs",Enable/disable public draw access,—,—,No,Enabled,Web/API,Can disable public access without returning draw to draft.
+CAP-211,"Tournament Manager — web only, explicitly enabled clubs",Return published draw to draft,—,—,No,Enabled,Web/API,Subject to tournament state validation.
+CAP-212,"Tournament Manager — web only, explicitly enabled clubs",Schedule playable published fixture,—,—,Enabled,Enabled,Web/API,Approved member can act; not admin-only.
+CAP-213,"Tournament Manager — web only, explicitly enabled clubs",Enter published fixture result,—,—,Enabled,Enabled,Web/API,Approved member can act; fixture state rules apply.
+CAP-214,"Tournament Manager — web only, explicitly enabled clubs",Correct manually entered result,—,—,No,Enabled,Web/API,Club admin correction flow.
+CAP-215,"Tournament Manager — web only, explicitly enabled clubs",Advance knockout winners / populate plate,—,—,Automatic,Automatic,Backend,First-round losers feed plate for supported format.
+CAP-216,"Tournament Manager — web only, explicitly enabled clubs",View sanitized public draw without login,Public,Public,Public,Public,Web,Valid enabled access key; no emails/account identifiers in public response.
+CAP-217,"Tournament Manager — web only, explicitly enabled clubs",Enable Tournament Manager for club,—,—,No,Root only,Root admin,Not a self-service Club Pro purchase entitlement today.
+CAP-218,"Tournament Manager — web only, explicitly enabled clubs",Automatic court/time allocation,—,—,Not built,Not built,Roadmap,Manual scheduling exists.
+CAP-219,"Tournament Manager — web only, explicitly enabled clubs",Later Monrad pairing,—,—,Not built,Not built,Roadmap,Do not sell as completed tournament support.
+CAP-220,"Tournament Manager — web only, explicitly enabled clubs",Round-robin standings,—,—,Not built,Not built,Roadmap,Do not infer from tournament option labels.
+CAP-221,"Tournament Manager — web only, explicitly enabled clubs",Native iOS Tournament Manager,—,—,Not built,Not built,Platform gap,Current tournament manager is web only.

@@ -49,11 +49,11 @@ const EMPTY_TIMED_BREAK_DEFAULTS = {
   padel: false,
 };
 const SETTINGS_TABS = [
-  { id: "organisation", label: "Organisation" },
-  { id: "courts", label: "Courts" },
-  { id: "users", label: "Users" },
-  { id: "game-social", label: "Game Settings" },
-  { id: "subscriptions", label: "Subscriptions" },
+  { id: "settings-home", label: "⌂ Settings Home" },
+  { id: "organisation", label: "⌂ Club Profile" },
+  { id: "courts", label: "▦ Courts" },
+  { id: "users", label: "♟ Users" },
+  { id: "game-social", label: "⚙ Settings" },
   { id: "tournament-manager", label: "Tournament Manager", requiresTournament: true },
 ];
 const ADD_FORM_INACTIVITY_MS = 60 * 1000;
@@ -116,23 +116,34 @@ export default function OrganisationSettingsPage() {
   const [editingCourtId, setEditingCourtId] = useState(null);
   const [courtSportFilter, setCourtSportFilter] = useState("");
   const [activeGameSettingsTile, setActiveGameSettingsTile] = useState("");
+  const [associationCompetitions, setAssociationCompetitions] = useState([]);
+  const [competitionQuery, setCompetitionQuery] = useState("");
+  const [competitionType, setCompetitionType] = useState("league");
   const settingsTabRefs = useRef({});
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
     SETTINGS_TABS.some((tab) => tab.id === initialTab) ? initialTab : "organisation",
   );
 
-  const organizationId = session?.organization_id;
-  const isAdmin = session?.role === "admin";
-  const isPersonalSession = session?.organization_type === "personal";
+  const memberships = session?.available_memberships || session?.memberships || [session];
+  const requestedOrganizationId = Number(searchParams.get("organizationId"));
+  const requestedMembership = memberships.find((membership) => (
+    Number(membership?.organization_id) === requestedOrganizationId
+  ));
+  const organizationId = requestedMembership?.organization_id || session?.organization_id;
+  const selectedMembership = requestedMembership || session;
+  const isAdmin = selectedMembership?.role === "admin";
+  const isPersonalSession = selectedMembership?.organization_type === "personal";
   const isPersonalAccount = isPersonalSession || settings?.organization?.org_type === "personal";
   const users = settings?.users || [];
   const tournamentManagerEnabled = !isPersonalAccount
     && Boolean(settings?.organization?.features?.tournament_manager?.web_enabled);
-  const visibleAdminTabs = useMemo(
-    () => SETTINGS_TABS.filter((tab) => !tab.requiresTournament || tournamentManagerEnabled),
-    [tournamentManagerEnabled],
-  );
+  const visibleAdminTabs = useMemo(() => SETTINGS_TABS.filter((tab) => {
+    if (!isAdmin && !isPersonalAccount && !["settings-home", "organisation"].includes(tab.id)) {
+      return false;
+    }
+    return !tab.requiresTournament || tournamentManagerEnabled;
+  }), [isAdmin, isPersonalAccount, tournamentManagerEnabled]);
   const scoreboardUrl = useMemo(() => {
     if (typeof window === "undefined") {
       return "/scoreboard";
@@ -212,11 +223,15 @@ export default function OrganisationSettingsPage() {
   }, [filteredCountries, showCountrySuggestions]);
 
   function handleTabChange(nextTab) {
+    if (nextTab === "settings-home") {
+      navigate("/settings?section=associations");
+      return;
+    }
     setAddUserOpen(false);
     setAddCourtOpen(false);
     setEditingCourtId(null);
     setActiveTab(nextTab);
-    setSearchParams({ tab: nextTab }, { replace: true });
+    setSearchParams({ club: "1", organizationId: String(organizationId), tab: nextTab }, { replace: true });
   }
 
   const syncLocalState = useCallback((response) => {
@@ -260,6 +275,7 @@ export default function OrganisationSettingsPage() {
       ...EMPTY_TIMED_BREAK_DEFAULTS,
       ...(nextSettings?.organization?.timed_break_defaults || {}),
     });
+    setAssociationCompetitions(nextSettings?.organization?.association_competitions || []);
   }, []);
 
   const loadSettings = useCallback(async () => {
@@ -291,11 +307,11 @@ export default function OrganisationSettingsPage() {
     const requestedTab = searchParams.get("tab");
     if (requestedTab && visibleAdminTabs.some((tab) => tab.id === requestedTab) && requestedTab !== activeTab) {
       setActiveTab(requestedTab);
-    } else if (requestedTab === "tournament-manager" && !tournamentManagerEnabled) {
+    } else if (requestedTab && !visibleAdminTabs.some((tab) => tab.id === requestedTab)) {
       setActiveTab("organisation");
-      setSearchParams({ tab: "organisation" }, { replace: true });
+      setSearchParams({ club: "1", organizationId: String(organizationId), tab: "organisation" }, { replace: true });
     }
-  }, [activeTab, searchParams, setSearchParams, settings, tournamentManagerEnabled, visibleAdminTabs]);
+  }, [activeTab, organizationId, searchParams, setSearchParams, settings, visibleAdminTabs]);
 
   useEffect(() => {
     if (isPersonalAccount) return undefined;
@@ -403,6 +419,30 @@ export default function OrganisationSettingsPage() {
       "organization",
       () => updateOrganizationDetails(organizationId, organizationForm),
       "Organisation details updated.",
+    );
+  }
+
+  async function saveAssociationCompetitions(nextCompetitions, successMessage) {
+    await runMutation(
+      "association-competitions",
+      () => updateOrganizationDetails(organizationId, { association_competitions: nextCompetitions }),
+      successMessage,
+    );
+  }
+
+  async function handleCompetitionAdd(event) {
+    event.preventDefault();
+    const name = competitionQuery.trim();
+    if (!name || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
+    const nextCompetitions = [...associationCompetitions, { name, type: competitionType }];
+    setCompetitionQuery("");
+    await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
+  }
+
+  async function handleCompetitionRemove(name) {
+    await saveAssociationCompetitions(
+      associationCompetitions.filter((item) => item.name !== name),
+      "Club competition removed.",
     );
   }
 
@@ -626,9 +666,6 @@ export default function OrganisationSettingsPage() {
     <main className="page-shell stack">
       <ClubPageHeader />
 
-      {!isAdmin && !isPersonalAccount ? (
-        <div className="notice">You are in view-only mode. Only organisation admins can save changes.</div>
-      ) : null}
       {loading ? <div className="notice">Loading organisation settings...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
@@ -884,6 +921,7 @@ export default function OrganisationSettingsPage() {
 
           {activeTab === "organisation" ? (
             <section className="club-admin-overview-grid">
+              {!isAdmin ? <div className="notice">You are in view-only mode. Only organisation admins can manage this club.</div> : null}
               <section className="panel stack settings-primary">
                 <div className="panel-heading">
                   <h2>Organisation Details</h2>
@@ -1031,6 +1069,30 @@ export default function OrganisationSettingsPage() {
                   <div className="field"><label htmlFor="youtube_profile">YouTube</label><input className="read-only-input" disabled id="youtube_profile" placeholder="Coming soon" value="" /></div>
                 </div>
               </section>
+
+              {isAdmin ? <section className="panel stack settings-competitions-card">
+                <div className="panel-heading">
+                  <h2>Leagues & Interclub Competitions</h2>
+                  <p className="helper-text">Search the shared competition names or add a new one for this club.</p>
+                </div>
+                <form className="settings-competition-search" onSubmit={handleCompetitionAdd}>
+                  <div className="field">
+                    <label htmlFor="competition-name">Competition name</label>
+                    <input id="competition-name" list="competition-catalog" placeholder="Search or enter a competition" value={competitionQuery} onChange={(event) => setCompetitionQuery(event.target.value)} />
+                    <datalist id="competition-catalog">
+                      {(settings?.competition_catalog || []).map((item) => <option key={`${item.type}-${item.name}`} value={item.name}>{item.type === "interclub" ? "Interclub" : "League"}</option>)}
+                    </datalist>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="competition-type">Type</label>
+                    <select id="competition-type" value={competitionType} onChange={(event) => setCompetitionType(event.target.value)}><option value="league">League</option><option value="interclub">Interclub competition</option></select>
+                  </div>
+                  <button disabled={!competitionQuery.trim() || savingSection === "association-competitions"} type="submit">Add</button>
+                </form>
+                <div className="settings-compact-list">
+                  {associationCompetitions.length === 0 ? <div className="dashboard-empty">No leagues or interclub competitions added.</div> : associationCompetitions.map((item) => <article className="settings-competition-row" key={`${item.type}-${item.name}`}><div><strong>{item.name}</strong><span>{item.type === "interclub" ? "Interclub competition" : "League"}</span></div><button aria-label={`Remove ${item.name}`} className="settings-edit-button danger" type="button" onClick={() => handleCompetitionRemove(item.name)}>×</button></article>)}
+                </div>
+              </section> : null}
             </section>
           ) : null}
 

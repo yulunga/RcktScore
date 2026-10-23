@@ -5,6 +5,7 @@ import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import {
   createRootAdminOrganization,
+  deleteRootAdminAssociationCompetition,
   getRootAdminDashboard,
   searchRootAdminOrganizations,
 } from "../services/api";
@@ -130,6 +131,14 @@ export default function RootAdminDashboardPage() {
   const summary = dashboard?.summary || {};
   const visibleClubs = searchTerm.trim() ? searchResults : organizations;
 
+  async function removeCompetition(name) {
+    await runMutation(
+      `competition-${name}`,
+      () => deleteRootAdminAssociationCompetition(name),
+      `${name} removed from the platform competition directory.`,
+    );
+  }
+
   return (
     <main className="page-shell stack">
       <RootAdminSessionBar />
@@ -212,6 +221,13 @@ export default function RootAdminDashboardPage() {
       {loading ? <div className="notice">Loading root admin dashboard...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
+
+      <section className="panel stack">
+        <div className="panel-heading"><h2>League & Interclub Directory</h2><p className="helper-text">Competition names submitted by club administrators. Remove inappropriate entries from every club.</p></div>
+        <div className="settings-compact-list">
+          {(dashboard?.association_competitions || []).length === 0 ? <div className="dashboard-empty">No club competitions have been added.</div> : (dashboard?.association_competitions || []).map((item) => <article className="settings-competition-row" key={`${item.type}-${item.name}`}><div><strong>{item.name}</strong><span>{item.type === "interclub" ? "Interclub competition" : "League"} · {item.club_count} club{Number(item.club_count) === 1 ? "" : "s"}</span></div><button className="danger" disabled={savingSection === `competition-${item.name}`} type="button" onClick={() => removeCompetition(item.name)}>Delete</button></article>)}
+        </div>
+      </section>
 
       <section className="panel stack">
         <div className="root-admin-section-header root-admin-directory-header">

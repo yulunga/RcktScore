@@ -6,6 +6,8 @@ frontend and Lambda backend.
 Current structure:
 
 - `ios/` contains the active SwiftUI iOS client
+- `android/` contains the isolated native Android/Compose foundation; product
+  features are not implemented yet
 - `shared/` contains mobile-facing contracts, state notes, and documentation references
 
 ## Current Mobile Reality
