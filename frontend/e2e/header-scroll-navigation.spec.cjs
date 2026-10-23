@@ -339,6 +339,25 @@ test("switches identity context from the header and exposes it on Matches and ma
   await expect(page.getByRole("button", { name: /Tennis/ })).toBeVisible();
 });
 
+test("returns a replaced web session to login automatically @header", async ({ page }) => {
+  await page.route("**/session/status", async (route) => {
+    await route.fulfill({
+      status: 401,
+      json: {
+        success: false,
+        error: {
+          code: "SESSION_REPLACED",
+          message: "You were signed out because your account was used to sign in elsewhere.",
+        },
+      },
+    });
+  });
+
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("You were signed out because this account was used to sign in on another device.")).toBeVisible();
+});
+
 test("opens all recent matches from the heading on the Matches history tab @header", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: "View all" })).toHaveCount(0);

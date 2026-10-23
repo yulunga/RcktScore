@@ -231,4 +231,6 @@ internal fun StoredSession.toSignedIn() = SessionState.SignedIn(
     displayName = displayName,
     activeContext = activeMembership.toAccountContext(),
     availableContexts = memberships.map { it.toAccountContext() },
+    // Keep the active record first-hand so profile pages show its details even if the list differs.
+    memberships = if (memberships.any { it.id == activeMembership.id }) memberships else memberships + activeMembership,
 )

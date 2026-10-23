@@ -116,12 +116,11 @@ def create_org_user_session(connection, username, login_source="login"):
         connection,
         normalized_username,
         reason="replaced_by_new_login",
-        login_source=normalized_source,
     )
 
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             INSERT INTO org_user_sessions (
                 username,
                 token_hash,
@@ -153,15 +152,23 @@ def create_org_user_session(connection, username, login_source="login"):
     return {"token": token, "expires_at": expires_at}
 
 
-def get_active_session_for_username(connection, username, login_source):
+def get_active_session_for_username(connection, username, login_source=None):
     normalized_username = normalize_email_address(username)
-    normalized_source = normalize_login_source(login_source)
     if not normalized_username:
         return None
 
+    source_clause = ""
+    query_params = {
+        "username": normalized_username,
+        "now": _utcnow(),
+    }
+    if login_source:
+        source_clause = "AND login_source = %(login_source)s"
+        query_params["login_source"] = normalize_login_source(login_source)
+
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT
                 id,
                 username,
@@ -171,17 +178,13 @@ def get_active_session_for_username(connection, username, login_source):
                 expires_at
             FROM org_user_sessions
             WHERE LOWER(username) = LOWER(%(username)s)
-              AND login_source = %(login_source)s
+              {source_clause}
               AND revoked_at IS NULL
               AND expires_at > %(now)s
             ORDER BY id DESC
             LIMIT 1
             """,
-            {
-                "username": normalized_username,
-                "login_source": normalized_source,
-                "now": _utcnow(),
-            },
+            query_params,
         )
         return cursor.fetchone()
 

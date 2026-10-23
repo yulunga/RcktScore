@@ -143,10 +143,11 @@ Current behavior:
 
 Duplicate login behavior:
 
-- sessions are tracked per client type
-- current client types normalize to `web_app` or `mobile_app`
-- if an active session already exists for the same username and client type, `POST /login` can return `ACTIVE_SESSION_EXISTS`
+- client sources still normalize to `web_app` or `mobile_app` for analytics and sport enablement, but only one active session is retained per username across both clients
+- if an active session already exists for the username, `POST /login` returns `ACTIVE_SESSION_EXISTS` with the active client label
 - the frontend may retry with `force_logout_other`
+- a forced retry revokes every prior web/mobile token for that identity; rejected tokens return `SESSION_REPLACED`
+- `GET /session/status` is the lightweight authenticated heartbeat used by web and iOS to discover replacement while otherwise viewing cached UI
 - when identity-first login is disabled, `POST /login` can return
   `data.organizationSelection` for users with multiple approved memberships;
   web and iOS deliberately continue to handle both response shapes

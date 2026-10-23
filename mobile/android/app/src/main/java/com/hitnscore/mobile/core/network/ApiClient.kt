@@ -76,7 +76,7 @@ class ApiClient(
             ApiResult.Failure(ApiError.Network(e))
         }
         if (reportSessionInvalidation && result is ApiResult.Failure && result.error is ApiError.SessionInvalid) {
-            onSessionInvalidated((result.error as ApiError.SessionInvalid).code)
+            onSessionInvalidated(result.error.code)
         }
         result
     }

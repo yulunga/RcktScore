@@ -566,7 +566,8 @@ Common symptoms:
 What to check:
 
 - whether `POST /login` returned the default identity-first `data.session` or the legacy `data.organizationSelection`, and whether `available_memberships` contains every approved account/club
-- whether the account hit `ACTIVE_SESSION_EXISTS` for `client_type = mobile_app`
+- whether the account hit `ACTIVE_SESSION_EXISTS` because the identity already has a web or mobile session
+- whether the deployed API includes `GET /session/status`; web and iOS poll it every 30 seconds while active, and a refocused browser validates immediately
 - whether `GET /match_display_access/{match_id}` is succeeding; it supplies the court display code where applicable and the match-specific Personal Plus viewing code for every live match
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
 - whether `NetworkMonitor.swift` has marked the device offline

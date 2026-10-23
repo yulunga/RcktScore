@@ -42,7 +42,9 @@ export default function LoginPage() {
     cancelOrganizationSelection,
   } = useAuth();
   const profileMessage = !isAuthenticated && typeof window !== "undefined"
-    ? window.sessionStorage.getItem("rcktscore.profile-message") || ""
+    ? window.sessionStorage.getItem("rcktscore.session-message")
+      || window.sessionStorage.getItem("rcktscore.profile-message")
+      || ""
     : "";
   const location = useLocation();
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (profileMessage) {
       window.sessionStorage.removeItem("rcktscore.profile-message");
+      window.sessionStorage.removeItem("rcktscore.session-message");
     }
   }, [profileMessage]);
 

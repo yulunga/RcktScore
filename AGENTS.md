@@ -37,6 +37,7 @@ readiness.
 What is real and implemented:
 
 - org-user login with backend session tokens
+- one active organisation-user session is retained per identity across web and mobile. A forced login revokes the previous device session; web and iOS validate `/session/status` while active and clear local credentials on `SESSION_REPLACED`, while every tenant-specific request still re-authorizes the selected organisation membership and role server-side
 - identity-first multi-organisation login: the backend opens one session immediately, preferring the approved personal membership and otherwise the first approved club. The legacy sign-in membership chooser remains available through `IdentityFirstLoginEnabled=false`
 - web and iOS retain the complete approved membership list and expose an active account/club context switcher in the signed-in header, Matches and pre-match sport selection. Switching context refreshes current, scheduled and historic match data, and the match chooser identifies the context before setup. Personal Profile and Subscription use the personal membership when one exists rather than inheriting the active club
 - dashboard, history, and match lists

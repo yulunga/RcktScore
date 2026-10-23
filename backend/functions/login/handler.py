@@ -55,16 +55,17 @@ def lambda_handler(event, context):
             logger.warning("Invalid login attempt for username=%s", username)
             return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
 
-        active_session = get_active_session_for_username(connection, username, client_type)
+        active_session = get_active_session_for_username(connection, username)
         if active_session and not force_logout_other:
-            client_label = login_source_label(client_type)
-            logger.info("Blocked duplicate %s login for username=%s", client_type, username)
+            active_client_type = active_session.get("login_source") or client_type
+            client_label = login_source_label(active_client_type)
+            logger.info("Blocked duplicate identity login from %s for username=%s", client_type, username)
             return error_response(
                 409,
                 "ACTIVE_SESSION_EXISTS",
-                f"This account is already signed in on the {client_label}. Do you want to sign out there and continue here?",
+                f"This account is already signed in on the {client_label}. Do you want to sign out that session and continue here?",
                 {
-                    "client_type": client_type,
+                    "client_type": active_client_type,
                     "client_label": client_label,
                     "last_seen_at": active_session.get("last_seen_at").isoformat() if active_session.get("last_seen_at") else None,
                 },

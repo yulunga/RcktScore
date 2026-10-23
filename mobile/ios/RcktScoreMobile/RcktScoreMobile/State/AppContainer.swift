@@ -10,6 +10,7 @@ final class AppContainer: ObservableObject {
     let purchaseService: StoreKitPurchaseService
     let uiTestLaunchOptions: UITestLaunchOptions
     private var cancellables = Set<AnyCancellable>()
+    private var sessionValidationTask: Task<Void, Never>?
 
     init(
         apiClient: APIClient? = nil,
@@ -49,6 +50,7 @@ final class AppContainer: ObservableObject {
             .sink { [weak self] session in
                 self?.apiClient.setSessionToken(session?.sessionToken)
                 self?.purchaseService.accountDidChange()
+                self?.restartSessionValidation(for: session)
             }
             .store(in: &cancellables)
 
@@ -109,6 +111,24 @@ final class AppContainer: ObservableObject {
         sessionStore.clear()
         Task {
             await apiClient.logout(sessionTokenOverride: sessionToken)
+        }
+    }
+
+    private func restartSessionValidation(for session: UserSession?) {
+        sessionValidationTask?.cancel()
+        guard session != nil, !uiTestLaunchOptions.isEnabled else {
+            sessionValidationTask = nil
+            return
+        }
+
+        sessionValidationTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                if self.networkMonitor.isOnline {
+                    try? await self.apiClient.validateSession()
+                }
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+            }
         }
     }
 }

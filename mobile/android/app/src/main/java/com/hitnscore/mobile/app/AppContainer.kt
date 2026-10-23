@@ -7,6 +7,10 @@ import com.hitnscore.mobile.core.auth.KeystoreCipher
 import com.hitnscore.mobile.core.auth.RemoteAuthService
 import com.hitnscore.mobile.core.auth.SharedSessionPreferences
 import com.hitnscore.mobile.core.config.AppEnvironment
+import com.hitnscore.mobile.core.connectivity.AndroidConnectivityMonitor
+import com.hitnscore.mobile.core.connectivity.ConnectivityMonitor
+import com.hitnscore.mobile.data.remote.HitNScoreApi
+import com.hitnscore.mobile.data.remote.RemoteHitNScoreApi
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.network.AuthInterceptor
 import com.hitnscore.mobile.core.session.AuthSessionRepository
@@ -32,6 +36,8 @@ class AppContainer(context: Context) {
 
     val json: Json = Json {
         ignoreUnknownKeys = true
+        // A null where a default exists (e.g. "best_of": null) uses the default, as iOS decodes.
+        coerceInputValues = true
     }
 
     val httpClient: OkHttpClient by lazy {
@@ -54,6 +60,10 @@ class AppContainer(context: Context) {
     }
 
     val authService: AuthService by lazy { RemoteAuthService(apiClient) }
+
+    val api: HitNScoreApi by lazy { RemoteHitNScoreApi(apiClient) }
+
+    val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 
     val sessionRepository: SessionRepository by lazy {
         AuthSessionRepository(

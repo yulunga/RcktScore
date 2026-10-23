@@ -207,6 +207,18 @@ Resources:
             Path: /logout
             Method: POST
 
+  GetSessionStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_session_status/handler.lambda_handler
+      Events:
+        GetSessionStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /session/status
+            Method: GET
+
   PasswordResetRequestFunction:
     Type: AWS::Serverless::Function
     Properties:

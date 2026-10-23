@@ -3,7 +3,7 @@
 Native Android app for HitNScore. It is a separate Gradle project beside
 `mobile/ios/`; it does not alter or wrap the iOS workspace.
 
-## Current Status (M1 sign-in, October 2026)
+## Current Status (M2 read-only screens, October 2026)
 
 In place:
 
@@ -24,7 +24,22 @@ In place:
   turned on in Settings; re-locks after 5 minutes in the background, as iOS
 - account-context switching between the user's real memberships, persisted
 - one `Scaffold` and bottom bar for the signed-in session, with the five iOS
-  tabs; tab bodies are placeholders until M2
+  tabs and the iOS brand header (logo, wordmark, notifications bell or offline
+  indicator, account-context switcher)
+- **Home**: up to three active, scheduled (clubs) and recent matches, with
+  pull-to-refresh and loading placeholders
+- **Matches**: Current / Scheduled / History; History has search, sport filter
+  and date-range filter, and shows Personal Free locked-history cards
+- **match view** (read-only): result card, Match Information, Match Time with
+  per-game durations, and the point timeline for squash/racketball and
+  tennis/Padel
+- **notifications** inbox with read state shared with iOS
+- **Analytics**: Personal Plus performance report, basic stats otherwise
+- **Settings** (read-only): About, Profile, Subscription, Association, Racket
+  Sports, and for club admins Organisation, Users and Courts; quick unlock;
+  sign out
+- switching account context clears every screen before loading the new
+  organisation, so data from one account never appears under another
 - API layer: `{ success, data, error, meta }` envelope, bearer-token
   interceptor, typed errors, OkHttp + kotlinx.serialization
 - release hardening: R8, optional upload-key signing, CI version codes,
@@ -33,8 +48,9 @@ In place:
   and a Compose sign-in screen smoke test
 - a GitHub Actions workflow template in `ci/`
 
-Not yet built: dashboard data, matches, scoring, offline queue, settings
-pages, help/feedback flows, "Want In" registration, billing.
+Not yet built: match setup and live scoring (M3/M4), offline queue (M5),
+settings editing, help/feedback flows and "Want In" registration (M6),
+Watch a Match, billing.
 
 Sign-in is tested manually until a staging backend exists, because the dev
 build talks to the production API. Use the agreed test accounts (personal,
@@ -124,11 +140,20 @@ mobile/android/
     core/config/              build environment
     core/designsystem/        colours, type scale, theme
     core/auth/                login models, auth service, encrypted session store
+    core/connectivity/        online / offline monitor
+    core/designsystem/components/  shared cards, empty / offline / error states
+    data/model/               dashboard, match, notification, organisation models
+    data/remote/              read-only API service
     core/network/             API envelope, client, errors, auth header
     core/session/             session state, repository, context switcher
     feature/auth/             sign-in, lock screen, biometric prompt
-    feature/settings/         settings rows (quick unlock)
-    feature/shell/            signed-in shell and tab placeholders
+    feature/home/             Home tab
+    feature/matches/          Matches tab, history filters, match view, timeline
+    feature/notifications/    notification inbox
+    feature/analytics/        Analytics tab
+    feature/settings/         Settings tab and pages, quick unlock
+    feature/help/             Need Help tab (placeholder until M6)
+    feature/shell/            signed-in shell, header, shared shell state
   app/src/test/               JVM unit tests
   app/src/androidTest/        Compose UI tests
   ci/                         CI workflow template

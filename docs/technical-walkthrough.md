@@ -69,7 +69,9 @@ Error:
 3. [backend/functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py) validates the body.
 4. The handler calls [authenticate_org_user_memberships(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
 5. Matching approved memberships are loaded from `SkwshOrgUsers` joined with `SkwshOrgSettings`.
-6. The handler checks for an already-active session for the same client type.
+6. The handler checks for an already-active session for the identity across web
+   and mobile. A forced continuation revokes the previous token regardless of
+   client source.
 7. The handler creates an expiring session token in `org_user_sessions`; the default lifetime is 30 days.
 8. With the default `IdentityFirstLoginEnabled=true`, the API returns
    `data.session` immediately. It prefers the user's approved personal
@@ -91,7 +93,8 @@ Error:
 
 - `401 INVALID_CREDENTIALS` means no approved membership matched the password.
 - `403 PENDING_APPROVAL` means the email invitation exists but has not been accepted.
-- `409 ACTIVE_SESSION_EXISTS` means the same account is already signed in on the same client type.
+- `409 ACTIVE_SESSION_EXISTS` means the same identity is already signed in on web or mobile. Continuing revokes that previous device session.
+- web and iOS call `GET /session/status` while active and on foreground/focus; `SESSION_REPLACED` clears local state and returns the displaced client to login. Network failures do not clear an offline session.
 
 ## 2. Root-Admin Login Flow
 

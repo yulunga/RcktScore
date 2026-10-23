@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { login as loginRequest, logout as logoutRequest } from "../services/api";
+import { getSessionStatus, login as loginRequest, logout as logoutRequest } from "../services/api";
 
 const SESSION_KEY = "rcktscore.auth";
 
@@ -74,7 +74,13 @@ export function AuthProvider({ children }) {
       return undefined;
     }
 
-    const handleSessionInvalidated = () => {
+    const handleSessionInvalidated = (event) => {
+      if (event?.detail?.code === "SESSION_REPLACED") {
+        window.sessionStorage.setItem(
+          "rcktscore.session-message",
+          "You were signed out because this account was used to sign in on another device.",
+        );
+      }
       setAuthState({
         session: null,
         pendingSelection: null,
@@ -86,6 +92,39 @@ export function AuthProvider({ children }) {
       window.removeEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
     };
   }, []);
+
+  useEffect(() => {
+    if (!session?.session_token || typeof window === "undefined") {
+      return undefined;
+    }
+
+    let cancelled = false;
+    async function validateSession() {
+      if (cancelled || document.visibilityState === "hidden") return;
+      try {
+        await getSessionStatus();
+      } catch {
+        // apiRequest emits the shared invalidation event for rejected sessions.
+        // Transport failures leave the current session intact for offline recovery.
+      }
+    }
+
+    validateSession();
+    const intervalId = window.setInterval(validateSession, 30000);
+    const validateOnFocus = () => validateSession();
+    const validateOnVisibility = () => {
+      if (document.visibilityState === "visible") validateSession();
+    };
+    window.addEventListener("focus", validateOnFocus);
+    document.addEventListener("visibilitychange", validateOnVisibility);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", validateOnFocus);
+      document.removeEventListener("visibilitychange", validateOnVisibility);
+    };
+  }, [session?.session_token]);
 
   const login = useCallback(async (username, password, options = {}) => {
     const trimmedUsername = username.trim();

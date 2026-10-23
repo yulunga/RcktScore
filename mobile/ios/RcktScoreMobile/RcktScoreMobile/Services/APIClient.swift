@@ -549,6 +549,10 @@ private struct AcceptedResponseData: Decodable {
     }
 }
 
+private struct SessionStatusResponseData: Decodable {
+    let active: Bool
+}
+
 private struct DeletedAccountResponseData: Decodable {
     let deleted: Bool
 }
@@ -651,6 +655,14 @@ final class APIClient {
             let _: APIEnvelope<AcceptedResponseData> = try await send(request)
         } catch {
             // Best-effort logout; local session state is cleared by the caller.
+        }
+    }
+
+    func validateSession() async throws {
+        let request = try makeRequest(path: "/session/status", method: "GET")
+        let envelope: APIEnvelope<SessionStatusResponseData> = try await send(request)
+        guard envelope.data?.active == true else {
+            throw APIErrorResponse(code: "SESSION_INVALID", message: "Your session is no longer valid.", details: nil)
         }
     }
 

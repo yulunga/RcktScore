@@ -2,7 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_KEY = import.meta.env.VITE_API_KEY;
 const SESSION_KEY = "rcktscore.auth";
 const ROOT_ADMIN_SESSION_KEY = "rcktscore.root_admin";
-const SESSION_INVALIDATION_CODES = new Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED"]);
+const SESSION_INVALIDATION_CODES = new Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED", "SESSION_EXPIRED"]);
 const ROOT_ADMIN_SESSION_INVALIDATION_CODES = new Set([
   "ROOT_ADMIN_SESSION_REQUIRED",
   "ROOT_ADMIN_SESSION_INVALID",
@@ -138,6 +138,10 @@ export function logout(sessionToken) {
     method: "POST",
     sessionToken,
   });
+}
+
+export function getSessionStatus() {
+  return apiRequest("/session/status");
 }
 
 export function rootAdminLogin(payload) {

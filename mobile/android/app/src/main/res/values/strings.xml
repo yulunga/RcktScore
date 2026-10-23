@@ -66,4 +66,123 @@
     <string name="tab_placeholder">This screen is being built to match the iOS app.</string>
     <string name="settings_signed_in_as">Signed in as %1$s</string>
     <string name="sign_out">Sign out</string>
+    <!-- Shell header -->
+    <string name="notifications">Notifications</string>
+    <string name="notifications_unread">Notifications, unread messages</string>
+    <string name="offline">Offline</string>
+    <string name="retry">Try again</string>
+    <string name="back">Back</string>
+    <string name="open">Open</string>
+
+    <!-- Home and matches -->
+    <string name="section_active_matches">Active Matches</string>
+    <string name="section_scheduled_matches">Scheduled Matches</string>
+    <string name="section_recent_matches">Recent Matches</string>
+    <string name="section_current_matches">Current Matches</string>
+    <string name="current_matches_personal">Your matches currently in progress.</string>
+    <string name="current_matches_club">All active matches recorded under this club account.</string>
+    <string name="empty_active">No active matches</string>
+    <string name="empty_scheduled">No scheduled matches</string>
+    <string name="empty_recent">No recent matches</string>
+    <string name="in_progress">In Progress</string>
+    <string name="best_of">Best of %1$d</string>
+    <string name="versus">vs</string>
+    <string name="see_all">See all</string>
+    <string name="matches_current">Current</string>
+    <string name="matches_scheduled">Scheduled</string>
+    <string name="matches_history">History</string>
+    <string name="scheduling_upgrade_title">Scheduling is available with Personal Plus</string>
+    <string name="scheduling_upgrade_body">Personal Plus lets you prepare matches in advance and start them when you are ready.</string>
+    <string name="view_plan">View my plan</string>
+    <string name="locked_title">Unlock your full match history</string>
+    <string name="locked_body">Older matches are kept with Personal Plus.</string>
+    <string name="offline_history">Historic matches are only available when the app is online.</string>
+    <string name="history_subtitle">Search completed matches by player name, score or date.</string>
+    <string name="history_search">Search player, score or date</string>
+    <string name="history_clear_search">Clear search</string>
+    <string name="history_all_sports">All sports</string>
+    <string name="history_date_any">Any date</string>
+    <string name="history_date_range">%1$s – %2$s</string>
+    <string name="history_clear_dates">Clear dates</string>
+    <string name="history_no_results">No completed matches match those filters.</string>
+    <string name="history_count">%1$d matches</string>
+    <string name="ok">OK</string>
+
+    <!-- Historic match -->
+    <string name="historic_match">Match</string>
+    <string name="match_loading">Loading match…</string>
+    <string name="match_information">Match Information</string>
+    <string name="match_time">Match Time</string>
+    <string name="point_timeline">Point Timeline</string>
+    <string name="no_point_history">No point history available for this match.</string>
+    <string name="info_sport">Sport</string>
+    <string name="info_game_details">Game Details</string>
+    <string name="info_date">Date</string>
+    <string name="info_started">Started</string>
+    <string name="info_court">Court</string>
+    <string name="info_referee">Referee</string>
+    <string name="not_added">Not added</string>
+    <string name="not_available">Not available</string>
+    <string name="game_n">Game %1$d</string>
+    <string name="set_n">Set %1$d</string>
+    <string name="games_score">Games %1$s</string>
+    <string name="banner_game">GAME</string>
+    <string name="banner_set">SET</string>
+    <string name="banner_match">GAME, SET AND MATCH</string>
+    <string name="live_match_note">This match is in progress. Live scoring arrives in the next build.</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+
+    <!-- Notifications -->
+    <string name="notifications_empty">No messages yet.</string>
+
+    <!-- Analytics -->
+    <string name="analytics_personal">Personal</string>
+    <string name="analytics_stats">Stats</string>
+    <string name="analytics_personal_title">Personal Analytics</string>
+    <string name="analytics_personal_subtitle">Your results, court time, serving and progress across your sports.</string>
+    <string name="analytics_stats_subtitle">A summary of the matches scored in this app.</string>
+    <string name="analytics_free_note">Personal Free stats use the completed matches available in your plan. Personal Plus adds win, serve, opponent and progress analytics.</string>
+    <string name="analytics_no_data">No completed matches are available for performance reporting yet.</string>
+    <string name="analytics_unclassified">%1$d matches could not be assigned to your profile because the recorded player name differs from your registered name.</string>
+
+    <!-- Settings -->
+    <string name="settings_account">Account</string>
+    <string name="settings_club">Club</string>
+    <string name="settings_app">App</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_subscription">Subscription</string>
+    <string name="settings_association">Association</string>
+    <string name="settings_racket_sports">Racket Sports</string>
+    <string name="settings_about">About</string>
+    <string name="settings_organisation">Organisation</string>
+    <string name="settings_users">Users</string>
+    <string name="settings_courts">Courts</string>
+    <string name="settings_name">Name</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_email">Email</string>
+    <string name="settings_country">Country</string>
+    <string name="settings_telephone">Telephone</string>
+    <string name="settings_role">Role</string>
+    <string name="settings_plan">Current plan</string>
+    <string name="settings_history_limit">Match history kept</string>
+    <string name="settings_history_unlimited">All matches</string>
+    <string name="settings_history_n">Latest %1$d matches</string>
+    <string name="settings_performance">Performance reporting</string>
+    <string name="settings_included">Included</string>
+    <string name="settings_not_included">Not included</string>
+    <string name="settings_subscription_note">Your plan belongs to your HitNScore account and is the same on every device you sign in on.</string>
+    <string name="settings_edit_later">Editing these details arrives in a later build.</string>
+    <string name="settings_active">Active</string>
+    <string name="settings_switch_to">Switch</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_environment">Environment</string>
+    <string name="settings_address">Address</string>
+    <string name="settings_contact">Contact</string>
+    <string name="settings_website">Website</string>
+    <string name="settings_courts_empty">No courts set up yet.</string>
+    <string name="settings_sport_enabled">Enabled</string>
+    <string name="settings_sport_disabled">Not enabled</string>
+    <string name="settings_admin_only">Only club admins can view this page.</string>
+    <string name="help_placeholder">Feedback, help articles and privacy information arrive in a later build. Use the sign-in screen\'s Need Help link to reset your password.</string>
 </resources>

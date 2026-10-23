@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -262,7 +263,7 @@ fun LoginScreen(
 
 /** "Hit n Score" in brand blue with a pink "n", as on iOS. */
 @Composable
-fun BrandWordmark(modifier: Modifier = Modifier) {
+fun BrandWordmark(modifier: Modifier = Modifier, fontSize: TextUnit = 30.sp) {
     val blue = MaterialTheme.colorScheme.primary
     val pink = HitNScoreTheme.colors.brandPink
     val hit = stringResource(R.string.brand_hit)
@@ -275,7 +276,7 @@ fun BrandWordmark(modifier: Modifier = Modifier) {
             withStyle(SpanStyle(color = blue)) { append(score) }
         },
         modifier = modifier,
-        fontSize = 30.sp,
+        fontSize = fontSize,
         fontWeight = FontWeight.Black,
     )
 }

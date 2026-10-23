@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from common.session_logic import (
     create_org_user_session,
+    get_active_session_for_username,
     login_source_label,
     normalize_login_source,
     session_token_from_event,
@@ -20,6 +21,9 @@ class RecordingCursor:
 
     def execute(self, statement, parameters=None):
         self.statements.append((statement, parameters or {}))
+
+    def fetchone(self):
+        return None
 
 
 class RecordingConnection:
@@ -89,3 +93,22 @@ def test_org_user_session_has_a_capped_expiry(monkeypatch):
     lifetime = insert_parameters["expires_at"] - insert_parameters["created_at"]
     assert lifetime.total_seconds() == 90 * 24 * 60 * 60
     assert connection.commits == 1
+
+    revoke_statement, revoke_parameters = next(
+        (statement, parameters)
+        for statement, parameters in connection.statements
+        if "UPDATE org_user_sessions" in statement
+    )
+    assert "login_source =" not in revoke_statement
+    assert "login_source" not in revoke_parameters
+
+
+def test_active_session_lookup_is_identity_wide_by_default():
+    connection = RecordingConnection()
+
+    get_active_session_for_username(connection, "player@example.com")
+
+    statement, parameters = connection.statements[-1]
+    assert "{source_clause}" not in statement
+    assert "login_source =" not in statement
+    assert "login_source" not in parameters

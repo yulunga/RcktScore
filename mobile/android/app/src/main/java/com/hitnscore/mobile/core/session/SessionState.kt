@@ -1,5 +1,7 @@
 package com.hitnscore.mobile.core.session
 
+import com.hitnscore.mobile.core.auth.UserMembership
+
 /** Why the user was returned to sign-in, so the screen can explain it. */
 enum class SignOutReason {
     /** The user chose to sign out. */
@@ -29,6 +31,8 @@ sealed interface SessionState {
         val displayName: String,
         val activeContext: AccountContext,
         val availableContexts: List<AccountContext>,
+        /** Full membership records (profile details, enabled sports) behind [availableContexts]. */
+        val memberships: List<UserMembership> = emptyList(),
     ) : SessionState
 }
 
