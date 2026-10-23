@@ -6,10 +6,10 @@ import org.junit.Test
 
 class AppDestinationTest {
     @Test
-    fun topLevelDestinationsMatchTheCurrentIosNavigation() {
+    fun topLevelDestinationsMatchTheIosTabOrder() {
         assertEquals(
-            listOf("Home", "Matches", "Analytics", "Settings", "Need Help"),
-            AppDestination.topLevel.map { it.label },
+            listOf("home", "matches", "analytics", "settings", "help"),
+            AppDestination.topLevel.map { it.route },
         )
     }
 
@@ -17,5 +17,12 @@ class AppDestinationTest {
     fun routesAreUnique() {
         val routes = AppDestination.topLevel.map { it.route }
         assertTrue(routes.size == routes.toSet().size)
+    }
+
+    @Test
+    fun accessingAnObjectFirstStillYieldsACompleteList() {
+        // Guards against the sealed-class initialisation-order bug.
+        assertEquals("help", AppDestination.Help.route)
+        assertEquals(5, AppDestination.topLevel.map { it.route }.size)
     }
 }

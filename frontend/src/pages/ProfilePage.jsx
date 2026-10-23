@@ -42,7 +42,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const organizationId = session?.organization_id;
+  const memberships = session?.available_memberships || session?.memberships || (session ? [session] : []);
+  const identityMembership = memberships.find((membership) => membership.organization_type === "personal") || session;
+  const organizationId = identityMembership?.organization_id;
 
   const loadProfile = useCallback(async () => {
     if (!organizationId) {

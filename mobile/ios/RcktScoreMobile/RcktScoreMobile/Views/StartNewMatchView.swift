@@ -171,6 +171,7 @@ struct StartNewMatchFlowView: View {
     @Environment(\.dismiss) private var dismiss
 
     let activeMatches: [MatchSummary]
+    let onContextChanged: (UserMembership) -> Void
     let onComplete: (StartNewMatchResult) -> Void
 
     private let sportGridColumns = [
@@ -188,7 +189,9 @@ struct StartNewMatchFlowView: View {
 
     var body: some View {
         ScrollView {
-            VStack {
+            VStack(spacing: 16) {
+                matchContextSwitcher
+
                 LazyVGrid(columns: sportGridColumns, spacing: 14) {
                     ForEach(availableSports) { sport in
                         NavigationLink(value: sport) {
@@ -308,6 +311,51 @@ struct StartNewMatchFlowView: View {
                 .accessibilityIdentifier("startMatch.closeButton")
             }
         }
+    }
+
+    private var matchContextSwitcher: some View {
+        let session = container.sessionStore.session
+        let memberships = session?.availableMemberships ?? []
+
+        return Menu {
+            ForEach(memberships) { membership in
+                Button {
+                    onContextChanged(membership)
+                } label: {
+                    if membership.organizationID == session?.organizationID {
+                        Label(membership.organizationType == "personal" ? "Personal" : membership.organizationName, systemImage: "checkmark")
+                    } else {
+                        Text(membership.organizationType == "personal" ? "Personal" : membership.organizationName)
+                    }
+                }
+                .disabled(membership.organizationID == session?.organizationID)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Text("Match context")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(session?.isPersonalAccount == true ? "Personal" : (session?.organizationName ?? "Account"))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if memberships.count > 1 {
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.dashboardCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+        }
+        .disabled(memberships.count <= 1)
+        .accessibilityIdentifier("startMatch.contextSwitcher")
     }
 
     @ViewBuilder

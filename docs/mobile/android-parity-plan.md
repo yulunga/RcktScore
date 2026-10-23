@@ -153,12 +153,16 @@ state from labels when the backend supplies a structured value.
 Match iOS login behaviour before building scoring:
 
 1. log in using the backend mobile client contract
-2. handle `organizationSelection` and save the chosen membership
+2. accept the default identity-first session with all `available_memberships`,
+   retain `organizationSelection` compatibility for the backend rollback flag,
+   and save the active membership
 3. handle the active-session conflict and explicit force-logout retry
 4. store the session token encrypted with an Android Keystore-backed key
 5. enforce the server-provided expiry locally
 6. clear local access when the backend returns invalid/expired-session errors
-7. implement association switching without mixing cached tenant data
+7. implement active context switching in the header, Matches and pre-match sport
+   selection without mixing cached tenant data; personal profile/subscription
+   must resolve outside club context
 8. add optional biometric/device-credential unlock with `BiometricPrompt`
 
 Biometrics should only unlock an unexpired encrypted backend session; they must

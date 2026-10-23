@@ -17,11 +17,19 @@ class AppNavigationSmokeTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun frameworkOpensTheIosEquivalentNavigationShell() {
+    fun previewOpensTheIosEquivalentShellAndSwitchesTabs() {
         composeRule.onNodeWithText("HitNScore").assertIsDisplayed()
         composeRule.onNodeWithText("Preview app navigation").performClick()
-        composeRule.onNodeWithText("Home").assertIsDisplayed()
+
+        // "Home" appears twice: the tab label and the screen heading.
+        composeRule.onAllNodesWithText("Home").assertCountEquals(2)
+
         composeRule.onNodeWithText("Matches").performClick()
         composeRule.onAllNodesWithText("Matches").assertCountEquals(2)
+        composeRule.onNodeWithText("Showing matches for").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Sign out").performClick()
+        composeRule.onNodeWithText("Preview app navigation").assertIsDisplayed()
     }
 }

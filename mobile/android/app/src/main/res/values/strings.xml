@@ -1,4 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HitNScore</string>
+    <!-- app_name is generated per environment flavour in app/build.gradle.kts. -->
+    <string name="brand_name" translatable="false">HitNScore</string>
+
+    <!-- Sign-in placeholder (replaced by real sign-in in M1) -->
+    <string name="login_subtitle">Racket sports scoring</string>
+    <string name="login_environment_ready">Connected to the %1$s API. Sign-in arrives in the next build.</string>
+    <string name="login_environment_missing">The %1$s API address is not configured for this build.</string>
+    <string name="login_preview_button">Preview app navigation</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_matches">Matches</string>
+    <string name="tab_analytics">Analytics</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_help">Need Help</string>
+
+    <!-- Account context -->
+    <string name="context_label">Context</string>
+    <string name="context_label_matches">Showing matches for</string>
+    <string name="context_switch_description">Change account context, currently %1$s</string>
+
+    <!-- Placeholder tab bodies -->
+    <string name="home_placeholder">New matches will use %1$s. Change context before choosing a racket sport.</string>
+    <string name="tab_placeholder">This screen is being built to match the iOS app.</string>
+    <string name="sign_out">Sign out</string>
 </resources>

@@ -57,8 +57,10 @@ What the current app does:
 - Personal Plus Matches opens directly with a Current Matches / Match History segmented selector
 - dashboard offline handling now suppresses the old persistent fetch-error
   banner and replaces the bell with an offline indicator
-- native login now presents an organisation chooser when the same email belongs
-  to multiple approved clubs/accounts
+- native login now enters the backend's identity-first preferred context and
+  retains the legacy organisation chooser for deployments with
+  `IdentityFirstLoginEnabled=false`; active context can be changed from the
+  header, Matches, association settings or before choosing a sport
 - native login now includes a show/hide password control, and the shared bottom
   navigation compacts itself under larger Dynamic Type sizes on smaller iPhones
 - start-new-match now respects dark mode styling and allows personal-tier

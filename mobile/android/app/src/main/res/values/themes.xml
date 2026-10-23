@@ -3,7 +3,15 @@
     <style name="Theme.HitNScore" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/window_background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
+    <!-- Launch theme: brand splash until the stored session has been read. -->
+    <style name="Theme.HitNScore.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.HitNScore</item>
     </style>
 </resources>

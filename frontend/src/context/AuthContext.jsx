@@ -188,6 +188,31 @@ export function AuthProvider({ children }) {
     });
   }, [pendingSelection]);
 
+  const switchOrganization = useCallback((membership) => {
+    if (!session || !membership?.username || !membership?.organization_id) {
+      return false;
+    }
+
+    const availableMemberships = session.available_memberships || session.memberships || [session];
+    const allowedMembership = availableMemberships.find((item) => (
+      Number(item?.organization_id) === Number(membership.organization_id)
+    ));
+    if (!allowedMembership) {
+      return false;
+    }
+
+    const nextSession = {
+      ...allowedMembership,
+      available_memberships: availableMemberships,
+      ...(session.session_token ? { session_token: session.session_token } : {}),
+      ...(session.session_expires_at ? { session_expires_at: session.session_expires_at } : {}),
+      loggedInAt: session.loggedInAt || new Date().toISOString(),
+    };
+    writeStoredAuthState({ session: nextSession, pendingSelection: null });
+    setAuthState({ session: nextSession, pendingSelection: null });
+    return true;
+  }, [session]);
+
   const cancelOrganizationSelection = useCallback(() => {
     writeStoredAuthState({
       session: null,
@@ -225,10 +250,11 @@ export function AuthProvider({ children }) {
       setSession: (nextSession) => setAuthState({ session: nextSession, pendingSelection: null }),
       login,
       selectOrganization,
+      switchOrganization,
       cancelOrganizationSelection,
       logout,
     }),
-    [loading, login, logout, pendingSelection, selectOrganization, cancelOrganizationSelection, session],
+    [loading, login, logout, pendingSelection, selectOrganization, switchOrganization, cancelOrganizationSelection, session],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

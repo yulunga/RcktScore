@@ -71,7 +71,6 @@ export default function SettingsHubPage() {
   const [error, setError] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const fileInputRef = useRef(null);
-  const organizationId = session?.organization_id;
   const requestedSection = searchParams.get("section");
   const activeSection = SETTINGS_MENU.some((item) => item.id === requestedSection) ? requestedSection : "profile";
   const showClubWorkspace = searchParams.get("club") === "1";
@@ -81,6 +80,8 @@ export default function SettingsHubPage() {
     return available.filter(Boolean);
   }, [session]);
   const clubMemberships = memberships.filter((membership) => membership.organization_type === "club");
+  const identityMembership = memberships.find((membership) => membership.organization_type === "personal") || session;
+  const organizationId = identityMembership?.organization_id;
 
   const loadProfile = useCallback(async () => {
     if (!organizationId) return;
@@ -158,8 +159,6 @@ export default function SettingsHubPage() {
     };
     reader.readAsDataURL(file);
   }
-
-  const activeMembership = memberships.find((item) => Number(item.organization_id) === Number(organizationId)) || session;
 
   return (
     <main className="page-shell stack settings-hub-page">
@@ -256,7 +255,7 @@ export default function SettingsHubPage() {
       ) : null}
 
       {!loading && activeSection === "subscription" ? (
-        <SubscriptionPreview accountEmail={profile.email} currentPlan={activeMembership?.plan || settings?.organization?.plan || "personal_free"} />
+        <SubscriptionPreview accountEmail={profile.email} currentPlan={identityMembership?.plan || settings?.organization?.plan || "personal_free"} />
       ) : null}
 
       {!loading && activeSection === "app" ? (

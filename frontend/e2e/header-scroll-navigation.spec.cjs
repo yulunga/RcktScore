@@ -8,6 +8,28 @@ const session = {
   plan: "club_essentials",
   role: "admin",
   session_token: "playwright-header-session",
+  available_memberships: [
+    {
+      id: 7,
+      username: "header@example.com",
+      organization_id: 42,
+      organization_name: "Header Test Club",
+      organization_type: "club",
+      plan: "club_essentials",
+      role: "admin",
+      enabled_sports: ["squash"],
+    },
+    {
+      id: 17,
+      username: "header@example.com",
+      organization_id: 50001,
+      organization_name: "Header Tester Personal",
+      organization_type: "personal",
+      plan: "personal_plus",
+      role: "admin",
+      enabled_sports: ["squash", "tennis"],
+    },
+  ],
 };
 
 const completedMatches = [
@@ -62,6 +84,9 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/notifications/42*", async (route) => {
     await route.fulfill({ json: envelope({ notifications: [] }) });
   });
+  await page.route("**/notifications/50001*", async (route) => {
+    await route.fulfill({ json: envelope({ notifications: [] }) });
+  });
   await page.route("**/dashboard/42*", async (route) => {
     await route.fulfill({ json: envelope({ dashboard: {
       organization: { id: 42, name: "Header Test Club", type: "club", plan: "club_essentials", enabled_sports: ["squash"] },
@@ -107,6 +132,15 @@ test.beforeEach(async ({ page }) => {
       },
     } }) });
   });
+  await page.route("**/dashboard/50001*", async (route) => {
+    await route.fulfill({ json: envelope({ dashboard: {
+      organization: { id: 50001, name: "Header Tester Personal", type: "personal", plan: "personal_plus", enabled_sports: ["squash", "tennis"] },
+      active_matches: [],
+      scheduled_matches: [],
+      recent_matches: [],
+      viewed_matches: [],
+    } }) });
+  });
   await page.route("**/organization_settings/42", async (route) => {
     await route.fulfill({ json: envelope({ organizationSettings: {
       organization: {
@@ -145,6 +179,31 @@ test.beforeEach(async ({ page }) => {
       courts: [],
     } }) });
   });
+  await page.route("**/organization_settings/50001", async (route) => {
+    await route.fulfill({ json: envelope({ organizationSettings: {
+      organization: {
+        id: 50001,
+        organization_name: "Header Tester Personal",
+        org_type: "personal",
+        plan: "personal_plus",
+        enabled_sports: ["squash", "tennis"],
+        timed_break_defaults: {},
+        features: {},
+      },
+      users: [{
+        id: 17,
+        username: session.username,
+        role: "admin",
+        status: "approved",
+        first_name: "Header",
+        surname: "Tester",
+        telephone: "01234 567890",
+        city_location: "London",
+        country: "United Kingdom",
+      }],
+      courts: [],
+    } }) });
+  });
 });
 
 test("keeps the signed-in header width fixed while compacting its menu on scroll @header", async ({ page }) => {
@@ -155,7 +214,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect(header).toBeVisible();
   await expect(page.getByText("Manage live scoring, keep an eye on active courts, and review recent matches.")).toHaveCount(0);
   await expect(page.getByText(session.username, { exact: true })).toHaveCount(0);
-  await expect(page.getByText(session.organization_name, { exact: true })).toHaveCount(0);
+  await expect(header.locator(".account-context-switcher__trigger")).toContainText(session.organization_name);
   await expect(page.getByText(/RcktScore v\d/)).toHaveCount(0);
   await expect(page.getByText(/build \d+/)).toHaveCount(0);
   await expect(startMatch).toBeVisible();
@@ -259,6 +318,25 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   }
 
   await page.evaluate(() => window.__headerObserver?.disconnect());
+});
+
+test("switches identity context from the header and exposes it on Matches and match creation @header", async ({ page }) => {
+  await page.goto("/dashboard");
+
+  const headerContext = page.locator(".account-context-switcher--header");
+  await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
+  await headerContext.locator(".account-context-switcher__trigger").click();
+  await headerContext.getByRole("menuitem").filter({ hasText: "Personal" }).click();
+  await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Personal");
+
+  await page.getByRole("button", { name: "Matches" }).click();
+  await expect(page.locator(".account-context-switcher--matches")).toContainText("Showing matches for");
+  await expect(page.locator(".account-context-switcher--matches")).toContainText("Personal");
+
+  await page.getByRole("button", { name: "Start New Match" }).click();
+  await expect(page.locator(".account-context-switcher--match-start")).toContainText("Match context");
+  await expect(page.locator(".account-context-switcher--match-start")).toContainText("Personal");
+  await expect(page.getByRole("button", { name: /Tennis/ })).toBeVisible();
 });
 
 test("opens all recent matches from the heading on the Matches history tab @header", async ({ page }) => {
@@ -365,10 +443,10 @@ test("offers App, Player and Club analytics with period-based app metrics @heade
 
 test("opens and updates the signed-in club admin profile from the header @header", async ({ page }) => {
   let submittedProfile = null;
-  await page.route("**/personal_profile/42", async (route) => {
+  await page.route("**/personal_profile/50001", async (route) => {
     submittedProfile = route.request().postDataJSON();
     await route.fulfill({ json: envelope({ organizationSettings: {
-      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
+      organization: { id: 50001, organization_name: "Header Tester Personal", type: "personal", features: {} },
       users: [{
         id: 7,
         username: session.username,
@@ -406,10 +484,10 @@ test("opens and updates the signed-in club admin profile from the header @header
 
 test("returns to login with the new address after a profile email change @header", async ({ page }) => {
   const nextEmail = "updated-header@example.com";
-  await page.route("**/personal_profile/42", async (route) => {
+  await page.route("**/personal_profile/50001", async (route) => {
     const submittedProfile = route.request().postDataJSON();
     await route.fulfill({ json: envelope({ organizationSettings: {
-      organization: { id: 42, organization_name: "Header Test Club", type: "club", features: {} },
+      organization: { id: 50001, organization_name: "Header Tester Personal", type: "personal", features: {} },
       users: [{
         id: 7,
         username: submittedProfile.email,

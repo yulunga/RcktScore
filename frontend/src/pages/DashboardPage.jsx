@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import AccountContextSwitcher from "../components/AccountContextSwitcher";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { MATCH_SPORT_OPTIONS, getMatchSportOption, getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
@@ -791,11 +792,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       {actionError ? <div className="notice error">{actionError}</div> : null}
 
       {showMatchesOnly ? (
-        <div className="matches-category-switch" role="tablist" aria-label="Match category">
-          <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current</button>
-          <button className={matchesCategory === "scheduled" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "scheduled"} onClick={() => setMatchesCategory("scheduled")}>Scheduled</button>
-          <button className={matchesCategory === "history" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "history"} onClick={() => setMatchesCategory("history")}>History</button>
-        </div>
+        <>
+          <AccountContextSwitcher className="account-context-switcher--matches" label="Showing matches for" />
+          <div className="matches-category-switch" role="tablist" aria-label="Match category">
+            <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current</button>
+            <button className={matchesCategory === "scheduled" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "scheduled"} onClick={() => setMatchesCategory("scheduled")}>Scheduled</button>
+            <button className={matchesCategory === "history" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "history"} onClick={() => setMatchesCategory("history")}>History</button>
+          </div>
+        </>
       ) : null}
 
       <section className="dashboard-grid">
@@ -1114,6 +1118,8 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <h2 id="match-sport-overlay-title">Choose Racket Sport</h2>
               <p>Pick the sport first, then continue into the shared match setup flow.</p>
             </div>
+
+            <AccountContextSwitcher className="account-context-switcher--match-start" label="Match context" />
 
             <div className="match-sport-overlay__grid">
               {playableSports.map((sport) => (

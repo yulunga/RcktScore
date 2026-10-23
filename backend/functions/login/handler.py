@@ -1,3 +1,5 @@
+import os
+
 from aws_lambda_powertools import Logger
 
 from common.auth_logic import authenticate_org_user_memberships
@@ -12,6 +14,17 @@ from common.utils import error_response, parse_body, require_fields, success_res
 
 
 logger = Logger(service="login")
+
+
+def identity_first_login_enabled():
+    return os.environ.get("IDENTITY_FIRST_LOGIN_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def default_identity_membership(memberships):
+    return next(
+        (membership for membership in memberships if membership.get("organization_type") == "personal"),
+        memberships[0],
+    )
 
 
 def lambda_handler(event, context):
@@ -59,14 +72,21 @@ def lambda_handler(event, context):
 
         created_session = create_org_user_session(connection, username, login_source=client_type)
 
-    if len(memberships) == 1:
+    if len(memberships) == 1 or identity_first_login_enabled():
+        selected_membership = default_identity_membership(memberships)
         user = {
-            **memberships[0],
+            **selected_membership,
             "available_memberships": memberships,
             "session_token": created_session["token"],
             "session_expires_at": created_session["expires_at"].isoformat(),
         }
-        logger.info("Authenticated org user id=%s organization_id=%s", user["id"], user["organization_id"])
+        logger.info(
+            "Authenticated identity user id=%s organization_id=%s membership_count=%s identity_first=%s",
+            user["id"],
+            user["organization_id"],
+            len(memberships),
+            identity_first_login_enabled(),
+        )
         return success_response(200, {"session": user})
 
     logger.info("Authenticated multi-org user username=%s membership_count=%s", username, len(memberships))

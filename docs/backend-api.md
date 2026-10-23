@@ -126,6 +126,8 @@ Current behavior:
 
 - `POST /login` verifies credentials against `SkwshOrgUsers`
 - users may belong to multiple organisations
+- identity-first login is enabled by default. It creates a session immediately, preferring an approved personal membership and otherwise the first approved club membership, and returns every approved membership in `available_memberships`
+- deployment parameter `IdentityFirstLoginEnabled=false` restores the legacy `data.organizationSelection` response without removing that contract from the clients
 - a successful login creates a session token in `org_user_sessions`
 - organisation-user sessions expire after 30 days by default; `OrgUserSessionTtlDays` can configure a value from one to 90 days
 - successful login and multi-membership selection payloads include `session_expires_at`
@@ -145,9 +147,9 @@ Duplicate login behavior:
 - current client types normalize to `web_app` or `mobile_app`
 - if an active session already exists for the same username and client type, `POST /login` can return `ACTIVE_SESSION_EXISTS`
 - the frontend may retry with `force_logout_other`
-- `POST /login` can also return `data.organizationSelection` for users with
-  multiple approved memberships, so clients must handle both `session` and
-  selection payloads
+- when identity-first login is disabled, `POST /login` can return
+  `data.organizationSelection` for users with multiple approved memberships;
+  web and iOS deliberately continue to handle both response shapes
 - session and membership payloads include the client-effective `enabled_sports`
   list. It is derived from the platform client list, organisation list, and the
   membership's `enabled_sports_web` or `enabled_sports_ios` override.
@@ -401,7 +403,7 @@ Current organisation-settings behavior:
 
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - authenticated non-admin club members may read their own organisation settings for the web view-only Settings page; mutation routes and controls retain their existing administrator authorization
-- login responses retain the complete approved `available_memberships` list in the selected web session so Settings can display every club association. The selected login membership remains the active scoring context, while association Settings may address another listed organisation explicitly; each request is still authorized server-side against that username's membership and role for the requested organisation
+- login responses retain the complete approved `available_memberships` list so clients can switch the active account/club context without another sign-in. Each context-scoped request still supplies an organisation ID and is authorized server-side against that username's membership and role. Association Settings may inspect another listed club without implicitly switching match context; personal Profile and Subscription select the personal membership when present
 - migration `040_association_competitions.sql` adds the JSONB `association_competitions` list to club settings. `GET /organization_settings/{organization_id}` returns the club list plus a distinct cross-club `competition_catalog`; admin-authorized `PUT /organization_details/{organization_id}` accepts normalized `{name,type}` entries where type is `league` or `interclub`. Root-admin dashboard data includes the combined directory, and `DELETE /root_admin/association-competitions/{competition_name}` removes a named entry from every organisation
 - organisation user objects expose the login identity as both `username` and `email`; the current schema uses the email address as the login username, so those values are intentionally the same until a distinct public username is stored
 - organisation court objects include nullable `sport`; create/update accept an implemented sport ID, while a null legacy court remains usable for every sport. Migration `037_court_sports.sql` adds the field and its validation/index. Match creation rejects a sport-assigned court when it does not match the requested match sport
@@ -458,8 +460,8 @@ and saved-view tables.
 
 [functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
 
-- returns `data.session` when there is exactly one approved membership
-- returns `data.organizationSelection` when the same email belongs to multiple approved organisations
+- returns `data.session` by default, preferring the approved personal membership and otherwise the first approved club, with all choices in `available_memberships`
+- returns `data.organizationSelection` for multiple approved organisations only when deployment parameter `IdentityFirstLoginEnabled` is `false`
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
 - successful session payloads include the effective `enabled_sports` for the login client (`web_app` or `mobile_app`)
 - successful session payloads include `session_expires_at`; clients must require a fresh login after that timestamp

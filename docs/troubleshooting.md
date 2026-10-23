@@ -133,6 +133,16 @@ images are intentionally browser-local. League/interclub
 search requires migration `040_association_competitions.sql`; if the Settings or
 root-admin dashboard request reports a missing `association_competitions` column,
 apply that migration before deploying the corresponding backend.
+
+Identity-first login is controlled centrally by the SAM parameter
+`IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
+should therefore return `data.session` with all approved choices in
+`available_memberships`; set the parameter to `false` only when deliberately
+testing the retained sign-in chooser. If the header, Matches or new-match sport
+chooser offers only one context, sign out and back in before debugging client
+state. After a switch, confirm subsequent dashboard/match requests use the new
+`organization_id`; personal Profile and Subscription should still resolve the
+personal membership independently.
 On both native and web Historic Match screens, Match Information should initially be
 collapsed, and the Match Time disclosure should remain a shallow, low-padding
 card in its closed state. Each game header should show player one, its completed point score,
@@ -555,7 +565,7 @@ Common symptoms:
 
 What to check:
 
-- whether `POST /login` returned `data.session` or `data.organizationSelection`
+- whether `POST /login` returned the default identity-first `data.session` or the legacy `data.organizationSelection`, and whether `available_memberships` contains every approved account/club
 - whether the account hit `ACTIVE_SESSION_EXISTS` for `client_type = mobile_app`
 - whether `GET /match_display_access/{match_id}` is succeeding; it supplies the court display code where applicable and the match-specific Personal Plus viewing code for every live match
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
@@ -575,7 +585,7 @@ What to check:
 
 Important current truths:
 
-- the iOS app now presents a native organisation-selection chooser when `/login` returns `data.organizationSelection`
+- the iOS app normally enters the identity-first session directly; it still presents the native organisation-selection chooser when `/login` returns the legacy `data.organizationSelection` shape
 - the iOS login form now exposes a show/hide password control locally, but it still posts the same backend login request and does not change session behavior on its own
 - historic matches, new match creation, scheduled-match activation, and settings changes are online-only in the native app
 - one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns

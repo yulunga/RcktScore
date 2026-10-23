@@ -62,7 +62,9 @@ test.beforeEach(async ({ page }) => {
 
 test("non-admin club user opens Settings from the Android menu @mobile-settings", async ({ page }) => {
   await page.goto("/dashboard");
-  await page.getByRole("button", { name: "Open navigation menu" }).click();
+  const menuButton = page.getByRole("button", { name: "Open navigation menu" });
+  await menuButton.scrollIntoViewIfNeeded();
+  await menuButton.click({ force: true });
   await page.getByRole("dialog", { name: "Quick navigation" })
     .getByRole("button", { name: "Settings", exact: true })
     .click();

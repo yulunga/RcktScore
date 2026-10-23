@@ -1,66 +1,72 @@
 package com.hitnscore.mobile.feature.shell
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.hitnscore.mobile.app.navigation.AppDestination
+import com.hitnscore.mobile.app.navigation.HitNScoreTabNavHost
+import com.hitnscore.mobile.app.navigation.navigateToTab
+import com.hitnscore.mobile.core.session.AccountContext
+import com.hitnscore.mobile.core.session.SessionState
 
+/**
+ * Signed-in shell. One Scaffold and bottom bar for the whole session; only the
+ * tab content below it changes, so tab switches are instant and never flicker.
+ */
 @Composable
 fun AppShellScreen(
-    currentDestination: AppDestination,
-    onDestinationSelected: (AppDestination) -> Unit,
+    session: SessionState.SignedIn,
+    onContextSelected: (AccountContext) -> Unit,
+    onSignOut: () -> Unit,
 ) {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 AppDestination.topLevel.forEach { destination ->
+                    val selected = backStackEntry?.destination?.hierarchy
+                        ?.any { it.route == destination.route } == true
                     NavigationBarItem(
-                        selected = destination.route == currentDestination.route,
-                        onClick = { onDestinationSelected(destination) },
-                        icon = {
+                        selected = selected,
+                        onClick = { navController.navigateToTab(destination) },
+                        icon = { Icon(painterResource(destination.iconRes), contentDescription = null) },
+                        label = {
                             Text(
-                                text = destination.shortLabel,
-                                fontWeight = FontWeight.Bold,
+                                text = stringResource(destination.labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         },
-                        label = { Text(destination.label) },
                     )
                 }
             }
         },
     ) { contentPadding ->
-        Column(
+        HitNScoreTabNavHost(
+            navController = navController,
+            session = session,
+            onContextSelected = onContextSelected,
+            onSignOut = onSignOut,
             modifier = Modifier
-                .fillMaxSize()
                 .padding(contentPadding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = currentDestination.label,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "Framework destination ready for its iOS-parity feature.",
-                modifier = Modifier.padding(top = 12.dp),
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+                .consumeWindowInsets(contentPadding),
+        )
     }
 }

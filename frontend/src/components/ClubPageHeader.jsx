@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 import { getNotifications, getOrganizationSettings } from "../services/api";
+import AccountContextSwitcher from "./AccountContextSwitcher";
 
 function inferOrganizationType(session) {
   if (session?.organization_type) {
@@ -251,6 +252,12 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
           </div>
           <div className="club-page-header__account">
             <div className="club-page-header__meta">
+              <AccountContextSwitcher
+                className="account-context-switcher--header"
+                onContextChange={() => {
+                  if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
+                }}
+              />
               <button
                 className={`club-page-header__notification-button${hasUnreadNotifications ? " club-page-header__notification-button--unread" : ""}`}
                 type="button"
@@ -368,14 +375,22 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       ) : null}
 
       {mobileMenuOpen ? (
-        <div className="mobile-fab-menu-overlay" role="presentation">
-          <button
+        <div
+          className="mobile-fab-menu-overlay"
+          role="presentation"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            aria-hidden="true"
             className="mobile-fab-menu-overlay__backdrop"
-            type="button"
-            aria-label="Close navigation menu"
-            onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="mobile-fab-menu-sheet" role="dialog" aria-modal="true" aria-label="Quick navigation">
+          <div
+            className="mobile-fab-menu-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Quick navigation"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
             <div className="mobile-fab-menu-sheet__items">
               {mobileMenuItems.map((item) => (

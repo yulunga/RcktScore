@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import AccountContextSwitcher from "../components/AccountContextSwitcher";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
@@ -24,6 +25,8 @@ export default function MatchSportSelectionPage() {
           <h2>Start New Match</h2>
           <p>Choose from the racket sports that are enabled for your account or club.</p>
         </div>
+
+        <AccountContextSwitcher className="account-context-switcher--match-start" label="Match context" />
 
         <div className="match-sport-overlay__grid">
           {availableSports.map((sport) => (

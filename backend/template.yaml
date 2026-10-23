@@ -13,6 +13,7 @@ Globals:
         SUPABASE_DB_URL: !Ref SupabaseDbUrl
         ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
         ORG_USER_SESSION_TTL_DAYS: !Ref OrgUserSessionTtlDays
+        IDENTITY_FIRST_LOGIN_ENABLED: !Ref IdentityFirstLoginEnabled
         EMAIL_LOGO_URL: !Ref EmailLogoUrl
         APPLE_PURCHASES_ENABLED: !Ref ApplePurchasesEnabled
         APPLE_PERSONAL_PLUS_MONTHLY_PRODUCT_ID: !Ref ApplePersonalPlusMonthlyProductId
@@ -78,6 +79,13 @@ Parameters:
     Default: 30
     MinValue: 1
     MaxValue: 90
+  IdentityFirstLoginEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Return an identity session immediately for multi-membership users; false restores the legacy sign-in membership chooser.
   ApplePurchasesEnabled:
     Type: String
     Default: "false"

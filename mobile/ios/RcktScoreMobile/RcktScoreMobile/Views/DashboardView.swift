@@ -318,7 +318,10 @@ struct DashboardView: View {
                 switch sheet {
                 case .newMatch:
                     NavigationStack {
-                        StartNewMatchFlowView(activeMatches: activeMatches) { result in
+                        StartNewMatchFlowView(
+                            activeMatches: activeMatches,
+                            onContextChanged: { membership in switchAssociation(to: membership) }
+                        ) { result in
                             handleStartNewMatchResult(result)
                         }
                         .environmentObject(container)
@@ -416,6 +419,8 @@ struct DashboardView: View {
                 }
                 .padding(.top, 8)
             }
+
+            accountContextSwitcher(label: "Context")
 
             if let dashboardNotice {
                 Text(dashboardNotice)
@@ -525,6 +530,8 @@ struct DashboardView: View {
 
     private var matchesContent: some View {
         VStack(spacing: 18) {
+            accountContextSwitcher(label: "Showing matches for")
+
             Picker("Match category", selection: $selectedMatchesCategory) {
                 ForEach(MatchesCategory.allCases) { category in
                     Text(category.title).tag(category)
@@ -3580,6 +3587,67 @@ struct DashboardView: View {
         .disabled(isCurrent)
         .opacity(isCurrent ? 0.92 : 1)
         .accessibilityIdentifier("settings.association.\(membership.organizationID)")
+    }
+
+    private func accountContextSwitcher(label: String) -> some View {
+        let memberships = availableMemberships.isEmpty ? session.map { current in
+            [UserMembership(
+                id: current.id,
+                username: current.username,
+                role: current.role,
+                organizationID: current.organizationID,
+                organizationName: current.organizationName,
+                organizationType: current.organizationType,
+                plan: current.plan,
+                enabledSports: current.enabledSports,
+                firstName: current.firstName,
+                surname: current.surname,
+                fullName: current.fullName,
+                email: current.email,
+                country: current.country,
+                telephone: current.telephone
+            )]
+        } ?? [] : availableMemberships
+
+        return Menu {
+            ForEach(memberships) { membership in
+                Button {
+                    switchAssociation(to: membership)
+                } label: {
+                    if membership.organizationID == session?.organizationID {
+                        Label(membership.organizationType == "personal" ? "Personal" : membership.organizationName, systemImage: "checkmark")
+                    } else {
+                        Text(membership.organizationType == "personal" ? "Personal" : membership.organizationName)
+                    }
+                }
+                .disabled(membership.organizationID == session?.organizationID)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(session?.isPersonalAccount == true ? "Personal" : (session?.organizationName ?? "Account"))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                if memberships.count > 1 {
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.dashboardCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+        }
+        .disabled(memberships.count <= 1)
+        .accessibilityIdentifier("account.contextSwitcher")
     }
 
     @ViewBuilder
