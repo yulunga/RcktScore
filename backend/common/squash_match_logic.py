@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from psycopg.errors import UndefinedColumn, UndefinedTable
 from psycopg.types.json import Jsonb
 
 
@@ -601,25 +602,43 @@ def _fetch_match_row(connection, match_id):
 
 
 def _fetch_match_events(connection, match_id):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT
-                event.id, event.match_id, event.event_sequence, event.event_type,
-                event.payload, event.event_source, event.created_at
-            FROM match_events AS event
-            WHERE event.match_id = %(match_id)s
-              AND event.event_type <> 'undo'
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM match_event_compensations AS compensation
-                  WHERE compensation.target_event_id = event.id
-              )
-            ORDER BY event.event_sequence ASC
-            """,
-            {"match_id": match_id},
-        )
-        return cursor.fetchall()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    event.id, event.match_id, event.event_sequence, event.event_type,
+                    event.payload, event.event_source, event.created_at
+                FROM match_events AS event
+                WHERE event.match_id = %(match_id)s
+                  AND event.event_type <> 'undo'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM match_event_compensations AS compensation
+                      WHERE compensation.target_event_id = event.id
+                  )
+                ORDER BY event.event_sequence ASC
+                """,
+                {"match_id": match_id},
+            )
+            return cursor.fetchall()
+    except (UndefinedColumn, UndefinedTable):
+        # Keep read-only dashboard/history flows available while migration 042
+        # is being applied. Scoring and Undo still require the new schema.
+        connection.rollback()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    event.id, event.match_id, event.event_type,
+                    event.payload, event.event_source, event.created_at
+                FROM match_events AS event
+                WHERE event.match_id = %(match_id)s
+                ORDER BY event.created_at ASC, event.id ASC
+                """,
+                {"match_id": match_id},
+            )
+            return cursor.fetchall()
 
 
 def _auto_end_stale_active_matches(connection, tenant_id=None, match_id=None):

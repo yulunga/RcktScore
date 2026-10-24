@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from itertools import product
 
 import pytest
+from psycopg.errors import UndefinedColumn
 
 import common.squash_match_logic as squash_match_logic
 from common.squash_match_logic import (
@@ -81,6 +82,25 @@ class _UndoConnection:
         return _UndoCursor(self)
 
 
+class _LegacyEventCursor(_UndoCursor):
+    def execute(self, query, params=None):
+        super().execute(query, params)
+        if "event.event_sequence" in self.last_query:
+            raise UndefinedColumn("column event.event_sequence does not exist")
+
+
+class _LegacyEventConnection(_UndoConnection):
+    def __init__(self, events):
+        super().__init__(None, events)
+        self.rolled_back = False
+
+    def cursor(self):
+        return _LegacyEventCursor(self)
+
+    def rollback(self):
+        self.rolled_back = True
+
+
 def test_shared_undo_appends_compensation_for_score_and_later_timer():
     created_at = datetime.now(timezone.utc)
     connection = _UndoConnection(
@@ -137,6 +157,21 @@ def test_effective_event_fetch_uses_sequence_and_hides_compensated_audit_events(
     assert "event.event_type <> 'undo'" in query
     assert "match_event_compensations" in query
     assert "ORDER BY event.event_sequence ASC" in query
+
+
+def test_event_fetch_falls_back_to_legacy_order_during_migration_042_rollout():
+    expected_events = [{"id": "legacy-score"}]
+    connection = _LegacyEventConnection(expected_events)
+
+    events = squash_match_logic._fetch_match_events(connection, "match-1")
+
+    assert events == expected_events
+    assert connection.rolled_back is True
+    assert len(connection.executions) == 2
+    assert "event.event_sequence" in connection.executions[0][0]
+    assert "match_event_compensations" in connection.executions[0][0]
+    assert "event.event_sequence" not in connection.executions[1][0]
+    assert "ORDER BY event.created_at ASC, event.id ASC" in connection.executions[1][0]
 
 
 def test_delayed_completion_timer_is_ignored_after_undo_reopens_match(monkeypatch):

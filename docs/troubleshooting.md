@@ -521,7 +521,7 @@ If behavior seems impossible:
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
 - if match creation fails with an `UndefinedColumn` error for `tennis_timed_breaks`, apply migration `039_match_timed_breaks.sql`; migration `029_timed_break_defaults.sql` only adds the organisation-level setup default and does not add the per-match column
-- if scoring or Undo fails on a missing `event_sequence`, `actor_username`, or `match_event_compensations` relation, apply migration `042_append_only_match_events.sql` before deploying the matching backend code
+- if scoring or Undo fails on a missing `event_sequence`, `actor_username`, or `match_event_compensations` relation, apply migration `042_append_only_match_events.sql` before deploying the matching backend code. Current dashboard/history reads retry using legacy event ordering when this schema is absent, preventing a club with existing matches from receiving HTTP 500 during a staggered rollout; that fallback does not make scoring safe without the migration
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
