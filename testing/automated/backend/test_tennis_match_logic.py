@@ -282,3 +282,7 @@ def test_event_rebuild_without_last_point_restores_pre_point_state_for_undo():
     assert with_point["tennis_timed_breaks"] is True
     assert after_undo["player1_score"] == 0
     assert after_undo["tennis_timed_breaks"] is True
+
+
+def test_tennis_undo_allowlist_contains_only_score_points():
+    assert tennis.UNDOABLE_SCORING_EVENT_TYPES == ("score_point",)

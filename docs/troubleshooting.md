@@ -399,6 +399,8 @@ What to check:
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
 - when two devices or taps appear to collide, verify the deployed `common/match_logic.py` acquires `SELECT ... FOR UPDATE` before dispatching to the sport engine; event, summary, receipt, and tournament-result writes should appear together or not at all
 - check for transaction errors or lock waits before repairing summary columns manually. A failed current mutation rolls back, and a later mutation rebuilds from the committed event stream
+- if Undo appears ineffective after a winning point, inspect the newest events: the backend should target the preceding `score_point`/`stroke`, delete a later completion `timer`, reset the duration summary, and return the match to active state in one transaction
+- if Undo returns a tournament progression error, confirm the completed scoring match is linked to a fixture whose winner has already advanced; this rejection is intentional until bracket reversal can be guaranteed safely
 - whether the action used `score_point` or `event_action`
 - the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
 - before a display code is entered, `/scoreboard` and `/display` use a compact code card centred in the space below the fixed-height public header; if it appears stretched or offset, verify the `display-session-inactive` grid and `scoreboard-entry-card` styles before changing the live-display layout
@@ -413,7 +415,7 @@ Important current truths:
 
 - personal accounts are intentionally limited to one active match
 - scheduled club matches can be created automatically when a court is busy
-- undo works by removing the last non-`match_started` event and rebuilding state
+- undo works from an allowlist of scoring events; timer, settings, let, server and service-side events do not consume score Undo
 - `common/match_logic.py` is now a dispatcher facade, not the only scoring implementation file
 
 ## 5. Display and WebSocket Issues

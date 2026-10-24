@@ -16,6 +16,7 @@ TENNIS_POINT_LABELS = {
     3: "40",
 }
 VALID_TEAM_FORMATS = {"singles", "doubles"}
+UNDOABLE_SCORING_EVENT_TYPES = ("score_point",)
 
 
 def _player_name(match_like, side):
@@ -1813,29 +1814,15 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
 
 
 def undo_last_action(connection, match_id, commit=True):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id
-            FROM match_events
-            WHERE match_id = %(match_id)s
-              AND event_type NOT IN ('match_started', 'timer')
-            ORDER BY created_at DESC, id DESC
-            LIMIT 1
-            """,
-            {"match_id": match_id},
-        )
-        last_event = cursor.fetchone()
-        if not last_event:
-            return get_match(connection, match_id)
+    last_event = shared._delete_latest_undoable_event(
+        connection,
+        match_id,
+        UNDOABLE_SCORING_EVENT_TYPES,
+    )
+    if not last_event:
+        return get_match(connection, match_id)
 
-        cursor.execute(
-            """
-            DELETE FROM match_events
-            WHERE id = %(event_id)s
-            """,
-            {"event_id": last_event["id"]},
-        )
+    with connection.cursor() as cursor:
         cursor.execute(
             """
             UPDATE matches

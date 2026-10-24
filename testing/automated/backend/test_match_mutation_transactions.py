@@ -256,3 +256,28 @@ def test_non_scoring_event_cannot_turn_an_early_end_into_natural_progression(mon
 
     assert result["status"] == "completed"
     assert connection.events == ["commit"]
+
+
+def test_completed_tournament_match_cannot_be_reopened_by_undo(monkeypatch):
+    store = _ConcurrentScoreStore()
+    connection = _LockedMatchConnection(store)
+
+    class TournamentEngine:
+        @staticmethod
+        def get_match(*_args, **_kwargs):
+            return {
+                "id": "match-1",
+                "status": "completed",
+                "tournament_match_id": "fixture-1",
+            }
+
+        @staticmethod
+        def undo_last_action(*_args, **_kwargs):
+            raise AssertionError("Tournament progression must not be silently reopened")
+
+    monkeypatch.setattr(match_logic, "resolve_engine_module", lambda sport: TournamentEngine)
+
+    with pytest.raises(ValueError, match="cannot be undone after bracket progression"):
+        match_logic.undo_last_action(connection, "match-1")
+
+    assert connection.events == ["rollback"]

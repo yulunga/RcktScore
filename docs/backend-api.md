@@ -648,6 +648,9 @@ Current behavior:
 - reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
 - start, score, event, undo, and end mutations acquire a PostgreSQL row lock on the match before rebuilding state from `match_events`; distinct concurrent actions are therefore applied serially rather than calculating from the same stale score
 - the receipt claim, event stream change, derived `matches` summary, and completed Tournament Manager result share one transaction. Any failure rolls the whole mutation back, while repeated tournament scoring synchronisation with the same winner and score is a no-op
+- `POST /undo_action` targets the latest allowlisted scoring event rather than the latest event of any type: Tennis/Padel allow `score_point`, while Squash/Racketball allow `score_point` and `stroke`. Later completion-generated `timer` events are removed with that score, duration summary state is reset, and non-scoring metadata does not consume Undo
+- match-duration `timer` events are accepted only while the authoritative match remains completed; a delayed completion-timer request that arrives after Undo has reopened the match returns current state without appending stale duration data
+- a completed tournament-linked scoring match rejects Undo after bracket progression; this prevents reopening the scoring match without safely reversing its draw result
 - native iOS serialises queued scoring requests, preserves any new action appended while a previous request is in flight, and retains failed actions for a safe retry with the same UUID; the client now surfaces the returned API or network error rather than describing every failure as an offline condition
 - the native scorer labels stroke choices as `Stroke Against <player>` but continues to send the opposite player as the awarded `player_side`; let choices include the selected player's name and retain the existing optional `player_side` request behavior
 - personal accounts can only have one active match at a time
@@ -777,7 +780,7 @@ Important current `match_events` concepts:
 
 - every scoring and operator action is event-based
 - live state is rebuilt from the event stream
-- undo removes the last non-`match_started` event and rebuilds state
+- undo removes the latest allowlisted scoring event and any later completion-duration event, then rebuilds state; settings, lets, server and service-side metadata are not score-undo targets
 
 ## Current Security Position
 

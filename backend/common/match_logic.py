@@ -293,10 +293,27 @@ def event_action(connection, match_id, action_type, payload, source="api"):
 
 
 def undo_last_action(connection, match_id):
+    def undo(engine):
+        engine_get_match = getattr(engine, "get_match", None)
+        current_match = (
+            engine_get_match(connection, match_id)
+            if engine_get_match
+            else _serialize_match_row(connection, _fetch_match_row(connection, match_id))
+        )
+        if (
+            current_match
+            and current_match.get("tournament_match_id")
+            and current_match.get("status") == "completed"
+        ):
+            raise ValueError(
+                "A completed tournament result cannot be undone after bracket progression"
+            )
+        return engine.undo_last_action(connection, match_id, commit=False)
+
     return _run_match_mutation(
         connection,
         match_id,
-        lambda engine: engine.undo_last_action(connection, match_id, commit=False),
+        undo,
     )
 
 

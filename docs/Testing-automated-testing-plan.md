@@ -218,6 +218,9 @@ The native UI-test bundle reads its three accounts from these environment variab
 - Start match
 - Score points
 - Undo one event
+- Complete Squash/Racketball/Tennis/Padel, allow the client to submit its duration timer, then undo once and verify the winning point—not the timer or metadata—is removed
+- Verify a reopened match resumes timing and records a fresh, longer duration when completed again
+- Verify completed tournament-linked matches reject undo after bracket progression
 - End match
 - Verify history entry exists
 

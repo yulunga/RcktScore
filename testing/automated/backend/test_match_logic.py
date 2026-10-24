@@ -43,6 +43,87 @@ class _RecordingConnection:
         self.committed = True
 
 
+class _UndoCursor:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        self.connection.executions.append((" ".join(query.split()), params or {}))
+
+    def fetchone(self):
+        return self.connection.target_event
+
+
+class _UndoConnection:
+    def __init__(self, target_event):
+        self.target_event = target_event
+        self.executions = []
+
+    def cursor(self):
+        return _UndoCursor(self)
+
+
+def test_shared_undo_targets_only_scoring_events_and_removes_later_timer():
+    created_at = datetime.now(timezone.utc)
+    connection = _UndoConnection({"id": "score-event", "created_at": created_at})
+
+    target = squash_match_logic._delete_latest_undoable_event(
+        connection,
+        "match-1",
+        ("score_point", "stroke"),
+    )
+
+    assert target == {"id": "score-event", "created_at": created_at}
+    assert connection.executions[0][1]["undoable_event_types"] == ["score_point", "stroke"]
+    assert "event_type = ANY" in connection.executions[0][0]
+    assert "event_type = 'timer'" in connection.executions[1][0]
+    assert connection.executions[1][1]["event_id"] == "score-event"
+    assert "SET match_duration_seconds = 0" in connection.executions[2][0]
+
+
+def test_shared_undo_leaves_metadata_untouched_when_no_scoring_event_exists():
+    connection = _UndoConnection(None)
+
+    target = squash_match_logic._delete_latest_undoable_event(
+        connection,
+        "match-1",
+        ("score_point", "stroke"),
+    )
+
+    assert target is None
+    assert len(connection.executions) == 1
+
+
+def test_delayed_completion_timer_is_ignored_after_undo_reopens_match(monkeypatch):
+    active_match = {
+        "id": "match-1",
+        "status": "active",
+        "state": {"match_complete": False, "match_duration_seconds": 0},
+    }
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *_args, **_kwargs: active_match)
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_append_event",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("A delayed timer must not be appended to a reopened match")
+        ),
+    )
+
+    result = squash_match_logic._record_match_duration(
+        object(),
+        "match-1",
+        {"match_duration_seconds": 120},
+    )
+
+    assert result is active_match
+
+
 def test_best_of_value_only_allows_supported_options():
     assert _best_of_value(1) == 1
     assert _best_of_value(3) == 3

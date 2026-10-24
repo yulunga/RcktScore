@@ -125,6 +125,16 @@ versus Mark match. Two additional recovery screenshots are retained when this
 path is needed. Do not point these Personal Plus test variables at an account
 whose matches need to be preserved.
 
+Add a completion-undo regression variant to the client test plan for Squash,
+Racketball, Tennis and Padel. Each variant must score the winning point, wait
+for the duration to synchronise, use **Undo Last Action** once, and verify that
+the match reopens at the preceding score. Resume play and complete it again,
+then verify the recorded duration includes the resumed period. The same plan
+must confirm that timer, settings, let, server and service-side timeline events
+do not consume the score Undo action. Keep the tournament-linked case separate:
+once bracket progression has occurred, the completed scoring match must show
+the backend rejection and remain completed.
+
 ### Run and watch the live journey in Xcode
 
 1. Rotate any credential that has appeared in a console or result-bundle log,

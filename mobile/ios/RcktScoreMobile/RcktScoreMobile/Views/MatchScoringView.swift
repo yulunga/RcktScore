@@ -2421,7 +2421,18 @@ struct MatchScoringView: View {
     }
 
     private func syncCompletedMatchTimer() {
-        guard isMatchComplete, let match else {
+        guard let match else {
+            return
+        }
+
+        if !isMatchComplete {
+            let wasDurationSynced = durationSyncedMatchID == match.id
+            durationSyncedMatchID = nil
+            if wasDurationSynced {
+                timerPhase = .matchLive
+                timerSeconds = matchDurationSeconds
+                timerRunning = true
+            }
             return
         }
 

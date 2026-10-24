@@ -33,10 +33,66 @@ STALE_ACTIVITY_EVENT_TYPES = (
     "server",
     "serve_side",
 )
+UNDOABLE_SCORING_EVENT_TYPES = ("score_point", "stroke")
 
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _delete_latest_undoable_event(connection, match_id, undoable_event_types):
+    """Delete one scoring action and any completion timer derived from it.
+
+    Using an allowlist prevents settings, service selections, lets, explicit
+    match endings, and future metadata events from unexpectedly becoming the
+    target of the score Undo control.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, created_at
+            FROM match_events
+            WHERE match_id = %(match_id)s
+              AND event_type = ANY(%(undoable_event_types)s)
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            {
+                "match_id": match_id,
+                "undoable_event_types": list(undoable_event_types),
+            },
+        )
+        target_event = cursor.fetchone()
+        if not target_event:
+            return None
+
+        cursor.execute(
+            """
+            DELETE FROM match_events
+            WHERE match_id = %(match_id)s
+              AND (
+                  id = %(event_id)s
+                  OR (
+                      event_type = 'timer'
+                      AND (created_at, id) > (%(event_created_at)s, %(event_id)s)
+                  )
+              )
+            """,
+            {
+                "match_id": match_id,
+                "event_id": target_event["id"],
+                "event_created_at": target_event["created_at"],
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE matches
+            SET match_duration_seconds = 0
+            WHERE id = %(match_id)s
+            """,
+            {"match_id": match_id},
+        )
+    return target_event
 
 
 def _coerce_int(value, default=0):
@@ -1322,6 +1378,8 @@ def _record_match_duration(connection, match_id, payload, source="api", commit=T
     match = get_match(connection, match_id)
     if not match:
         return None
+    if match.get("status") != "completed" or not match["state"].get("match_complete"):
+        return match
 
     duration_seconds = _coerce_int(
         payload.get("match_duration_seconds"),
@@ -1387,29 +1445,13 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
 
 
 def undo_last_action(connection, match_id, commit=True):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id
-            FROM match_events
-            WHERE match_id = %(match_id)s
-              AND event_type <> 'match_started'
-            ORDER BY created_at DESC, id DESC
-            LIMIT 1
-            """,
-            {"match_id": match_id},
-        )
-        last_event = cursor.fetchone()
-        if not last_event:
-            return get_match(connection, match_id)
-
-        cursor.execute(
-            """
-            DELETE FROM match_events
-            WHERE id = %(event_id)s
-            """,
-            {"event_id": last_event["id"]},
-        )
+    last_event = _delete_latest_undoable_event(
+        connection,
+        match_id,
+        UNDOABLE_SCORING_EVENT_TYPES,
+    )
+    if not last_event:
+        return get_match(connection, match_id)
 
     match = get_match(connection, match_id)
     if not match:

@@ -212,6 +212,34 @@ Expected:
 - Undo reverts exactly one action at a time
 - Event timeline remains consistent
 
+### B3a. Undo after a match-winning point
+
+Run once for Squash, Racketball, Tennis and Padel:
+
+1. Score the match-winning point and wait for the completed-match timer to appear
+2. Immediately select **Undo Last Action**
+3. Confirm the match returns to active scoring at the score immediately before the winning point
+4. Confirm one Undo was sufficient and no timer, settings, let, server or service-side event was removed instead
+5. Resume play, allow the timer to continue, and score the winning point again
+6. Open match history and verify the final duration includes the resumed play period
+
+Expected:
+
+- The winning scoring action is the single undo target even when a timer event was written after it
+- Completion state, winner and final-score fields are cleared while the match is active
+- The old completion-duration event is not retained as the final duration
+- The second completion records a fresh duration and remains stable after refresh
+
+Tournament safety check:
+
+1. Complete a tournament-linked scoring match so its winner advances
+2. Attempt **Undo Last Action** from the completed scoring screen
+
+Expected:
+
+- Undo is refused with a clear error because the bracket result has already progressed
+- The completed score and tournament bracket remain consistent
+
 ### B4. End match
 
 1. Complete score to match end condition

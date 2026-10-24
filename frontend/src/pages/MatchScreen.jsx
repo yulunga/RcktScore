@@ -588,6 +588,17 @@ export default function MatchScreen() {
     timerSeconds,
   ]);
 
+  useEffect(() => {
+    if (!currentMatch?.id || matchComplete || !durationSyncRef.current[currentMatch.id]) {
+      return;
+    }
+
+    delete durationSyncRef.current[currentMatch.id];
+    if (timerPhase === "match_live") {
+      setTimerRunning(true);
+    }
+  }, [currentMatch?.id, matchComplete, timerPhase]);
+
   const timerLabel = useMemo(() => {
     if (matchComplete) {
       return "Match Time";
