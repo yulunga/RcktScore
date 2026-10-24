@@ -23,10 +23,14 @@ export default function MatchSportSelectionPage() {
       <section className="panel stack">
         <div className="section-heading stack compact">
           <h2>Start New Match</h2>
-          <p>Choose from the racket sports that are enabled for your account or club.</p>
+          <p>Choose who this match is for, then pick an enabled racket sport.</p>
         </div>
 
-        <AccountContextSwitcher className="account-context-switcher--match-start" label="Match context" />
+        <AccountContextSwitcher
+          className="account-context-choices--match-start"
+          label="Score this match for"
+          presentation="choices"
+        />
 
         <div className="match-sport-overlay__grid">
           {availableSports.map((sport) => (

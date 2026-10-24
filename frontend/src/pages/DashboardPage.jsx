@@ -1116,10 +1116,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           >
             <div className="panel-heading">
               <h2 id="match-sport-overlay-title">Choose Racket Sport</h2>
-              <p>Pick the sport first, then continue into the shared match setup flow.</p>
+              <p>Choose who this match is for, then pick an enabled racket sport.</p>
             </div>
 
-            <AccountContextSwitcher className="account-context-switcher--match-start" label="Match context" />
+            <AccountContextSwitcher
+              className="account-context-choices--match-start"
+              label="Score this match for"
+              presentation="choices"
+            />
 
             <div className="match-sport-overlay__grid">
               {playableSports.map((sport) => (

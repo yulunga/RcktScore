@@ -211,10 +211,10 @@ struct DashboardView: View {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .helpFeedback]
+        [.about, .profile, .subscription, .association, .gameSettings, .reporting, .helpFeedback]
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [.about, .profile, .subscription, .association, .racketSports, .gameSettings, .reporting, .helpFeedback]
+        [.about, .profile, .subscription, .association, .gameSettings, .reporting, .helpFeedback]
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
@@ -225,7 +225,7 @@ struct DashboardView: View {
 
         return [
             SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems),
-            SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .users, .courts])
+            SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .racketSports, .users, .courts])
         ]
     }
     private var settingsAvailableItems: [SettingsMenuItem] {
@@ -1043,7 +1043,7 @@ struct DashboardView: View {
     }
 
     private func settingsMenuRow(_ item: SettingsMenuItem, isLast: Bool) -> some View {
-        let isUnavailable = item == .gameSettings || item == .reporting
+        let isUnavailable = item == .reporting
         return Button {
             guard !isUnavailable else { return }
             selectedSettingsSection = item.section
@@ -1744,6 +1744,36 @@ struct DashboardView: View {
             Text("Game Settings")
                 .font(.headline.weight(.semibold))
 
+            if isPersonalAccount {
+                Text("Personal Racket Sports")
+                    .font(.subheadline.weight(.bold))
+
+                Text("Choose which available sports you want to see when scoring through your Personal account.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                ForEach(availableSportOptions) { sport in
+                    sportAccessRow(for: sport)
+                }
+
+                Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
+                    saveOrganizationEnabledSports()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(savingSettingsKey != nil)
+                .opacity(savingSettingsKey != nil ? 0.7 : 1)
+                .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
+
+                Divider()
+                    .padding(.vertical, 4)
+            }
+
             Text("Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -2090,7 +2120,7 @@ struct DashboardView: View {
             Text("Racket Sports")
                 .font(.headline.weight(.semibold))
 
-            Text("Choose which racket sports club users can see when they start a match.")
+            Text("Choose which racket sports users of \(settingsOrganizationName) can see when they start a match.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -2098,7 +2128,7 @@ struct DashboardView: View {
                 sportAccessRow(for: sport)
             }
 
-            Text("Implemented sports are available in the current iOS setup flow. Other sports can be pre-configured here for later release.")
+            Text("Future sports are shown for reference and cannot be enabled until their scoring flow is available in the iOS app.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -2158,7 +2188,8 @@ struct DashboardView: View {
             }
         }
         .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
-        .disabled(!isAdmin)
+        .disabled((!isPersonalAccount && !isAdmin) || !sport.isImplementedToday || savingSettingsKey != nil)
+        .opacity(sport.isImplementedToday ? 1 : 0.72)
         .accessibilityIdentifier("settings.sports.toggle.\(sport.rawValue)")
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -4733,8 +4764,9 @@ struct DashboardView: View {
 
     private func sportEnabledBinding(for sport: MatchSport) -> Binding<Bool> {
         Binding(
-            get: { enabledSportIDs.contains(sport.rawValue) },
+            get: { sport.isImplementedToday && enabledSportIDs.contains(sport.rawValue) },
             set: { isEnabled in
+                guard sport.isImplementedToday else { return }
                 setSportEnabled(sport, isEnabled: isEnabled)
             }
         )
@@ -4755,6 +4787,7 @@ struct DashboardView: View {
 
     private func normalizedEnabledSportsDraft() -> [String] {
         availableSportOptions
+            .filter(\.isImplementedToday)
             .map(\.rawValue)
             .filter { enabledSportIDs.contains($0) }
     }
@@ -4762,6 +4795,29 @@ struct DashboardView: View {
     private func persistSessionEnabledSports(_ enabledSports: [String]) {
         guard let currentSession = session else {
             return
+        }
+
+        let updatedMemberships = currentSession.availableMemberships?.map { membership in
+            guard membership.organizationID == currentSession.organizationID else {
+                return membership
+            }
+
+            return UserMembership(
+                id: membership.id,
+                username: membership.username,
+                role: membership.role,
+                organizationID: membership.organizationID,
+                organizationName: membership.organizationName,
+                organizationType: membership.organizationType,
+                plan: membership.plan,
+                enabledSports: enabledSports,
+                firstName: membership.firstName,
+                surname: membership.surname,
+                fullName: membership.fullName,
+                email: membership.email,
+                country: membership.country,
+                telephone: membership.telephone
+            )
         }
 
         let updatedSession = UserSession(
@@ -4781,7 +4837,7 @@ struct DashboardView: View {
             email: currentSession.email,
             country: currentSession.country,
             telephone: currentSession.telephone,
-            availableMemberships: currentSession.availableMemberships
+            availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)
     }

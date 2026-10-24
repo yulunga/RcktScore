@@ -124,18 +124,25 @@ def authenticate_org_user_memberships(connection, username, password, client_typ
             "pending_memberships": [],
         }
 
+    identity_authenticated = any(
+        user_row.get("password_hash")
+        and check_password_hash(user_row["password_hash"], password)
+        for user_row in user_rows
+    )
+    if not identity_authenticated:
+        return {
+            "approved_memberships": [],
+            "pending_memberships": [],
+        }
+
     approved_memberships = []
     pending_memberships = []
     for user_row in user_rows:
-        if not user_row.get("password_hash"):
-            continue
-
-        if check_password_hash(user_row["password_hash"], password):
-            serialized_user = _serialize_org_user(user_row, client_type=client_type)
-            if serialized_user["status"] == USER_STATUS_APPROVED:
-                approved_memberships.append(serialized_user)
-            else:
-                pending_memberships.append(serialized_user)
+        serialized_user = _serialize_org_user(user_row, client_type=client_type)
+        if serialized_user["status"] == USER_STATUS_APPROVED:
+            approved_memberships.append(serialized_user)
+        else:
+            pending_memberships.append(serialized_user)
 
     return {
         "approved_memberships": approved_memberships,

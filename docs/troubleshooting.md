@@ -143,6 +143,13 @@ chooser offers only one context, sign out and back in before debugging client
 state. After a switch, confirm subsequent dashboard/match requests use the new
 `organization_id`; personal Profile and Subscription should still resolve the
 personal membership independently.
+The web and iOS pre-match choosers should list every retained membership beneath
+`Score this match for`, rather than hiding them in a dropdown. If Personal or
+Personal Plus is absent, inspect the fresh login response and verify that the
+normalized email has an approved personal `SkwshOrgUsers` membership. Login
+authenticates the identity when the password matches any membership row and then
+retains all approved rows, so a stale historical hash on only one row should no
+longer hide that context. Neither client creates a Personal membership locally.
 On both native and web Historic Match screens, Match Information should initially be
 collapsed, and the Match Time disclosure should remain a shallow, low-padding
 card in its closed state. Each game header should show player one, its completed point score,
@@ -356,6 +363,8 @@ If a root-admin issue appears:
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every account on one client, check the matching platform client list and whether migration `028_client_sport_access.sql` has been applied
+- on iOS, club racket-sport switches belong to the active club's Club Admin settings group; Personal sport switches are under Game Settings. Future sport rows must remain disabled and save requests must include implemented sports only
+- if Personal or Personal Plus is missing from the web or iOS `Score this match for` choices, inspect `available_memberships` in a fresh login response and confirm that the normalized email has an approved personal membership; the chooser cannot manufacture a personal account that is not returned by login
 - if only one user is affected, inspect `SkwshOrgUsers.enabled_sports_web` and `enabled_sports_ios` for each of their memberships; access changes intentionally revoke active sessions
 - saving Platform RacketSports availability alone must not enable the sport for existing users or clubs; enable the required client from the User Account page for personal users, or enable the club first and then select the club membership's client access
 - if the affected-user preview fails, verify `POST /root_admin/platform_sports/preview` is deployed and the root-admin session is still valid; the preview is read-only and must not alter sport access

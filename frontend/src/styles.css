@@ -2772,6 +2772,91 @@ textarea {
   transform: translateX(50%);
 }
 
+.account-context-choices {
+  display: grid;
+  width: min(100%, 620px);
+  gap: 10px;
+  margin: 0 auto;
+  padding: 14px;
+  border: 1px solid #c8daed;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.account-context-choices__title,
+.account-context-choices__note {
+  margin: 0;
+}
+
+.account-context-choices__title {
+  color: #486581;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.account-context-choices__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-context-choices__option {
+  display: grid;
+  min-width: 0;
+  min-height: 64px;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid #d5e2ef;
+  border-radius: 14px;
+  background: #f7faff;
+  color: #102a43;
+  cursor: pointer;
+  text-align: left;
+}
+
+.account-context-choices__option.active {
+  border-color: #76a7db;
+  background: #e7f1fc;
+  box-shadow: inset 0 -3px 0 #ec5ea8;
+}
+
+.account-context-choices__icon,
+.account-context-choices__status {
+  color: #1274d0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.account-context-choices__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.account-context-choices__copy strong,
+.account-context-choices__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-context-choices__copy strong {
+  font-size: 0.88rem;
+}
+
+.account-context-choices__copy small,
+.account-context-choices__note {
+  color: #627d98;
+  font-size: 0.74rem;
+}
+
+.account-context-choices__note {
+  line-height: 1.4;
+}
+
 .club-page-header--compact .account-context-switcher__label {
   display: none;
 }
@@ -6622,6 +6707,10 @@ textarea {
   .account-context-switcher--header .account-context-switcher__menu {
     right: auto;
     left: 0;
+  }
+
+  .account-context-choices__list {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .club-page-header__top {

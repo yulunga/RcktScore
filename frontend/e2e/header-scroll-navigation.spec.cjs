@@ -323,19 +323,34 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
 test("switches identity context from the header and exposes it on Matches and match creation @header", async ({ page }) => {
   await page.goto("/dashboard");
 
+  async function openHeaderDestination(name) {
+    if (page.viewportSize().width > 840) {
+      await page.getByRole("button", { name, exact: true }).click();
+      return;
+    }
+    await page.getByRole("button", { name: "Open navigation menu" }).click();
+    await page.getByRole("dialog", { name: "Quick navigation" }).getByRole("button", { name, exact: true }).click();
+  }
+
   const headerContext = page.locator(".account-context-switcher--header");
   await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
   await headerContext.locator(".account-context-switcher__trigger").click();
   await headerContext.getByRole("menuitem").filter({ hasText: "Personal" }).click();
   await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Personal");
 
-  await page.getByRole("button", { name: "Matches" }).click();
+  await openHeaderDestination("Matches");
   await expect(page.locator(".account-context-switcher--matches")).toContainText("Showing matches for");
   await expect(page.locator(".account-context-switcher--matches")).toContainText("Personal");
 
-  await page.getByRole("button", { name: "Start New Match" }).click();
-  await expect(page.locator(".account-context-switcher--match-start")).toContainText("Match context");
-  await expect(page.locator(".account-context-switcher--match-start")).toContainText("Personal");
+  await headerContext.locator(".account-context-switcher__trigger").click();
+  await headerContext.getByRole("menuitem").filter({ hasText: "Header Test Club" }).click();
+
+  await openHeaderDestination("Start New Match");
+  const matchContext = page.locator(".account-context-choices--match-start");
+  await expect(matchContext).toContainText("Score this match for");
+  await expect(matchContext.getByRole("radio", { name: /Header Test Club/ })).toHaveAttribute("aria-checked", "true");
+  await matchContext.getByRole("radio", { name: /Personal Plus/ }).click();
+  await expect(matchContext.getByRole("radio", { name: /Personal Plus/ })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("button", { name: /Tennis/ })).toBeVisible();
 });
 

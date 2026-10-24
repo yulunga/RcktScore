@@ -16,7 +16,7 @@ function contextType(membership) {
   return membership?.role === "admin" ? "Club administrator" : "Club member";
 }
 
-export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange }) {
+export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange, presentation = "menu" }) {
   const { session, switchOrganization } = useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -50,6 +50,42 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
       setOpen(false);
       onContextChange?.(membership);
     }
+  }
+
+  if (presentation === "choices") {
+    const hasPersonalMembership = memberships.some((membership) => membership?.organization_type === "personal");
+    return (
+      <section className={`account-context-choices ${className}`.trim()} aria-label={label}>
+        <p className="account-context-choices__title">{label}</p>
+        <div className="account-context-choices__list" role="radiogroup" aria-label={label}>
+          {memberships.map((membership) => {
+            const active = Number(membership.organization_id) === Number(session.organization_id);
+            return (
+              <button
+                aria-checked={active ? "true" : "false"}
+                className={`account-context-choices__option${active ? " active" : ""}`}
+                key={`${membership.organization_id}-${membership.id}`}
+                role="radio"
+                type="button"
+                onClick={() => choose(membership)}
+              >
+                <span className="account-context-choices__icon" aria-hidden="true">
+                  {membership.organization_type === "personal" ? "●" : "◆"}
+                </span>
+                <span className="account-context-choices__copy">
+                  <strong>{membership.organization_type === "personal" && membership.plan === "personal_plus" ? "Personal Plus" : contextName(membership)}</strong>
+                  <small>{membership.organization_type === "personal" ? "Personal scoring" : "Club scoring"}</small>
+                </span>
+                <span className="account-context-choices__status" aria-hidden="true">{active ? "✓" : "○"}</span>
+              </button>
+            );
+          })}
+        </div>
+        {!hasPersonalMembership ? (
+          <p className="account-context-choices__note">Personal scoring appears here when this login has an approved Personal account.</p>
+        ) : null}
+      </section>
+    );
   }
 
   return (

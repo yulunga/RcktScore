@@ -315,47 +315,105 @@ struct StartNewMatchFlowView: View {
 
     private var matchContextSwitcher: some View {
         let session = container.sessionStore.session
-        let memberships = session?.availableMemberships ?? []
+        let memberships = resolvedMatchMemberships
 
-        return Menu {
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Score this match for")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+
             ForEach(memberships) { membership in
                 Button {
                     onContextChanged(membership)
                 } label: {
-                    if membership.organizationID == session?.organizationID {
-                        Label(membership.organizationType == "personal" ? "Personal" : membership.organizationName, systemImage: "checkmark")
-                    } else {
-                        Text(membership.organizationType == "personal" ? "Personal" : membership.organizationName)
+                    HStack(spacing: 12) {
+                        Image(systemName: membership.organizationType == "personal" ? "person.crop.circle" : "building.2")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.dashboardBrand)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(matchContextTitle(for: membership))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(membership.organizationType == "personal" ? "Personal scoring" : "Club scoring")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        if membership.organizationID == session?.organizationID {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.dashboardBrand)
+                        } else {
+                            Image(systemName: "circle")
+                                .foregroundStyle(Color.dashboardBorder)
+                        }
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        membership.organizationID == session?.organizationID
+                            ? Color.dashboardBrand.opacity(0.10)
+                            : Color.dashboardInnerCardBackground
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .disabled(membership.organizationID == session?.organizationID)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("startMatch.context.\(membership.organizationID)")
             }
-        } label: {
-            HStack(spacing: 8) {
-                Text("Match context")
+
+            if !memberships.contains(where: { $0.organizationType == "personal" }) {
+                Text("Personal scoring appears here when this login has an approved Personal account.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(session?.isPersonalAccount == true ? "Personal" : (session?.organizationName ?? "Account"))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if memberships.count > 1 {
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.dashboardBrand)
-                }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.dashboardCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.dashboardBorder, lineWidth: 1)
-            )
         }
-        .disabled(memberships.count <= 1)
+        .padding(14)
+        .background(Color.dashboardCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
         .accessibilityIdentifier("startMatch.contextSwitcher")
+    }
+
+    private var resolvedMatchMemberships: [UserMembership] {
+        if let memberships = container.sessionStore.session?.availableMemberships,
+           !memberships.isEmpty {
+            return memberships
+        }
+
+        guard let session = container.sessionStore.session else { return [] }
+        return [
+            UserMembership(
+                id: session.id,
+                username: session.username,
+                role: session.role,
+                organizationID: session.organizationID,
+                organizationName: session.organizationName,
+                organizationType: session.organizationType,
+                plan: session.plan,
+                enabledSports: session.enabledSports,
+                firstName: session.firstName,
+                surname: session.surname,
+                fullName: session.fullName,
+                email: session.email,
+                country: session.country,
+                telephone: session.telephone
+            )
+        ]
+    }
+
+    private func matchContextTitle(for membership: UserMembership) -> String {
+        guard membership.organizationType == "personal" else {
+            return membership.organizationName
+        }
+
+        return membership.plan?.lowercased() == "personal_plus" ? "Personal Plus" : "Personal"
     }
 
     @ViewBuilder
