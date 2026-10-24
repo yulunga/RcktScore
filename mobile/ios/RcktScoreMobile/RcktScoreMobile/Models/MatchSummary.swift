@@ -408,6 +408,7 @@ struct GameHistoryEntry: Codable, Identifiable {
 
 struct MatchEvent: Codable, Identifiable {
     let id: String
+    var eventSequence: Int? = nil
     let eventType: String
     let payload: MatchEventPayload?
     let createdAt: String?
@@ -415,6 +416,7 @@ struct MatchEvent: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id
+        case eventSequence = "event_sequence"
         case eventType = "event_type"
         case payload
         case createdAt = "created_at"

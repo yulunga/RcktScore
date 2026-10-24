@@ -281,3 +281,36 @@ def test_completed_tournament_match_cannot_be_reopened_by_undo(monkeypatch):
         match_logic.undo_last_action(connection, "match-1")
 
     assert connection.events == ["rollback"]
+
+
+def test_undo_audit_identity_is_forwarded_inside_the_locked_transaction(monkeypatch):
+    store = _ConcurrentScoreStore()
+    connection = _LockedMatchConnection(store)
+    captured = {}
+
+    class ActiveEngine:
+        @staticmethod
+        def get_match(*_args, **_kwargs):
+            return {"id": "match-1", "status": "active", "tournament_match_id": None}
+
+        @staticmethod
+        def undo_last_action(*_args, **kwargs):
+            captured.update(kwargs)
+            return {"id": "match-1", "status": "active"}
+
+    monkeypatch.setattr(match_logic, "resolve_engine_module", lambda sport: ActiveEngine)
+
+    result = match_logic.undo_last_action(
+        connection,
+        "match-1",
+        source="mobile_app",
+        actor_username="scorer@example.com",
+    )
+
+    assert result["status"] == "active"
+    assert captured == {
+        "source": "mobile_app",
+        "actor_username": "scorer@example.com",
+        "commit": False,
+    }
+    assert connection.events == ["commit"]

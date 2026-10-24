@@ -399,7 +399,8 @@ What to check:
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
 - when two devices or taps appear to collide, verify the deployed `common/match_logic.py` acquires `SELECT ... FOR UPDATE` before dispatching to the sport engine; event, summary, receipt, and tournament-result writes should appear together or not at all
 - check for transaction errors or lock waits before repairing summary columns manually. A failed current mutation rolls back, and a later mutation rebuilds from the committed event stream
-- if Undo appears ineffective after a winning point, inspect the newest events: the backend should target the preceding `score_point`/`stroke`, delete a later completion `timer`, reset the duration summary, and return the match to active state in one transaction
+- if Undo appears ineffective after a winning point, inspect `match_events` and `match_event_compensations`: the backend should append an `undo` event, link the preceding effective `score_point`/`stroke` and later completion `timer`, reset the duration summary, and return the match to active state in one transaction without deleting audit rows
+- if timeline order changes after refresh, verify migration `042_append_only_match_events.sql` is deployed and event reads use `event_sequence`; `created_at` and UUID ordering are no longer the canonical replay order
 - if Undo returns a tournament progression error, confirm the completed scoring match is linked to a fixture whose winner has already advanced; this rejection is intentional until bracket reversal can be guaranteed safely
 - whether the action used `score_point` or `event_action`
 - the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
@@ -415,7 +416,7 @@ Important current truths:
 
 - personal accounts are intentionally limited to one active match
 - scheduled club matches can be created automatically when a court is busy
-- undo works from an allowlist of scoring events; timer, settings, let, server and service-side events do not consume score Undo
+- undo is append-only and works from an allowlist of effective scoring events; timer, settings, let, server and service-side events do not consume score Undo
 - `common/match_logic.py` is now a dispatcher facade, not the only scoring implementation file
 
 ## 5. Display and WebSocket Issues
@@ -511,6 +512,7 @@ Most relevant current tables:
 - `match_action_receipts`
 - `matches`
 - `match_events`
+- `match_event_compensations`
 - `HitnScoreInterestRequests`
 
 If behavior seems impossible:
@@ -519,6 +521,7 @@ If behavior seems impossible:
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
 - if match creation fails with an `UndefinedColumn` error for `tennis_timed_breaks`, apply migration `039_match_timed_breaks.sql`; migration `029_timed_break_defaults.sql` only adds the organisation-level setup default and does not add the per-match column
+- if scoring or Undo fails on a missing `event_sequence`, `actor_username`, or `match_event_compensations` relation, apply migration `042_append_only_match_events.sql` before deploying the matching backend code
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 

@@ -135,6 +135,15 @@ do not consume the score Undo action. Keep the tournament-linked case separate:
 once bracket progression has occurred, the completed scoring match must show
 the backend rejection and remain completed.
 
+The same regression plan must include a web/iOS multi-client ordering pass:
+score rapid alternating points, refresh or reconnect both clients, and verify
+the visible timeline remains identical. Perform two successive Undo actions
+and confirm each removes one still-effective score from the player view while
+internal `undo` audit events and compensated completion timers remain hidden.
+After an offline replay, none of the compensated points may reappear. Replaying
+the same queued Undo UUID after a simulated lost response must not compensate a
+second score.
+
 ### Run and watch the live journey in Xcode
 
 1. Rotate any credential that has appeared in a console or result-bundle log,

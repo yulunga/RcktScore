@@ -550,7 +550,7 @@ row spacing so substantially more events fit before scrolling.
    - `POST /end_match`
 6. Native iOS supplies a stable `client_action_id` UUID for each queued mutation. `match_action_receipts` claims that UUID before the mutation so reconnect retries cannot duplicate a point or other action.
 7. Shared logic opens the mutation by locking the `matches` row with `SELECT ... FOR UPDATE`, then rebuilds and changes state through the active sport engine. This serialises distinct taps or devices for the same match instead of allowing both to derive a transition from the same event history.
-8. The action receipt, event or undo, derived match summary, and any completed tournament-fixture result remain in that transaction until one final commit. An exception rolls all of them back. Undo selects only an engine-approved scoring event, removes a later completion-duration event as derived state, and refuses to reopen a completed tournament-linked match after bracket progression. A completion-timer request that loses the race with Undo sees the newly active match under the same row lock and returns without appending stale duration data.
+8. The action receipt, event or undo, derived match summary, and any completed tournament-fixture result remain in that transaction until one final commit. An exception rolls all of them back. Database-generated `match_events.event_sequence` is the canonical replay order. Undo selects only an effective engine-approved scoring event, appends an authenticated `undo` event plus compensation links for the score and later completion timer, and leaves the original rows immutable. Effective replay hides both the compensated records and audit-only Undo event. Completed tournament-linked matches refuse Undo after bracket progression. A completion-timer request that loses the race with Undo sees the newly active match under the same row lock and returns without appending stale duration data.
 9. The web frontend updates local match state from the returned `data.match`. Native iOS caches the last server match, applies queued actions locally, and adopts each ordered server response during synchronisation. The queue re-reads its latest snapshot around every request so a timer or scoring action added during an in-flight request cannot be overwritten.
 
 Current live sport engines:
@@ -573,7 +573,7 @@ Current live sport engines:
 
 ### Troubleshooting cues
 
-- undo removes the latest score event (`score_point`, or `stroke` for Squash/Racketball), not timer/settings/let/service metadata; a completion timer written after the winning point is removed as dependent state so the resumed match can record a fresh duration
+- undo compensates the latest effective score event (`score_point`, or `stroke` for Squash/Racketball), not timer/settings/let/service metadata; the original score and a completion timer written after it remain in the append-only audit stream but are excluded from effective replay so the resumed match can record a fresh duration
 - `stroke` is score-aware and can end a game or match
 - shirt-colour changes are accepted for personal-free, personal-plus, and club accounts
 

@@ -219,7 +219,7 @@ Run once for Squash, Racketball, Tennis and Padel:
 1. Score the match-winning point and wait for the completed-match timer to appear
 2. Immediately select **Undo Last Action**
 3. Confirm the match returns to active scoring at the score immediately before the winning point
-4. Confirm one Undo was sufficient and no timer, settings, let, server or service-side event was removed instead
+4. Confirm one Undo was sufficient and no timer, settings, let, server or service-side event was selected as the Undo target
 5. Resume play, allow the timer to continue, and score the winning point again
 6. Open match history and verify the final duration includes the resumed play period
 
@@ -227,8 +227,22 @@ Expected:
 
 - The winning scoring action is the single undo target even when a timer event was written after it
 - Completion state, winner and final-score fields are cleared while the match is active
-- The old completion-duration event is not retained as the final duration
+- The old completion-duration event is retained only in the audit stream and is not replayed as the final duration
 - The second completion records a fresh duration and remains stable after refresh
+
+Append-only ordering checks:
+
+1. Score several rapid alternating points from two signed-in clients viewing the same match
+2. Record the visible order, refresh both clients, and reopen the match from a third client
+3. Undo twice, refreshing after each Undo
+
+Expected:
+
+- Every client shows the same point order before and after refresh
+- Each Undo walks back exactly one still-effective scoring event
+- Compensated points, completion timers and internal `undo` audit events do not appear as active player-timeline entries
+- Reconnection or offline replay does not resurrect a compensated event
+- Retrying the same Undo request after a simulated dropped response does not compensate a second point
 
 Tournament safety check:
 

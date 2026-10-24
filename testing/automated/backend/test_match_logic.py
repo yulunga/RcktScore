@@ -54,43 +54,68 @@ class _UndoCursor:
         return False
 
     def execute(self, query, params=None):
-        self.connection.executions.append((" ".join(query.split()), params or {}))
+        self.last_query = " ".join(query.split())
+        self.connection.executions.append((self.last_query, params or {}))
 
     def fetchone(self):
+        if "RETURNING id, event_sequence, created_at" in self.last_query:
+            return self.connection.undo_event
         return self.connection.target_event
+
+    def fetchall(self):
+        return self.connection.derived_timers
 
 
 class _UndoConnection:
-    def __init__(self, target_event):
+    def __init__(self, target_event, derived_timers=None):
         self.target_event = target_event
+        self.derived_timers = derived_timers or []
+        self.undo_event = {
+            "id": "undo-event",
+            "event_sequence": 44,
+            "created_at": datetime.now(timezone.utc),
+        }
         self.executions = []
 
     def cursor(self):
         return _UndoCursor(self)
 
 
-def test_shared_undo_targets_only_scoring_events_and_removes_later_timer():
+def test_shared_undo_appends_compensation_for_score_and_later_timer():
     created_at = datetime.now(timezone.utc)
-    connection = _UndoConnection({"id": "score-event", "created_at": created_at})
+    connection = _UndoConnection(
+        {"id": "score-event", "event_sequence": 41, "created_at": created_at},
+        [{"id": "timer-event", "event_sequence": 42}],
+    )
 
-    target = squash_match_logic._delete_latest_undoable_event(
+    undo_event = squash_match_logic._compensate_latest_undoable_event(
         connection,
         "match-1",
         ("score_point", "stroke"),
+        source="mobile_app",
+        actor_username="scorer@example.com",
     )
 
-    assert target == {"id": "score-event", "created_at": created_at}
+    assert undo_event == connection.undo_event
     assert connection.executions[0][1]["undoable_event_types"] == ["score_point", "stroke"]
     assert "event_type = ANY" in connection.executions[0][0]
-    assert "event_type = 'timer'" in connection.executions[1][0]
-    assert connection.executions[1][1]["event_id"] == "score-event"
-    assert "SET match_duration_seconds = 0" in connection.executions[2][0]
+    assert "ORDER BY event.event_sequence DESC" in connection.executions[0][0]
+    assert "event.event_type = 'timer'" in connection.executions[1][0]
+    assert "INSERT INTO match_events" in connection.executions[2][0]
+    assert "'undo'" in connection.executions[2][0]
+    assert connection.executions[2][1]["event_source"] == "mobile_app"
+    assert connection.executions[2][1]["actor_username"] == "scorer@example.com"
+    assert "INSERT INTO match_event_compensations" in connection.executions[3][0]
+    assert connection.executions[3][1]["target_event_ids"] == ["score-event", "timer-event"]
+    assert "SET status = 'active'" in connection.executions[4][0]
+    assert "match_duration_seconds = 0" in connection.executions[4][0]
+    assert all("DELETE FROM match_events" not in query for query, _params in connection.executions)
 
 
 def test_shared_undo_leaves_metadata_untouched_when_no_scoring_event_exists():
     connection = _UndoConnection(None)
 
-    target = squash_match_logic._delete_latest_undoable_event(
+    target = squash_match_logic._compensate_latest_undoable_event(
         connection,
         "match-1",
         ("score_point", "stroke"),
@@ -98,6 +123,20 @@ def test_shared_undo_leaves_metadata_untouched_when_no_scoring_event_exists():
 
     assert target is None
     assert len(connection.executions) == 1
+
+
+def test_effective_event_fetch_uses_sequence_and_hides_compensated_audit_events():
+    expected_events = [{"id": "active-score", "event_sequence": 9}]
+    connection = _UndoConnection(None, expected_events)
+
+    events = squash_match_logic._fetch_match_events(connection, "match-1")
+
+    assert events == expected_events
+    query, params = connection.executions[0]
+    assert params == {"match_id": "match-1"}
+    assert "event.event_type <> 'undo'" in query
+    assert "match_event_compensations" in query
+    assert "ORDER BY event.event_sequence ASC" in query
 
 
 def test_delayed_completion_timer_is_ignored_after_undo_reopens_match(monkeypatch):

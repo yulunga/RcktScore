@@ -292,7 +292,7 @@ def event_action(connection, match_id, action_type, payload, source="api"):
     )
 
 
-def undo_last_action(connection, match_id):
+def undo_last_action(connection, match_id, source="api", actor_username=None):
     def undo(engine):
         engine_get_match = getattr(engine, "get_match", None)
         current_match = (
@@ -308,7 +308,13 @@ def undo_last_action(connection, match_id):
             raise ValueError(
                 "A completed tournament result cannot be undone after bracket progression"
             )
-        return engine.undo_last_action(connection, match_id, commit=False)
+        return engine.undo_last_action(
+            connection,
+            match_id,
+            source=source,
+            actor_username=actor_username,
+            commit=False,
+        )
 
     return _run_match_mutation(
         connection,

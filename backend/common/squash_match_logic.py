@@ -40,21 +40,33 @@ def _utcnow():
     return datetime.now(timezone.utc)
 
 
-def _delete_latest_undoable_event(connection, match_id, undoable_event_types):
-    """Delete one scoring action and any completion timer derived from it.
+def _compensate_latest_undoable_event(
+    connection,
+    match_id,
+    undoable_event_types,
+    source="api",
+    actor_username=None,
+):
+    """Append an undo event for one scoring action and its derived timer.
 
     Using an allowlist prevents settings, service selections, lets, explicit
     match endings, and future metadata events from unexpectedly becoming the
-    target of the score Undo control.
+    target of the score Undo control. Original events remain immutable and are
+    excluded from effective replay through match_event_compensations.
     """
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, created_at
-            FROM match_events
-            WHERE match_id = %(match_id)s
-              AND event_type = ANY(%(undoable_event_types)s)
-            ORDER BY created_at DESC, id DESC
+            SELECT event.id, event.event_sequence, event.created_at
+            FROM match_events AS event
+            WHERE event.match_id = %(match_id)s
+              AND event.event_type = ANY(%(undoable_event_types)s)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM match_event_compensations AS compensation
+                  WHERE compensation.target_event_id = event.id
+              )
+            ORDER BY event.event_sequence DESC
             LIMIT 1
             """,
             {
@@ -68,31 +80,96 @@ def _delete_latest_undoable_event(connection, match_id, undoable_event_types):
 
         cursor.execute(
             """
-            DELETE FROM match_events
-            WHERE match_id = %(match_id)s
-              AND (
-                  id = %(event_id)s
-                  OR (
-                      event_type = 'timer'
-                      AND (created_at, id) > (%(event_created_at)s, %(event_id)s)
-                  )
+            SELECT event.id, event.event_sequence
+            FROM match_events AS event
+            WHERE event.match_id = %(match_id)s
+              AND event.event_type = 'timer'
+              AND event.event_sequence > %(target_sequence)s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM match_event_compensations AS compensation
+                  WHERE compensation.target_event_id = event.id
               )
+            ORDER BY event.event_sequence ASC
             """,
             {
                 "match_id": match_id,
-                "event_id": target_event["id"],
-                "event_created_at": target_event["created_at"],
+                "target_sequence": target_event["event_sequence"],
+            },
+        )
+        derived_timers = cursor.fetchall()
+        compensated_event_ids = [
+            target_event["id"],
+            *(event["id"] for event in derived_timers),
+        ]
+        undo_event_id = uuid4()
+        now = _utcnow()
+        cursor.execute(
+            """
+            INSERT INTO match_events (
+                id, match_id, tenant_id, event_type, payload,
+                event_source, actor_username, created_at
+            )
+            SELECT
+                %(event_id)s, matches.id, matches.tenant_id, 'undo', %(payload)s,
+                %(event_source)s, %(actor_username)s, %(created_at)s
+            FROM matches
+            WHERE matches.id = %(match_id)s
+            RETURNING id, event_sequence, created_at
+            """,
+            {
+                "event_id": undo_event_id,
+                "match_id": match_id,
+                "payload": Jsonb({
+                    "target_event_id": str(target_event["id"]),
+                    "target_event_sequence": target_event["event_sequence"],
+                    "compensated_event_ids": [str(event_id) for event_id in compensated_event_ids],
+                    "reason": "undo_last_scoring_action",
+                }),
+                "event_source": source,
+                "actor_username": actor_username,
+                "created_at": now,
+            },
+        )
+        undo_event = cursor.fetchone()
+        if not undo_event:
+            raise LookupError("Match not found")
+        cursor.execute(
+            """
+            INSERT INTO match_event_compensations (
+                undo_event_id, target_event_id, match_id,
+                compensation_reason, created_at
+            )
+            SELECT
+                %(undo_event_id)s, target_event_id, %(match_id)s,
+                'undo', %(created_at)s
+            FROM UNNEST(%(target_event_ids)s::uuid[]) AS target_event_id
+            """,
+            {
+                "undo_event_id": undo_event["id"],
+                "target_event_ids": compensated_event_ids,
+                "match_id": match_id,
+                "created_at": now,
             },
         )
         cursor.execute(
             """
             UPDATE matches
-            SET match_duration_seconds = 0
+            SET status = 'active',
+                completed_at = NULL,
+                winner_side = NULL,
+                winner_name = NULL,
+                ended_early = false,
+                end_reason = NULL,
+                player1_final_score = NULL,
+                player2_final_score = NULL,
+                match_duration_seconds = 0,
+                updated_at = %(updated_at)s
             WHERE id = %(match_id)s
             """,
-            {"match_id": match_id},
+            {"match_id": match_id, "updated_at": now},
         )
-    return target_event
+    return undo_event
 
 
 def _coerce_int(value, default=0):
@@ -247,6 +324,7 @@ def _serialize_event(match_row, event_row):
     payload = event_row.get("payload") or {}
     return {
         "id": str(event_row["id"]),
+        "event_sequence": event_row.get("event_sequence"),
         "event_type": event_row["event_type"],
         "payload": payload,
         "event_source": event_row["event_source"],
@@ -526,10 +604,18 @@ def _fetch_match_events(connection, match_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, match_id, event_type, payload, event_source, created_at
-            FROM match_events
-            WHERE match_id = %(match_id)s
-            ORDER BY created_at ASC, id ASC
+            SELECT
+                event.id, event.match_id, event.event_sequence, event.event_type,
+                event.payload, event.event_source, event.created_at
+            FROM match_events AS event
+            WHERE event.match_id = %(match_id)s
+              AND event.event_type <> 'undo'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM match_event_compensations AS compensation
+                  WHERE compensation.target_event_id = event.id
+              )
+            ORDER BY event.event_sequence ASC
             """,
             {"match_id": match_id},
         )
@@ -1444,13 +1530,21 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
     return _append_event(connection, match_id, action_type, payload, source=source, commit=commit)
 
 
-def undo_last_action(connection, match_id, commit=True):
-    last_event = _delete_latest_undoable_event(
+def undo_last_action(
+    connection,
+    match_id,
+    source="api",
+    actor_username=None,
+    commit=True,
+):
+    undo_event = _compensate_latest_undoable_event(
         connection,
         match_id,
         UNDOABLE_SCORING_EVENT_TYPES,
+        source=source,
+        actor_username=actor_username,
     )
-    if not last_event:
+    if not undo_event:
         return get_match(connection, match_id)
 
     match = get_match(connection, match_id)

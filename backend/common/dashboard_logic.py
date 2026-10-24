@@ -169,13 +169,21 @@ def _fetch_analytics_records(connection, organization_id, period_days):
                                    'event_type', events.event_type,
                                    'payload', events.payload,
                                    'event_source', events.event_source,
+                                   'event_sequence', events.event_sequence,
                                    'created_at', events.created_at
-                               ) ORDER BY events.created_at, events.id
+                               ) ORDER BY events.event_sequence
                            ) FILTER (WHERE events.id IS NOT NULL),
                            '[]'::jsonb
                        ) AS events
                 FROM matches
-                LEFT JOIN match_events AS events ON events.match_id = matches.id
+                LEFT JOIN match_events AS events
+                    ON events.match_id = matches.id
+                   AND events.event_type <> 'undo'
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM match_event_compensations AS compensation
+                       WHERE compensation.target_event_id = events.id
+                   )
                 WHERE matches.tenant_id = %(organization_id)s
                   AND COALESCE(matches.is_archived, false) = false
                   {period_filter}

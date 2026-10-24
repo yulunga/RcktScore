@@ -232,7 +232,14 @@ export default function HistoricMatchPage() {
       .sort(([left], [right]) => left - right)
       .map(([number, entries]) => ({
         number,
-        entries: [...entries].sort((left, right) => String(left.created_at || "").localeCompare(String(right.created_at || ""))),
+        entries: [...entries].sort((left, right) => {
+          const leftSequence = Number(left.event_sequence);
+          const rightSequence = Number(right.event_sequence);
+          if (Number.isFinite(leftSequence) && Number.isFinite(rightSequence)) {
+            return leftSequence - rightSequence;
+          }
+          return String(left.created_at || "").localeCompare(String(right.created_at || ""));
+        }),
         result: resultForSegment(gameHistory, number),
         duration: segmentDuration(entries),
       }));

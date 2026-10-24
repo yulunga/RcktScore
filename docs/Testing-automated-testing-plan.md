@@ -218,9 +218,12 @@ The native UI-test bundle reads its three accounts from these environment variab
 - Start match
 - Score points
 - Undo one event
-- Complete Squash/Racketball/Tennis/Padel, allow the client to submit its duration timer, then undo once and verify the winning point—not the timer or metadata—is removed
+- Complete Squash/Racketball/Tennis/Padel, allow the client to submit its duration timer, then undo once and verify the winning point—not the timer or metadata—is compensated
 - Verify a reopened match resumes timing and records a fresh, longer duration when completed again
 - Verify completed tournament-linked matches reject undo after bracket progression
+- Drive rapid alternating points from two clients, refresh/reconnect, and verify every client retains the same database-sequenced timeline
+- Undo repeatedly and verify each request compensates the next effective score without exposing internal audit events or resurrecting compensated points after refresh/offline replay
+- Retry one Undo with the same `client_action_id` and verify idempotency produces one audit event and one compensated score
 - End match
 - Verify history entry exists
 

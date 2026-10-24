@@ -30,8 +30,20 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
     return shared.event_action(connection, match_id, action_type, payload, source=source, commit=commit)
 
 
-def undo_last_action(connection, match_id, commit=True):
-    return shared.undo_last_action(connection, match_id, commit=commit)
+def undo_last_action(
+    connection,
+    match_id,
+    source="api",
+    actor_username=None,
+    commit=True,
+):
+    return shared.undo_last_action(
+        connection,
+        match_id,
+        source=source,
+        actor_username=actor_username,
+        commit=commit,
+    )
 
 
 def end_match(

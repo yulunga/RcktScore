@@ -386,6 +386,7 @@ def _serialize_event(match_row, event_row):
     payload = event_row.get("payload") or {}
     return {
         "id": str(event_row["id"]),
+        "event_sequence": event_row.get("event_sequence"),
         "event_type": event_row["event_type"],
         "payload": payload,
         "event_source": event_row["event_source"],
@@ -1813,32 +1814,22 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
     return _append_event(connection, match_id, action_type, payload, source=source, commit=commit)
 
 
-def undo_last_action(connection, match_id, commit=True):
-    last_event = shared._delete_latest_undoable_event(
+def undo_last_action(
+    connection,
+    match_id,
+    source="api",
+    actor_username=None,
+    commit=True,
+):
+    undo_event = shared._compensate_latest_undoable_event(
         connection,
         match_id,
         UNDOABLE_SCORING_EVENT_TYPES,
+        source=source,
+        actor_username=actor_username,
     )
-    if not last_event:
+    if not undo_event:
         return get_match(connection, match_id)
-
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            UPDATE matches
-            SET status = 'active',
-                completed_at = NULL,
-                winner_side = NULL,
-                winner_name = NULL,
-                ended_early = false,
-                end_reason = NULL,
-                player1_final_score = NULL,
-                player2_final_score = NULL,
-                updated_at = %(updated_at)s
-            WHERE id = %(match_id)s
-            """,
-            {"match_id": match_id, "updated_at": shared._utcnow()},
-        )
 
     match = get_match(connection, match_id)
     if not match:

@@ -20,7 +20,7 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
     unsupported_sport_error("Badminton")
 
 
-def undo_last_action(connection, match_id, commit=True):
+def undo_last_action(connection, match_id, source="api", actor_username=None, commit=True):
     unsupported_sport_error("Badminton")
 
 
