@@ -321,10 +321,14 @@ Social-profile fields and the web Subscriptions payment experience are still UI 
     match or enter the completed score; correcting an entered result remains
     club-admin-only.
 16. Scheduled scoring matches store the tournament event, fixture and tournament
-    name. When scoring completes, the shared match lifecycle records the tournament
-    result. Knockout winners advance to their next fixture, and first-round losers
-    enter the plate for knockout-with-plate events. An older published knockout
-    containing only opening-round rows backfills its remaining tree on first result.
+    name. A sport-engine final point records a played tournament result and may
+    advance the winner. An operator end or 12-hour stale close instead moves the
+    fixture to `awaiting_resolution`; it cannot infer a winner from the partial
+    score. A club admin must resolve it as played, retired, conceded, walkover or
+    abandoned. Abandoned fixtures advance nobody. Knockout winners advance to
+    their next fixture, and first-round losers enter the plate for
+    knockout-with-plate events. An older published knockout containing only
+    opening-round rows backfills its remaining tree on first result.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
 optional Email, Club and Ability columns. It previews invalid and duplicate rows,
@@ -349,7 +353,8 @@ an existing event remains readable during a staggered schema deployment. The
 fallback only supplies display labels; migration `032` remains required for
 persisted draw groups and new-event creation. Migration `034` is required to
 generate fixtures, migration `035` supplies publication keys and seed uniqueness,
-and migration `036` supplies bracket/result/scoring-link fields.
+and migration `036` supplies bracket/result/scoring-link fields. Migration `041`
+adds explicit early-result outcomes and the awaiting-resolution/abandoned states.
 
 The seeded Demo Club has the feature enabled. Its approved
 `demouser@democlub.com` login is intentionally password-disabled until root admin

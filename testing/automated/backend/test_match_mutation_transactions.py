@@ -181,9 +181,10 @@ def test_tournament_sync_runs_before_the_match_transaction_commits(monkeypatch):
                 "tournament_match_id": "fixture-1",
             }
 
-    def sync_result(sync_connection, match, commit=True):
+    def sync_result(sync_connection, match, natural_completion=False, commit=True):
         assert sync_connection is connection
         assert match["tournament_match_id"] == "fixture-1"
+        assert natural_completion is True
         assert commit is False
         assert connection.commits == 0
         connection.events.append("tournament-sync")
@@ -195,3 +196,63 @@ def test_tournament_sync_runs_before_the_match_transaction_commits(monkeypatch):
 
     assert result["status"] == "completed"
     assert connection.events == ["tournament-sync", "commit"]
+
+
+def test_early_end_waits_for_tournament_admin_resolution_before_commit(monkeypatch):
+    store = _ConcurrentScoreStore()
+    connection = _LockedMatchConnection(store)
+
+    class EarlyEndEngine:
+        @staticmethod
+        def end_match(*args, **kwargs):
+            assert kwargs["commit"] is False
+            return {
+                "id": "match-1",
+                "status": "completed",
+                "ended_early": True,
+                "tournament_match_id": "fixture-1",
+                "tournament_event_id": "event-1",
+                "tenant_id": 7,
+            }
+
+    def mark_awaiting(mark_connection, match, commit=True):
+        assert mark_connection is connection
+        assert match["ended_early"] is True
+        assert commit is False
+        assert connection.commits == 0
+        connection.events.append("awaiting-resolution")
+
+    monkeypatch.setattr(match_logic, "resolve_engine_module", lambda sport: EarlyEndEngine)
+    monkeypatch.setattr(tournament_logic, "mark_tournament_match_awaiting_resolution", mark_awaiting)
+
+    result = match_logic.end_match(connection, "match-1", ended_early=True)
+
+    assert result["status"] == "completed"
+    assert connection.events == ["awaiting-resolution", "commit"]
+
+
+def test_non_scoring_event_cannot_turn_an_early_end_into_natural_progression(monkeypatch):
+    store = _ConcurrentScoreStore()
+    connection = _LockedMatchConnection(store)
+
+    class CompletedEngine:
+        @staticmethod
+        def event_action(*args, **kwargs):
+            return {
+                "id": "match-1",
+                "status": "completed",
+                "ended_early": False,
+                "tournament_match_id": "fixture-1",
+            }
+
+    monkeypatch.setattr(match_logic, "resolve_engine_module", lambda sport: CompletedEngine)
+    monkeypatch.setattr(
+        tournament_logic,
+        "sync_tournament_scoring_result",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("timer must not progress a fixture")),
+    )
+
+    result = match_logic.event_action(connection, "match-1", "timer", {"match_duration_seconds": 60})
+
+    assert result["status"] == "completed"
+    assert connection.events == ["commit"]

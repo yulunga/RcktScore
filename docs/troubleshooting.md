@@ -749,7 +749,8 @@ groups without fixtures, during a staggered deployment. Migration `032` is still
 mandatory before creating events, migration `034` before generating draws,
 migration `035_tournament_draw_publication.sql` before publishing or public access,
 and migration `036_tournament_match_results.sql` before scheduling fixtures or
-recording results.
+recording results. Apply `041_tournament_match_outcomes.sql` before deploying the
+natural-completion guard and administrator outcome UI.
 
 If Generate Draw is disabled, the event needs at least two active entrants and
 the current membership must be a club admin. If the draw request fails after the
@@ -786,6 +787,11 @@ that linked scoring match; the separate manual score action is removed to preven
 two conflicting result sources. Ordinary approved members can enter an unscheduled
 fixture's first result, but only club admins can use **Edit Score**. Admin corrections are
 rejected when a dependent next-round fixture has already started or completed.
+If a linked match was ended by an operator or automatically after 12 hours idle,
+it must show **Awaiting decision** and an admin-only **Resolve Outcome** action.
+Retirement and concession advance the opponent, walkover advances the selected
+entrant, and abandonment advances nobody. If the partial-score leader advanced
+automatically, verify the backend and migration `041` were deployed together.
 
 CSV player imports require `First Name` and `Surname` headers. Optional recognised
 headers are Email, Club and Ability (1–4). Duplicate warnings are produced for

@@ -65,6 +65,7 @@ def _run_match_mutation(
     match_id,
     operation,
     sync_tournament=False,
+    resolve_early_tournament=False,
     auto_end_stale=True,
 ):
     """Run a match mutation and its derived writes in one transaction."""
@@ -89,8 +90,8 @@ def _run_match_mutation(
                 commit=False,
             )
             if stale_match and stale_match.get("tournament_match_id"):
-                from common.tournament.tournament_logic import sync_tournament_scoring_result
-                sync_tournament_scoring_result(connection, stale_match, commit=False)
+                from common.tournament.tournament_logic import mark_tournament_match_awaiting_resolution
+                mark_tournament_match_awaiting_resolution(connection, stale_match, commit=False)
             connection.commit()
             transaction_committed = True
             raise ValueError("Match is already complete")
@@ -98,7 +99,15 @@ def _run_match_mutation(
         match = operation(engine)
         if sync_tournament and match and match.get("status") == "completed" and match.get("tournament_match_id"):
             from common.tournament.tournament_logic import sync_tournament_scoring_result
-            sync_tournament_scoring_result(connection, match, commit=False)
+            sync_tournament_scoring_result(
+                connection,
+                match,
+                natural_completion=True,
+                commit=False,
+            )
+        elif resolve_early_tournament and match and match.get("tournament_match_id"):
+            from common.tournament.tournament_logic import mark_tournament_match_awaiting_resolution
+            mark_tournament_match_awaiting_resolution(connection, match, commit=False)
 
         connection.commit()
         transaction_committed = True
@@ -279,7 +288,7 @@ def event_action(connection, match_id, action_type, payload, source="api"):
             source=source,
             commit=False,
         ),
-        sync_tournament=True,
+        sync_tournament=action_type == "stroke",
     )
 
 
@@ -304,7 +313,7 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
             match_duration_seconds=match_duration_seconds,
             commit=False,
         ),
-        sync_tournament=True,
+        resolve_early_tournament=True,
         auto_end_stale=False,
     )
 

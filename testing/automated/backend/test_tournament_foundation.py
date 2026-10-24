@@ -293,3 +293,162 @@ def test_tournament_score_parser_accepts_full_games_compact_games_and_summary(en
 def test_tournament_score_parser_rejects_missing_invalid_or_tied_results(entered):
     with pytest.raises(ValueError):
         tournament_logic._score_result(entered)
+
+
+@pytest.mark.parametrize(
+    ("outcome", "side", "winner_side", "summary"),
+    [
+        ("retired", "player1", "player2", "Retirement"),
+        ("conceded", "player2", "player1", "Conceded"),
+        ("walkover", "player1", "player1", "Walkover"),
+        ("abandoned", "", None, "Abandoned"),
+    ],
+)
+def test_explicit_tournament_outcome_determines_progression(outcome, side, winner_side, summary):
+    result = tournament_logic._explicit_outcome_result({"outcome": outcome, "side": side})
+
+    assert result["winner_side"] == winner_side
+    assert result["summary"] == summary
+
+
+def test_retirement_requires_the_admin_to_identify_who_retired():
+    with pytest.raises(ValueError, match="Select which player or team retired"):
+        tournament_logic._explicit_outcome_result({"outcome": "retired"})
+
+
+def test_tournament_sync_rejects_non_natural_completion(monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        tournament_logic,
+        "record_tournament_match_result",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    early_match = {
+        "status": "completed",
+        "ended_early": True,
+        "tournament_match_id": "fixture-1",
+        "winner_side": "player1",
+    }
+
+    tournament_logic.sync_tournament_scoring_result(None, early_match, natural_completion=True)
+    tournament_logic.sync_tournament_scoring_result(
+        None,
+        {**early_match, "ended_early": False},
+        natural_completion=False,
+    )
+
+    assert recorded == []
+
+
+def test_tournament_sync_never_fabricates_a_one_nil_result(monkeypatch):
+    recorded = []
+    monkeypatch.setattr(
+        tournament_logic,
+        "record_tournament_match_result",
+        lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    tied_match = {
+        "status": "completed",
+        "ended_early": False,
+        "tournament_match_id": "fixture-1",
+        "winner_side": "player1",
+        "player1_games_won": 1,
+        "player2_games_won": 1,
+    }
+
+    with pytest.raises(ValueError, match="decisive game or set score"):
+        tournament_logic.sync_tournament_scoring_result(
+            None,
+            tied_match,
+            natural_completion=True,
+        )
+
+    assert recorded == []
+
+
+@pytest.mark.parametrize(
+    ("outcome", "side", "expected_status", "expected_winner"),
+    [
+        ("retired", "player1", "completed", "entry-2"),
+        ("conceded", "player2", "completed", "entry-1"),
+        ("walkover", "player2", "walkover", "entry-2"),
+        ("abandoned", "", "abandoned", None),
+    ],
+)
+def test_admin_resolution_controls_tournament_advancement(
+    monkeypatch,
+    outcome,
+    side,
+    expected_status,
+    expected_winner,
+):
+    fixture = {
+        "id": "fixture-1",
+        "tournament_id": "event-1",
+        "tournament_status": "draw_published",
+        "status": "awaiting_resolution",
+        "draw_id": "draw-1",
+        "draw_format": "knockout",
+        "bracket": "championship",
+        "round_number": 1,
+        "match_number": 1,
+        "player1_entry_id": "entry-1",
+        "player2_entry_id": "entry-2",
+        "scoring_match_id": "scoring-match-1",
+        "winner_entry_id": None,
+    }
+    connection = SingleRowConnection([])
+    advanced = []
+    monkeypatch.setattr(tournament_logic, "_fetch_fixture_context", lambda *_args, **_kwargs: fixture)
+    monkeypatch.setattr(tournament_logic, "_ensure_knockout_structure", lambda *_args: None)
+    monkeypatch.setattr(tournament_logic, "_propagate_byes", lambda *_args: None)
+    monkeypatch.setattr(tournament_logic, "_place_first_round_loser", lambda *_args: None)
+    monkeypatch.setattr(
+        tournament_logic,
+        "_advance_entry",
+        lambda _cursor, _draw_id, _bracket, _round, _match, winner, _now: advanced.append(winner),
+    )
+    monkeypatch.setattr(tournament_logic, "get_tournament", lambda *_args: {"id": "event-1"})
+
+    tournament_logic.record_tournament_match_result(
+        connection,
+        "event-1",
+        "fixture-1",
+        7,
+        {"outcome": outcome, "side": side, "note": "Confirmed by referee"},
+        "admin@example.com",
+        is_admin=True,
+    )
+
+    result_update = next(
+        params
+        for query, params in connection.statements
+        if "SET winner_entry_id" in query and "score_data" in query
+    )
+    assert result_update["status"] == expected_status
+    assert result_update["winner_id"] == expected_winner
+    assert advanced == ([expected_winner] if expected_winner else [])
+    assert connection.committed is True
+
+
+def test_non_admin_cannot_resolve_an_early_ended_fixture(monkeypatch):
+    fixture = {
+        "id": "fixture-1",
+        "tournament_status": "draw_published",
+        "status": "awaiting_resolution",
+        "player1_entry_id": "entry-1",
+        "player2_entry_id": "entry-2",
+        "scoring_match_id": "scoring-match-1",
+    }
+    monkeypatch.setattr(tournament_logic, "_fetch_fixture_context", lambda *_args, **_kwargs: fixture)
+
+    with pytest.raises(PermissionError, match="club administrator"):
+        tournament_logic.record_tournament_match_result(
+            SingleRowConnection([]),
+            "event-1",
+            "fixture-1",
+            7,
+            {"outcome": "abandoned"},
+            "member@example.com",
+            is_admin=False,
+        )

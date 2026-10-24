@@ -234,6 +234,7 @@ export default function TournamentDetailPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [matchAction, setMatchAction] = useState(null);
   const [matchScore, setMatchScore] = useState("");
+  const [matchResolution, setMatchResolution] = useState({ outcome: "", side: "", note: "" });
   const [availableCourts, setAvailableCourts] = useState([]);
   const [scheduleForm, setScheduleForm] = useState({ court_id: "", best_of: "3", score_type: "11" });
   const [matchActionSaving, setMatchActionSaving] = useState(false);
@@ -641,7 +642,13 @@ export default function TournamentDetailPage() {
   }
 
   function openScoreMatch(match) {
-    setMatchScore(match.score_data?.entered_score || match.score_summary || "");
+    const awaitingResolution = ["awaiting_resolution", "abandoned"].includes(match.status);
+    setMatchScore(match.score_data?.entered_score || (awaitingResolution ? "" : match.score_summary) || "");
+    setMatchResolution({
+      outcome: match.result_outcome || "",
+      side: match.score_data?.losing_side || match.score_data?.winner_side || "",
+      note: match.result_note || "",
+    });
     setMatchAction({ type: "score", match });
     setError("");
   }
@@ -676,14 +683,23 @@ export default function TournamentDetailPage() {
     setMatchActionSaving(true);
     setError("");
     try {
+      const awaitingResolution = ["awaiting_resolution", "abandoned"].includes(matchAction.match.status);
       const response = await recordTournamentMatchResult(tournamentId, matchAction.match.id, {
         organization_id: organizationId,
-        score: matchScore,
+        ...(awaitingResolution ? {
+          outcome: matchResolution.outcome,
+          side: matchResolution.side,
+          note: matchResolution.note,
+          ...(matchResolution.outcome === "played" ? { score: matchScore } : {}),
+        } : { score: matchScore }),
       });
       setTournament(response?.tournament || tournament);
       setMatchAction(null);
       setMatchScore("");
-      setMessage("Tournament result saved and the winner advanced.");
+      setMatchResolution({ outcome: "", side: "", note: "" });
+      setMessage(matchResolution.outcome === "abandoned"
+        ? "Match recorded as abandoned. No player was advanced."
+        : "Tournament result saved and the winner advanced.");
     } catch (requestError) {
       setError(requestError.message || "Unable to save the tournament result.");
     } finally {
@@ -701,6 +717,9 @@ export default function TournamentDetailPage() {
   const publicDrawUrl = tournament?.public_draw_enabled && tournament?.public_draw_key && typeof window !== "undefined"
     ? `${window.location.origin}/tournament-draw/${tournament.public_draw_key}`
     : "";
+  const resolvingEarlyMatch = matchAction?.type === "score"
+    && ["awaiting_resolution", "abandoned"].includes(matchAction.match.status);
+  const resolutionNeedsSide = ["retired", "conceded", "walkover"].includes(matchResolution.outcome);
 
   return (
     <main className="page-shell stack">
@@ -1218,7 +1237,13 @@ export default function TournamentDetailPage() {
           <section className="panel stack tournament-action-dialog" role="dialog" aria-modal="true" aria-labelledby="tournament-action-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="dashboard-item-head">
               <div className="panel-heading">
-                <h2 id="tournament-action-title">{matchAction.type === "schedule" ? "Schedule Tournament Match" : matchAction.match.status === "completed" ? "Edit Match Score" : "Add Match Score"}</h2>
+                <h2 id="tournament-action-title">
+                  {matchAction.type === "schedule"
+                    ? "Schedule Tournament Match"
+                    : resolvingEarlyMatch
+                      ? "Resolve Early-Ended Match"
+                      : matchAction.match.status === "completed" ? "Edit Match Score" : "Add Match Score"}
+                </h2>
                 <p className="helper-text">{matchAction.match.player1_name} vs {matchAction.match.player2_name}</p>
               </div>
               <button aria-label="Close" className="tournament-action-dialog__close" type="button" onClick={() => setMatchAction(null)}>×</button>
@@ -1251,13 +1276,75 @@ export default function TournamentDetailPage() {
               </form>
             ) : (
               <form className="stack" onSubmit={handleRecordTournamentResult}>
-                <div className="field">
-                  <label htmlFor="tournament-match-score">Full Match Score</label>
-                  <input id="tournament-match-score" required placeholder="11-3, 11-4, 3-11, 11-7 or 3-1" value={matchScore} onChange={(event) => setMatchScore(event.target.value)} />
-                  <small>Enter every game separated by commas, or enter the final games score.</small>
-                </div>
-                <p className="helper-text">Saving advances the winner. A first-round championship loser enters the plate.</p>
-                <div className="button-row"><button disabled={matchActionSaving} type="submit">{matchActionSaving ? "Saving..." : matchAction.match.status === "completed" ? "Save Corrected Score" : "Save Score"}</button><button className="secondary" type="button" onClick={() => setMatchAction(null)}>Cancel</button></div>
+                {resolvingEarlyMatch ? (
+                  <>
+                    <div className="notice warning">
+                      This scoring match ended without a natural final point. An administrator must confirm the outcome before anyone advances.
+                    </div>
+                    <div className="field">
+                      <label htmlFor="tournament-match-outcome">Outcome</label>
+                      <select
+                        id="tournament-match-outcome"
+                        required
+                        value={matchResolution.outcome}
+                        onChange={(event) => setMatchResolution((current) => ({ ...current, outcome: event.target.value, side: "" }))}
+                      >
+                        <option value="">Select an outcome</option>
+                        <option value="retired">Retired</option>
+                        <option value="conceded">Conceded</option>
+                        <option value="walkover">Walkover</option>
+                        <option value="abandoned">Abandoned — no winner</option>
+                        <option value="played">Completed normally — enter score</option>
+                      </select>
+                    </div>
+                    {resolutionNeedsSide ? (
+                      <div className="field">
+                        <label htmlFor="tournament-match-outcome-side">
+                          {matchResolution.outcome === "walkover" ? "Who receives the walkover?" : `Who ${matchResolution.outcome}?`}
+                        </label>
+                        <select
+                          id="tournament-match-outcome-side"
+                          required
+                          value={matchResolution.side}
+                          onChange={(event) => setMatchResolution((current) => ({ ...current, side: event.target.value }))}
+                        >
+                          <option value="">Select player or team</option>
+                          <option value="player1">{matchAction.match.player1_name}</option>
+                          <option value="player2">{matchAction.match.player2_name}</option>
+                        </select>
+                        {matchResolution.outcome !== "walkover" ? <small>The opponent will advance.</small> : null}
+                      </div>
+                    ) : null}
+                    {matchResolution.outcome === "played" ? (
+                      <div className="field">
+                        <label htmlFor="tournament-match-score">Full Match Score</label>
+                        <input id="tournament-match-score" required placeholder="11-3, 11-4, 3-11, 11-7 or 3-1" value={matchScore} onChange={(event) => setMatchScore(event.target.value)} />
+                      </div>
+                    ) : null}
+                    <div className="field">
+                      <label htmlFor="tournament-match-outcome-note">Administrator note</label>
+                      <textarea
+                        id="tournament-match-outcome-note"
+                        placeholder="Optional context for the decision"
+                        value={matchResolution.note}
+                        onChange={(event) => setMatchResolution((current) => ({ ...current, note: event.target.value }))}
+                      />
+                    </div>
+                    <p className="helper-text">
+                      Retirement, concession and walkover advance the confirmed winner. Abandoned matches do not advance either player.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="field">
+                      <label htmlFor="tournament-match-score">Full Match Score</label>
+                      <input id="tournament-match-score" required placeholder="11-3, 11-4, 3-11, 11-7 or 3-1" value={matchScore} onChange={(event) => setMatchScore(event.target.value)} />
+                      <small>Enter every game separated by commas, or enter the final games score.</small>
+                    </div>
+                    <p className="helper-text">Saving advances the winner. A first-round championship loser enters the plate.</p>
+                  </>
+                )}
+                <div className="button-row"><button disabled={matchActionSaving} type="submit">{matchActionSaving ? "Saving..." : resolvingEarlyMatch ? "Save Outcome" : matchAction.match.status === "completed" ? "Save Corrected Score" : "Save Score"}</button><button className="secondary" type="button" onClick={() => setMatchAction(null)}>Cancel</button></div>
               </form>
             )}
           </section>

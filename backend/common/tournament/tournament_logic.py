@@ -127,6 +127,8 @@ def _serialize_draw_match(row):
         "scoring_match_id": str(row["scoring_match_id"]) if row.get("scoring_match_id") else None,
         "score_data": row.get("score_data") or {},
         "score_summary": row.get("score_summary") or "",
+        "result_outcome": row.get("result_outcome"),
+        "result_note": row.get("result_note") or "",
         "result_source": "scoring" if row.get("result_entered_by") == "scoring-app" else "manual" if row.get("result_entered_at") else None,
         "player1_name": row.get("player1_name") or "",
         "player2_name": row.get("player2_name") or "",
@@ -957,7 +959,9 @@ def return_tournament_draw_to_draft(connection, tournament_id, organization_id, 
             FROM tournament_matches AS fixture
             INNER JOIN tournament_draws AS draw ON draw.id = fixture.draw_id
             WHERE draw.tournament_id = %(event_id)s
-              AND fixture.status IN ('in_progress', 'completed', 'walkover')
+              AND fixture.status IN (
+                  'in_progress', 'awaiting_resolution', 'completed', 'walkover', 'abandoned'
+              )
             """,
             {"event_id": event["id"]},
         )
@@ -1177,6 +1181,131 @@ def _score_result(value):
     }
 
 
+TOURNAMENT_RESULT_OUTCOMES = {"played", "retired", "conceded", "walkover", "abandoned"}
+
+
+def _explicit_outcome_result(payload):
+    outcome = str(payload.get("outcome") or "").strip().lower()
+    if outcome not in TOURNAMENT_RESULT_OUTCOMES:
+        raise ValueError("outcome must be played, retired, conceded, walkover or abandoned")
+    if outcome == "played":
+        result = _score_result(payload.get("score"))
+        return {**result, "outcome": outcome, "note": str(payload.get("note") or "").strip()}
+
+    note = str(payload.get("note") or "").strip()
+    if outcome == "abandoned":
+        return {
+            "type": "outcome",
+            "outcome": outcome,
+            "winner_side": None,
+            "summary": "Abandoned",
+            "entered_score": "",
+            "note": note,
+        }
+
+    if outcome in {"retired", "conceded"}:
+        losing_side = str(payload.get("side") or "").strip().lower()
+        if losing_side not in {"player1", "player2"}:
+            raise ValueError(f"Select which player or team {outcome}")
+        winner_side = "player2" if losing_side == "player1" else "player1"
+        return {
+            "type": "outcome",
+            "outcome": outcome,
+            "losing_side": losing_side,
+            "winner_side": winner_side,
+            "summary": "Retirement" if outcome == "retired" else "Conceded",
+            "entered_score": "",
+            "note": note,
+        }
+
+    winner_side = str(payload.get("side") or "").strip().lower()
+    if winner_side not in {"player1", "player2"}:
+        raise ValueError("Select the player or team receiving the walkover")
+    return {
+        "type": "outcome",
+        "outcome": outcome,
+        "winner_side": winner_side,
+        "summary": "Walkover",
+        "entered_score": "",
+        "note": note,
+    }
+
+
+def mark_tournament_match_awaiting_resolution(connection, match, commit=True):
+    if not match or not match.get("tournament_match_id"):
+        return None
+
+    fixture = _fetch_fixture_context(
+        connection,
+        match["tournament_event_id"],
+        match["tournament_match_id"],
+        match["tenant_id"],
+        for_update=True,
+    )
+    if not fixture:
+        raise LookupError("Tournament match not found")
+    if fixture.get("status") in {"awaiting_resolution", "completed", "walkover", "abandoned"}:
+        return fixture
+
+    state = match.get("state") or {}
+    reason = str(match.get("end_reason") or state.get("match_end_reason") or "Match ended early").strip()
+    partial_result = {
+        "type": "awaiting_resolution",
+        "outcome": None,
+        "player1_games": int(match.get("player1_games_won") or state.get("player1_games_won") or 0),
+        "player2_games": int(match.get("player2_games_won") or state.get("player2_games_won") or 0),
+        "reason": reason,
+    }
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE tournament_matches
+            SET status = 'awaiting_resolution', winner_entry_id = NULL,
+                score_data = %(score_data)s, score_summary = 'Awaiting decision',
+                result_outcome = NULL, result_note = %(result_note)s,
+                result_entered_by = NULL, result_entered_at = NULL,
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "score_data": Jsonb(partial_result),
+                "result_note": reason,
+                "updated_at": now,
+                "match_id": fixture["id"],
+            },
+        )
+        cursor.execute(
+            """
+            UPDATE tournament_events SET revision = revision + 1, updated_at = %(updated_at)s
+            WHERE id = %(event_id)s
+            """,
+            {"updated_at": now, "event_id": fixture["tournament_id"]},
+        )
+        cursor.execute(
+            """
+            INSERT INTO tournament_audit_events (
+                organization_id, tournament_id, actor_username, action,
+                entity_type, entity_id, payload, created_at
+            ) VALUES (
+                %(organization_id)s, %(tournament_id)s, 'scoring-app',
+                'result_awaiting_resolution', 'draw_match', %(entity_id)s,
+                %(payload)s, %(created_at)s
+            )
+            """,
+            {
+                "organization_id": int(match["tenant_id"]),
+                "tournament_id": fixture["tournament_id"],
+                "entity_id": str(fixture["id"]),
+                "payload": Jsonb(partial_result),
+                "created_at": now,
+            },
+        )
+    if commit:
+        connection.commit()
+    return fixture
+
+
 def _ensure_downstream_editable(cursor, fixture):
     winner_id = fixture.get("winner_entry_id")
     if not winner_id:
@@ -1199,7 +1328,12 @@ def _ensure_downstream_editable(cursor, fixture):
         },
     )
     downstream = cursor.fetchone()
-    if downstream and (downstream.get("scoring_match_id") or downstream.get("status") in {"scheduled", "in_progress", "completed", "walkover"}):
+    if downstream and (
+        downstream.get("scoring_match_id")
+        or downstream.get("status") in {
+            "scheduled", "in_progress", "awaiting_resolution", "completed", "walkover", "abandoned",
+        }
+    ):
         raise ValueError("This result cannot be edited because the next match has already started or been scheduled")
 
 
@@ -1241,7 +1375,7 @@ def _place_first_round_loser(cursor, fixture, loser_id, now):
         FROM tournament_matches
         WHERE draw_id = %(draw_id)s AND bracket = 'championship' AND round_number = 1
           AND player1_entry_id IS NOT NULL AND player2_entry_id IS NOT NULL
-          AND status <> 'completed'
+          AND status NOT IN ('completed', 'walkover')
         """,
         {"draw_id": fixture["draw_id"]},
     )
@@ -1273,18 +1407,35 @@ def record_tournament_match_result(
         raise ValueError("Publish the draw before entering results")
     if not fixture.get("player1_entry_id") or not fixture.get("player2_entry_id"):
         raise ValueError("Both players must reach this match before a result can be entered")
-    if fixture.get("status") == "completed" and not is_admin:
+    awaiting_resolution = fixture.get("status") in {"awaiting_resolution", "abandoned"}
+    requested_outcome = str(payload.get("outcome") or "").strip().lower()
+    if (fixture.get("status") == "completed" or awaiting_resolution) and not is_admin and not from_scoring:
         raise PermissionError("Only a club administrator can edit an entered result")
-    if fixture.get("scoring_match_id") and not from_scoring:
+    if requested_outcome and not is_admin and not from_scoring:
+        raise PermissionError("Only a club administrator can resolve an early-ended match")
+    if fixture.get("scoring_match_id") and not from_scoring and not (is_admin and awaiting_resolution):
         raise ValueError("Use the linked scoring match to enter this result")
-    result = _score_result(payload.get("score"))
-    winner_id = fixture[f"{result['winner_side']}_entry_id"]
-    loser_id = fixture["player2_entry_id"] if result["winner_side"] == "player1" else fixture["player1_entry_id"]
+    if awaiting_resolution and not requested_outcome:
+        raise ValueError("Choose how the early-ended match should be resolved")
+    if requested_outcome and requested_outcome != "played" and not awaiting_resolution:
+        raise ValueError("Non-standard outcomes are only available for early-ended matches")
+
+    result = _explicit_outcome_result(payload) if requested_outcome else {
+        **_score_result(payload.get("score")),
+        "outcome": "played",
+        "note": "",
+    }
+    winner_side = result.get("winner_side")
+    winner_id = fixture.get(f"{winner_side}_entry_id") if winner_side else None
+    loser_id = (
+        fixture["player2_entry_id"] if winner_side == "player1" else fixture["player1_entry_id"]
+    ) if winner_side else None
     if (
         from_scoring
         and fixture.get("status") == "completed"
         and fixture.get("winner_entry_id") == winner_id
         and fixture.get("score_summary") == result["summary"]
+        and fixture.get("result_outcome") in {None, "played"}
     ):
         if commit:
             connection.commit()
@@ -1312,25 +1463,34 @@ def record_tournament_match_result(
                     "round_number": int(fixture["round_number"]) + 1,
                 },
             )
+        resolved_status = (
+            "abandoned" if result["outcome"] == "abandoned"
+            else "walkover" if result["outcome"] == "walkover"
+            else "completed"
+        )
         cursor.execute(
             """
             UPDATE tournament_matches
-            SET winner_entry_id = %(winner_id)s, status = 'completed',
+            SET winner_entry_id = %(winner_id)s, status = %(status)s,
                 score_data = %(score_data)s, score_summary = %(score_summary)s,
+                result_outcome = %(result_outcome)s, result_note = %(result_note)s,
                 result_entered_by = %(actor_username)s, result_entered_at = %(entered_at)s,
                 updated_at = %(entered_at)s
             WHERE id = %(match_id)s
             """,
             {
                 "winner_id": winner_id,
+                "status": resolved_status,
                 "score_data": Jsonb(result),
                 "score_summary": result["summary"],
+                "result_outcome": result["outcome"],
+                "result_note": result.get("note") or None,
                 "actor_username": actor_username,
                 "entered_at": now,
                 "match_id": fixture["id"],
             },
         )
-        if fixture.get("draw_format") in {"knockout", "knockout_plate"}:
+        if winner_id and fixture.get("draw_format") in {"knockout", "knockout_plate"}:
             _advance_entry(cursor, fixture["draw_id"], fixture.get("bracket") or "championship", fixture["round_number"], fixture["match_number"], winner_id, now)
             if fixture.get("draw_format") == "knockout_plate":
                 _place_first_round_loser(cursor, fixture, loser_id, now)
@@ -1356,7 +1516,11 @@ def record_tournament_match_result(
                 "organization_id": int(organization_id),
                 "tournament_id": fixture["tournament_id"],
                 "actor_username": actor_username,
-                "action": "result_corrected" if fixture.get("status") == "completed" else "result_entered",
+                "action": (
+                    "early_result_resolved" if awaiting_resolution
+                    else "result_corrected" if fixture.get("status") == "completed"
+                    else "result_entered"
+                ),
                 "entity_id": str(fixture["id"]),
                 "payload": Jsonb(result),
                 "created_at": now,
@@ -1367,8 +1531,15 @@ def record_tournament_match_result(
     return get_tournament(connection, tournament_id, organization_id)
 
 
-def sync_tournament_scoring_result(connection, match, commit=True):
-    if not match or match.get("status") != "completed" or not match.get("tournament_match_id"):
+def sync_tournament_scoring_result(connection, match, natural_completion=False, commit=True):
+    if (
+        not natural_completion
+        or not match
+        or match.get("status") != "completed"
+        or match.get("ended_early")
+        or (match.get("state") or {}).get("ended_early")
+        or not match.get("tournament_match_id")
+    ):
         return
     winner_side = match.get("winner_side") or (match.get("state") or {}).get("winner_side")
     if winner_side not in {"player1", "player2"}:
@@ -1376,7 +1547,7 @@ def sync_tournament_scoring_result(connection, match, commit=True):
     player1_games = int(match.get("player1_games_won") or (match.get("state") or {}).get("player1_games_won") or 0)
     player2_games = int(match.get("player2_games_won") or (match.get("state") or {}).get("player2_games_won") or 0)
     if player1_games == player2_games:
-        player1_games, player2_games = (1, 0) if winner_side == "player1" else (0, 1)
+        raise ValueError("A naturally completed tournament match must have a decisive game or set score")
     record_tournament_match_result(
         connection,
         match["tournament_event_id"],
@@ -1398,8 +1569,10 @@ def schedule_tournament_match(connection, tournament_id, match_id, organization_
         raise ValueError("Publish the draw before scheduling matches")
     if not fixture.get("player1_entry_id") or not fixture.get("player2_entry_id"):
         raise ValueError("Both players must reach this match before it can be scheduled")
-    if fixture.get("status") == "completed":
+    if fixture.get("status") in {"completed", "walkover"}:
         raise ValueError("This tournament match is already complete")
+    if fixture.get("status") in {"awaiting_resolution", "abandoned"}:
+        raise ValueError("This tournament match requires an administrator outcome")
     if fixture.get("scoring_match_id"):
         from common.match_logic import get_match
         return get_tournament(connection, tournament_id, organization_id), get_match(connection, fixture["scoring_match_id"])

@@ -28,9 +28,15 @@ function BracketSlot({ editable, entries, match, slot, onMove }) {
 
 function MatchMenu({ isAdmin, match, onSchedule, onScore }) {
   const [open, setOpen] = useState(false);
-  const completed = match.status === "completed";
+  const completed = ["completed", "walkover"].includes(match.status);
+  const awaitingResolution = ["awaiting_resolution", "abandoned"].includes(match.status);
   const scoringControlled = Boolean(match.scoring_match_id) || match.result_source === "scoring";
-  if (!match.player1_entry_id || !match.player2_entry_id || scoringControlled || (completed && !isAdmin)) return null;
+  if (
+    !match.player1_entry_id
+    || !match.player2_entry_id
+    || (scoringControlled && !(isAdmin && awaitingResolution))
+    || (completed && !isAdmin)
+  ) return null;
   return (
     <div className="tournament-match-menu">
       <button
@@ -44,8 +50,9 @@ function MatchMenu({ isAdmin, match, onSchedule, onScore }) {
       </button>
       {open ? (
         <div className="tournament-match-menu__options">
-          {!completed && !match.scoring_match_id ? <button type="button" onClick={() => { setOpen(false); onSchedule(match); }}>Schedule Match</button> : null}
-          {!completed ? <button type="button" onClick={() => { setOpen(false); onScore(match); }}>Add Score</button> : null}
+          {!completed && !awaitingResolution && !match.scoring_match_id ? <button type="button" onClick={() => { setOpen(false); onSchedule(match); }}>Schedule Match</button> : null}
+          {awaitingResolution && isAdmin ? <button type="button" onClick={() => { setOpen(false); onScore(match); }}>Resolve Outcome</button> : null}
+          {!completed && !awaitingResolution && !match.scoring_match_id ? <button type="button" onClick={() => { setOpen(false); onScore(match); }}>Add Score</button> : null}
           {completed && isAdmin ? <button type="button" onClick={() => { setOpen(false); onScore(match); }}>Edit Score</button> : null}
         </div>
       ) : null}

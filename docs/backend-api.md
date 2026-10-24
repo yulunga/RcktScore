@@ -322,6 +322,14 @@ losers enter a knockout-with-plate draw; later Monrad pairing and round-robin
 standings remain unimplemented. A published legacy knockout that contains only its
 opening round receives the missing future-round and plate structure when its first
 result is recorded.
+Only a match completed by its sport engine's final scoring point is synchronised
+as a played result automatically. Operator-ended and 12-hour stale linked matches
+move their fixture to `awaiting_resolution` without a winner. A club admin resolves
+the existing result endpoint with `outcome` set to `played`, `retired`, `conceded`,
+`walkover` or `abandoned`; retirement/concession identify the losing `side`,
+walkover identifies the winning `side`, and played requires `score`. Abandoned
+fixtures retain no winner and do not advance either entrant. Every resolution is
+stored and audited with an optional `note`.
 `PUT /tournaments/{tournament_id}/draw/public-access` is admin-only, accepts a
 boolean `enabled`, preserves the event's key when disabled, and immediately enables
 or rejects no-login reads without changing the live draw status.
@@ -329,7 +337,8 @@ The web client labels a generated draft **Draw ready** and a published draw
 **Live**; these are presentation labels over the existing draft and
 `draw_published` API states.
 Migrations `034_tournament_draw_matches.sql`,
-`035_tournament_draw_publication.sql` and `036_tournament_match_results.sql` are required.
+`035_tournament_draw_publication.sql`, `036_tournament_match_results.sql` and
+`041_tournament_match_outcomes.sql` are required.
 Generation is idempotent after publication when fixtures exist. If an event is
 already `draw_published` but has no fixture rows, the same endpoint rebuilds them
 and records a `draw_rebuilt` audit event.
