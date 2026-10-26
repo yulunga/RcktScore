@@ -668,7 +668,31 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
 6. API Gateway and Apple lifecycle Lambdas have separate error, latency and missed-reconciliation alarms. Alarm and recovery actions publish to the encrypted SNS topic created by the SAM stack.
 7. The address configured by `AlarmNotificationEmail` must confirm AWS's initial SNS subscription email before messages are delivered.
 
-## 17. Current Cross-Cutting Gaps
+## 17. Schema Migration and Promotion Flow
+
+1. Migration SQL is stored in `backend/schema/` with one unique three-digit
+   version per file. `scripts/check_migrations.py` rejects duplicate or missing
+   versions and verifies every exact file SHA-256 against
+   `backend/schema/checksums.sha256`.
+2. Migration `043_schema_migration_ledger.sql` creates `schema_migrations` as
+   the database-specific record of successful migrations. A promotion compares
+   its versions, filenames, and checksums with the target Git commit before any
+   SQL or application artifact is deployed.
+3. Existing databases predate the ledger. They require a one-time schema and
+   seed-data audit before versions `001`–`042` can be marked as a verified
+   legacy baseline. The former duplicate `010_user_profile_fields.sql` is not
+   retained as a second `010`; idempotent migration
+   `044_reconcile_user_profile_fields.sql` reconciles that shape after the
+   ledger exists.
+4. New migrations are applied in ascending order, one transaction per file,
+   with the ledger insert committed only when the SQL succeeds. Applied files
+   are immutable; a defect is corrected by a later forward migration.
+5. Additive schema normally precedes the backend that requires it, followed by
+   frontend and compatible native-client promotion. Breaking changes use
+   separate expand-and-contract releases. `docs/promotion-runbook.md` contains
+   the operational checks, smoke tests, evidence, and rollback policy.
+
+## 18. Current Cross-Cutting Gaps
 
 - public-route rate limiting and wider security audit coverage are incomplete
 - WebSocket infrastructure is incomplete

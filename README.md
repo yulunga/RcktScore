@@ -40,6 +40,7 @@ Start here when orienting or troubleshooting:
 - [Backend API reference](./docs/backend-api.md)
 - [Technical walkthrough](./docs/technical-walkthrough.md)
 - [Troubleshooting guide](./docs/troubleshooting.md)
+- [Promotion and migration runbook](./docs/promotion-runbook.md)
 - [Feature and pricing structure](./docs/feature-payments-structure.md)
 - [Mobile docs](./docs/mobile/README.md)
 
@@ -51,6 +52,12 @@ Useful local checks for the current repo shape:
 
 ```bash
 PYTHONPYCACHEPREFIX=/tmp/rcktscore-pyc python3 -m py_compile $(find backend/common backend/functions -name '*.py' | sort)
+```
+
+Migration numbering and checksum check:
+
+```bash
+python3 scripts/check_migrations.py verify
 ```
 
 2. Frontend production build without touching the checked-in `dist/` directory:

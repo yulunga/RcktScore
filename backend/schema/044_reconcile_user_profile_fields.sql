@@ -1,3 +1,7 @@
+-- This is the former duplicate 010_user_profile_fields.sql. It is intentionally
+-- idempotent so databases that already received the legacy file can reconcile
+-- under one unique migration number without changing existing data.
+
 ALTER TABLE "SkwshOrgUsers"
     ADD COLUMN IF NOT EXISTS first_name text,
     ADD COLUMN IF NOT EXISTS surname text,

@@ -509,6 +509,9 @@ The root-admin User Accounts `Unverified Users` card requests `GET /root_admin/u
 Relevant files:
 
 - `backend/schema/*.sql`
+- `backend/schema/checksums.sha256`
+- `scripts/check_migrations.py`
+- `docs/promotion-runbook.md`
 
 Most relevant current tables:
 
@@ -526,6 +529,16 @@ Most relevant current tables:
 
 If behavior seems impossible:
 
+- run `python3 scripts/check_migrations.py verify`; fix duplicate, missing, or
+  manifest-mismatch errors before considering a promotion
+- compare the target database's `schema_migrations` versions, filenames, and
+  checksums with `backend/schema/checksums.sha256`; an applied checksum mismatch
+  is drift and must stop the promotion rather than being overwritten
+- if `schema_migrations` is absent, follow the one-time legacy baseline in the
+  promotion runbook. Do not mark `001`–`042` as applied without verifying their
+  tables, columns, constraints, indexes, functions, triggers, and seed data
+- keep `010_match_shirt_colors.sql` as version `010`; the old duplicate user
+  profile migration is reconciled by `044_reconcile_user_profile_fields.sql`
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns

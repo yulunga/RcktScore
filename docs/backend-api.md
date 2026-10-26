@@ -771,6 +771,19 @@ The backend uses one shared JSON envelope.
 
 Schema bootstrap begins in [backend/schema/001_match_storage.sql](/Users/glennrowe/Development/Projects/RcktScore/backend/schema/001_match_storage.sql).
 
+Schema files use unique three-digit versions and are checksum-pinned in
+`backend/schema/checksums.sha256`. Run
+`python3 scripts/check_migrations.py verify` before promotion. Migration
+`043_schema_migration_ledger.sql` creates the environment-local
+`schema_migrations` ledger; each successful migration records its version,
+filename, exact file SHA-256, application time, and optional operator, Git
+commit, duration, and notes. Migration `044_reconcile_user_profile_fields.sql`
+is the idempotent, uniquely numbered replacement for the former duplicate
+`010_user_profile_fields.sql`; `010_match_shirt_colors.sql` remains the
+authoritative migration `010`. Existing databases must be catalog-audited
+before legacy versions are inserted into the ledger. The complete staging and
+production procedure is in `docs/promotion-runbook.md`.
+
 Important current `matches` concepts:
 
 - tenant and court identity
