@@ -77,6 +77,14 @@ production environment:
 9. Compare the database ledger with the checked-in manifest and retain the
    comparison as release evidence.
 
+For the current pre-release database, the completed 26 October 2026 audit is
+materialized as the guarded one-time
+`scripts/migration-baseline-insert.sql`. It records checksums from Git commit
+`c825c8c2560a1c82066d2c9aca1fa537b9002061` and refuses to run when the ledger
+is non-empty or the `043`/`044` bootstrap checks fail. Do not reuse that static
+baseline file for another environment; repeat the audit and generate evidence
+for that database instead.
+
 Keep `010_match_shirt_colors.sql` as version `010`. Do not shift migrations
 `011`–`042`. Historical databases may already contain the profile fields from
 the old duplicate `010`; migration `044` safely confirms them with
