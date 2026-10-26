@@ -1,3 +1,4 @@
+import math
 import re
 import random
 import secrets
@@ -102,6 +103,22 @@ def _serialize_entry(row):
         "status": row.get("entry_status") or "registered",
         "created_at": _iso(row.get("created_at")),
     }
+
+
+def redact_tournament_private_fields(tournament):
+    """Remove account identifiers and contact details from member-facing draws."""
+    if not tournament:
+        return tournament
+    redacted = dict(tournament)
+    redacted["entries"] = [
+        {
+            key: value
+            for key, value in entry.items()
+            if key not in {"email", "registered_username", "user_id"}
+        }
+        for entry in tournament.get("entries", [])
+    ]
+    return redacted
 
 
 def _default_draw_groups(event):
@@ -468,6 +485,164 @@ def _round_robin_pairings(entries):
     return rounds
 
 
+def _monrad_round_count(first_round_match_count):
+    if first_round_match_count < 1:
+        return 0
+    return int(math.log2(first_round_match_count * 2))
+
+
+def _monrad_placement_range(first_round_match_count, round_number, match_number):
+    field_size = int(first_round_match_count) * 2
+    group_count = 2 ** (int(round_number) - 1)
+    matches_per_group = int(first_round_match_count) // group_count
+    group_index = (int(match_number) - 1) // matches_per_group
+    group_size = field_size // group_count
+    start = (group_index * group_size) + 1
+    return start, start + group_size - 1
+
+
+def _monrad_destination(first_round_match_count, round_number, match_number, outcome):
+    matches_per_group = int(first_round_match_count) // (2 ** (int(round_number) - 1))
+    if matches_per_group <= 1:
+        return None
+    group_index = (int(match_number) - 1) // matches_per_group
+    local_index = (int(match_number) - 1) % matches_per_group
+    next_matches_per_group = matches_per_group // 2
+    next_group = (group_index * 2) + (1 if outcome == "loser" else 0)
+    return {
+        "round_number": int(round_number) + 1,
+        "match_number": (next_group * next_matches_per_group) + (local_index // 2) + 1,
+        "slot": "player1_entry_id" if local_index % 2 == 0 else "player2_entry_id",
+    }
+
+
+def _insert_monrad_tree(cursor, draw_id, pairings, now):
+    first_round_match_count = len(pairings)
+    for match_number, (player1, player2) in enumerate(pairings, start=1):
+        winner_id = player1["id"] if player1 and not player2 else player2["id"] if player2 and not player1 else None
+        cursor.execute(
+            """
+            INSERT INTO tournament_matches (
+                draw_id, bracket, round_number, match_number,
+                player1_entry_id, player2_entry_id, winner_entry_id,
+                status, created_at, updated_at
+            ) VALUES (
+                %(draw_id)s, 'championship', 1, %(match_number)s,
+                %(player1_id)s, %(player2_id)s, %(winner_id)s,
+                %(status)s, %(created_at)s, %(updated_at)s
+            )
+            """,
+            {
+                "draw_id": draw_id,
+                "match_number": match_number,
+                "player1_id": player1["id"] if player1 else None,
+                "player2_id": player2["id"] if player2 else None,
+                "winner_id": winner_id,
+                "status": "bye" if winner_id else "pending",
+                "created_at": now,
+                "updated_at": now,
+            },
+        )
+    for round_number in range(2, _monrad_round_count(first_round_match_count) + 1):
+        for match_number in range(1, first_round_match_count + 1):
+            cursor.execute(
+                """
+                INSERT INTO tournament_matches (
+                    draw_id, bracket, round_number, match_number, status, created_at, updated_at
+                ) VALUES (
+                    %(draw_id)s, 'championship', %(round_number)s, %(match_number)s,
+                    'pending', %(created_at)s, %(updated_at)s
+                )
+                """,
+                {
+                    "draw_id": draw_id,
+                    "round_number": round_number,
+                    "match_number": match_number,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+            )
+
+
+def _refresh_monrad_progression(cursor, draw_id, now):
+    cursor.execute(
+        """
+        SELECT * FROM tournament_matches
+        WHERE draw_id = %(draw_id)s AND bracket = 'championship'
+        ORDER BY round_number, match_number
+        """,
+        {"draw_id": draw_id},
+    )
+    fixtures = cursor.fetchall()
+    first_round_match_count = sum(1 for fixture in fixtures if int(fixture["round_number"]) == 1)
+    maximum_round = _monrad_round_count(first_round_match_count)
+    by_key = {
+        (int(fixture["round_number"]), int(fixture["match_number"])): dict(fixture)
+        for fixture in fixtures
+    }
+    resolved_statuses = {"completed", "walkover", "bye", "abandoned"}
+
+    for round_number in range(1, maximum_round):
+        assignments = {}
+        for match_number in range(1, first_round_match_count + 1):
+            source = by_key.get((round_number, match_number))
+            if not source or source.get("status") not in resolved_statuses:
+                continue
+            winner_id = source.get("winner_entry_id")
+            loser_id = None
+            if winner_id:
+                loser_id = (
+                    source.get("player2_entry_id")
+                    if str(source.get("player1_entry_id")) == str(winner_id)
+                    else source.get("player1_entry_id")
+                )
+            for outcome, entry_id in (("winner", winner_id), ("loser", loser_id)):
+                destination = _monrad_destination(
+                    first_round_match_count, round_number, match_number, outcome
+                )
+                if destination:
+                    assignments[(destination["match_number"], destination["slot"])] = entry_id
+
+        for match_number in range(1, first_round_match_count + 1):
+            target = by_key.get((round_number + 1, match_number))
+            if not target or target.get("status") in {"scheduled", "in_progress", "completed", "walkover", "awaiting_resolution"}:
+                continue
+            player1_key = (match_number, "player1_entry_id")
+            player2_key = (match_number, "player2_entry_id")
+            player1_ready = player1_key in assignments
+            player2_ready = player2_key in assignments
+            player1_id = assignments.get(player1_key)
+            player2_id = assignments.get(player2_key)
+            both_feeders_resolved = player1_ready and player2_ready
+            automatic_winner = (player1_id or player2_id) if both_feeders_resolved and bool(player1_id) != bool(player2_id) else None
+            status = "bye" if automatic_winner else "abandoned" if both_feeders_resolved and not player1_id and not player2_id else "pending"
+            cursor.execute(
+                """
+                UPDATE tournament_matches
+                SET player1_entry_id = %(player1_id)s,
+                    player2_entry_id = %(player2_id)s,
+                    winner_entry_id = %(winner_id)s,
+                    status = %(status)s,
+                    updated_at = %(updated_at)s
+                WHERE id = %(match_id)s
+                """,
+                {
+                    "player1_id": player1_id,
+                    "player2_id": player2_id,
+                    "winner_id": automatic_winner,
+                    "status": status,
+                    "updated_at": now,
+                    "match_id": target["id"],
+                },
+            )
+            target.update({
+                "player1_entry_id": player1_id,
+                "player2_entry_id": player2_id,
+                "winner_entry_id": automatic_winner,
+                "status": status,
+            })
+
+
 def _insert_knockout_tree(cursor, draw_id, pairings, bracket, now):
     for match_index, (player1, player2) in enumerate(pairings, start=1):
         winner_id = player1["id"] if player1 and not player2 else player2["id"] if player2 and not player1 else None
@@ -740,6 +915,11 @@ def generate_tournament_draw(connection, tournament_id, organization_id, actor_u
                             },
                         )
                         generated_match_count += 1
+            elif event["draw_format"] == "monrad":
+                monrad_pairings = _seeded_knockout_pairings(draw_entries, randomizer)
+                _insert_monrad_tree(cursor, draw["id"], monrad_pairings, now)
+                _refresh_monrad_progression(cursor, draw["id"], now)
+                generated_match_count += len(monrad_pairings) * _monrad_round_count(len(monrad_pairings))
             else:
                 championship_pairings = _seeded_knockout_pairings(draw_entries, randomizer)
                 _insert_knockout_tree(cursor, draw["id"], championship_pairings, "championship", now)
@@ -1337,6 +1517,38 @@ def _ensure_downstream_editable(cursor, fixture):
         raise ValueError("This result cannot be edited because the next match has already started or been scheduled")
 
 
+def _ensure_monrad_downstream_editable(cursor, fixture):
+    participant_ids = [
+        entry_id
+        for entry_id in (fixture.get("player1_entry_id"), fixture.get("player2_entry_id"))
+        if entry_id
+    ]
+    if not participant_ids:
+        return
+    cursor.execute(
+        """
+        SELECT status, scoring_match_id
+        FROM tournament_matches
+        WHERE draw_id = %(draw_id)s
+          AND bracket = 'championship'
+          AND round_number > %(round_number)s
+          AND (player1_entry_id = ANY(%(entry_ids)s) OR player2_entry_id = ANY(%(entry_ids)s))
+        """,
+        {
+            "draw_id": fixture["draw_id"],
+            "round_number": int(fixture["round_number"]),
+            "entry_ids": participant_ids,
+        },
+    )
+    for downstream in cursor.fetchall():
+        if downstream.get("scoring_match_id") or downstream.get("status") in {
+            "scheduled", "in_progress", "awaiting_resolution", "completed", "walkover", "abandoned",
+        }:
+            raise ValueError(
+                "This result cannot be edited because a later Monrad placement match has already started or been scheduled"
+            )
+
+
 def _place_first_round_loser(cursor, fixture, loser_id, now):
     if fixture.get("bracket") != "championship" or int(fixture["round_number"]) != 1:
         return
@@ -1443,6 +1655,11 @@ def record_tournament_match_result(
     now = _utcnow()
     with connection.cursor() as cursor:
         _ensure_knockout_structure(cursor, fixture, now)
+        if (
+            fixture.get("draw_format") == "monrad"
+            and fixture.get("status") in {"completed", "walkover", "abandoned"}
+        ):
+            _ensure_monrad_downstream_editable(cursor, fixture)
         if fixture.get("status") == "completed" and fixture.get("draw_format") in {"knockout", "knockout_plate"}:
             _ensure_downstream_editable(cursor, fixture)
             old_winner = fixture.get("winner_entry_id")
@@ -1495,6 +1712,8 @@ def record_tournament_match_result(
             if fixture.get("draw_format") == "knockout_plate":
                 _place_first_round_loser(cursor, fixture, loser_id, now)
             _propagate_byes(cursor, fixture["draw_id"], fixture.get("bracket") or "championship", now)
+        elif fixture.get("draw_format") == "monrad":
+            _refresh_monrad_progression(cursor, fixture["draw_id"], now)
         cursor.execute(
             """
             UPDATE tournament_events SET revision = revision + 1, updated_at = %(updated_at)s

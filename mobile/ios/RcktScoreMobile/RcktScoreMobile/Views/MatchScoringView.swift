@@ -91,6 +91,7 @@ struct MatchScoringView: View {
         container.offlineMatchStore.projectedState(matchID: matchID) ?? match?.state
     }
     private var isOnline: Bool { container.networkMonitor.isOnline }
+    private var canManageMatches: Bool { container.sessionStore.session?.canManageMatches ?? false }
     private var isTennisMatch: Bool {
         ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
             || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
@@ -931,8 +932,8 @@ struct MatchScoringView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                    .disabled(isMutating)
-                    .opacity(isMutating ? 0.72 : 1)
+                    .disabled(isMutating || !canManageMatches)
+                    .opacity((isMutating || !canManageMatches) ? 0.72 : 1)
                     .accessibilityIdentifier("scoring.startScheduledMatchButton")
 
                     Spacer()
@@ -2274,6 +2275,10 @@ struct MatchScoringView: View {
     }
 
     private func startScheduledMatchFromScorer() async {
+        guard canManageMatches else {
+            errorMessage = "Your club role has read-only access to this match."
+            return
+        }
         guard match?.status.lowercased() == "scheduled" else {
             return
         }
@@ -2668,7 +2673,7 @@ struct MatchScoringView: View {
     }
 
     private func addPoint(for side: String) async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         guard !(isPadelMatch
             && live?.tennisNoAdScoring == true
             && live?.isTieBreak == false
@@ -2681,7 +2686,7 @@ struct MatchScoringView: View {
     }
 
     private func chooseNoAdReceiverCourt(_ side: String) async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .receiverChoice,
@@ -2692,14 +2697,14 @@ struct MatchScoringView: View {
     }
 
     private func awardStroke(to side: String) async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .stroke, matchID: matchID, playerSide: side)
         }
     }
 
     private func callLet(awardedTo side: String? = nil) async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .letCall,
@@ -2727,7 +2732,7 @@ struct MatchScoringView: View {
     }
 
     private func toggleServeSide(current: String) async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         let nextSide = current.lowercased() == "left" ? "Right" : "Left"
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .serveSide, matchID: matchID, side: nextSide)
@@ -2735,7 +2740,7 @@ struct MatchScoringView: View {
     }
 
     private func undoLastAction() async {
-        guard !isMutating, !undoLocked else { return }
+        guard canManageMatches, !isMutating, !undoLocked else { return }
         if container.offlineMatchStore.undoLastQueuedAction(matchID: matchID) {
             errorMessage = nil
             return
@@ -2752,7 +2757,7 @@ struct MatchScoringView: View {
     }
 
     private func endMatchEarly() async {
-        guard !isMutating, !isMatchComplete, !isScheduledMatch else { return }
+        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch else { return }
 
         let finalDuration = max(0, resolveMatchDurationSeconds())
         timerRunning = false

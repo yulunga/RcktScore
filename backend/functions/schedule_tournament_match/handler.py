@@ -1,7 +1,12 @@
+from common.access_control import (
+    CAPABILITY_CLUB_MEMBERS_READ,
+    CAPABILITY_TOURNAMENT_MATCH_MANAGE,
+    membership_has_capability,
+)
 from common.session_logic import SessionAuthError, authorize_organization_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.tournament.access import TournamentAccessError, require_tournament_feature
-from common.tournament.tournament_logic import schedule_tournament_match
+from common.tournament.tournament_logic import redact_tournament_private_fields, schedule_tournament_match
 from common.utils import error_response, parse_body, path_parameter, success_response
 
 
@@ -14,11 +19,18 @@ def lambda_handler(event, context):
         return error_response(400, "VALIDATION_ERROR", "tournament_id, match_id and organization_id are required")
     try:
         with get_db_connection() as connection:
-            auth_context = authorize_organization_session(connection, event, organization_id, require_admin=False)
+            auth_context = authorize_organization_session(
+                connection,
+                event,
+                organization_id,
+                required_capability=CAPABILITY_TOURNAMENT_MATCH_MANAGE,
+            )
             require_tournament_feature(connection, organization_id)
             tournament, match = schedule_tournament_match(
                 connection, tournament_id, match_id, organization_id, payload, auth_context["session"]["username"]
             )
+            if not membership_has_capability(auth_context["membership"], CAPABILITY_CLUB_MEMBERS_READ):
+                tournament = redact_tournament_private_fields(tournament)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
     except TournamentAccessError as access_error:

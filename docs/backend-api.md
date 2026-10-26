@@ -308,9 +308,11 @@ exact and prefix matches rank first and the web client displays at most four can
 `POST /tournaments/{tournament_id}/draw` persists a reviewable draft in
 `tournament_matches`; it does not publish or lock the entrant list. Round robin
 uses the circle method and produces every round. Knockout and knockout-with-plate
-persist their complete future-round trees, while Monrad currently produces its
-opening round; non-power-of-two knockout fields give top seeds byes and distribute
-seeds into separated bracket positions. Organisers
+persist their complete future-round trees. Monrad persists a complete binary
+classification tree: every result routes the winner and loser into separate
+placement bands until the final placing matches; non-power-of-two fields use
+automatic byes through the same routing. Non-power-of-two knockout fields give
+top seeds byes and distribute seeds into separated bracket positions. Organisers
 can swap first-round players through the match endpoint, then explicitly publish.
 Publishing locks entries and issues a 12-character public read-only key. Returning
 to draft requires an explicit client confirmation, disables public access, and is
@@ -320,8 +322,10 @@ actions only after both players are known. Scheduling creates a normal scheduled
 result source. An unscheduled fixture's manual result entry accepts either
 game scores (including compact values such as `1103`) or a match summary such as
 `3-1 win`. Winners advance through knockout trees and first-round championship
-losers enter a knockout-with-plate draw; later Monrad pairing and round-robin
-standings remain unimplemented. A published legacy knockout that contains only its
+losers enter a knockout-with-plate draw. Monrad winners and losers both advance
+through the appropriate classification branch, culminating in 1st–2nd, 3rd–4th
+and all subsequent placement matches; round-robin standings remain unimplemented.
+A published legacy knockout that contains only its
 opening round receives the missing future-round and plate structure when its first
 result is recorded.
 Only a match completed by its sport engine's final scoring point is synchronised
@@ -415,7 +419,7 @@ older `lambda`-sourced events remain visibly unattributed.
 Current organisation-settings behavior:
 
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
-- authenticated non-admin club members may read their own organisation settings for the web view-only Settings page; mutation routes and controls retain their existing administrator authorization
+- authenticated non-admin club members may read the club profile/courts needed for the view-only Settings experience, but `organizationSettings.users` is empty and display codes remain redacted. Only club administrators and personal owners receive the private membership directory; mutation routes remain server-authorized
 - login responses retain the complete approved `available_memberships` list so clients can switch the active account/club context without another sign-in. Each context-scoped request still supplies an organisation ID and is authorized server-side against that username's membership and role. Association Settings may inspect another listed club without implicitly switching match context; personal Profile and Subscription select the personal membership when present
 - migration `040_association_competitions.sql` adds the JSONB `association_competitions` list to club settings. `GET /organization_settings/{organization_id}` returns the club list plus a distinct cross-club `competition_catalog`; admin-authorized `PUT /organization_details/{organization_id}` accepts normalized `{name,type}` entries where type is `league` or `interclub`. Root-admin dashboard data includes the combined directory, and `DELETE /root_admin/association-competitions/{competition_name}` removes a named entry from every organisation
 - organisation user objects expose the login identity as both `username` and `email`; the current schema uses the email address as the login username, so those values are intentionally the same until a distinct public username is stored
@@ -601,14 +605,16 @@ Current deletion behavior:
 
 Current behavior:
 
-- roles are currently limited to `admin` and `user`
+- club roles are `admin`, `scorer`, and `read_only`; migration `045_club_least_privilege_roles.sql` converts every legacy `user` membership to `scorer`
+- match creation, setup lookup, scheduled activation, point/event scoring, Undo, and early completion require the central `match.manage` capability. `read_only` retains match/history/result and permitted analytics reads but cannot mutate through direct API requests
 - create path is invite-oriented
 - create path accepts optional `first_name` and `surname`
 - update path can change `username`, `first_name`, `surname`, and `role`
 - update path can change `password` only when the user email is not shared with another organisation membership
 - new or existing email addresses may be attached to multiple organisations
 - membership remains `pending` until the emailed approval link is accepted
-- organisation settings responses include org-user `first_name` and `surname` values when present
+- administrator organisation-settings responses include org-user contact/profile fields when present; non-admin responses omit the complete user collection rather than relying on client-side hiding
+- Tournament Manager detail responses remove entrant email, registered username and canonical user ID for non-admins. Admin guest profiles can offer Personal signup links; registration with the same email links the reusable player identity without creating host-club access
 - delete path removes the user from the current organisation only
 - the backend prevents deleting or demoting the last remaining admin in an organisation
 
@@ -783,6 +789,13 @@ is the idempotent, uniquely numbered replacement for the former duplicate
 authoritative migration `010`. Existing databases must be catalog-audited
 before legacy versions are inserted into the ledger. The complete staging and
 production procedure is in `docs/promotion-runbook.md`.
+
+The current pre-release Supabase database completed the legacy schema audit and
+recorded versions `001`–`044` on 26 October 2026. Its ledger contains 44 rows and
+44 distinct checksums tied to schema commit
+`c825c8c2560a1c82066d2c9aca1fa537b9002061`. This baseline describes only that
+database; a future production database must be migrated or independently
+audited rather than copying the assertion without validation.
 
 Before production release, Supabase is operating as one pre-release environment
 with daily backups rather than separate staging and production databases. The

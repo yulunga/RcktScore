@@ -36,7 +36,7 @@ export default function OrganisationUserPage() {
     first_name: "",
     surname: "",
     username: "",
-    role: "user",
+    role: "scorer",
     password: "",
   });
 
@@ -60,7 +60,7 @@ export default function OrganisationUserPage() {
         first_name: nextUser.first_name || "",
         surname: nextUser.surname || "",
         username: nextUser.username || "",
-        role: nextUser.role || "user",
+        role: nextUser.role === "user" ? "scorer" : (nextUser.role || "scorer"),
         password: "",
       });
     }
@@ -224,9 +224,13 @@ export default function OrganisationUserPage() {
                   value={form.role}
                   onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}
                 >
-                  <option value="user">User</option>
                   <option value="admin">Admin</option>
+                  <option value="scorer">Scorer</option>
+                  <option value="read_only">Read only</option>
                 </select>
+                <p className="helper-text">
+                  Scorers can create and run matches. Read-only members can view matches, history and permitted analytics.
+                </p>
               </div>
               <div className="field settings-field-wide">
                 <label htmlFor="edit_password">Password</label>

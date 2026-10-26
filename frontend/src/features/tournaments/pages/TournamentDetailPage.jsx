@@ -19,7 +19,9 @@ import {
   updateTournamentEntry,
 } from "../../../services/api";
 import TournamentBracket from "../components/TournamentBracket";
+import MonradDraw from "../components/MonradDraw";
 import { optionLabel, TOURNAMENT_FORMATS, TOURNAMENT_SPORTS } from "../tournamentOptions";
+import { canManageMatches } from "../../../utils/accessControl";
 
 const EMPTY_ENTRY = {
   first_name: "",
@@ -106,6 +108,17 @@ function findAddedEntry(nextTournament, player) {
   return entries.find((entry) => (
     entry.first_name === player.first_name && entry.surname === player.surname
   ));
+}
+
+function guestSignupUrl(entry, plan = "personal_free") {
+  const parameters = new URLSearchParams({
+    interest: "1",
+    plan,
+    first_name: entry.first_name || "",
+    surname: entry.surname || "",
+    email: entry.email || "",
+  });
+  return `/login?${parameters.toString()}#want-in`;
 }
 
 function AbilitySelector({ value, onChange, idPrefix }) {
@@ -211,6 +224,7 @@ export default function TournamentDetailPage() {
   const { session } = useAuth();
   const organizationId = session?.organization_id;
   const isAdmin = session?.role === "admin";
+  const canManageTournamentMatches = canManageMatches(session);
   const [tournament, setTournament] = useState(null);
   const [entryForm, setEntryForm] = useState(EMPTY_ENTRY);
   const [searchQuery, setSearchQuery] = useState("");
@@ -836,6 +850,21 @@ export default function TournamentDetailPage() {
                   {generatedDraws.map((draw) => {
                     const drawEntries = (tournament.entries || []).filter((entry) => !draw.grade || entry.ability_grade === draw.grade);
                     const knockout = tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate";
+                    if (tournament.draw_format === "monrad") {
+                      return (
+                        <MonradDraw
+                          key={draw.id || draw.name}
+                          draw={draw}
+                          entries={drawEntries}
+                          editable={isAdmin && entriesEditable && !drawing}
+                          isAdmin={isAdmin}
+                          title={`${draw.name} — Monrad`}
+                          onMove={handleMovePlayer}
+                          onSchedule={tournament.status === "draw_published" && canManageTournamentMatches ? openScheduleMatch : undefined}
+                          onScore={tournament.status === "draw_published" && canManageTournamentMatches ? openScoreMatch : undefined}
+                        />
+                      );
+                    }
                     return knockout ? (
                       <React.Fragment key={draw.id || draw.name}>
                         <TournamentBracket
@@ -845,16 +874,16 @@ export default function TournamentDetailPage() {
                           isAdmin={isAdmin}
                           title={`${draw.name} — Championship`}
                           onMove={handleMovePlayer}
-                          onSchedule={tournament.status === "draw_published" ? openScheduleMatch : undefined}
-                          onScore={tournament.status === "draw_published" ? openScoreMatch : undefined}
+                          onSchedule={tournament.status === "draw_published" && canManageTournamentMatches ? openScheduleMatch : undefined}
+                          onScore={tournament.status === "draw_published" && canManageTournamentMatches ? openScoreMatch : undefined}
                         />
                         {tournament.draw_format === "knockout_plate" && ((draw.plate_matches || []).length || buildPlateDraw(draw).matches.length) ? (
                           <TournamentBracket
                             draw={(draw.plate_matches || []).length ? { ...draw, id: `${draw.id}-plate`, matches: draw.plate_matches } : buildPlateDraw(draw)}
                             isAdmin={isAdmin}
                             title={`${draw.name} — Plate`}
-                            onSchedule={tournament.status === "draw_published" ? openScheduleMatch : undefined}
-                            onScore={tournament.status === "draw_published" ? openScoreMatch : undefined}
+                            onSchedule={tournament.status === "draw_published" && canManageTournamentMatches ? openScheduleMatch : undefined}
+                            onScore={tournament.status === "draw_published" && canManageTournamentMatches ? openScoreMatch : undefined}
                           />
                         ) : null}
                       </React.Fragment>
@@ -872,9 +901,6 @@ export default function TournamentDetailPage() {
                       </section>
                     );
                   })}
-                  {tournament.draw_format === "monrad" ? (
-                    <p className="helper-text">Later Monrad rounds will be paired from standings after opening-round results.</p>
-                  ) : null}
                 </div>
               ) : (
                 <>
@@ -1209,6 +1235,17 @@ export default function TournamentDetailPage() {
                                 </EntryIndicator>
                               ) : null}
                             </div>
+                            {isAdmin && entry.relationship === "guest" && entry.claim_status !== "linked" && entry.email ? (
+                              <div className="button-row tournament-entry-card__signup-actions">
+                                <a className="button-link secondary" href={guestSignupUrl(entry)} target="_blank" rel="noreferrer">
+                                  Personal signup
+                                </a>
+                                <a className="button-link secondary" href={guestSignupUrl(entry, "personal_plus")} target="_blank" rel="noreferrer">
+                                  Personal Plus signup
+                                </a>
+                                <small>Share the appropriate link with this guest. Their tournament profile links automatically when they register with this email.</small>
+                              </div>
+                            ) : null}
                           </div>
                           {isAdmin && entriesEditable ? (
                             <button

@@ -45,7 +45,7 @@ function formatWebsiteForSave(value) {
 const emptyUserForm = {
   username: "",
   password: "",
-  role: "user",
+  role: "scorer",
 };
 
 const emptyCourtForm = {
@@ -145,7 +145,7 @@ export default function RootAdminClubPage() {
       ),
     );
     setUserRoleDrafts(
-      Object.fromEntries((nextSettings?.users || []).map((user) => [user.id, user.role || "user"])),
+      Object.fromEntries((nextSettings?.users || []).map((user) => [user.id, user.role === "user" ? "scorer" : (user.role || "scorer")])),
     );
     setEnabledSports(normalizeEnabledSports(nextSettings?.organization?.enabled_sports));
   }, []);
@@ -521,8 +521,9 @@ export default function RootAdminClubPage() {
                   value={userForm.role}
                   onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}
                 >
-                  <option value="user">User</option>
                   <option value="admin">Admin</option>
+                  <option value="scorer">Scorer</option>
+                  <option value="read_only">Read only</option>
                 </select>
               </div>
             </div>
@@ -551,12 +552,13 @@ export default function RootAdminClubPage() {
                   </div>
                   <div className="settings-inline-actions">
                     <select
-                      value={userRoleDrafts[user.id] || user.role || "user"}
+                      value={userRoleDrafts[user.id] || user.role || "scorer"}
                       onChange={(event) =>
                         setUserRoleDrafts((current) => ({ ...current, [user.id]: event.target.value }))}
                     >
-                      <option value="user">User</option>
                       <option value="admin">Admin</option>
+                      <option value="scorer">Scorer</option>
+                      <option value="read_only">Read only</option>
                     </select>
                     <button
                       className="secondary"

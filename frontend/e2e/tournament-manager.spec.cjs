@@ -432,3 +432,47 @@ test("opens a published draw without login using its public key @tournament", as
   await expect(page.getByRole("heading", { name: tournament.name })).toBeVisible();
   await expect(page.locator(".tournament-bracket-match")).toContainText("Public One");
 });
+
+test("renders Monrad as a full placement draw with finishing positions @tournament", async ({ page }) => {
+  const entries = Array.from({ length: 16 }, (_value, index) => ({
+    id: `entry-${index + 1}`,
+    display_name: `Monrad Player ${index + 1}`,
+    seed: index < 4 ? index + 1 : null,
+  }));
+  const matches = [];
+  for (let roundNumber = 1; roundNumber <= 4; roundNumber += 1) {
+    for (let matchNumber = 1; matchNumber <= 8; matchNumber += 1) {
+      matches.push({
+        id: `monrad-${roundNumber}-${matchNumber}`,
+        round_number: roundNumber,
+        match_number: matchNumber,
+        status: "pending",
+        player1_entry_id: roundNumber === 1 ? entries[(matchNumber - 1) * 2].id : null,
+        player2_entry_id: roundNumber === 1 ? entries[((matchNumber - 1) * 2) + 1].id : null,
+        player1_name: roundNumber === 1 ? entries[(matchNumber - 1) * 2].display_name : null,
+        player2_name: roundNumber === 1 ? entries[((matchNumber - 1) * 2) + 1].display_name : null,
+      });
+    }
+  }
+  const monradTournament = {
+    ...tournament,
+    draw_format: "monrad",
+    graded_enabled: false,
+    entries,
+    entry_count: entries.length,
+    draws: [{ id: "monrad-draw", name: "Open Draw", status: "draft", matches }],
+  };
+  await page.route(`**/tournaments/${tournament.id}?*`, async (route) => route.fulfill({ json: envelope({ tournament: monradTournament }) }));
+
+  await page.goto(`/tournaments/${tournament.id}`);
+
+  await expect(page.locator(".tournament-monrad-round")).toHaveCount(5);
+  await expect(page.getByText("Last 16", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quarters", { exact: true })).toBeVisible();
+  await expect(page.getByText("Semis", { exact: true })).toBeVisible();
+  await expect(page.getByText("Finals", { exact: true })).toBeVisible();
+  await expect(page.getByText("Finishing", { exact: true })).toBeVisible();
+  await expect(page.getByText("1st–2nd", { exact: true })).toBeVisible();
+  await expect(page.getByText("15th–16th", { exact: true })).toBeVisible();
+  await expect(page.getByText("Later Monrad rounds will be paired", { exact: false })).toHaveCount(0);
+});

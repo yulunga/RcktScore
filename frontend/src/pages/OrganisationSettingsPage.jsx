@@ -18,6 +18,7 @@ import {
   updateOrganizationCourt,
   updateOrganizationDetails,
 } from "../services/api";
+import { clubRoleLabel } from "../utils/accessControl";
 
 const emptyOrganizationForm = {
   organization_name: "",
@@ -33,7 +34,7 @@ const emptyUserForm = {
   surname: "",
   username: "",
   password: "",
-  role: "user",
+  role: "scorer",
 };
 
 const emptyCourtForm = {
@@ -1177,8 +1178,9 @@ export default function OrganisationSettingsPage() {
                       value={userForm.role}
                       onChange={(event) => setUserForm((current) => ({ ...current, role: event.target.value }))}
                     >
-                      <option value="user">User</option>
                       <option value="admin">Admin</option>
+                      <option value="scorer">Scorer</option>
+                      <option value="read_only">Read only</option>
                     </select>
                   </div>
                 </div>
@@ -1217,7 +1219,7 @@ export default function OrganisationSettingsPage() {
                       <span>{user.email || user.username}</span>
                     </div>
                     <div className="settings-row-actions">
-                      <span className="settings-role-badge" title={`Role: ${user.role}`}>{user.role || "user"}</span>
+                      <span className="settings-role-badge" title={`Role: ${clubRoleLabel(user.role)}`}>{clubRoleLabel(user.role)}</span>
                       <span
                         aria-label={user.status === "pending" ? "Approval pending" : "Approved"}
                         className={`settings-status-icon${user.status === "pending" ? " pending" : ""}`}

@@ -1,5 +1,6 @@
 from aws_lambda_powertools import Logger
 
+from common.access_control import CAPABILITY_MATCH_MANAGE
 from common.match_logic import create_match, is_personal_tenant, websocket_payload
 from common.session_logic import (
     SessionAuthError,
@@ -24,7 +25,12 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            auth_context = authorize_organization_session(connection, event, payload["tenant_id"], require_admin=False)
+            auth_context = authorize_organization_session(
+                connection,
+                event,
+                payload["tenant_id"],
+                required_capability=CAPABILITY_MATCH_MANAGE,
+            )
             requested_sport = str(payload.get("sport") or "squash").strip().lower()
             if requested_sport not in auth_context["membership"].get("enabled_sports", []):
                 return error_response(

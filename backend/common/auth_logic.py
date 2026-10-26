@@ -2,6 +2,7 @@ from werkzeug.security import check_password_hash
 
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
 from common.sport_config import client_sport_field, effective_enabled_sports, normalize_enabled_sports
+from common.access_control import normalize_membership_role
 
 
 def _serialize_org_user(user_row, client_type="web_app"):
@@ -39,7 +40,7 @@ def _serialize_org_user(user_row, client_type="web_app"):
     return {
         "id": user_row["id"],
         "username": user_row["clubusername"],
-        "role": user_row.get("role") or "user",
+        "role": normalize_membership_role(user_row.get("role")),
         "organization_id": user_row["organization_id"],
         "organization_name": user_row.get("organization_name"),
         "organization_type": user_row.get("org_type") or "club",

@@ -1,5 +1,6 @@
 from aws_lambda_powertools import Logger
 
+from common.access_control import CAPABILITY_MATCH_MANAGE
 from common.match_logic import activate_scheduled_match, websocket_payload
 from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
@@ -17,7 +18,9 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_match_session(connection, event, match_id)
+            authorize_match_session(
+                connection, event, match_id, required_capability=CAPABILITY_MATCH_MANAGE
+            )
             try:
                 match = activate_scheduled_match(connection, match_id)
             except ValueError as exc:

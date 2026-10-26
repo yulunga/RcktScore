@@ -118,7 +118,8 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
         username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
-        role = try container.decodeIfPresent(String.self, forKey: .role) ?? "user"
+        let decodedRole = try container.decodeIfPresent(String.self, forKey: .role) ?? "scorer"
+        role = decodedRole == "user" ? "scorer" : decodedRole
         status = try container.decodeIfPresent(String.self, forKey: .status) ?? "approved"
         firstName = try container.decodeIfPresent(String.self, forKey: .firstName) ?? ""
         surname = try container.decodeIfPresent(String.self, forKey: .surname) ?? ""
@@ -399,7 +400,7 @@ struct OrganizationUserDraft {
     var surname: String = ""
     var username: String = ""
     var password: String = ""
-    var role: String = "user"
+    var role: String = "scorer"
 
     init() {}
 

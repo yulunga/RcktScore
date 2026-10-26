@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import PublicAccessHeader from "../../../components/PublicAccessHeader";
 import { getPublicTournamentDraw } from "../../../services/api";
 import TournamentBracket from "../components/TournamentBracket";
+import MonradDraw from "../components/MonradDraw";
 import { optionLabel, TOURNAMENT_FORMATS, TOURNAMENT_SPORTS } from "../tournamentOptions";
 
 function publicPlateDraw(draw) {
@@ -82,7 +83,9 @@ export default function PublicTournamentDrawPage() {
           </section>
           {(tournament.draws || []).filter((draw) => (draw.matches || []).length).map((draw) => (
             <section className="panel" key={draw.id || draw.name}>
-              {tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate" ? (
+              {tournament.draw_format === "monrad" ? (
+                <MonradDraw draw={draw} entries={tournament.entries || []} title={`${draw.name} — Monrad`} />
+              ) : tournament.draw_format === "knockout" || tournament.draw_format === "knockout_plate" ? (
                 <div className="stack">
                   <TournamentBracket draw={draw} entries={tournament.entries || []} title={`${draw.name} — Championship`} />
                   {tournament.draw_format === "knockout_plate" && ((draw.plate_matches || []).length || publicPlateDraw(draw).matches.length) ? (

@@ -10,8 +10,9 @@ from common.notification_templates import render_branded_email, render_notificat
 from common.scoreboard_logic import generate_unique_display_code
 from common.sport_config import constrain_enabled_sports, normalize_enabled_sports, normalize_sport_id
 from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
+from common.access_control import VALID_MEMBERSHIP_ROLES, normalize_membership_role
 
-VALID_ROLES = {"admin", "user"}
+VALID_ROLES = VALID_MEMBERSHIP_ROLES
 USER_STATUS_PENDING = "pending"
 USER_STATUS_APPROVED = "approved"
 VALID_USER_STATUSES = {USER_STATUS_PENDING, USER_STATUS_APPROVED}
@@ -102,7 +103,7 @@ def _serialize_user(row):
         "id": row["id"],
         "username": row["clubusername"],
         "email": row["clubusername"],
-        "role": row.get("role") or "user",
+        "role": normalize_membership_role(row.get("role")),
         "status": row.get("approval_status") or USER_STATUS_APPROVED,
         "first_name": row.get("first_name") or "",
         "surname": row.get("surname") or "",
@@ -329,7 +330,13 @@ def _ensure_personal_default_court(connection, organization_id, organization_row
     connection.commit()
 
 
-def get_organization_settings(connection, organization_id, *, include_display_codes=True):
+def get_organization_settings(
+    connection,
+    organization_id,
+    *,
+    include_display_codes=True,
+    include_users=True,
+):
     org_id = int(organization_id)
 
     with connection.cursor() as cursor:
@@ -366,34 +373,36 @@ def get_organization_settings(connection, organization_id, *, include_display_co
 
     _ensure_personal_default_court(connection, org_id, organization_row)
 
+    user_rows = []
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT
-                id,
-                clubusername,
-                role,
-                approval_status,
-                first_name,
-                surname,
-                country,
-                telephone,
-                city_location,
-                created_at,
-                invitation_sent_at,
-                approved_at,
-                (
-                    SELECT COUNT(*)
-                    FROM "SkwshOrgUsers" AS all_u
-                    WHERE LOWER(all_u.clubusername) = LOWER("SkwshOrgUsers".clubusername)
-                ) AS membership_count
-            FROM "SkwshOrgUsers"
-            WHERE organization_id = %(organization_id)s
-            ORDER BY clubusername ASC
-            """,
-            {"organization_id": org_id},
-        )
-        user_rows = cursor.fetchall()
+        if include_users:
+            cursor.execute(
+                """
+                SELECT
+                    id,
+                    clubusername,
+                    role,
+                    approval_status,
+                    first_name,
+                    surname,
+                    country,
+                    telephone,
+                    city_location,
+                    created_at,
+                    invitation_sent_at,
+                    approved_at,
+                    (
+                        SELECT COUNT(*)
+                        FROM "SkwshOrgUsers" AS all_u
+                        WHERE LOWER(all_u.clubusername) = LOWER("SkwshOrgUsers".clubusername)
+                    ) AS membership_count
+                FROM "SkwshOrgUsers"
+                WHERE organization_id = %(organization_id)s
+                ORDER BY clubusername ASC
+                """,
+                {"organization_id": org_id},
+            )
+            user_rows = cursor.fetchall()
 
         cursor.execute(
             """
@@ -639,9 +648,9 @@ def create_organization_user(
     approval_base_url=None,
 ):
     org_id = int(organization_id)
-    normalized_role = (role or "user").strip().lower()
+    normalized_role = normalize_membership_role(role)
     if normalized_role not in VALID_ROLES:
-        raise ValueError("role must be admin or user")
+        raise ValueError("role must be admin, scorer or read_only")
 
     trimmed_username = normalize_email_address(username)
     if not trimmed_username:
@@ -746,9 +755,9 @@ def update_organization_user(connection, organization_id, user_id, payload):
     if not is_valid_email_address(target_username):
         raise ValueError("Username must be a valid email address")
 
-    normalized_role = (payload.get("role") or existing_row.get("role") or "user").strip().lower()
+    normalized_role = normalize_membership_role(payload.get("role") or existing_row.get("role"))
     if normalized_role not in VALID_ROLES:
-        raise ValueError("role must be admin or user")
+        raise ValueError("role must be admin, scorer or read_only")
 
     conflicting_users = get_existing_org_users_by_username(connection, target_username)
     other_memberships = [

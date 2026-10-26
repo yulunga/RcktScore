@@ -70,11 +70,13 @@ def search_match_setup_lookups(connection, organization_id, query, limit=8):
                 UNION ALL
 
                 SELECT
-                    trim(clubusername) AS referee_name,
+                    trim(CONCAT_WS(' ', first_name, surname)) AS referee_name,
                     created_at AS updated_at
                 FROM "SkwshOrgUsers"
                 WHERE organization_id = %(organization_id)s
-                  AND trim(clubusername) ILIKE %(query)s
+                  AND COALESCE(approval_status, 'approved') = 'approved'
+                  AND trim(CONCAT_WS(' ', first_name, surname)) <> ''
+                  AND trim(CONCAT_WS(' ', first_name, surname)) ILIKE %(query)s
             )
             SELECT DISTINCT ON (lower(referee_name))
                 referee_name

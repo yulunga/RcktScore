@@ -1,43 +1,45 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import AnalyticsRouteTracker from "./components/AnalyticsRouteTracker";
 import CookieConsent from "./components/CookieConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RootAdminProtectedRoute from "./components/RootAdminProtectedRoute";
-import DisplayScreen from "./pages/DisplayScreen";
-import DashboardPage from "./pages/DashboardPage";
-import HelpPage from "./pages/HelpPage";
-import HistoricMatchPage from "./pages/HistoricMatchPage";
 import LoginPage from "./pages/LoginPage";
-import MatchSportSelectionPage from "./pages/MatchSportSelectionPage";
-import MatchScreen from "./pages/MatchScreen";
-import NewMatch from "./pages/NewMatch";
-import NotificationsPage from "./pages/NotificationsPage";
-import SettingsHubPage from "./pages/SettingsHubPage";
-import OrganisationUserPage from "./pages/OrganisationUserPage";
-import PerformancePage from "./pages/PerformancePage";
-import PingUsPage from "./pages/PingUsPage";
-import ProfilePage from "./pages/ProfilePage";
-import RootAdminClubPage from "./pages/RootAdminClubPage";
-import RootAdminDashboardPage from "./pages/RootAdminDashboardPage";
-import RootAdminInterestRequestsPage from "./pages/RootAdminInterestRequestsPage";
-import RootAdminLoginPage from "./pages/RootAdminLoginPage";
-import RootAdminMatchesPage from "./pages/RootAdminMatchesPage";
-import RootAdminNotificationsPage from "./pages/RootAdminNotificationsPage";
-import RootAdminPlatformSportsPage from "./pages/RootAdminPlatformSportsPage";
-import RootAdminSubscriptionsPage from "./pages/RootAdminSubscriptionsPage";
-import RootAdminUserAccountsPage from "./pages/RootAdminUserAccountsPage";
-import RootAdminUserProfilePage from "./pages/RootAdminUserProfilePage";
-import RemoteMatchPage from "./pages/RemoteMatchPage";
-import TournamentDetailPage from "./features/tournaments/pages/TournamentDetailPage";
-import TournamentListPage from "./features/tournaments/pages/TournamentListPage";
-import PublicTournamentDrawPage from "./features/tournaments/pages/PublicTournamentDrawPage";
+
+const DisplayScreen = lazy(() => import("./pages/DisplayScreen"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
+const HistoricMatchPage = lazy(() => import("./pages/HistoricMatchPage"));
+const MatchSportSelectionPage = lazy(() => import("./pages/MatchSportSelectionPage"));
+const MatchScreen = lazy(() => import("./pages/MatchScreen"));
+const NewMatch = lazy(() => import("./pages/NewMatch"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const SettingsHubPage = lazy(() => import("./pages/SettingsHubPage"));
+const OrganisationUserPage = lazy(() => import("./pages/OrganisationUserPage"));
+const PerformancePage = lazy(() => import("./pages/PerformancePage"));
+const PingUsPage = lazy(() => import("./pages/PingUsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const RootAdminClubPage = lazy(() => import("./pages/RootAdminClubPage"));
+const RootAdminDashboardPage = lazy(() => import("./pages/RootAdminDashboardPage"));
+const RootAdminInterestRequestsPage = lazy(() => import("./pages/RootAdminInterestRequestsPage"));
+const RootAdminLoginPage = lazy(() => import("./pages/RootAdminLoginPage"));
+const RootAdminMatchesPage = lazy(() => import("./pages/RootAdminMatchesPage"));
+const RootAdminNotificationsPage = lazy(() => import("./pages/RootAdminNotificationsPage"));
+const RootAdminPlatformSportsPage = lazy(() => import("./pages/RootAdminPlatformSportsPage"));
+const RootAdminSubscriptionsPage = lazy(() => import("./pages/RootAdminSubscriptionsPage"));
+const RootAdminUserAccountsPage = lazy(() => import("./pages/RootAdminUserAccountsPage"));
+const RootAdminUserProfilePage = lazy(() => import("./pages/RootAdminUserProfilePage"));
+const RemoteMatchPage = lazy(() => import("./pages/RemoteMatchPage"));
+const TournamentDetailPage = lazy(() => import("./features/tournaments/pages/TournamentDetailPage"));
+const TournamentListPage = lazy(() => import("./features/tournaments/pages/TournamentListPage"));
+const PublicTournamentDrawPage = lazy(() => import("./features/tournaments/pages/PublicTournamentDrawPage"));
 
 export default function App() {
   return (
     <>
       <AnalyticsRouteTracker />
+      <Suspense fallback={<main className="page-shell"><div className="notice">Loading…</div></main>}>
       <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -216,7 +218,7 @@ export default function App() {
       <Route
         path="/match/new"
         element={(
-          <ProtectedRoute>
+          <ProtectedRoute requireMatchManagement>
             <MatchSportSelectionPage />
           </ProtectedRoute>
         )}
@@ -224,7 +226,7 @@ export default function App() {
       <Route
         path="/match/new/setup"
         element={(
-          <ProtectedRoute>
+          <ProtectedRoute requireMatchManagement>
             <NewMatch />
           </ProtectedRoute>
         )}
@@ -248,6 +250,7 @@ export default function App() {
       <Route path="/scoreboard" element={<DisplayScreen />} />
       <Route path="/display" element={<DisplayScreen />} />
       </Routes>
+      </Suspense>
       <CookieConsent />
     </>
   );

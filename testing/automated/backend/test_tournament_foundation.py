@@ -200,6 +200,45 @@ def test_round_robin_circle_method(entrant_count, round_count, matches_per_round
     assert len(pairings) == entrant_count * (entrant_count - 1) // 2
 
 
+def test_sixteen_player_monrad_routes_winners_and_losers_into_placement_bands():
+    assert tournament_logic._monrad_round_count(8) == 4
+    assert tournament_logic._monrad_destination(8, 1, 1, "winner") == {
+        "round_number": 2,
+        "match_number": 1,
+        "slot": "player1_entry_id",
+    }
+    assert tournament_logic._monrad_destination(8, 1, 1, "loser") == {
+        "round_number": 2,
+        "match_number": 5,
+        "slot": "player1_entry_id",
+    }
+    assert tournament_logic._monrad_destination(8, 2, 3, "winner") == {
+        "round_number": 3,
+        "match_number": 2,
+        "slot": "player1_entry_id",
+    }
+    assert tournament_logic._monrad_destination(8, 2, 3, "loser") == {
+        "round_number": 3,
+        "match_number": 4,
+        "slot": "player1_entry_id",
+    }
+
+
+@pytest.mark.parametrize(
+    ("round_number", "match_number", "expected"),
+    [
+        (1, 8, (1, 16)),
+        (2, 1, (1, 8)),
+        (2, 5, (9, 16)),
+        (3, 3, (5, 8)),
+        (4, 1, (1, 2)),
+        (4, 8, (15, 16)),
+    ],
+)
+def test_monrad_matches_expose_the_correct_placement_range(round_number, match_number, expected):
+    assert tournament_logic._monrad_placement_range(8, round_number, match_number) == expected
+
+
 def test_missing_draw_table_falls_back_to_expected_draw_groups():
     assert [draw["name"] for draw in tournament_logic._default_draw_groups({"graded_enabled": True})] == [
         "Grade A", "Grade B", "Grade C", "Grade D",

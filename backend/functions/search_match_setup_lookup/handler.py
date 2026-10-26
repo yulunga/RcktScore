@@ -1,3 +1,4 @@
+from common.access_control import CAPABILITY_MATCH_MANAGE
 from common.match_setup_logic import search_match_setup_lookups
 from common.session_logic import (
     SessionAuthError,
@@ -17,7 +18,12 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, organization_id, require_admin=False)
+            authorize_organization_session(
+                connection,
+                event,
+                organization_id,
+                required_capability=CAPABILITY_MATCH_MANAGE,
+            )
             lookups = search_match_setup_lookups(connection, organization_id, query)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

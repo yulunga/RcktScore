@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 import { registerInterest } from "../services/api";
+import { clubRoleLabel } from "../utils/accessControl";
 
 function createCaptchaChallenge() {
   const left = Math.floor(Math.random() * 8) + 2;
@@ -51,6 +52,8 @@ export default function LoginPage() {
   const redirectTo = location.state?.from?.pathname || "/dashboard";
   const shouldOpenInterestFormFromUrl = new URLSearchParams(location.search).get("interest") === "1"
     || location.hash === "#want-in";
+  const signupParameters = new URLSearchParams(location.search);
+  const requestedPersonalPlan = signupParameters.get("plan") === "personal_plus" ? "personal_plus" : "personal_free";
   const hasInterestDraft = Boolean(
     interestFirstName.trim()
     || interestSurname.trim()
@@ -77,6 +80,10 @@ export default function LoginPage() {
     setInterestMessage("");
     setInterestCaptcha(createCaptchaChallenge());
     setInterestAnswer("");
+    setInterestFirstName(signupParameters.get("first_name") || "");
+    setInterestSurname(signupParameters.get("surname") || "");
+    setInterestEmail(signupParameters.get("email") || "");
+    setInterestUseType("personal");
   }, [shouldOpenInterestFormFromUrl]);
 
   useEffect(() => {
@@ -278,7 +285,7 @@ export default function LoginPage() {
                         }}
                       >
                         <strong>{membership.organization_name || `Organisation ${membership.organization_id}`}</strong>
-                        <span>{membership.role || "user"}</span>
+                        <span>{clubRoleLabel(membership.role)}</span>
                       </button>
                     ))}
                   </div>
@@ -367,6 +374,11 @@ export default function LoginPage() {
                     Looking for a multi-user account for a racket club? Club accounts are currently set up with our
                     team. Register your interest and we’ll be in touch.
                   </p>
+                  {requestedPersonalPlan === "personal_plus" ? (
+                    <div className="notice">
+                      Create your Personal account first, then choose Personal Plus from Subscription after signing in.
+                    </div>
+                  ) : null}
 
                   <div className="field-grid">
                     <div className="field">

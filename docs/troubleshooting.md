@@ -512,6 +512,7 @@ Relevant files:
 - `backend/schema/checksums.sha256`
 - `scripts/check_migrations.py`
 - `scripts/migration-baseline-audit.sql`
+- `scripts/migration-ledger-status.sql`
 - `docs/promotion-runbook.md`
 
 Most relevant current tables:
@@ -544,6 +545,11 @@ If behavior seems impossible:
   separate production database exists
 - keep `010_match_shirt_colors.sql` as version `010`; the old duplicate user
   profile migration is reconciled by `044_reconcile_user_profile_fields.sql`
+- the pre-release database baseline completed on 26 October 2026 with versions
+  `001`–`044`, 44 distinct checksums, and schema commit
+  `c825c8c2560a1c82066d2c9aca1fa537b9002061`. Use
+  `scripts/migration-ledger-status.sql` to investigate later drift; the guarded
+  baseline insert must not be rerun
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
@@ -790,8 +796,12 @@ button becomes available, confirm `034_tournament_draw_matches.sql` has been
 applied. Draw generation now creates an editable draft; only **Publish Draw**
 changes the event to `draw_published` and locks entry changes. Round robin creates
 every round; knockout and knockout-with-plate create complete future-round trees,
-while Monrad currently creates the opening round only. Knockout winners progress
-automatically, and first-round knockout-with-plate losers populate the plate. Older
+and Monrad creates the complete classification tree with the same number of
+fixtures in every round. Knockout winners progress automatically, first-round
+knockout-with-plate losers populate the plate, and each Monrad result routes both
+players into the next placement band. If a Monrad screen shows only an opening
+knockout tree, regenerate the still-draft draw after deploying the updated backend.
+Older
 published knockout draws with opening-round rows only backfill their future rounds
 when the first result is saved after migration `036`.
 A generated, unpublished draw is shown as **Draw ready**, with **Publish Draw**
@@ -817,8 +827,10 @@ label is missing from Scheduled Matches, confirm migration `036` and the updated
 match serializers are deployed together. Once scheduled, enter the result through
 that linked scoring match; the separate manual score action is removed to prevent
 two conflicting result sources. Ordinary approved members can enter an unscheduled
-fixture's first result, but only club admins can use **Edit Score**. Admin corrections are
-rejected when a dependent next-round fixture has already started or completed.
+fixture's first result, but only club admins can use **Edit Score**. Admin corrections
+are rejected when a dependent next-round fixture has already started or completed.
+For Monrad, that safeguard checks later placement fixtures for both players because
+changing the original winner also changes the original loser's classification path.
 If a linked match was ended by an operator or automatically after 12 hours idle,
 it must show **Awaiting decision** and an admin-only **Resolve Outcome** action.
 Retirement and concession advance the opponent, walkover advances the selected
@@ -834,3 +846,9 @@ must be edited through the account/membership workflow instead.
 The pink link icon means the player identity is connected to a registered
 HitNScore account. The member icon independently means the account has an
 approved membership of the host club; neither indicator creates new entitlement.
+If a member can view a tournament but cannot schedule or score a fixture, check
+that migration `045_club_least_privilege_roles.sql` is applied and that the
+membership role is `admin` or `scorer`. A `read_only` response is intentional.
+Non-admin tournament responses must not contain entrant email,
+`registered_username`, or canonical `user_id` fields.
+

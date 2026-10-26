@@ -112,6 +112,14 @@ extension UserSession {
         true
     }
 
+    var normalizedClubRole: String {
+        role.lowercased() == "user" ? "scorer" : role.lowercased()
+    }
+
+    var canManageMatches: Bool {
+        isPersonalAccount || ["admin", "scorer"].contains(normalizedClubRole)
+    }
+
     func switchingMembership(to membership: UserMembership) -> UserSession {
         UserSession(
             id: membership.id,

@@ -1,5 +1,10 @@
 from aws_lambda_powertools import Logger
 
+from common.access_control import (
+    CAPABILITY_CLUB_MEMBERS_READ,
+    CAPABILITY_CLUB_SETTINGS_WRITE,
+    membership_has_capability,
+)
 from common.organization_logic import get_organization_settings
 from common.session_logic import (
     SessionAuthError,
@@ -30,13 +35,16 @@ def lambda_handler(event, context):
             )
             if auth_context.get("root_admin_session"):
                 include_display_codes = True
+                include_users = True
             else:
                 membership = auth_context["membership"]
-                include_display_codes = membership["role"] == "admin" or membership["organization_type"] == "personal"
+                include_display_codes = membership_has_capability(membership, CAPABILITY_CLUB_SETTINGS_WRITE)
+                include_users = membership_has_capability(membership, CAPABILITY_CLUB_MEMBERS_READ)
             settings = get_organization_settings(
                 connection,
                 organization_id,
                 include_display_codes=include_display_codes,
+                include_users=include_users,
             )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)

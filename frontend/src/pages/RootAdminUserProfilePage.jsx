@@ -305,7 +305,7 @@ export default function RootAdminUserProfilePage() {
                 </div>
                 <div className="field">
                   <label htmlFor="user_profile_role">Role</label>
-                  <select id="user_profile_role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}><option value="user">User</option><option value="admin">Admin</option></select>
+                  <select id="user_profile_role" value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}><option value="admin">Admin</option><option value="scorer">Scorer</option><option value="read_only">Read only</option></select>
                 </div>
                 <div className="button-row root-admin-profile-add-action">
                   <button disabled={savingKey === "add-club" || !availableClubs.length} type="submit">{savingKey === "add-club" ? "Sending Invitation..." : "Add Club Association"}</button>

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { getNotifications, getOrganizationSettings } from "../services/api";
 import AccountContextSwitcher from "./AccountContextSwitcher";
+import { canManageMatches } from "../utils/accessControl";
 
 function inferOrganizationType(session) {
   if (session?.organization_type) {
@@ -101,6 +102,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const isNewMatchOverlay = location.pathname === "/dashboard" && location.hash === "#new-match";
   const isNewMatchRoute = location.pathname === "/match/new" || location.pathname.startsWith("/match/new/");
   const profileUsername = session?.username || "Signed-in user";
+  const matchManagementEnabled = canManageMatches(session);
   const headerMenuItems = [
     {
       label: "Home",
@@ -109,14 +111,14 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       onClick: () => navigate("/dashboard"),
       isActive: location.pathname === "/dashboard" && !isNewMatchOverlay,
     },
-    {
+    ...(matchManagementEnabled ? [{
       label: "Start New Match",
       icon: "add",
       iconOnly: true,
       isPrimary: true,
       onClick: () => navigate("/dashboard#new-match"),
       isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"),
-    },
+    }] : []),
     {
       label: "Matches",
       icon: "matches",
@@ -150,7 +152,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   ];
   const mobileMenuItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
-    { label: "Start New Match", icon: "add", onClick: () => navigate("/dashboard#new-match"), isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"), accent: true },
+    ...(matchManagementEnabled ? [{ label: "Start New Match", icon: "add", onClick: () => navigate("/dashboard#new-match"), isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"), accent: true }] : []),
     {
       label: "Matches",
       icon: "matches",

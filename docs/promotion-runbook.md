@@ -85,6 +85,11 @@ is non-empty or the `043`/`044` bootstrap checks fail. Do not reuse that static
 baseline file for another environment; repeat the audit and generate evidence
 for that database instead.
 
+That baseline completed successfully on 26 October 2026 with 44 rows, versions
+`001`–`044`, 44 distinct checksums, and a matching Git commit. Use the read-only
+`scripts/migration-ledger-status.sql` query to export the current ledger for
+later release evidence; do not rerun the baseline transaction.
+
 Keep `010_match_shirt_colors.sql` as version `010`. Do not shift migrations
 `011`–`042`. Historical databases may already contain the profile fields from
 the old duplicate `010`; migration `044` safely confirms them with

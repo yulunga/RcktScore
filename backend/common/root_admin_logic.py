@@ -25,6 +25,7 @@ from common.organization_logic import (
     delete_organization_user,
     update_organization_user_role,
 )
+from common.access_control import normalize_membership_role
 from common.password_reset_logic import RESET_TOKEN_TTL_HOURS
 
 
@@ -40,7 +41,7 @@ def _serialize_root_admin_user(row):
     return {
         "id": row["id"],
         "username": row.get("clubusername") or "",
-        "role": row.get("role") or "user",
+        "role": normalize_membership_role(row.get("role")),
         "organization_id": row["organization_id"],
         "organization_name": row.get("organization_name") or "",
         "created_at": created_at.isoformat() if created_at else None,
@@ -432,7 +433,7 @@ def preview_root_admin_platform_sports(connection, enabled_sports_web, enabled_s
                 "organization_id": row["organization_id"],
                 "organization_name": row.get("organization_name") or f"Organisation {row['organization_id']}",
                 "organization_type": row.get("org_type") or "club",
-                "role": row.get("role") or "user",
+                "role": normalize_membership_role(row.get("role")),
                 "status": row.get("approval_status") or "approved",
                 "enabled_sports_web": web_sports,
                 "enabled_sports_ios": ios_sports,
@@ -816,6 +817,25 @@ def create_self_service_personal_account(
         updated_by="self-service signup",
         reset_base_url=reset_base_url,
     )
+    # A tournament guest with the same verified signup email becomes linked to
+    # the canonical account automatically; the tournament relationship remains
+    # `guest` and does not grant access to its host club.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE players AS player
+            SET user_id = identity.id,
+                registered_username = identity.email,
+                claim_status = 'linked',
+                claimed_at = COALESCE(player.claimed_at, now()),
+                updated_at = now()
+            FROM "users" AS identity
+            WHERE identity.email_normalized = LOWER(BTRIM(%(email)s))
+              AND LOWER(BTRIM(player.email)) = identity.email_normalized
+              AND (player.user_id IS NULL OR player.user_id = identity.id)
+            """,
+            {"email": interest_row["email"]},
+        )
     # Persist the pending account and verification token before attempting
     # delivery. If SES is temporarily unavailable, a retry can refresh and
     # resend the link without losing the registration record.
@@ -1662,7 +1682,7 @@ def get_root_admin_user_profile(connection, user_id):
                 "organization_name": row.get("organization_name") or f"Organisation {row['organization_id']}",
                 "organization_type": row.get("org_type") or "club",
                 "plan": row.get("plan") or ("personal_free" if row.get("org_type") == "personal" else "club_essentials"),
-                "role": row.get("role") or "user",
+                "role": normalize_membership_role(row.get("role")),
                 "status": row.get("approval_status") or "approved",
                 "enabled_sports": organization_enabled_sports,
                 "enabled_sports_web": effective_enabled_sports(

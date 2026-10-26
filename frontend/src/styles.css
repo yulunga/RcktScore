@@ -625,6 +625,153 @@
   font-weight: 600 !important;
 }
 
+.tournament-monrad-help {
+  margin: -0.25rem 0 0.75rem;
+}
+
+.tournament-monrad-grid {
+  display: grid;
+  grid-auto-columns: 250px;
+  grid-auto-flow: column;
+  gap: 1rem;
+  min-width: max-content;
+  align-items: start;
+}
+
+.tournament-monrad-round {
+  overflow: hidden;
+  border: 1px solid rgba(16, 86, 148, 0.35);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tournament-monrad-round > header {
+  display: grid;
+  min-height: 58px;
+  padding: 0.55rem 0.75rem;
+  place-items: center;
+  background: #145b96;
+  color: #fff;
+  text-align: center;
+}
+
+.tournament-monrad-round > header strong {
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournament-monrad-round > header small {
+  font-size: 0.7rem;
+}
+
+.tournament-monrad-round__matches {
+  display: grid;
+}
+
+.tournament-monrad-match {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.15rem minmax(0, 1fr);
+  min-height: 92px;
+  border-bottom: 1px solid rgba(16, 86, 148, 0.45);
+}
+
+.tournament-monrad-match:last-child {
+  border-bottom: 0;
+}
+
+.tournament-monrad-match__number {
+  display: grid;
+  padding: 0.45rem 0.25rem;
+  align-content: start;
+  border-right: 1px solid rgba(16, 86, 148, 0.25);
+  color: #145b96;
+  text-align: center;
+}
+
+.tournament-monrad-match__number small {
+  margin-top: 0.25rem;
+  color: #6a7e92;
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.tournament-monrad-match__players {
+  display: grid;
+  min-width: 0;
+}
+
+.tournament-monrad-match__players > span,
+.tournament-monrad-match__players > select {
+  width: 100%;
+  min-width: 0;
+  min-height: 43px;
+  padding: 0.45rem 2rem 0.45rem 0.55rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #102a43;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-monrad-match__players > :first-child {
+  border-bottom: 1px dotted rgba(16, 86, 148, 0.28);
+}
+
+.tournament-monrad-match__score {
+  grid-column: 1 / -1;
+  padding: 0.25rem 0.5rem;
+  background: #eef8f2;
+  color: #14733c;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.tournament-monrad-finishing > header {
+  background: #ef3328;
+}
+
+.tournament-monrad-finishing__positions {
+  display: grid;
+}
+
+.tournament-monrad-finishing__positions > div {
+  display: grid;
+  grid-template-columns: 2.3rem 1fr;
+  min-height: 46px;
+  border-bottom: 1px solid rgba(16, 86, 148, 0.3);
+}
+
+.tournament-monrad-finishing__positions > div:last-child {
+  border-bottom: 0;
+}
+
+.tournament-monrad-finishing__positions strong,
+.tournament-monrad-finishing__positions span {
+  display: flex;
+  min-width: 0;
+  padding: 0.45rem;
+  align-items: center;
+}
+
+.tournament-monrad-finishing__positions strong {
+  border-right: 1px solid rgba(16, 86, 148, 0.2);
+  color: #145b96;
+}
+
+.tournament-monrad-finishing__positions span {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tournament-draw-review {
   padding: 1rem;
   border: 1px solid rgba(23, 105, 170, 0.2);

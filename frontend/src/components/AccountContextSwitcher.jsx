@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../hooks/useAuth";
+import { clubRoleLabel } from "../utils/accessControl";
 
 function contextName(membership) {
   if (membership?.organization_type === "personal") {
@@ -13,7 +14,7 @@ function contextType(membership) {
   if (membership?.organization_type === "personal") {
     return membership?.plan === "personal_plus" ? "Personal Plus" : "Personal Free";
   }
-  return membership?.role === "admin" ? "Club administrator" : "Club member";
+  return `Club ${clubRoleLabel(membership?.role).toLowerCase()}`;
 }
 
 export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange, presentation = "menu" }) {

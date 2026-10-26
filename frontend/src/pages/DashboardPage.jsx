@@ -6,6 +6,7 @@ import AccountContextSwitcher from "../components/AccountContextSwitcher";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { MATCH_SPORT_OPTIONS, getMatchSportOption, getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
+import { canManageMatches } from "../utils/accessControl";
 import {
   endMatch,
   getDashboard,
@@ -184,6 +185,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
+  const matchManagementEnabled = canManageMatches(session);
   const playableSports = useMemo(() => getPlayableMatchSports(session?.enabled_sports), [session?.enabled_sports]);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -316,10 +318,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, [location.hash]);
 
   useEffect(() => {
-    if (screenMode === "dashboard" && location.hash === "#new-match") {
+    if (screenMode === "dashboard" && location.hash === "#new-match" && matchManagementEnabled) {
       setShowSportOverlay(true);
     }
-  }, [location.hash, screenMode]);
+  }, [location.hash, matchManagementEnabled, screenMode]);
 
   useEffect(() => {
     if (!showSportOverlay) {
@@ -600,7 +602,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             <span>Games: {formatGameScore(match).label}</span>
             <span>Running: {formatRunningTime(match.created_at || match.updated_at, minuteTick)}</span>
           </div>
-          <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
+          {matchManagementEnabled ? <div className="button-row dashboard-item-actions dashboard-item-actions--compact">
             <button type="button" onClick={() => navigate(`/match/${match.id}`)}>
               Resume
             </button>
@@ -611,7 +613,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             >
               End Match
             </button>
-          </div>
+          </div> : <span className="helper-text">Read-only access</span>}
         </div>
       </article>
     );
@@ -646,7 +648,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "Player 2"}</span>
           </div>
 
-          <button
+          {matchManagementEnabled ? <button
             className="dashboard-scheduled-card__start"
             disabled={personalActiveMatchBlocksStart}
             title={personalActiveMatchBlocksStart ? "End the current personal match before starting this one." : undefined}
@@ -654,7 +656,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             onClick={() => handleStartScheduledMatch(match.id)}
           >
             Start
-          </button>
+          </button> : null}
         </div>
 
         <div className="dashboard-scheduled-card__footer">
@@ -675,7 +677,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
               <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
               {match.tournament_name ? <span>{`Tournament: ${match.tournament_name}`}</span> : null}
-              <div className="dashboard-scheduled-card__detail-actions">
+              {matchManagementEnabled ? <div className="dashboard-scheduled-card__detail-actions">
                 <button
                   className="dashboard-scheduled-card__edit"
                   type="button"
@@ -683,7 +685,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                 >
                   Edit Game
                 </button>
-              </div>
+              </div> : null}
             </div>
           ) : null}
         </div>
@@ -770,7 +772,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
         }
       />
 
-      {screenMode === "dashboard" ? (
+      {screenMode === "dashboard" && matchManagementEnabled ? (
         <button
           className="dashboard-start-hero"
           type="button"
@@ -1105,7 +1107,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
       </section>
 
-      {showSportOverlay ? (
+      {showSportOverlay && matchManagementEnabled ? (
         <div className="overlay-backdrop" role="presentation" onClick={handleCloseSportOverlay}>
           <section
             className="overlay-panel match-sport-overlay stack"

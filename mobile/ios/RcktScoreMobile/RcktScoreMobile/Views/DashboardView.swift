@@ -77,6 +77,7 @@ struct DashboardView: View {
     }
     private var isPersonalPlus: Bool { currentPlanCode == "personal_plus" }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
+    private var canManageMatches: Bool { session?.canManageMatches ?? false }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
     private var headerPlanLine: String {
         if !currentPlanCode.isEmpty {
@@ -223,10 +224,11 @@ struct DashboardView: View {
             ]
         }
 
-        return [
-            SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems),
-            SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .racketSports, .users, .courts])
-        ]
+        var sections = [SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems)]
+        if isAdmin {
+            sections.append(SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .racketSports, .users, .courts]))
+        }
+        return sections
     }
     private var settingsAvailableItems: [SettingsMenuItem] {
         settingsMenuSections.flatMap(\.items)
@@ -257,7 +259,7 @@ struct DashboardView: View {
                 VStack(spacing: selectedTab == .settings ? 12 : 22) {
                     headerSection
 
-                    if selectedTab == .home {
+                    if selectedTab == .home && canManageMatches {
                         startNewMatchHero
                     }
 
@@ -2385,8 +2387,9 @@ struct DashboardView: View {
                 .foregroundStyle(.secondary)
 
             Picker("Role", selection: selection) {
-                Text("User").tag("user")
                 Text("Admin").tag("admin")
+                Text("Scorer").tag("scorer")
+                Text("Read only").tag("read_only")
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier(accessibilityIdentifier ?? "settings.rolePicker")
@@ -3021,7 +3024,8 @@ struct DashboardView: View {
 
             Spacer(minLength: 4)
 
-            HStack(spacing: 8) {
+            if canManageMatches {
+                HStack(spacing: 8) {
                 Button {
                     navigationTarget = MatchRoute(id: match.id, presentation: .live(openSettingsOnLoad: true))
                 } label: {
@@ -3057,6 +3061,11 @@ struct DashboardView: View {
                 .accessibilityLabel(startingScheduledMatchID == match.id ? "Starting scheduled match" : "Start scheduled match")
                 .disabled(startingScheduledMatchID != nil)
                 .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
+                }
+            } else {
+                Text("Read only")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(12)

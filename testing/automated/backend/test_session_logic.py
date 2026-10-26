@@ -1,12 +1,17 @@
 from datetime import datetime, timezone
 
 from common.session_logic import (
+    SessionAuthError,
+    authorize_organization_session,
     create_org_user_session,
     get_active_session_for_username,
     login_source_label,
     normalize_login_source,
     session_token_from_event,
 )
+from common.access_control import CAPABILITY_MATCH_MANAGE
+import common.session_logic as session_logic
+import pytest
 
 
 class RecordingCursor:
@@ -112,3 +117,31 @@ def test_active_session_lookup_is_identity_wide_by_default():
     assert "{source_clause}" not in statement
     assert "login_source =" not in statement
     assert "login_source" not in parameters
+
+
+def test_read_only_membership_is_rejected_for_match_management(monkeypatch):
+    monkeypatch.setattr(
+        session_logic,
+        "require_org_user_session",
+        lambda *_args: {"username": "viewer@example.com", "login_source": "web_app"},
+    )
+    monkeypatch.setattr(session_logic, "_get_membership_row", lambda *_args: {"id": 1})
+    monkeypatch.setattr(
+        session_logic,
+        "_serialize_org_user",
+        lambda *_args, **_kwargs: {
+            "role": "read_only",
+            "organization_type": "club",
+            "status": "approved",
+        },
+    )
+
+    with pytest.raises(SessionAuthError) as error:
+        authorize_organization_session(
+            object(),
+            {},
+            12,
+            required_capability=CAPABILITY_MATCH_MANAGE,
+        )
+
+    assert error.value.code == "SESSION_CAPABILITY_REQUIRED"

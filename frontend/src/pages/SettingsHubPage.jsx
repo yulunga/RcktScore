@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import SubscriptionPreview from "../components/SubscriptionPreview";
+import { clubRoleLabel } from "../utils/accessControl";
 import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
 import { getOrganizationSettings, requestPasswordReset, updatePersonalProfile } from "../services/api";
@@ -216,7 +217,7 @@ export default function SettingsHubPage() {
           <section className="panel stack">
             <div className="panel-heading"><h2>Club Associations</h2><p className="helper-text">Read-only memberships linked to this sign-in.</p></div>
             {clubMemberships.length ? <div className="settings-association-summary">
-              {clubMemberships.map((membership) => <div className="dashboard-item" key={membership.organization_id}><strong>{membership.organization_name}</strong><span>{membership.role === "admin" ? "Club administrator" : "Club member"} · {planLabel(membership.plan)}</span></div>)}
+              {clubMemberships.map((membership) => <div className="dashboard-item" key={membership.organization_id}><strong>{membership.organization_name}</strong><span>{`Club ${clubRoleLabel(membership.role).toLowerCase()}`} · {planLabel(membership.plan)}</span></div>)}
             </div> : <div className="dashboard-empty">No club associations are linked to this account.</div>}
           </section>
         </>
@@ -232,14 +233,14 @@ export default function SettingsHubPage() {
               const clubQuery = `club=1&organizationId=${encodeURIComponent(membership.organization_id)}`;
               return <article className="settings-association-card" key={membership.organization_id}>
                 <div>
-                  <span className="status-pill">{admin ? "Club admin" : "Club user"}</span>
+                  <span className="status-pill">{`Club ${clubRoleLabel(membership.role).toLowerCase()}`}</span>
                   <h3>{membership.organization_name}</h3>
                   <div className="dashboard-item-meta">
                     <span><strong>Account type:</strong> Club account</span>
                     <span><strong>Subscription:</strong> {planLabel(membership.plan)}</span>
                   </div>
                 </div>
-                {!admin ? <div className="notice">You are in view-only mode. Only organisation admins can manage club settings.</div> : null}
+                {!admin ? <div className="notice">Club settings are view only for this role. Only organisation admins can change them.</div> : null}
                 <div className="settings-association-actions">
                   <button title="Club profile" type="button" onClick={() => navigate(`/settings?${clubQuery}&tab=organisation`)}>⌂<span>Club Profile</span></button>
                   {admin ? <>

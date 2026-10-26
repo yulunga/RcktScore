@@ -4,6 +4,10 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from common.auth_logic import _serialize_org_user
+from common.access_control import (
+    CAPABILITY_MATCH_READ,
+    membership_has_capability,
+)
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
 from common.utils import error_response
 
@@ -333,7 +337,14 @@ def _get_membership_row(connection, username, organization_id):
         return cursor.fetchone()
 
 
-def authorize_organization_session(connection, event, organization_id, require_admin=False, allow_root_admin=False):
+def authorize_organization_session(
+    connection,
+    event,
+    organization_id,
+    require_admin=False,
+    allow_root_admin=False,
+    required_capability=None,
+):
     if allow_root_admin:
         from common.root_admin_session_logic import find_root_admin_session
 
@@ -356,6 +367,13 @@ def authorize_organization_session(connection, event, organization_id, require_a
 
     if require_admin and membership["role"] != "admin" and membership["organization_type"] != "personal":
         raise SessionAuthError(403, "SESSION_ADMIN_REQUIRED", "Administrator access is required for this action.")
+    if required_capability and not membership_has_capability(membership, required_capability):
+        raise SessionAuthError(
+            403,
+            "SESSION_CAPABILITY_REQUIRED",
+            "Your club role does not allow this action.",
+            {"capability": required_capability},
+        )
 
     return {
         "session": session,
@@ -384,13 +402,19 @@ def _get_match_access_context(connection, match_id):
     return row
 
 
-def authorize_match_session(connection, event, match_id):
+def authorize_match_session(connection, event, match_id, required_capability=CAPABILITY_MATCH_READ):
     match_context = _get_match_access_context(connection, match_id)
     if not match_context:
         raise SessionAuthError(404, "MATCH_NOT_FOUND", "Match not found")
 
     tenant_id = match_context["tenant_id"]
-    auth_context = authorize_organization_session(connection, event, tenant_id, require_admin=False)
+    auth_context = authorize_organization_session(
+        connection,
+        event,
+        tenant_id,
+        require_admin=False,
+        required_capability=required_capability,
+    )
     sport = str(match_context.get("sport") or "squash").strip().lower()
     if sport not in auth_context["membership"].get("enabled_sports", []):
         raise SessionAuthError(

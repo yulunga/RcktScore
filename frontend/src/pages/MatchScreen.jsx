@@ -15,6 +15,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 import { getMatchDisplayAccess } from "../services/api";
+import { canManageMatches } from "../utils/accessControl";
 
 function formatDate(value) {
   if (!value) {
@@ -217,6 +218,7 @@ export default function MatchScreen() {
   const { matchId } = useParams();
   const location = useLocation();
   const { session } = useAuth();
+  const matchManagementEnabled = canManageMatches(session);
   const {
     currentMatch,
     error,
@@ -1160,12 +1162,12 @@ export default function MatchScreen() {
           ) : null}
           {isTennisMatch ? (
             <TennisScoreboard
-              disabled={!currentMatch || loading || needsPadelGoldenPointReceiver}
+              disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !matchManagementEnabled}
               match={currentMatch}
               onScorePoint={(scorer) => scorePoint(matchId, scorer)}
             >
               <MatchControls
-                disabled={!currentMatch || loading || needsPadelGoldenPointReceiver}
+                disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !matchManagementEnabled}
                 match={currentMatch}
                 showRacketActions={false}
                 undoDisabled={undoLocked}
@@ -1190,7 +1192,7 @@ export default function MatchScreen() {
             </TennisScoreboard>
           ) : (
             <Scoreboard
-              disabled={!currentMatch || loading}
+              disabled={!currentMatch || loading || !matchManagementEnabled}
               match={currentMatch}
               onScorePoint={(scorer) => scorePoint(matchId, scorer)}
               onToggleServeSide={() =>
@@ -1200,7 +1202,7 @@ export default function MatchScreen() {
               }
             >
             <MatchControls
-              disabled={!currentMatch || loading}
+              disabled={!currentMatch || loading || !matchManagementEnabled}
               match={currentMatch}
               undoDisabled={undoLocked}
               onEventAction={(actionType, payload) =>

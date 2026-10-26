@@ -293,7 +293,7 @@ For commercial workshops, add columns alongside each row: **Proposed Free; Propo
 | CAP-216 | View sanitized public draw without login | Public | Public | Public | Public | Web | Valid enabled access key; no emails/account identifiers in public response. |
 | CAP-217 | Enable Tournament Manager for club | — | — | No | Root only | Root admin | Not a self-service Club Pro purchase entitlement today. |
 | CAP-218 | Automatic court/time allocation | — | — | Not built | Not built | Roadmap | Manual scheduling exists. |
-| CAP-219 | Later Monrad pairing | — | — | Not built | Not built | Roadmap | Do not sell as completed tournament support. |
+| CAP-219 | Full Monrad placement progression | — | — | Automatic | Automatic | Web/API | Winners and losers route through fixed placement bands to final placing matches. |
 | CAP-220 | Round-robin standings | — | — | Not built | Not built | Roadmap | Do not infer from tournament option labels. |
 | CAP-221 | Native iOS Tournament Manager | — | — | Not built | Not built | Platform gap | Current tournament manager is web only. |
 

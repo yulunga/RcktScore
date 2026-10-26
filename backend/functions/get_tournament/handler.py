@@ -1,7 +1,8 @@
+from common.access_control import CAPABILITY_CLUB_MEMBERS_READ, membership_has_capability
 from common.session_logic import SessionAuthError, authorize_organization_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.tournament.access import TournamentAccessError, require_tournament_feature
-from common.tournament.tournament_logic import get_tournament
+from common.tournament.tournament_logic import get_tournament, redact_tournament_private_fields
 from common.utils import error_response, path_parameter, success_response
 
 
@@ -14,9 +15,11 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_organization_session(connection, event, organization_id, require_admin=False)
+            auth_context = authorize_organization_session(connection, event, organization_id, require_admin=False)
             require_tournament_feature(connection, organization_id)
             tournament = get_tournament(connection, tournament_id, organization_id)
+            if not membership_has_capability(auth_context["membership"], CAPABILITY_CLUB_MEMBERS_READ):
+                tournament = redact_tournament_private_fields(tournament)
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
     except TournamentAccessError as access_error:

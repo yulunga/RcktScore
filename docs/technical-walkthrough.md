@@ -307,7 +307,10 @@ Social-profile fields and the web Subscriptions payment experience are still UI 
     shuffles unseeded entrants, separates seeds across a power-of-two bracket,
     gives top seeds non-power-of-two byes and stores a draft in
     `tournament_matches`. The organiser reviews a horizontal championship/plate
-    brace and may swap first-round slots before publishing.
+    brace and may swap first-round slots before publishing. Monrad generation
+    instead stores the full classification tree: each round has one fixture for
+    every original first-round pairing, with winners and losers routed into
+    progressively narrower placement bands until the final placing matches.
 13. `POST /tournaments/{tournament_id}/draw/publish` locks entries, enables a
     12-character public key and exposes the sanitized read-only draw through
     `GET /public/tournament-draws/{access_key}` without login. Returning to draft
@@ -332,7 +335,12 @@ Social-profile fields and the web Subscriptions payment experience are still UI 
     score. A club admin must resolve it as played, retired, conceded, walkover or
     abandoned. Abandoned fixtures advance nobody. Knockout winners advance to
     their next fixture, and first-round losers enter the plate for
-    knockout-with-plate events. An older published knockout containing only
+    knockout-with-plate events. Monrad sends both players to the next round:
+    winners remain in the upper half of their current placement band and losers
+    enter its lower half, ending with 1st–2nd, 3rd–4th and subsequent placement
+    matches. The signed-in and public read-only web views show those bands as
+    Last N, Quarters, Semis, Finals and a finishing-position column where applicable.
+    An older published knockout containing only
     opening-round rows backfills its remaining tree on first result.
 
 The web entrant importer accepts CSV files with required First Name/Surname and
@@ -695,6 +703,10 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
    daily backups. Its legacy ledger baseline is useful evidence, but it does not
    replace a future staging-to-production rehearsal against a separate
    production database before launch.
+7. On 26 October 2026 that pre-release database passed all 42 legacy audit rows
+   and recorded versions `001`–`044`: 44 ledger rows, 44 distinct checksums, and
+   schema commit `c825c8c2560a1c82066d2c9aca1fa537b9002061`. Future status can
+   be exported with `scripts/migration-ledger-status.sql`.
 
 ## 18. Current Cross-Cutting Gaps
 
@@ -718,3 +730,10 @@ When request behavior, auth behavior, route ownership, or troubleshooting assump
 - update this file
 - update [backend-api.md](/Users/glennrowe/Development/Projects/RcktScore/docs/backend-api.md)
 - update [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)
+Tournament reads are available to approved members of an enabled club, but only
+`admin` and `scorer` roles can schedule or score fixtures. Non-admin tournament
+payloads omit entrant email and account identifiers. An administrator can share
+the Personal or Personal Plus registration route shown on an unlinked guest
+profile; matching-email registration links the existing reusable player while
+leaving its host-club affiliation as `guest`.
+

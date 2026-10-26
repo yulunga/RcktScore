@@ -5,7 +5,7 @@ function playerLabel(entry, fallback) {
   return `${entry.seed ? `(${entry.seed}) ` : ""}${entry.display_name}`;
 }
 
-function BracketSlot({ editable, entries, match, slot, onMove }) {
+export function BracketSlot({ editable, entries, match, slot, onMove }) {
   const entryId = match[`${slot}_entry_id`];
   const name = match[`${slot}_name`];
   const selectedEntry = entries.find((entry) => entry.id === entryId);
@@ -26,7 +26,7 @@ function BracketSlot({ editable, entries, match, slot, onMove }) {
   );
 }
 
-function MatchMenu({ isAdmin, match, onSchedule, onScore }) {
+export function TournamentMatchMenu({ isAdmin, match, onSchedule, onScore }) {
   const [open, setOpen] = useState(false);
   const completed = ["completed", "walkover"].includes(match.status);
   const awaitingResolution = ["awaiting_resolution", "abandoned"].includes(match.status);
@@ -113,7 +113,7 @@ export default function TournamentBracket({ draw, entries = [], editable = false
                     )}
                     {match.score_summary ? <span className="tournament-bracket-match__score">{match.score_summary}</span> : null}
                     {!editable && onSchedule && onScore ? (
-                      <MatchMenu isAdmin={isAdmin} match={match} onSchedule={onSchedule} onScore={onScore} />
+                      <TournamentMatchMenu isAdmin={isAdmin} match={match} onSchedule={onSchedule} onScore={onScore} />
                     ) : null}
                   </article>
                 ))}
