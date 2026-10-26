@@ -511,6 +511,7 @@ Relevant files:
 - `backend/schema/*.sql`
 - `backend/schema/checksums.sha256`
 - `scripts/check_migrations.py`
+- `scripts/migration-baseline-audit.sql`
 - `docs/promotion-runbook.md`
 
 Most relevant current tables:
@@ -537,6 +538,10 @@ If behavior seems impossible:
 - if `schema_migrations` is absent, follow the one-time legacy baseline in the
   promotion runbook. Do not mark `001`–`042` as applied without verifying their
   tables, columns, constraints, indexes, functions, triggers, and seed data
+- the current pre-release Supabase project is the only environment and is backed
+  up daily. Confirm the latest backup before applying or baselining migrations;
+  do not describe this as a tested staging-to-production promotion until the
+  separate production database exists
 - keep `010_match_shirt_colors.sql` as version `010`; the old duplicate user
   profile migration is reconciled by `044_reconcile_user_profile_fields.sql`
 - confirm the expected migration actually exists in the target database

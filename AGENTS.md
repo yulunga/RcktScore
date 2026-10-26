@@ -117,6 +117,7 @@ What is real and implemented:
 
 What is still partial or risky:
 
+- Supabase currently has one shared pre-release environment with daily backups; a separate production environment and an evidence-backed staging-to-production database promotion path must be established before production release
 - WebSocket broadcast infrastructure is scaffolded but not fully wired
 - the current iPhone scoring layout is much improved but still needs final UX hardening before release
 - some native settings sections are still UI scaffolds only, including federation-style association links beyond simple membership switching, account-level game-settings presets, and reporting views

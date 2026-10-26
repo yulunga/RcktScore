@@ -691,6 +691,10 @@ The root-admin trust boundary is now enforced. Rate limiting, richer security au
    frontend and compatible native-client promotion. Breaking changes use
    separate expand-and-contract releases. `docs/promotion-runbook.md` contains
    the operational checks, smoke tests, evidence, and rollback policy.
+6. The current pre-release system has one Supabase environment protected by
+   daily backups. Its legacy ledger baseline is useful evidence, but it does not
+   replace a future staging-to-production rehearsal against a separate
+   production database before launch.
 
 ## 18. Current Cross-Cutting Gaps
 

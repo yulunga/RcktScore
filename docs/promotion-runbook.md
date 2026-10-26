@@ -6,6 +6,11 @@ a forward-only database model: application artifacts may be rolled back, while
 an applied schema is repaired with a new migration instead of editing or
 reversing recorded migration history.
 
+The current pre-release service has one Supabase environment with daily backups.
+Baseline that environment as the current pre-release database. The separate
+staging and production sections below describe the required release posture;
+they cannot be considered exercised until a distinct production target exists.
+
 ## Migration Files and Ledger
 
 Migration files live in `backend/schema/` and use the unique format
@@ -47,13 +52,16 @@ The first ledger rollout is not an ordinary migration run. Existing staging and
 production databases received migrations before a ledger existed, so do not
 insert versions `001`–`042` merely because the files exist in Git.
 
-For each environment:
+For the current pre-release environment, and later for each separate staging or
+production environment:
 
 1. Record the environment, current application Git commit, operator, and date.
 2. Confirm a current Supabase backup or point-in-time recovery position.
 3. Export the current schema or inspect the PostgreSQL catalog.
-4. Verify the tables, columns, indexes, constraints, functions, triggers, and
-   required seed rows supplied by every legacy migration.
+4. Run the complete read-only `scripts/migration-baseline-audit.sql` statement
+   and export its result. It reports one PASS/FAIL row for each migration from
+   `001` through `042`, covering material tables, columns, indexes, constraints,
+   triggers, backfills, and required seed rows.
 5. Resolve every missing or partially applied migration before baselining it.
 6. Apply `043_schema_migration_ledger.sql`.
 7. Insert ledger rows for verified legacy versions `001`–`042`, then record
@@ -61,9 +69,11 @@ For each environment:
    Use a shared baseline timestamp, the release Git commit, the operator
    identity, and a note such as `verified legacy baseline`; identify `043` as
    the ledger bootstrap rather than a legacy migration.
-8. Apply `044_reconcile_user_profile_fields.sql`. This is the idempotent,
-   uniquely numbered replacement for the former duplicate
-   `010_user_profile_fields.sql`; record version `044` only after it succeeds.
+8. Apply `044_reconcile_user_profile_fields.sql`, or verify its columns and
+   index if it was already applied during ledger bootstrap validation. This is
+   the idempotent, uniquely numbered replacement for the former duplicate
+   `010_user_profile_fields.sql`; record version `044` only after that check
+   succeeds.
 9. Compare the database ledger with the checked-in manifest and retain the
    comparison as release evidence.
 

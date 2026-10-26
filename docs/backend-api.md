@@ -784,6 +784,13 @@ authoritative migration `010`. Existing databases must be catalog-audited
 before legacy versions are inserted into the ledger. The complete staging and
 production procedure is in `docs/promotion-runbook.md`.
 
+Before production release, Supabase is operating as one pre-release environment
+with daily backups rather than separate staging and production databases. The
+current environment can receive the audited legacy ledger baseline, but it must
+not be treated as evidence that a staging-to-production promotion has been
+tested. A separate production target and recovery/promotion rehearsal remain a
+release gate.
+
 Important current `matches` concepts:
 
 - tenant and court identity
