@@ -880,6 +880,7 @@ export default function MatchScreen() {
     <main className="page-shell stack match-screen-shell">
       <ClubPageHeader
         className="club-page-header--match"
+        forceCompact
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
 

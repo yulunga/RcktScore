@@ -488,6 +488,13 @@ full-width destructive buttons.
 `MatchScreen.jsx` retains shared loading, mutation, undo, match timer and network
 plumbing and starts a 90-second break only after an odd completed game, or a
 120-second break after a completed set, when `tennis_timed_breaks` is enabled.
+It forces the shared signed-in header into its compact form throughout active
+scoring. Tablet-landscape viewports use a fixed dynamic-viewport shell instead
+of document scrolling: the score controls and timer remain visible, the
+Squash/Racketball point rail scrolls internally, and Tennis/Padel place their
+internally scrolling point timeline beside the score board. The footer,
+Dashboard return and non-scoring detail panels are hidden only in that
+constrained live-scoring layout.
 Migration `039_match_timed_breaks.sql` adds this per-match flag; it is separate
 from the setup default stored by migration `029_timed_break_defaults.sql`.
 Every web scoring mutation also sends a client-generated UUID through the
@@ -601,7 +608,7 @@ Current live sport engines:
 1. The display page opens with `?match=<id>`.
 2. It loads the same match payload as the operator screen.
 3. It attempts a WebSocket connection through [frontend/src/services/websocket.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/websocket.js).
-4. It renders a read-only scoreboard and optional event timeline.
+4. It renders a read-only scoreboard and optional event timeline. Standard layout sizes the court name to the game-details text (0.8rem), keeps header/history rows content-sized, and gives score cards the remaining height with larger point scores.
 
 ### Important current limitation
 

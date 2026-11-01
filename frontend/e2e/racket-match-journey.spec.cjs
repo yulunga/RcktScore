@@ -247,3 +247,37 @@ test("an untimed squash match opens directly on live scoring @racket", async ({ 
   await expect(page.locator(".player-card-action")).toHaveCount(2);
   await expect(page.getByText("Match Time", { exact: true })).toBeVisible();
 });
+
+test("fits racket scoring controls and point order into tablet landscape without page scrolling @racket", async ({ page }) => {
+  const match = freshRacketMatch("squash", false);
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await page.route("**/get_score/web-squash-1", async (route) => {
+    await route.fulfill({ json: envelope({ match }) });
+  });
+
+  await page.goto("/match/web-squash-1");
+  await expect(page.locator(".club-page-header--match")).toHaveClass(/club-page-header--compact/);
+  await expect(page.getByText("Match Timer", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stroke P1" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Let", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stroke P2" })).toBeVisible();
+  await expect(page.getByLabel("Match actions")).toBeVisible();
+  await expect(page.getByLabel("Game settings")).toBeVisible();
+  await expect(page.getByLabel("Point order")).toBeVisible();
+
+  const viewport = page.viewportSize();
+  for (const locator of [
+    page.locator(".scoreboard-card"),
+    page.locator(".match-timer-panel"),
+    page.getByRole("button", { name: "Stroke P1" }),
+    page.getByLabel("Match actions"),
+    page.getByLabel("Point order"),
+  ]) {
+    const box = await locator.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+  }
+
+  expect(await page.evaluate(() => document.scrollingElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 1);
+});

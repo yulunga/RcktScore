@@ -148,6 +148,17 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 | ANA-06 | As club admin, inspect Club courts, demand, simultaneous activity, scheduled demand, sport trends and digest where available. | Values agree with club fixtures and plan configuration; do not assume every Club Pro-labelled metric is available to Essentials. |
 | ANA-07 | Complete one known match, refresh Analytics, then repeat after choosing the other club. | Relevant figures update without double counting; account context and reporting periods remain correct. |
 
+### Club roles and member privacy
+
+| ID | Action | Expected result |
+|---|---|---|
+| ROLE-01 | As a club admin, create one Scorer and one Read only membership, then edit each role and refresh. | The three available roles are Admin, Scorer and Read only; values persist, and a club cannot lose its final admin. |
+| ROLE-02 | Sign in as the Scorer and create, schedule where permitted, start, score, undo and end a club match. | Match operations work, while member management, courts, subscriptions and club configuration remain unavailable and direct protected requests return 403. |
+| ROLE-03 | Sign in as Read only and open the dashboard, Current, History, completed results and permitted Analytics. Then try direct new-match, scoring, undo and end URLs/requests. | Read access works; every match mutation is absent or disabled in the client and rejected with 403 by the server. |
+| ROLE-04 | As Scorer and Read only, inspect Settings, match player lookup and Tournament Manager responses using browser developer tools. | The club member directory, member email addresses, account IDs and guest contact details are not returned; player lookup exposes only the minimum display name needed for scoring. |
+| ROLE-05 | Use a pre-migration membership whose stored role is `user`, then apply migration 045 and sign in again. | Before migration it behaves as Scorer through compatibility mapping; after migration its stored and returned role is `scorer` without lost match access. |
+| ROLE-06 | As a tournament admin, open an unlinked guest player profile and use both signup choices. Complete Personal registration using the guest email. | Shareable Personal and Personal Plus signup routes are offered; registration pre-fills the guest identity, creates a Personal account, and links the tournament player to the canonical account without exposing contact data to non-admins. Personal Plus continues through the normal Subscription upgrade flow. |
+
 ### Layout and usability
 
 | ID | Action | Expected result |

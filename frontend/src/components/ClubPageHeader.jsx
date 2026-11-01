@@ -87,7 +87,7 @@ function MobileMenuIcon({ name }) {
   );
 }
 
-export default function ClubPageHeader({ title, subtitle, actions = [], className = "" }) {
+export default function ClubPageHeader({ title, subtitle, actions = [], className = "", forceCompact = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, logout } = useAuth();
@@ -233,7 +233,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
 
   return (
     <>
-      <section className={`hero-card club-page-header${isHeaderCompact ? " club-page-header--compact" : ""} ${className}`.trim()}>
+      <section className={`hero-card club-page-header${isHeaderCompact || forceCompact ? " club-page-header--compact" : ""} ${className}`.trim()}>
         <div className="club-page-header__top">
           <div className="club-page-header__branding">
             <div className="club-page-header__brand-row">
