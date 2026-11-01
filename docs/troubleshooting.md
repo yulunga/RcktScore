@@ -860,4 +860,4 @@ Non-admin tournament responses must not contain entrant email,
 
 ### Standard spectator display spacing
 
-Standard layout keeps the court name at the same 0.8rem size as the game details. Content-sized header/history rows leave more space for larger scores higher in the display. Refresh frontend assets if the oversized court heading remains.
+Standard layout keeps the court name at the same 0.8rem size as the game details. Content-sized header/history rows leave more space for larger scores higher in the display. Point scores scale with viewport width and height up to 24rem. Refresh frontend assets if the oversized court heading or smaller score numbers remain.

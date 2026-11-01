@@ -231,7 +231,7 @@ See the backend/API reference for the exact route list.
 - root-admin login issues an expiring opaque session token whose hash is stored in `root_admin_sessions`; all privileged root-admin routes validate it server-side
 - the former `x-root-admin-request` trust-header bypass has been removed
 - root-admin authorization is implemented, but public-route rate limiting, broader audit logging, and other launch hardening still remain
-- Standard spectator display uses a court name matching the game-details text, content-sized header/history rows, and larger scores positioned higher in the available area
+- Standard spectator display uses a court name matching the game-details text, content-sized header/history rows, and viewport-scaled scores (up to 24rem) positioned higher in the available area
 - do not describe WebSocket live display as production-complete
 
 ## Troubleshooting Entry Points

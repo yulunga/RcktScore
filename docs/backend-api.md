@@ -467,7 +467,7 @@ and saved-view tables.
 
 - `POST /scoreboard_display/session`
 - `GET /scoreboard_display/current`
-- Standard display court-label sizing and score layout are frontend-only; these routes and payloads are unchanged.
+- Standard display court-label sizing, viewport-scaled score numbers and score layout are frontend-only; these routes and payloads are unchanged.
 - `backend/functions/websocket_broadcast/handler.py` exists
 - the function is part of the backend codebase
 - subscriber registration and routing are not fully deployed or persisted yet

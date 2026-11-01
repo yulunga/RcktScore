@@ -3438,7 +3438,8 @@ textarea {
 }
 
 .display-mode-standard .player-score {
-  font-size: clamp(5rem, 12vw, 10rem);
+  font-size: clamp(6rem, min(24vw, 42vh), 24rem);
+  font-variant-numeric: tabular-nums;
 }
 
 .display-mode-standard .player-games,

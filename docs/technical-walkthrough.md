@@ -608,7 +608,7 @@ Current live sport engines:
 1. The display page opens with `?match=<id>`.
 2. It loads the same match payload as the operator screen.
 3. It attempts a WebSocket connection through [frontend/src/services/websocket.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/websocket.js).
-4. It renders a read-only scoreboard and optional event timeline. Standard layout sizes the court name to the game-details text (0.8rem), keeps header/history rows content-sized, and gives score cards the remaining height with larger point scores.
+4. It renders a read-only scoreboard and optional event timeline. Standard layout sizes the court name to the game-details text (0.8rem), keeps header/history rows content-sized, and gives score cards the remaining height with point scores scaled to viewport width and height, up to 24rem, so the numbers dominate the cards.
 
 ### Important current limitation
 
