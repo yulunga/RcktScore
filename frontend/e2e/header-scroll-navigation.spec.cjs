@@ -227,12 +227,12 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   if (viewport.width <= 600) {
     const contextBox = await header.locator(".account-context-switcher__trigger").boundingBox();
     const messagesBox = await header.getByRole("button", { name: "Messages" }).boundingBox();
-    const profileBox = await header.getByRole("button", { name: `Profile: ${session.username}` }).boundingBox();
     const sharedCentre = contextBox.y + (contextBox.height / 2);
     expect(Math.abs(sharedCentre - (messagesBox.y + (messagesBox.height / 2)))).toBeLessThanOrEqual(2);
-    expect(Math.abs(sharedCentre - (profileBox.y + (profileBox.height / 2)))).toBeLessThanOrEqual(2);
-    expect(profileBox.x + profileBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(messagesBox.x + messagesBox.width).toBeLessThan(contextBox.x);
+    expect(contextBox.x + contextBox.width).toBeLessThanOrEqual(viewport.width);
   }
+  await expect(header.getByRole("button", { name: /^Profile:/ })).toHaveCount(0);
   if (viewport.width > 840) {
     const primaryNavigation = header.getByRole("navigation", { name: "Primary navigation" });
     const homeButton = primaryNavigation.getByRole("button", { name: "Home" });
@@ -492,7 +492,7 @@ test("offers App, Player and Club analytics with period-based app metrics @heade
   await expect(page.getByRole("heading", { name: "Premium Club Digest" })).toBeVisible();
 });
 
-test("opens and updates the signed-in club admin profile from the header @header", async ({ page }) => {
+test("opens and updates the signed-in profile from Settings @header", async ({ page }) => {
   let submittedProfile = null;
   await page.route("**/personal_profile/50001", async (route) => {
     submittedProfile = route.request().postDataJSON();
@@ -513,22 +513,19 @@ test("opens and updates the signed-in club admin profile from the header @header
     } }) });
   });
 
-  await page.goto("/dashboard");
-  const profileButton = page.getByRole("button", { name: `Profile: ${session.username}` });
-  await expect(profileButton).toBeVisible();
-  await expect(profileButton).toHaveAttribute("title", session.username);
-  await profileButton.click();
-
-  await expect(page).toHaveURL(/\/profile$/);
-  await expect(page.getByRole("heading", { name: "Your Profile" })).toBeVisible();
+  await page.goto("/settings");
+  await expect(page.getByRole("button", { name: /^Profile:/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
   await expect(page.getByLabel("Email / Username")).toHaveValue(session.username);
-  await expect(page.getByLabel("Email / Username")).toBeEditable();
+  await expect(page.getByLabel("Email / Username")).not.toBeEditable();
   await expect(page.getByLabel("First name")).toHaveValue("Header");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByLabel("Email / Username")).toBeEditable();
   await page.getByLabel("Telephone").fill("020 7946 0100");
   await page.getByLabel("Country").selectOption("France");
   await page.getByRole("button", { name: "Save Profile" }).click();
 
-  await expect(page.getByText("Your profile has been updated.")).toBeVisible();
+  await expect(page.getByText("Your profile has been updated across your HitnScore memberships.")).toBeVisible();
   expect(submittedProfile.telephone).toBe("020 7946 0100");
   expect(submittedProfile.country).toBe("France");
 });

@@ -101,7 +101,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
   const isNewMatchOverlay = location.pathname === "/dashboard" && location.hash === "#new-match";
   const isNewMatchRoute = location.pathname === "/match/new" || location.pathname.startsWith("/match/new/");
-  const profileUsername = session?.username || "Signed-in user";
   const matchManagementEnabled = canManageMatches(session);
   const headerMenuItems = [
     {
@@ -254,18 +253,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
           </div>
           <div className="club-page-header__account">
             <div className="club-page-header__meta">
-              <AccountContextSwitcher
-                className="account-context-switcher--header"
-                label="Account"
-                menuIcon="hamburger"
-                onContextChange={() => {
-                  if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
-                }}
-                onLogout={() => {
-                  logout();
-                  navigate("/", { replace: true });
-                }}
-              />
               <button
                 className={`club-page-header__notification-button${hasUnreadNotifications ? " club-page-header__notification-button--unread" : ""}`}
                 type="button"
@@ -295,25 +282,18 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   />
                 </svg>
               </button>
-              <button
-                className={`club-page-header__profile-button${location.pathname === "/profile" ? " club-page-header__profile-button--active" : ""}`}
-                type="button"
-                aria-label={`Profile: ${profileUsername}`}
-                data-tooltip={profileUsername}
-                title={profileUsername}
-                onClick={() => navigate("/profile")}
-              >
-                <svg
-                  aria-hidden="true"
-                  className="club-page-header__profile-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle cx="12" cy="8.25" r="3.25" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M5.75 19C5.75 15.5482 8.54822 12.75 12 12.75C15.4518 12.75 18.25 15.5482 18.25 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
+              <AccountContextSwitcher
+                className="account-context-switcher--header"
+                label="Account"
+                menuIcon="hamburger"
+                onContextChange={() => {
+                  if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
+                }}
+                onLogout={() => {
+                  logout();
+                  navigate("/", { replace: true });
+                }}
+              />
             </div>
             <nav className="club-page-header__menu" aria-label="Primary navigation">
               {headerMenuItems.map((item) => (
