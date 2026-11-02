@@ -29,6 +29,26 @@ const session = {
       role: "admin",
       enabled_sports: ["squash", "tennis"],
     },
+    {
+      id: 18,
+      username: "header@example.com",
+      organization_id: 44,
+      organization_name: "Zulu Club",
+      organization_type: "club",
+      plan: "club_essentials",
+      role: "scorer",
+      enabled_sports: ["squash"],
+    },
+    {
+      id: 19,
+      username: "header@example.com",
+      organization_id: 43,
+      organization_name: "Alpha Club",
+      organization_type: "club",
+      plan: "club_essentials",
+      role: "read_only",
+      enabled_sports: ["squash"],
+    },
   ],
 };
 
@@ -237,6 +257,14 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await headerContextTrigger.click();
   const headerContextMenu = header.getByRole("menu", { name: "Choose active context" });
   await expect(headerContextMenu).toHaveClass(/account-context-switcher__menu--open/);
+  await expect(headerContextMenu.getByRole("separator", { name: "Personal and club accounts" })).toHaveCount(1);
+  await expect(headerContextMenu.getByRole("menuitem").locator("strong")).toHaveText([
+    "Personal",
+    "Alpha Club",
+    "Header Test Club",
+    "Zulu Club",
+    "Logout",
+  ]);
   const [contextTriggerBox, contextMenuBox] = await Promise.all([
     headerContextTrigger.boundingBox(),
     headerContextMenu.boundingBox(),

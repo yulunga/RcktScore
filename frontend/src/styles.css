@@ -2937,6 +2937,12 @@ textarea {
   background: #e7f1fc;
 }
 
+.account-context-switcher__group-separator {
+  height: 1px;
+  margin: 2px 4px;
+  background: #d7e3f0;
+}
+
 .account-context-switcher__menu button.account-context-switcher__logout {
   margin-top: 2px;
   border-top: 1px solid #d7e3f0;

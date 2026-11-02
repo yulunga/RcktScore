@@ -23,6 +23,14 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
   const [menuMounted, setMenuMounted] = useState(false);
   const containerRef = useRef(null);
   const memberships = session?.available_memberships || session?.memberships || (session ? [session] : []);
+  const menuMemberships = [...memberships].sort((left, right) => {
+    const leftPersonal = left?.organization_type === "personal";
+    const rightPersonal = right?.organization_type === "personal";
+    if (leftPersonal !== rightPersonal) return leftPersonal ? -1 : 1;
+    return contextName(left).localeCompare(contextName(right), undefined, { sensitivity: "base" });
+  });
+  const personalMembershipCount = menuMemberships.filter((membership) => membership?.organization_type === "personal").length;
+  const hasClubMemberships = menuMemberships.some((membership) => membership?.organization_type !== "personal");
   const hasChoices = memberships.length > 1;
   const hasMenu = hasChoices || Boolean(onLogout);
 
@@ -132,20 +140,24 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
       </button>
       {menuMounted ? (
         <div className={`account-context-switcher__menu${open ? " account-context-switcher__menu--open" : ""}`} role="menu" aria-label="Choose active context">
-          {memberships.map((membership) => {
+          {menuMemberships.map((membership, index) => {
             const active = Number(membership.organization_id) === Number(session.organization_id);
             return (
-              <button
-                aria-current={active ? "true" : undefined}
-                className={active ? "active" : ""}
-                key={`${membership.organization_id}-${membership.id}`}
-                role="menuitem"
-                type="button"
-                onClick={() => choose(membership)}
-              >
-                <span><strong>{contextName(membership)}</strong><small>{contextType(membership)}</small></span>
-                <b>{active ? "Current" : "Switch"}</b>
-              </button>
+              <React.Fragment key={`${membership.organization_id}-${membership.id}`}>
+                {index === personalMembershipCount && personalMembershipCount > 0 && hasClubMemberships ? (
+                  <div className="account-context-switcher__group-separator" role="separator" aria-label="Personal and club accounts" />
+                ) : null}
+                <button
+                  aria-current={active ? "true" : undefined}
+                  className={active ? "active" : ""}
+                  role="menuitem"
+                  type="button"
+                  onClick={() => choose(membership)}
+                >
+                  <span><strong>{contextName(membership)}</strong><small>{contextType(membership)}</small></span>
+                  <b>{active ? "Current" : "Switch"}</b>
+                </button>
+              </React.Fragment>
             );
           })}
           {onLogout ? (
