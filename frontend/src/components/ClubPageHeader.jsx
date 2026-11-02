@@ -257,6 +257,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               <AccountContextSwitcher
                 className="account-context-switcher--header"
                 label="Account"
+                menuIcon="hamburger"
                 onContextChange={() => {
                   if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
                 }}

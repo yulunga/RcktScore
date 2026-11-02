@@ -2851,6 +2851,39 @@ textarea {
   white-space: nowrap;
 }
 
+.account-context-switcher__expand-icon {
+  display: grid;
+  width: 14px;
+  flex: 0 0 14px;
+  gap: 2px;
+  justify-items: end;
+}
+
+.account-context-switcher__expand-icon span {
+  display: block;
+  width: 100%;
+  height: 1.5px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: width 160ms ease;
+}
+
+.account-context-switcher__expand-icon span:nth-child(2) {
+  width: 72%;
+}
+
+.account-context-switcher__expand-icon span:nth-child(3) {
+  width: 44%;
+}
+
+.account-context-switcher__expand-icon--open span:first-child {
+  width: 44%;
+}
+
+.account-context-switcher__expand-icon--open span:nth-child(3) {
+  width: 100%;
+}
+
 .account-context-switcher__menu {
   position: absolute;
   top: calc(100% + 8px);
@@ -10131,6 +10164,119 @@ textarea {
   .club-page-header.club-page-header--compact .account-context-switcher__trigger {
     min-height: 30px;
     padding: 4px 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .club-page-header.club-page-header--compact {
+    padding: 3px 7px;
+  }
+
+  .club-page-header__top {
+    min-width: 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .club-page-header__branding {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .club-page-header__brand-row {
+    min-width: 0;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .club-page-header__brand-stack {
+    min-width: 0;
+    padding-top: 0;
+  }
+
+  .club-page-header__logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .club-page-header__top h1 {
+    overflow: hidden;
+    font-size: clamp(1.42rem, 6.4vw, 1.78rem);
+    line-height: 1;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .club-page-header__account {
+    min-width: 0;
+    flex: 0 1 auto;
+    padding-top: 0;
+  }
+
+  .club-page-header__meta {
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 3px;
+    padding-right: 0;
+  }
+
+  .account-context-switcher--header {
+    min-width: 0;
+  }
+
+  .account-context-switcher--header .account-context-switcher__trigger {
+    min-width: 0;
+    min-height: 31px;
+    gap: 4px;
+    padding: 3px 6px;
+  }
+
+  .account-context-switcher--header .account-context-switcher__label {
+    display: none;
+  }
+
+  .account-context-switcher--header .account-context-switcher__trigger strong {
+    max-width: clamp(58px, 19vw, 86px);
+    font-size: 0.72rem;
+  }
+
+  .account-context-switcher--header .account-context-switcher__expand-icon {
+    width: 12px;
+    flex-basis: 12px;
+  }
+
+  .club-page-header__notification-button,
+  .club-page-header__profile-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .club-page-header__notification-icon,
+  .club-page-header__profile-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .club-page-header.club-page-header--compact .club-page-header__top h1 {
+    font-size: clamp(1.32rem, 5.8vw, 1.62rem);
+  }
+
+  .club-page-header.club-page-header--compact .club-page-header__logo {
+    width: 31px;
+    height: 31px;
+  }
+
+  .club-page-header.club-page-header--compact .account-context-switcher__trigger {
+    min-height: 27px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .club-page-header.club-page-header--compact .club-page-header__notification-button,
+  .club-page-header.club-page-header--compact .club-page-header__profile-button {
+    width: 26px;
+    height: 26px;
   }
 }
 

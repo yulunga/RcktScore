@@ -215,6 +215,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect(page.getByText("Manage live scoring, keep an eye on active courts, and review recent matches.")).toHaveCount(0);
   await expect(page.getByText(session.username, { exact: true })).toHaveCount(0);
   await expect(header.locator(".account-context-switcher__trigger")).toContainText(session.organization_name);
+  await expect(header.locator(".account-context-switcher__expand-icon span")).toHaveCount(3);
   await expect(page.getByText(/RcktScore v\d/)).toHaveCount(0);
   await expect(page.getByText(/build \d+/)).toHaveCount(0);
   await expect(startMatch).toBeVisible();
@@ -223,6 +224,15 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
 
   const viewport = page.viewportSize();
   let initialHomeBox = null;
+  if (viewport.width <= 600) {
+    const contextBox = await header.locator(".account-context-switcher__trigger").boundingBox();
+    const messagesBox = await header.getByRole("button", { name: "Messages" }).boundingBox();
+    const profileBox = await header.getByRole("button", { name: `Profile: ${session.username}` }).boundingBox();
+    const sharedCentre = contextBox.y + (contextBox.height / 2);
+    expect(Math.abs(sharedCentre - (messagesBox.y + (messagesBox.height / 2)))).toBeLessThanOrEqual(2);
+    expect(Math.abs(sharedCentre - (profileBox.y + (profileBox.height / 2)))).toBeLessThanOrEqual(2);
+    expect(profileBox.x + profileBox.width).toBeLessThanOrEqual(viewport.width);
+  }
   if (viewport.width > 840) {
     const primaryNavigation = header.getByRole("navigation", { name: "Primary navigation" });
     const homeButton = primaryNavigation.getByRole("button", { name: "Home" });

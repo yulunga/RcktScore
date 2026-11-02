@@ -17,7 +17,7 @@ function contextType(membership) {
   return `Club ${clubRoleLabel(membership?.role).toLowerCase()}`;
 }
 
-export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange, onLogout, presentation = "menu" }) {
+export default function AccountContextSwitcher({ className = "", label = "Context", menuIcon = "chevron", onContextChange, onLogout, presentation = "menu" }) {
   const { session, switchOrganization } = useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -103,7 +103,15 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
       >
         <span className="account-context-switcher__label">{label}</span>
         <strong>{contextName(session)}</strong>
-        {hasMenu ? <span aria-hidden="true">⌄</span> : null}
+        {hasMenu ? (
+          menuIcon === "hamburger" ? (
+            <span className={`account-context-switcher__expand-icon${open ? " account-context-switcher__expand-icon--open" : ""}`} aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          ) : <span aria-hidden="true">⌄</span>
+        ) : null}
       </button>
       {open ? (
         <div className="account-context-switcher__menu" role="menu" aria-label="Choose active context">
