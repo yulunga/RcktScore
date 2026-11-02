@@ -187,9 +187,10 @@ desktop visibility of `.dashboard-carousel--mobile`; it must remain hidden until
 the phone/portrait breakpoint. The automated journey also
 holds the page at the former scroll-boundary failure point and verifies that the
 header changes state once rather than oscillating between labels and icons.
-The same suite verifies that the header omits its redundant profile icon and
-that the personal Profile section in Settings lets a signed-in user update their
-own name/contact/country fields. If the profile loads blank, verify that
+The same suite verifies that the header omits its redundant profile icon, that
+the context menu touches and right-aligns with its trigger while using a
+top-right transform origin, and that the personal Profile section in Settings
+lets a signed-in user update their own name/contact/country fields. If the profile loads blank, verify that
 `GET /organization_settings/{organization_id}` returns the signed-in username in
 `users`; if saving fails, inspect `PUT /personal_profile/{organization_id}` and
 the current org-user bearer session.

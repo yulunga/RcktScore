@@ -2616,7 +2616,7 @@ textarea {
 .club-page-header {
   position: sticky;
   top: 2px;
-  z-index: 40;
+  z-index: 49;
   width: 100%;
   box-sizing: border-box;
   display: grid;
@@ -2898,6 +2898,23 @@ textarea {
   box-shadow: 0 18px 45px rgba(16, 42, 67, 0.2);
   max-height: min(70vh, 430px);
   overflow-y: auto;
+}
+
+.account-context-switcher--header .account-context-switcher__menu {
+  top: calc(100% - 1px);
+  right: 0;
+  left: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.12);
+  transform-origin: top right;
+  transition: opacity 140ms ease, transform 180ms cubic-bezier(0.2, 0.85, 0.3, 1);
+}
+
+.account-context-switcher--header .account-context-switcher__menu--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
 }
 
 .account-context-switcher__menu button {
@@ -6941,9 +6958,9 @@ textarea {
   }
 
   .account-context-switcher--header .account-context-switcher__menu {
-    position: fixed;
-    top: 82px;
-    right: 12px;
+    position: absolute;
+    top: calc(100% - 1px);
+    right: 0;
     left: auto;
     width: min(330px, calc(100vw - 24px));
   }

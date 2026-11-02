@@ -233,6 +233,26 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     expect(contextBox.x + contextBox.width).toBeLessThanOrEqual(viewport.width);
   }
   await expect(header.getByRole("button", { name: /^Profile:/ })).toHaveCount(0);
+  const headerContextTrigger = header.locator(".account-context-switcher__trigger");
+  await headerContextTrigger.click();
+  const headerContextMenu = header.getByRole("menu", { name: "Choose active context" });
+  await expect(headerContextMenu).toHaveClass(/account-context-switcher__menu--open/);
+  const [contextTriggerBox, contextMenuBox] = await Promise.all([
+    headerContextTrigger.boundingBox(),
+    headerContextMenu.boundingBox(),
+  ]);
+  expect(Math.abs((contextMenuBox.x + contextMenuBox.width) - (contextTriggerBox.x + contextTriggerBox.width))).toBeLessThanOrEqual(1);
+  expect(Math.abs(contextMenuBox.y - (contextTriggerBox.y + contextTriggerBox.height - 1))).toBeLessThanOrEqual(1);
+  const contextMenuOrigin = await headerContextMenu.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const [x, y] = style.transformOrigin.split(" ").map(Number.parseFloat);
+    return { x, y, width: element.offsetWidth };
+  });
+  expect(Math.abs(contextMenuOrigin.x - contextMenuOrigin.width)).toBeLessThanOrEqual(1);
+  expect(contextMenuOrigin.y).toBe(0);
+  await headerContextTrigger.click();
+  await expect(headerContextMenu).not.toHaveClass(/account-context-switcher__menu--open/);
+  await expect(headerContextMenu).toHaveCount(0);
   if (viewport.width > 840) {
     const primaryNavigation = header.getByRole("navigation", { name: "Primary navigation" });
     const homeButton = primaryNavigation.getByRole("button", { name: "Home" });

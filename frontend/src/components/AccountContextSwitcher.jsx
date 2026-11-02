@@ -20,6 +20,7 @@ function contextType(membership) {
 export default function AccountContextSwitcher({ className = "", label = "Context", menuIcon = "chevron", onContextChange, onLogout, presentation = "menu" }) {
   const { session, switchOrganization } = useAuth();
   const [open, setOpen] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
   const containerRef = useRef(null);
   const memberships = session?.available_memberships || session?.memberships || (session ? [session] : []);
   const hasChoices = memberships.length > 1;
@@ -41,6 +42,12 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
     };
   }, [open]);
 
+  useEffect(() => {
+    if (open || !menuMounted) return undefined;
+    const timer = window.setTimeout(() => setMenuMounted(false), 180);
+    return () => window.clearTimeout(timer);
+  }, [menuMounted, open]);
+
   if (!session) return null;
 
   function choose(membership) {
@@ -52,6 +59,16 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
       setOpen(false);
       onContextChange?.(membership);
     }
+  }
+
+  function toggleMenu() {
+    if (!hasMenu) return;
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setMenuMounted(true);
+    window.requestAnimationFrame(() => setOpen(true));
   }
 
   if (presentation === "choices") {
@@ -99,7 +116,7 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
         disabled={!hasMenu}
         title={hasChoices ? "Change active account or club" : (onLogout ? "Account menu" : "Active account")}
         type="button"
-        onClick={() => hasMenu && setOpen((current) => !current)}
+        onClick={toggleMenu}
       >
         <span className="account-context-switcher__label">{label}</span>
         <strong>{contextName(session)}</strong>
@@ -113,8 +130,8 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
           ) : <span aria-hidden="true">⌄</span>
         ) : null}
       </button>
-      {open ? (
-        <div className="account-context-switcher__menu" role="menu" aria-label="Choose active context">
+      {menuMounted ? (
+        <div className={`account-context-switcher__menu${open ? " account-context-switcher__menu--open" : ""}`} role="menu" aria-label="Choose active context">
           {memberships.map((membership) => {
             const active = Number(membership.organization_id) === Number(session.organization_id);
             return (
