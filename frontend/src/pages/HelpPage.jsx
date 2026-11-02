@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import PublicSiteFooter from "../components/PublicSiteFooter";
 import { useAuth } from "../hooks/useAuth";
-import { confirmPasswordReset, requestPasswordReset } from "../services/api";
+import { confirmPasswordReset, requestPasswordReset, validatePasswordResetToken } from "../services/api";
 import { OPEN_COOKIE_SETTINGS_EVENT } from "../services/analytics";
+import { passwordPolicyError, passwordRequirements } from "../utils/passwordPolicy";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HELP_SECTIONS = ["web-access", "ios-access", "reset", "terms", "privacy", "cookies"];
@@ -141,9 +142,10 @@ export default function HelpPage() {
   const { isAuthenticated } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const resetToken = searchParams.get("token") || "";
+  const isEmailConfirmation = searchParams.get("mode") === "confirm-email";
   const requestedSection = searchParams.get("section");
   const canShowReset = !isAuthenticated;
-  const defaultMode = canShowReset && (searchParams.get("mode") === "reset" || resetToken)
+  const defaultMode = canShowReset && (["reset", "confirm-email"].includes(searchParams.get("mode")) || resetToken)
     ? "reset"
     : HELP_SECTIONS.includes(requestedSection)
       ? requestedSection
@@ -156,6 +158,8 @@ export default function HelpPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tokenStatus, setTokenStatus] = useState(resetToken ? "checking" : "idle");
+  const [passwordComplete, setPasswordComplete] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
 
@@ -168,6 +172,31 @@ export default function HelpPage() {
     window.addEventListener("scroll", updateHeader, { passive: true });
     return () => window.removeEventListener("scroll", updateHeader);
   }, []);
+
+  useEffect(() => {
+    if (!resetToken) return undefined;
+    let cancelled = false;
+    setTokenStatus("checking");
+    validatePasswordResetToken({ token: resetToken })
+      .then(() => {
+        if (!cancelled) setTokenStatus("valid");
+      })
+      .catch((requestError) => {
+        if (!cancelled) {
+          setTokenStatus("invalid");
+          setError(requestError.message || "This secure link is invalid or has expired.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resetToken]);
+
+  useEffect(() => {
+    if (!passwordComplete) return undefined;
+    const redirectTimer = window.setTimeout(() => navigate("/", { replace: true }), 3000);
+    return () => window.clearTimeout(redirectTimer);
+  }, [navigate, passwordComplete]);
 
   const knowledgeItems = [
     {
@@ -207,11 +236,13 @@ export default function HelpPage() {
 
   const resetIntro = useMemo(() => {
     if (resetToken) {
-      return "Choose a new password for your HitnScore account.";
+      return isEmailConfirmation
+        ? "Your email address has been confirmed. Create a password to finish setting up your HitnScore account."
+        : "Choose a new password for your HitnScore account.";
     }
 
     return "Enter the email address used for your account. If it is registered, we will send a reset link.";
-  }, [resetToken]);
+  }, [isEmailConfirmation, resetToken]);
 
   async function handleResetRequest(event) {
     event.preventDefault();
@@ -241,8 +272,9 @@ export default function HelpPage() {
   async function handleResetConfirm(event) {
     event.preventDefault();
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setError(policyError);
       setMessage("");
       return;
     }
@@ -262,7 +294,8 @@ export default function HelpPage() {
         token: resetToken,
         password: newPassword,
       });
-      setMessage("Password updated. You can now sign in with your new password.");
+      setMessage("Password changed successfully. Redirecting you to sign in in 3 seconds.");
+      setPasswordComplete(true);
       setNewPassword("");
       setConfirmPassword("");
     } catch (requestError) {
@@ -373,11 +406,21 @@ export default function HelpPage() {
           {activeSection === "reset" && canShowReset ? (
             <section className="stack compact">
               <div className="panel-heading">
-                <h2>Password Reset</h2>
+                <h2>{isEmailConfirmation ? "Email Address Confirmed" : "Password Reset"}</h2>
                 <p className="helper-text">{resetIntro}</p>
               </div>
 
-              {resetToken ? (
+              {resetToken && tokenStatus === "checking" ? <div className="notice">Checking your secure link...</div> : null}
+              {resetToken && tokenStatus === "invalid" ? (
+                <div className="stack compact">
+                  <div className="notice error">{error}</div>
+                  <button type="button" className="secondary" onClick={() => openSection("reset")}>Request a new link</button>
+                </div>
+              ) : null}
+              {resetToken && tokenStatus === "valid" ? (
+                passwordComplete ? (
+                  <div className="notice settings-success" role="status">{message}</div>
+                ) : (
                 <form className="stack compact" onSubmit={handleResetConfirm}>
                   <div className="field">
                     <label htmlFor="new_password">New password</label>
@@ -389,6 +432,13 @@ export default function HelpPage() {
                       onChange={(event) => setNewPassword(event.target.value)}
                     />
                   </div>
+                  <ul className="password-requirements" aria-label="Password requirements">
+                    {passwordRequirements(newPassword).map((requirement) => (
+                      <li className={requirement.met ? "met" : ""} key={requirement.label}>
+                        <span aria-hidden="true">{requirement.met ? "✓" : "○"}</span> {requirement.label}
+                      </li>
+                    ))}
+                  </ul>
                   <div className="field">
                     <label htmlFor="confirm_password">Confirm password</label>
                     <input
@@ -407,7 +457,8 @@ export default function HelpPage() {
                     </button>
                   </div>
                 </form>
-              ) : (
+                )
+              ) : !resetToken ? (
                 <form className="stack compact" onSubmit={handleResetRequest}>
                   <div className="field">
                     <label htmlFor="reset_email">Account email</label>
@@ -427,7 +478,7 @@ export default function HelpPage() {
                     </button>
                   </div>
                 </form>
-              )}
+              ) : null}
             </section>
           ) : null}
 

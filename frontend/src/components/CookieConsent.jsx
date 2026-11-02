@@ -54,7 +54,7 @@ export default function CookieConsent() {
       <div className="cookie-consent__copy">
         <h2 id="cookie-consent-title">Your privacy choices</h2>
         <p>
-          We use essential storage to remember your choices and keep this app working. Optional Google Analytics
+          We use essential storage to remember your choices and keep this app working. Optional Analytics
           will only be used if you allow it. Read our <a href="/help?section=privacy">privacy information</a>.
         </p>
         <button
@@ -77,7 +77,7 @@ export default function CookieConsent() {
             <strong>Optional analytics</strong>
             <span>Off until allowed</span>
             <p>
-              Google Analytics helps us understand useful pages, device types and general engagement. We exclude
+              Analytics helps us understand useful pages, device types and general engagement. We exclude
               names, email addresses, account identifiers, match identifiers and public draw keys.
             </p>
           </div>

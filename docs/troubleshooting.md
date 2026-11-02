@@ -483,17 +483,24 @@ Common symptoms:
 - `Ping Us` returns `FEEDBACK_DELIVERY_FAILED` because SES rejected or could not accept the message
 - personal signup returns `PERSONAL_SIGNUP_CONFIGURATION_ERROR` when the password-setup URL is not configured
 - personal signup creates a pending owner membership until the emailed password is chosen; this is email verification, not manual root approval
+- `ACCOUNT_ALREADY_REGISTERED` is expected when the normalized email already owns a Personal membership; use the included reset-password link rather than resubmitting signup. Club-only identities are not blocked from adding Personal
 - root admin can manually verify an unverified account from **User Accounts → user profile → Profile**; this validates a matching personal registration and approves pending memberships for that email, but does not create a password, so use the separate Change Password control when a test account still needs credentials
 - personal signup returning `REGISTRATION_FAILED` with a `SkwshOrgSettings_interest_request_id_fkey` error indicates migration `017_platform_enabled_sports.sql` is missing and the old optional-table fallback rolled back the registration insert; apply migration 017 and deploy the current transaction-safe fallback
 - club requests remain pending enquiries and do not create accounts automatically
 - logged-in subscription enquiries require migration `022_club_subscription_enquiries.sql`; if the extended club fields fail to store, apply that migration before deploying the updated `register_interest` and root-admin interest-request functions
 - `SESSION_REQUIRED`, `SESSION_INVALID`, or `SESSION_EXPIRED` from a Club Essentials/Club Pro enquiry means the saved mobile session must be refreshed by signing in again
 - password reset link points to the wrong host
+- a setup/reset page that remains on “Checking your secure link” indicates `POST /password_reset/validate` is missing from the deployed backend; an invalid/expired response should offer a fresh reset request
+- passwords must satisfy the same browser and backend policy (8+ characters, uppercase, number, symbol, and no configured common password term). A browser-only change is insufficient because the confirm and root-admin password APIs enforce it too
 - organisation invite exists but user remains pending forever
 
 For `Ping Us`, verify that the deployed `FEEDBACK_FROM_EMAIL` identity exists in `eu-west-2` and that `FEEDBACK_TO_EMAIL` is permitted by the account's SES production or sandbox status. The checked-in feedback defaults use `hello@hitnscore.com`; redeploy the backend after changing these parameters because updating the iOS app alone cannot repair SES configuration.
 
 For subscription enquiries, verify `INTEREST_FROM_EMAIL` is an SES-verified identity and `INTEREST_TO_EMAIL` is set to the intended `hello@` mailbox. The backend sends one confirmation to the signed-in requester and one admin notification to that configured destination.
+
+The club-enquiry requester email intentionally omits blank optional fields. The admin email still shows all fields with `Not provided`/`Not specified` fallbacks; compare the correct recipient before treating the difference as a template regression.
+
+Root-admin user deletion is deliberately separate from removing one club membership. The Profile action requires a second confirmation. Without the games checkbox, Personal tenants are archived so shared history remains; with it selected, matches in the Personal tenant and matches explicitly attributed to the username as referee are removed before identity cleanup. If deletion returns `USER_DELETE_FAILED`, inspect foreign-key errors before retrying and do not manually remove shared club tenants.
 
 On iOS, the Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
 

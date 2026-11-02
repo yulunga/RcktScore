@@ -254,6 +254,18 @@ Resources:
             Path: /password_reset/confirm
             Method: POST
 
+  PasswordResetValidateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/password_reset_validate/handler.lambda_handler
+      Events:
+        PasswordResetValidate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /password_reset/validate
+            Method: POST
+
   ApproveOrgUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -567,6 +579,18 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/users/{user_id}
             Method: GET
+
+  DeleteRootAdminUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_root_admin_user/handler.lambda_handler
+      Events:
+        DeleteRootAdminUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/users/{user_id}
+            Method: DELETE
 
   UpdateRootAdminUserSportAccessFunction:
     Type: AWS::Serverless::Function

@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.organization_logic import APP_DISPLAY_NAME, is_valid_email_address, normalize_email_address
+from common.password_policy import validate_password
 from common.session_logic import revoke_active_sessions_for_username
 
 
@@ -100,13 +101,38 @@ def request_password_reset(connection, email, *, source_email, reset_base_url):
     return {"accepted": True, "email_sent": True}
 
 
+def validate_password_reset_token(connection, token):
+    reset_token = (token or "").strip()
+    if not reset_token:
+        raise ValueError("Reset token is required")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT password_reset_requested_at
+            FROM "SkwshOrgUsers"
+            WHERE password_reset_token = %(reset_token)s
+            ORDER BY password_reset_requested_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            {"reset_token": reset_token},
+        )
+        user_row = cursor.fetchone()
+
+    if not user_row:
+        raise ValueError("Reset link is invalid or has already been used")
+    requested_at = user_row.get("password_reset_requested_at")
+    if not requested_at or requested_at < _utcnow() - timedelta(hours=RESET_TOKEN_TTL_HOURS):
+        raise ValueError("Reset link has expired")
+    return {"valid": True}
+
+
 def confirm_password_reset(connection, token, password):
     reset_token = (token or "").strip()
     if not reset_token:
         raise ValueError("Reset token is required")
 
-    if not password or len(password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+    validated_password = validate_password(password)
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -129,7 +155,7 @@ def confirm_password_reset(connection, token, password):
             raise ValueError("Reset link has expired")
 
         username = normalize_email_address(user_row["clubusername"])
-        password_hash = generate_password_hash(password)
+        password_hash = generate_password_hash(validated_password)
         validated_at = _utcnow()
         cursor.execute(
             """

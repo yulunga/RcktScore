@@ -47,10 +47,10 @@ def test_root_admin_password_change_hashes_all_memberships_and_revokes_sessions(
         lambda current_connection, username, reason: revoked.append((username, reason)),
     )
 
-    result = root_admin_logic.update_root_admin_user_password(connection, 42, "new-password")
+    result = root_admin_logic.update_root_admin_user_password(connection, 42, "CourtSide7!")
 
     update_call = next(call for call in connection.statements if 'UPDATE "SkwshOrgUsers"' in call[0])
-    assert update_call[1]["password_hash"] == "hash:new-password"
+    assert update_call[1]["password_hash"] == "hash:CourtSide7!"
     assert update_call[1]["username"] == "player@example.com"
     assert revoked == [("player@example.com", "password_reset_by_root_admin")]
     assert connection.commit_count == 1

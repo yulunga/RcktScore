@@ -36,6 +36,7 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
     monkeypatch.setenv("PASSWORD_RESET_BASE_URL", "https://example.com")
     monkeypatch.setenv("INTEREST_FROM_EMAIL", "sender@example.com")
     monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+    monkeypatch.setattr(handler, "_personal_account_exists", lambda *_args: False)
     monkeypatch.setattr(handler, "_upsert_interest_request", lambda current_connection, payload: {"id": 27})
     monkeypatch.setattr(
         handler,
@@ -58,6 +59,29 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
     assert body["data"]["requires_password_setup"] is True
     assert calls[0][0] == 27
     assert calls[0][1]["source_email"] == "sender@example.com"
+
+
+def test_personal_registration_rejects_an_existing_personal_account(monkeypatch):
+    connection = FakeConnection()
+
+    @contextmanager
+    def fake_connection():
+        yield connection
+
+    monkeypatch.setenv("PASSWORD_RESET_BASE_URL", "https://example.com")
+    monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+    monkeypatch.setattr(handler, "_personal_account_exists", lambda *_args: True)
+    monkeypatch.setattr(
+        handler,
+        "_upsert_interest_request",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("Duplicate registration was written")),
+    )
+
+    response = handler.lambda_handler(registration_event("personal"), None)
+    body = json.loads(response["body"])
+
+    assert response["statusCode"] == 409
+    assert body["error"]["code"] == "ACCOUNT_ALREADY_REGISTERED"
 
 
 def test_club_registration_remains_a_managed_enquiry(monkeypatch):
@@ -84,6 +108,38 @@ def test_club_registration_remains_a_managed_enquiry(monkeypatch):
     assert body["data"]["account_created"] is False
     assert connection.commit_count == 1
     assert len(email_calls) == 1
+
+
+def test_club_requester_email_omits_unsupplied_optional_fields(monkeypatch):
+    messages = []
+    monkeypatch.setattr(handler, "send_email_message", lambda **kwargs: messages.append(kwargs))
+
+    handler._send_interest_emails(
+        payload={
+            "first_name": "Test",
+            "surname": "Player",
+            "email": "player@example.com",
+            "use_type": "club",
+            "club_name": "Example Club",
+            "requested_plan": "",
+            "club_address": "",
+            "club_postcode": "",
+            "club_email": "",
+            "club_website": "",
+            "club_telephone": "",
+            "page_url": "https://example.com/signup",
+            "user_agent": "test-suite",
+        },
+        destination_email="admin@example.com",
+        source_email="sender@example.com",
+    )
+
+    requester, admin = messages
+    assert "Club: Example Club" in requester["text_body"]
+    assert "Club address" not in requester["text_body"]
+    assert "Requested subscription" not in requester["html_body"]
+    assert "Club address" in admin["text_body"]
+    assert "Not provided" in admin["html_body"]
 
 
 def test_logged_in_club_subscription_enquiry_captures_full_club_details(monkeypatch):

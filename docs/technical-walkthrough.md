@@ -139,8 +139,8 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
-   - for Personal, records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a password-setup email without entering an admin approval queue; completing that link validates the email and activates login
-   - for Club, keeps the request pending and sends confirmation/admin enquiry emails
+   - for Personal, rejects an existing Personal membership for the normalized email with `ACCOUNT_ALREADY_REGISTERED`, otherwise records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a `mode=confirm-email` password-setup email without entering an admin approval queue; a club-only identity is still allowed to add Personal
+   - for Club, keeps the request pending and sends confirmation/admin enquiry emails; the requester copy renders only supplied optional fields while the admin copy retains all fields
    - for a logged-in native Club Essentials or Club Pro enquiry, validates the bearer session, derives the requester email from it, and stores the club name, address/postcode, club email, website, telephone, and requested plan for root-admin review
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
 6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
@@ -159,7 +159,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 
 - [frontend/src/pages/HelpPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HelpPage.jsx)
 
-The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password reset retains the existing `?mode=reset` and token flow. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. `components/PublicSiteFooter.jsx` is the reusable React template for the complete public-homepage footer: brand, strapline, App Store preview, Tournament Draw, Scoreboard Display, Help, Privacy and Cookie links. The Help Centre renders that component rather than maintaining page-specific footer markup. Its fixed header also follows the landing page by compacting after the user scrolls, while the brand logo and wordmark link back to `https://www.hitnscore.com/`.
+The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password recovery uses `?mode=reset`, while Personal email setup uses `?mode=confirm-email`. Both token pages validate the link with `POST /password_reset/validate` before enabling the form. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. `components/PublicSiteFooter.jsx` is the reusable React template for the complete public-homepage footer. The Help Centre renders that component rather than maintaining page-specific footer markup.
 
 ### Current path
 
@@ -170,7 +170,8 @@ The app `/help` route is also the public Help Centre and knowledge base. Its ove
    - `PASSWORD_RESET_BASE_URL`, then
    - request `Origin`
 5. The emailed link returns to `/help?mode=reset&token=...`.
-6. The confirm form calls `POST /password_reset/confirm`.
+6. The token is checked with `POST /password_reset/validate`; the confirm form calls `POST /password_reset/confirm`.
+7. The browser and backend both require eight or more characters, one uppercase letter, one number, one symbol and no configured common password term. Success replaces the form with a confirmation and redirects to login after three seconds.
 
 ### Troubleshooting cues
 

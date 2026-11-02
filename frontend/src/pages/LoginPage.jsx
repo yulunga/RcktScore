@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [interestError, setInterestError] = useState("");
   const [interestMessage, setInterestMessage] = useState("");
   const [interestLoading, setInterestLoading] = useState(false);
+  const [interestAccountExists, setInterestAccountExists] = useState(false);
   const [sessionConflictPrompt, setSessionConflictPrompt] = useState(null);
   const interestPanelRef = useRef(null);
   const {
@@ -77,6 +78,7 @@ export default function LoginPage() {
 
     setShowInterestForm(true);
     setInterestError("");
+    setInterestAccountExists(false);
     setInterestMessage("");
     setInterestCaptcha(createCaptchaChallenge());
     setInterestAnswer("");
@@ -198,6 +200,7 @@ export default function LoginPage() {
 
     setInterestLoading(true);
     setInterestError("");
+    setInterestAccountExists(false);
     setInterestMessage("");
 
     try {
@@ -230,6 +233,7 @@ export default function LoginPage() {
         setInterestError("");
       }, 5000);
     } catch (requestError) {
+      setInterestAccountExists(requestError.code === "ACCOUNT_ALREADY_REGISTERED");
       setInterestError(
         requestError.message
           || (requestedUseType === "personal"
@@ -364,15 +368,9 @@ export default function LoginPage() {
                 <form ref={interestPanelRef} className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
                   <h2 className="interest-panel__heading">Join Hit n Score</h2>
                   <p className="helper-text interest-copy">
-                    Welcome to Hit n Score — the racket-sport scoring app.
-                    <br />
-                    <br />
-                    Create a free personal account to start scoring matches. Registered users can access additional
-                    features, with the option to upgrade for more advanced tools.
-                    <br />
-                    <br />
-                    Looking for a multi-user account for a racket club? Club accounts are currently set up with our
-                    team. Register your interest and we’ll be in touch.
+                    Welcome to HitnScore the racket sport scoring app. Create a free personal account to start scoring
+                    matches. We also offer multi-user accounts for Rackets Sports Clubs. Register your interest for a
+                    club account and we will be in touch.
                   </p>
                   {requestedPersonalPlan === "personal_plus" ? (
                     <div className="notice">
@@ -498,7 +496,14 @@ export default function LoginPage() {
                     />
                   </div>
 
-                  {interestError ? <div className="notice error">{interestError}</div> : null}
+                  {interestError ? (
+                    <div className="notice error">
+                      {interestError}
+                      {interestAccountExists ? (
+                        <> <Link to="/help?mode=reset">Reset your password</Link>.</>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {interestMessage ? <div className="notice settings-success">{interestMessage}</div> : null}
 
                   <div className="button-row">

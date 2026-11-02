@@ -9,6 +9,32 @@ test("login page loads @smoke", async ({ page }) => {
   await expect(page.getByRole("link", { name: "View tournament draw" })).toHaveCount(0);
 });
 
+test("registration and privacy copy use the public product wording @smoke", async ({ page }) => {
+  await page.goto("/login?interest=1#want-in");
+
+  await expect(page.getByText(
+    "Welcome to HitnScore the racket sport scoring app. Create a free personal account to start scoring matches. We also offer multi-user accounts for Rackets Sports Clubs. Register your interest for a club account and we will be in touch.",
+    { exact: true },
+  )).toBeVisible();
+  await expect(page.locator(".cookie-consent")).toContainText("Optional Analytics");
+  await expect(page.locator(".cookie-consent")).not.toContainText("Google Analytics");
+});
+
+test("email confirmation validates its link and enforces the password checklist @smoke", async ({ page }) => {
+  await page.route("**/password_reset/validate", async (route) => {
+    await route.fulfill({ json: { success: true, data: { valid: true } } });
+  });
+  await page.goto("/help?mode=confirm-email&token=valid-test-token");
+
+  await expect(page.getByRole("heading", { name: "Email Address Confirmed" })).toBeVisible();
+  await expect(page.getByText("Your email address has been confirmed.", { exact: false })).toBeVisible();
+  const requirements = page.getByRole("list", { name: "Password requirements" });
+  await expect(requirements).toContainText("One uppercase letter");
+  await expect(requirements).toContainText("One number");
+  await expect(requirements).toContainText("One symbol");
+  await expect(requirements).toContainText("No common or easily guessed words");
+});
+
 test("dashboard redirects anonymous users back to login @smoke", async ({ page }) => {
   await page.goto("/dashboard");
 

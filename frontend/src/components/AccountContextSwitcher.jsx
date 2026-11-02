@@ -17,12 +17,13 @@ function contextType(membership) {
   return `Club ${clubRoleLabel(membership?.role).toLowerCase()}`;
 }
 
-export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange, presentation = "menu" }) {
+export default function AccountContextSwitcher({ className = "", label = "Context", onContextChange, onLogout, presentation = "menu" }) {
   const { session, switchOrganization } = useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const memberships = session?.available_memberships || session?.memberships || (session ? [session] : []);
   const hasChoices = memberships.length > 1;
+  const hasMenu = hasChoices || Boolean(onLogout);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -93,16 +94,16 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
     <div className={`account-context-switcher ${className}`.trim()} ref={containerRef}>
       <button
         aria-expanded={open ? "true" : "false"}
-        aria-haspopup={hasChoices ? "menu" : undefined}
+        aria-haspopup={hasMenu ? "menu" : undefined}
         className="account-context-switcher__trigger"
-        disabled={!hasChoices}
-        title={hasChoices ? "Change active account or club" : "Active account"}
+        disabled={!hasMenu}
+        title={hasChoices ? "Change active account or club" : (onLogout ? "Account menu" : "Active account")}
         type="button"
-        onClick={() => hasChoices && setOpen((current) => !current)}
+        onClick={() => hasMenu && setOpen((current) => !current)}
       >
         <span className="account-context-switcher__label">{label}</span>
         <strong>{contextName(session)}</strong>
-        {hasChoices ? <span aria-hidden="true">⌄</span> : null}
+        {hasMenu ? <span aria-hidden="true">⌄</span> : null}
       </button>
       {open ? (
         <div className="account-context-switcher__menu" role="menu" aria-label="Choose active context">
@@ -122,6 +123,12 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
               </button>
             );
           })}
+          {onLogout ? (
+            <button className="account-context-switcher__logout" role="menuitem" type="button" onClick={onLogout}>
+              <span><strong>Logout</strong><small>Sign out of HitnScore</small></span>
+              <b aria-hidden="true">↗</b>
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

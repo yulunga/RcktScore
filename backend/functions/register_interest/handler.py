@@ -144,6 +144,23 @@ def _upsert_interest_request(connection, payload):
         return cursor.fetchone()
 
 
+def _personal_account_exists(connection, email):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT 1
+            FROM "SkwshOrgUsers" AS membership
+            INNER JOIN "SkwshOrgSettings" AS organization
+                ON organization.id = membership.organization_id
+            WHERE LOWER(membership.clubusername) = LOWER(%(email)s)
+              AND organization.org_type = 'personal'
+            LIMIT 1
+            """,
+            {"email": email},
+        )
+        return cursor.fetchone() is not None
+
+
 def _send_interest_emails(*, payload, destination_email, source_email):
     template_context = {
         "first_name": payload["first_name"],
@@ -162,7 +179,6 @@ def _send_interest_emails(*, payload, destination_email, source_email):
     }
 
     user_subject = render_notification_template("interest_confirmation_subject.txt", template_context).strip()
-    user_body = render_notification_template("interest_confirmation_body.txt", template_context).strip()
     admin_subject = render_notification_template("interest_admin_subject.txt", template_context).strip()
     admin_body = render_notification_template("interest_admin_body.txt", template_context).strip()
     request_details = [
@@ -177,6 +193,36 @@ def _send_interest_emails(*, payload, destination_email, source_email):
         ("Club website", template_context["club_website"]),
         ("Club telephone", template_context["club_telephone"]),
     ]
+    user_request_details = [
+        ("Name", f"{template_context['first_name']} {template_context['surname']}"),
+        ("Email", template_context["email"]),
+        ("Use type", template_context["use_type"]),
+        ("Club", payload.get("club_name")),
+        ("Requested subscription", (payload.get("requested_plan") or "").replace("_", " ").title()),
+        ("Club address", payload.get("club_address")),
+        ("Club postcode", payload.get("club_postcode")),
+        ("Club email", payload.get("club_email")),
+        ("Club website", payload.get("club_website")),
+        ("Club telephone", payload.get("club_telephone")),
+    ]
+    user_request_details = [(label, value) for label, value in user_request_details if value]
+    user_body = "\n".join(
+        [
+            f"Hi {template_context['first_name']},",
+            "",
+            "Thanks for your interest in using Hit n Score for your racket club.",
+            "",
+            "Club and multi-user accounts are currently set up with our team. We have received your details and will be in touch.",
+            "",
+            "Your request details:",
+            *[f"{label}: {value}" for label, value in user_request_details],
+            "",
+            "We look forward to discussing the right setup for your club.",
+            "",
+            "Thanks,",
+            "HitnScore",
+        ]
+    )
     user_html = render_branded_email(
         title="Thanks for your club enquiry",
         greeting=f"Hi {template_context['first_name']},",
@@ -184,7 +230,7 @@ def _send_interest_emails(*, payload, destination_email, source_email):
             "Thanks for your interest in using Hit n Score for your racket club.",
             "Club and multi-user accounts are set up with our team. We have received your details and will be in touch.",
         ],
-        detail_rows=request_details,
+        detail_rows=user_request_details,
         notice="We look forward to discussing the right setup for your club.",
     )
     admin_html = render_branded_email(
@@ -298,6 +344,12 @@ def lambda_handler(event, context):
             if requested_plan:
                 authenticated_session = require_org_user_session(connection, event)
                 request_payload["email"] = authenticated_session["username"]
+            if use_type == "personal" and _personal_account_exists(connection, request_payload["email"]):
+                return error_response(
+                    409,
+                    "ACCOUNT_ALREADY_REGISTERED",
+                    "This email address is already registered. Sign in or reset your password if required.",
+                )
             interest_row = _upsert_interest_request(connection, request_payload)
             personal_signup = None
             if use_type == "personal":

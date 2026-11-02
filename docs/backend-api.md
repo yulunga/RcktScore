@@ -183,6 +183,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /logout`
 - `GET /session/status`
 - `POST /password_reset/request`
+- `POST /password_reset/validate`
 - `POST /password_reset/confirm`
 - `GET /organization_users/approve`
 - `POST /root_admin/login`
@@ -198,7 +199,7 @@ Tournament Draw and Scoreboard Display use the same permanently compact, full-vi
 
 Standalone landing-page actions labelled Start Scoring route to the plain `https://app.hitnscore.com/login` state. Only explicitly labelled account-creation, registration and club-interest actions route to `?interest=1#want-in`.
 
-The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, is also client-only. It uses the shared React `PublicSiteFooter` presentation, including Tournament Draw and Scoreboard Display navigation alongside Help, Privacy and Cookie links. Consolidating the former landing Help page into the app does not add or change an API route; password reset and feedback continue to use the endpoints listed above.
+The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, uses the shared React `PublicSiteFooter` presentation. Password and account-setup links first call `POST /password_reset/validate`; valid Personal setup links use `mode=confirm-email`, while ordinary recovery links retain `mode=reset`. Both finish through `POST /password_reset/confirm` and apply the same backend password policy: at least eight characters, an uppercase letter, a number, a symbol, and no configured common password term.
 
 The app shell and public landing homepage use the same browser title and description metadata. This is static client markup and has no backend API effect.
 
@@ -218,6 +219,7 @@ The public login logo and wordmark also link to the public landing homepage. Thi
 - `GET /root_admin/platform_sports`
 - `POST /root_admin/platform_sports/preview`
 - `PUT /root_admin/platform_sports`
+- `DELETE /root_admin/users/{user_id}`
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access`
 - `GET /root_admin/matches`
 - `PUT /root_admin/matches/{match_id}/archive`
@@ -378,6 +380,7 @@ Current root-admin club-user behavior:
 - `POST /root_admin/organization_users` creates a pending organisation membership and emails an approval link
 - `PUT /root_admin/organization_users/{user_id}/approve` lets root admin manually approve a pending organisation user without waiting for the email link flow
 - `GET /root_admin/interest_requests` now returns club enquiries only; personal registrations never enter the admin approval queue
+- `DELETE /root_admin/users/{user_id}` requires the exact `confirmation: "DELETE USER"`. It removes the normalized identity, memberships, sessions, notification reads, player-account links and registration rows. `delete_games: false` preserves shared history and archives any Personal tenant; `delete_games: true` also deletes matches owned by the Personal tenant or explicitly attributed to the username before removing the Personal tenant. The route always requires a valid root-admin bearer session.
 
 ### Organisation and dashboard routes
 
@@ -695,9 +698,11 @@ Current behavior:
 
 - register-interest writes to `HitnScoreInterestRequests`
 - `use_type = personal` records the request as `registered`, creates or refreshes a hidden `personal_free` organisation, owner membership, and personal court, then emails a time-limited password-setup link
+- a second Personal registration for an email that already owns a Personal membership returns `409 ACCOUNT_ALREADY_REGISTERED`; an identity with club memberships only may still create its Personal membership
 - personal signup returns `201` with `account_created = true` and does not require root-admin approval
 - the pending personal organisation/user and password token are committed before SES delivery; completing the emailed password link marks the membership approved and the interest record email-validated, while a delivery failure leaves the pending record available for retry
 - `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
+- the club requester confirmation omits optional details that were not supplied; the admin notification continues to include every field with its fallback value
 - logged-in native subscription enquiries also send `requested_plan`, club address/postcode, club email, website, and telephone; these enriched requests require a valid organisation-user bearer session and the backend derives the requester email from that session
 - migration `022_club_subscription_enquiries.sql` adds the extended club fields and separates personal-registration uniqueness from club-enquiry uniqueness so a club enquiry cannot overwrite the requester’s personal registration record
 - migration `020_personal_registration_status.sql` converts historical personal-interest rows from approval terminology to `registered`; club rows retain pending/approved/denied states

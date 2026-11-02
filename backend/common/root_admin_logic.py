@@ -27,6 +27,7 @@ from common.organization_logic import (
 )
 from common.access_control import normalize_membership_role
 from common.password_reset_logic import RESET_TOKEN_TTL_HOURS
+from common.password_policy import validate_password
 
 
 INTEREST_STATUSES = {"pending", "approved", "denied"}
@@ -678,7 +679,7 @@ def _build_set_password_url(base_url, token):
     if not base_url:
         raise ValueError("PASSWORD_RESET_BASE_URL must be configured")
 
-    return f"{base_url.rstrip('/')}/help?mode=reset&token={token}"
+    return f"{base_url.rstrip('/')}/help?mode=confirm-email&token={token}"
 
 
 def _send_personal_account_approved_email(*, account, set_password_url, source_email):
@@ -1961,9 +1962,7 @@ def remove_root_admin_user_club_membership(connection, user_id, membership_id):
 
 
 def update_root_admin_user_password(connection, user_id, password):
-    next_password = str(password or "")
-    if len(next_password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+    next_password = validate_password(password)
 
     username = _root_admin_user_username(connection, user_id)
     if not username:
@@ -1988,6 +1987,127 @@ def update_root_admin_user_password(connection, user_id, password):
     revoke_active_sessions_for_username(connection, username, reason="password_reset_by_root_admin")
     connection.commit()
     return {"updated": True, "username": username.lower()}
+
+
+def delete_root_admin_user_account(connection, user_id, *, delete_games=False):
+    username = _root_admin_user_username(connection, user_id)
+    if not username:
+        raise LookupError("User not found")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT organization.id, organization.interest_request_id
+            FROM "SkwshOrgUsers" AS membership
+            INNER JOIN "SkwshOrgSettings" AS organization
+                ON organization.id = membership.organization_id
+            WHERE LOWER(membership.clubusername) = LOWER(%(username)s)
+              AND organization.org_type = 'personal'
+            FOR UPDATE OF organization
+            """,
+            {"username": username},
+        )
+        personal_organizations = cursor.fetchall()
+        personal_ids = [row["id"] for row in personal_organizations]
+
+        deleted_match_count = 0
+        if delete_games:
+            if personal_ids:
+                cursor.execute(
+                    """
+                    DELETE FROM matches
+                    WHERE tenant_id = ANY(%(personal_ids)s)
+                       OR LOWER(COALESCE(referee_name, '')) = LOWER(%(username)s)
+                    """,
+                    {"personal_ids": personal_ids, "username": username},
+                )
+            else:
+                cursor.execute(
+                    "DELETE FROM matches WHERE LOWER(COALESCE(referee_name, '')) = LOWER(%(username)s)",
+                    {"username": username},
+                )
+            deleted_match_count = cursor.rowcount
+
+        for organization in personal_organizations:
+            organization_id = organization["id"]
+            if delete_games:
+                cursor.execute(
+                    "DELETE FROM court_display_sessions WHERE tenant_id = %(organization_id)s",
+                    {"organization_id": organization_id},
+                )
+                cursor.execute(
+                    'DELETE FROM "SkwshCourts" WHERE organization_name = %(organization_id)s',
+                    {"organization_id": organization_id},
+                )
+                cursor.execute(
+                    'DELETE FROM "SkwshOrgUsers" WHERE organization_id = %(organization_id)s',
+                    {"organization_id": organization_id},
+                )
+                cursor.execute(
+                    'DELETE FROM "SkwshOrgSettings" WHERE id = %(organization_id)s',
+                    {"organization_id": organization_id},
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE "SkwshOrgSettings"
+                    SET owner_username = %(deleted_owner)s,
+                        organization_name = 'Deleted personal account',
+                        interest_request_id = NULL
+                    WHERE id = %(organization_id)s
+                    """,
+                    {
+                        "deleted_owner": f"deleted-user-{int(user_id)}@invalid.local",
+                        "organization_id": organization_id,
+                    },
+                )
+
+        cursor.execute(
+            """
+            UPDATE players
+            SET user_id = NULL,
+                registered_username = NULL,
+                email = NULL,
+                claim_status = 'unclaimed',
+                claimed_at = NULL,
+                updated_at = now()
+            WHERE LOWER(COALESCE(registered_username, '')) = LOWER(%(username)s)
+               OR LOWER(COALESCE(email, '')) = LOWER(%(username)s)
+            """,
+            {"username": username},
+        )
+        cursor.execute(
+            "DELETE FROM system_notification_reads WHERE LOWER(username) = LOWER(%(username)s)",
+            {"username": username},
+        )
+        cursor.execute(
+            "DELETE FROM tournament_role_assignments WHERE LOWER(username) = LOWER(%(username)s)",
+            {"username": username},
+        )
+        cursor.execute(
+            'DELETE FROM "SkwshOrgUsers" WHERE LOWER(clubusername) = LOWER(%(username)s)',
+            {"username": username},
+        )
+        cursor.execute(
+            'DELETE FROM "HitnScoreInterestRequests" WHERE LOWER(email) = LOWER(%(username)s)',
+            {"username": username},
+        )
+        cursor.execute(
+            "DELETE FROM org_user_sessions WHERE LOWER(username) = LOWER(%(username)s)",
+            {"username": username},
+        )
+        cursor.execute(
+            'DELETE FROM "users" WHERE email_normalized = LOWER(BTRIM(%(username)s))',
+            {"username": username},
+        )
+
+    connection.commit()
+    return {
+        "deleted": True,
+        "username": username.lower(),
+        "games_deleted": bool(delete_games),
+        "deleted_match_count": deleted_match_count,
+    }
 
 
 def verify_root_admin_user_email(connection, user_id, verified_by):

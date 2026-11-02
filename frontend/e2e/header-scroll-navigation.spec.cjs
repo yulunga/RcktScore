@@ -239,9 +239,11 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(newMatchButton).toHaveCSS("border-top-width", "1px");
     await expect(newMatchButton).toHaveCSS("border-top-color", "rgb(122, 165, 216)");
     await expect(primaryNavigation.getByRole("button")).toHaveCount(6);
-    const logoutBox = await header.getByRole("button", { name: "Logout" }).boundingBox();
-    const helpLabelBox = await header.getByRole("button", { name: "Help" }).locator(".club-page-header__menu-label").boundingBox();
-    expect(Math.abs((logoutBox.x + logoutBox.width) - (helpLabelBox.x + helpLabelBox.width))).toBeLessThanOrEqual(1);
+    await expect(header.getByRole("button", { name: "Logout" })).toHaveCount(0);
+    await header.locator(".account-context-switcher__trigger").click();
+    const accountMenuItems = header.getByRole("menuitem");
+    await expect(accountMenuItems.last()).toContainText("Logout");
+    await header.locator(".account-context-switcher__trigger").click();
     initialHomeBox = await homeButton.boundingBox();
   }
 
@@ -282,7 +284,11 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect.poll(async () => (await header.boundingBox()).height).toBeLessThan(initialBox.height);
   const compactBox = await header.boundingBox();
 
-  expect(Math.abs(compactBox.width - initialBox.width)).toBeLessThanOrEqual(1);
+  if (viewport.width > 840) {
+    expect(Math.abs(compactBox.width - initialBox.width)).toBeLessThanOrEqual(1);
+  } else {
+    expect(Math.abs(compactBox.width - (viewport.width - 24))).toBeLessThanOrEqual(2);
+  }
   expect(compactBox.height).toBeLessThan(initialBox.height);
   expect(compactBox.y).toBeGreaterThanOrEqual(0);
   expect(compactBox.y).toBeLessThanOrEqual(20);
@@ -335,6 +341,7 @@ test("switches identity context from the header and exposes it on Matches and ma
   const headerContext = page.locator(".account-context-switcher--header");
   await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
   await headerContext.locator(".account-context-switcher__trigger").click();
+  await expect(headerContext.getByRole("menuitem").last()).toContainText("Logout");
   await headerContext.getByRole("menuitem").filter({ hasText: "Personal" }).click();
   await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Personal");
 

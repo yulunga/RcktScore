@@ -7,6 +7,7 @@ import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchS
 import { useRootAdmin } from "../hooks/useRootAdmin";
 import {
   addRootAdminUserMembership,
+  deleteRootAdminUser,
   deleteRootAdminUserMembership,
   getRootAdminUserProfile,
   updateRootAdminPersonalAccount,
@@ -14,6 +15,7 @@ import {
   updateRootAdminUserPassword,
   verifyRootAdminUserEmail,
 } from "../services/api";
+import { passwordPolicyError, passwordRequirements } from "../utils/passwordPolicy";
 
 const PLAN_LABELS = {
   personal_free: "Personal",
@@ -61,6 +63,8 @@ export default function RootAdminUserProfilePage() {
   const [savingKey, setSavingKey] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [deletePanelOpen, setDeletePanelOpen] = useState(false);
+  const [deleteGames, setDeleteGames] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!userId) return;
@@ -155,8 +159,9 @@ export default function RootAdminUserProfilePage() {
 
   async function handlePasswordChange(event) {
     event.preventDefault();
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setError(policyError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -173,6 +178,23 @@ export default function RootAdminUserProfilePage() {
     if (result) {
       setNewPassword("");
       setConfirmPassword("");
+    }
+  }
+
+  async function handleDeleteUser() {
+    const gamesWarning = deleteGames
+      ? " This will also permanently delete personal matches and club matches explicitly attributed to this account."
+      : " Shared match records will be retained.";
+    if (!window.confirm(`Are you sure you want to permanently delete ${user.username}?${gamesWarning}`)) return;
+    setSavingKey("delete-user");
+    setMessage("");
+    setError("");
+    try {
+      await deleteRootAdminUser(userId, { confirmation: "DELETE USER", delete_games: deleteGames });
+      navigate("/rckscoreAdmin/users", { replace: true });
+    } catch (requestError) {
+      setError(requestError.message || "Unable to delete this user account.");
+      setSavingKey("");
     }
   }
 
@@ -264,8 +286,34 @@ export default function RootAdminUserProfilePage() {
                     <input id="root_admin_confirm_password" minLength="8" required type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
                   </div>
                 </div>
+                <ul className="password-requirements" aria-label="Password requirements">
+                  {passwordRequirements(newPassword).map((requirement) => (
+                    <li className={requirement.met ? "met" : ""} key={requirement.label}><span aria-hidden="true">{requirement.met ? "✓" : "○"}</span> {requirement.label}</li>
+                  ))}
+                </ul>
                 <div className="button-row"><button disabled={savingKey === "password"} type="submit">{savingKey === "password" ? "Changing Password..." : "Change Password"}</button></div>
               </form>
+              <section className="root-admin-delete-account stack compact">
+                <div className="panel-heading">
+                  <h3>Delete User Account</h3>
+                  <p className="helper-text">Permanently removes the identity, login sessions, memberships and personal details. Shared club records are retained unless the match option is selected.</p>
+                </div>
+                {!deletePanelOpen ? (
+                  <div className="button-row"><button className="danger" type="button" onClick={() => setDeletePanelOpen(true)}>Delete User Account</button></div>
+                ) : (
+                  <div className="stack compact root-admin-delete-account__confirm">
+                    <strong>Are you sure?</strong>
+                    <label className="checkbox-row">
+                      <input type="checkbox" checked={deleteGames} onChange={(event) => setDeleteGames(event.target.checked)} />
+                      <span>Also delete the user’s games and related scoring entries</span>
+                    </label>
+                    <div className="button-row">
+                      <button className="danger" disabled={savingKey === "delete-user"} type="button" onClick={handleDeleteUser}>{savingKey === "delete-user" ? "Deleting..." : "Confirm Delete"}</button>
+                      <button className="secondary" disabled={savingKey === "delete-user"} type="button" onClick={() => { setDeletePanelOpen(false); setDeleteGames(false); }}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </section>
             </section>
           ) : null}
 

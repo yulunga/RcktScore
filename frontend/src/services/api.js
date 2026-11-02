@@ -186,6 +186,13 @@ export function confirmPasswordReset(payload) {
   });
 }
 
+export function validatePasswordResetToken(payload) {
+  return apiRequest("/password_reset/validate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getDashboard(organizationId, options = {}) {
   const params = new URLSearchParams();
   if (options.activeLimit !== undefined) {
@@ -315,6 +322,13 @@ export function getRootAdminUsers(filters = {}) {
 
 export function getRootAdminUserProfile(userId) {
   return apiRequest(`/root_admin/users/${userId}`);
+}
+
+export function deleteRootAdminUser(userId, payload) {
+  return apiRequest(`/root_admin/users/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function addRootAdminUserMembership(userId, payload) {

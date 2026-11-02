@@ -256,8 +256,13 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
             <div className="club-page-header__meta">
               <AccountContextSwitcher
                 className="account-context-switcher--header"
+                label="Account"
                 onContextChange={() => {
                   if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
+                }}
+                onLogout={() => {
+                  logout();
+                  navigate("/", { replace: true });
                 }}
               />
               <button
@@ -307,16 +312,6 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
                   <circle cx="12" cy="8.25" r="3.25" stroke="currentColor" strokeWidth="1.8" />
                   <path d="M5.75 19C5.75 15.5482 8.54822 12.75 12 12.75C15.4518 12.75 18.25 15.5482 18.25 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
-              </button>
-              <button
-                className="session-link-button"
-                type="button"
-                onClick={() => {
-                  logout();
-                  navigate("/", { replace: true });
-                }}
-              >
-                Logout
               </button>
             </div>
             <nav className="club-page-header__menu" aria-label="Primary navigation">
