@@ -38,6 +38,14 @@
   right: 0;
 }
 
+.match-sport-overlay__context-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
 .match-sport-overlay__option {
   justify-content: space-between;
   gap: 14px;
@@ -9657,6 +9665,28 @@ textarea {
   flex-wrap: wrap;
 }
 
+.help-close-button {
+  display: inline-grid;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(18, 116, 208, 0.16);
+  border-radius: 50%;
+  background: rgba(18, 116, 208, 0.08);
+  color: #0b5fb3;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.help-close-button:hover {
+  background: rgba(18, 116, 208, 0.14);
+}
+
 .settings-field-wide {
   grid-column: 1 / -1;
 }
@@ -11233,6 +11263,7 @@ textarea {
 
 /* Final match-flow overrides must follow the legacy responsive scorer rules. */
 .match-sport-overlay {
+  position: relative;
   overflow: visible;
 }
 
@@ -11267,25 +11298,61 @@ textarea {
 }
 
 @media (max-width: 600px) {
+  .overlay-backdrop:has(.match-sport-overlay) {
+    padding: 8px;
+  }
+
   .match-sport-overlay {
-    width: calc(100vw - 20px);
-    max-height: calc(100dvh - 20px);
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 16px);
     gap: 12px;
-    padding: 16px;
+    padding: 18px;
+  }
+
+  .match-sport-overlay__heading {
+    min-width: 0;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .match-sport-overlay__heading .panel-heading {
+    min-width: 0;
+  }
+
+  .match-sport-overlay__heading h2 {
+    font-size: 1.4rem;
+  }
+
+  .match-sport-overlay__context-row,
+  .match-sport-overlay__grid {
+    width: 100%;
+  }
+
+  .match-sport-overlay__context-row .help-close-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
   }
 
   .match-sport-overlay__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 12px;
+    align-items: stretch;
   }
 
   .match-sport-overlay__option {
-    min-height: 126px;
+    min-height: 134px;
     flex-direction: column;
     justify-content: center;
     gap: 6px;
-    padding: 9px;
+    padding: 11px;
     text-align: center;
+  }
+
+  .match-sport-overlay .match-sport-artwork {
+    width: 96px;
+    height: 62px;
   }
 
   .player-score {
@@ -11509,14 +11576,14 @@ textarea {
   }
 
   .match-sport-overlay {
-    width: min(780px, calc(100vw - 16px));
+    width: min(820px, calc(100vw - 12px));
     max-height: calc(100dvh - 8px);
     display: grid;
-    grid-template-columns: minmax(170px, 0.7fr) minmax(230px, 1.3fr);
+    grid-template-columns: minmax(170px, 0.7fr) minmax(260px, 1.3fr);
     grid-template-rows: auto minmax(0, 1fr);
     align-items: center;
-    gap: 7px 10px;
-    padding: 9px 11px;
+    gap: 9px 12px;
+    padding: 12px 14px;
     overflow: visible;
     border-radius: 16px;
   }
@@ -11546,16 +11613,7 @@ textarea {
     display: none;
   }
 
-  .match-sport-overlay__heading .help-close-button {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    min-height: 28px;
-    padding: 0;
-    font-size: 0.9rem;
-  }
-
-  .match-sport-overlay > .account-context-switcher--match-start {
+  .match-sport-overlay > .match-sport-overlay__context-row {
     min-width: 0;
     grid-column: 2;
     grid-row: 1;
@@ -11582,7 +11640,7 @@ textarea {
 
   .match-sport-overlay__option {
     min-width: 0;
-    min-height: 82px;
+    min-height: 96px;
     flex-direction: column;
     justify-content: center;
     gap: 3px;
@@ -11601,8 +11659,8 @@ textarea {
   }
 
   .match-sport-overlay .match-sport-artwork {
-    width: clamp(58px, 11vw, 82px);
-    height: clamp(37px, 7vw, 52px);
+    width: clamp(66px, 12vw, 94px);
+    height: clamp(42px, 7.6vw, 60px);
   }
 
   .match-sport-overlay .match-sport-artwork__ball {

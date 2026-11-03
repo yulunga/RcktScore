@@ -640,6 +640,19 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.y + box.height).toBeLessThanOrEqual(852);
   expect(await chooser.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+
+  const closeButton = chooser.getByRole("button", { name: "Close match selection" });
+  const [closeBox, contextBox, contextRowBox, gridBox] = await Promise.all([
+    closeButton.boundingBox(),
+    chooser.locator(".account-context-switcher--match-start").boundingBox(),
+    chooser.locator(".match-sport-overlay__context-row").boundingBox(),
+    chooser.locator(".match-sport-overlay__grid").boundingBox(),
+  ]);
+  expect(closeBox.x).toBeGreaterThanOrEqual(contextBox.x + contextBox.width);
+  expect(Math.abs((closeBox.y + (closeBox.height / 2)) - (contextBox.y + (contextBox.height / 2)))).toBeLessThanOrEqual(1);
+  expect(Math.abs(contextRowBox.x - gridBox.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs((contextRowBox.x + contextRowBox.width) - (gridBox.x + gridBox.width))).toBeLessThanOrEqual(1);
+  await expect(closeButton).toHaveCSS("border-radius", "50%");
 });
 
 for (const viewportSize of [
@@ -662,6 +675,15 @@ for (const viewportSize of [
     await expect(chooser).toBeVisible();
     await expect(options).toHaveCount(4);
     await expect(chooser.locator(".account-context-switcher__trigger")).toBeVisible();
+
+    const closeButton = chooser.getByRole("button", { name: "Close match selection" });
+    const [contextBox, closeBox] = await Promise.all([
+      chooser.locator(".account-context-switcher--match-start").boundingBox(),
+      closeButton.boundingBox(),
+    ]);
+    expect(closeBox.x).toBeGreaterThanOrEqual(contextBox.x + contextBox.width);
+    expect(Math.abs((closeBox.y + (closeBox.height / 2)) - (contextBox.y + (contextBox.height / 2)))).toBeLessThanOrEqual(1);
+    await expect(closeButton).toHaveCSS("border-radius", "50%");
 
     const chooserBox = await chooser.boundingBox();
     expect(chooserBox).toBeTruthy();

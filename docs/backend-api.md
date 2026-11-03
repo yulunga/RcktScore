@@ -867,6 +867,9 @@ notification and retained-membership context data without changing an API.
 The landscape Start New Match overlay and standalone selector only rearrange
 the already-filtered playable sports and retained context switcher; sport and
 membership authorization remain unchanged.
+Portrait sizing and the circular close control immediately to the right of the
+context selector are likewise client-only and do not change match creation or
+context-selection requests.
 
 - backend pytest logic tests, Playwright public-route smoke tests, and a
   lightweight native iOS UI test bundle are checked in. The native bundle now

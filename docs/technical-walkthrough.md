@@ -505,6 +505,10 @@ The shared Start New Match chooser also switches to a landscape grid: its title
 and context selector share the top row and all four implemented sports use one
 compact row beneath it. The overlay and standalone selector therefore fit
 without scrolling from iPhone SE through Pro Max landscape dimensions.
+In phone portrait the same overlay remains centred within the backdrop, uses
+more of the available screen area, aligns the context selector to the sport-grid
+edges and places its standard circular close button immediately to the right of
+the context selector.
 
 Tablet landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
 the compact navigation header. Both use a fixed dynamic-viewport shell instead

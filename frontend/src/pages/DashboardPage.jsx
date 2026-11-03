@@ -1121,13 +1121,15 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                 <h2 id="match-sport-overlay-title">Personal or Club Match</h2>
                 <p>Confirm the match account, then choose a racket sport.</p>
               </div>
-              <button aria-label="Close match selection" className="help-close-button" type="button" onClick={handleCloseSportOverlay}>&times;</button>
             </div>
 
-            <AccountContextSwitcher
-              className="account-context-switcher--match-start"
-              label="Score this match for"
-            />
+            <div className="match-sport-overlay__context-row">
+              <AccountContextSwitcher
+                className="account-context-switcher--match-start"
+                label="Score this match for"
+              />
+              <button aria-label="Close match selection" className="help-close-button" type="button" onClick={handleCloseSportOverlay}>&times;</button>
+            </div>
 
             <div className="match-sport-overlay__grid">
               {playableSports.map((sport) => (
