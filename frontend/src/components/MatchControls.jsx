@@ -13,10 +13,20 @@ export default function MatchControls({
   const matchComplete = match?.state?.match_complete || match?.status === "completed";
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [showEndMatchConfirm, setShowEndMatchConfirm] = useState(false);
+  const [earlyWinner, setEarlyWinner] = useState("");
+
+  const player1Name = [match?.player1_name, match?.player1_surname].filter(Boolean).join(" ") || "Player 1";
+  const player2Name = [match?.player2_name, match?.player2_surname].filter(Boolean).join(" ") || "Player 2";
 
   async function handleConfirmEndMatch() {
-    await onEndMatch({ ended_early: true, reason: "Ended by operator" });
+    if (!earlyWinner) return;
+    await onEndMatch({
+      ended_early: true,
+      reason: "Ended by operator",
+      winner_side: earlyWinner,
+    });
     setShowEndMatchConfirm(false);
+    setEarlyWinner("");
   }
 
   async function handleUndo() {
@@ -30,9 +40,12 @@ export default function MatchControls({
         <div className="overlay-backdrop">
           <div className="overlay-panel overlay-panel--match-confirm stack">
             <h2>End Match Early?</h2>
-            <p className="helper-text">
-              This will end the current match now. Continue only if you are sure.
-            </p>
+            <p className="helper-text">Confirm the result that should be recorded.</p>
+            <div className="match-confirm-winner" role="radiogroup" aria-label="Early match result">
+              <button aria-checked={earlyWinner === "player1"} className={earlyWinner === "player1" ? "active" : ""} role="radio" type="button" onClick={() => setEarlyWinner("player1")}>{player1Name} wins</button>
+              <button aria-checked={earlyWinner === "player2"} className={earlyWinner === "player2" ? "active" : ""} role="radio" type="button" onClick={() => setEarlyWinner("player2")}>{player2Name} wins</button>
+              <button aria-checked={earlyWinner === "draw"} className={earlyWinner === "draw" ? "active" : ""} role="radio" type="button" onClick={() => setEarlyWinner("draw")}>Draw / no winner</button>
+            </div>
             <p className="helper-text match-confirm-warning">
               This cannot be undone.
             </p>
@@ -41,13 +54,16 @@ export default function MatchControls({
                 className="secondary"
                 disabled={disabled}
                 type="button"
-                onClick={() => setShowEndMatchConfirm(false)}
+                onClick={() => {
+                  setShowEndMatchConfirm(false);
+                  setEarlyWinner("");
+                }}
               >
                 Cancel
               </button>
               <button
                 className="danger"
-                disabled={disabled}
+                disabled={disabled || !earlyWinner}
                 type="button"
                 onClick={handleConfirmEndMatch}
               >
@@ -72,22 +88,27 @@ export default function MatchControls({
                 &times;
               </button>
             </div>
-            <button
-              className="match-action-menu__button"
-              disabled={disabled || undoDisabled}
-              title={undoDisabled ? "Undo is only available for 5 minutes after match completion." : undefined}
-              type="button"
-              onClick={handleUndo}
-            >
-              <span aria-hidden="true">↶</span>
-              <span><strong>Undo Last Action</strong><small>Remove the most recent scoring action.</small></span>
-            </button>
+            {showRacketActions ? (
+              <div className="match-action-decisions">
+                <p className="helper-text">Let decision</p>
+                <div className="match-action-decisions__row">
+                  <button disabled={disabled || matchComplete} type="button" onClick={async () => { await onEventAction("let", { decision: "no_let", note: "No Let" }); setShowActionMenu(false); }}>No Let</button>
+                  <button disabled={disabled || matchComplete} type="button" onClick={async () => { await onEventAction("let", { decision: "yes_let", note: "Yes Let" }); setShowActionMenu(false); }}>Yes Let</button>
+                </div>
+                <p className="helper-text">Stroke awarded to</p>
+                <div className="match-action-decisions__row">
+                  <button className="danger" disabled={disabled || matchComplete} type="button" onClick={async () => { await onEventAction("stroke", { player_side: "player2" }); setShowActionMenu(false); }}>{player2Name}</button>
+                  <button className="danger" disabled={disabled || matchComplete} type="button" onClick={async () => { await onEventAction("stroke", { player_side: "player1" }); setShowActionMenu(false); }}>{player1Name}</button>
+                </div>
+              </div>
+            ) : null}
             <button
               className="match-action-menu__button match-action-menu__button--danger"
               disabled={disabled || matchComplete}
               type="button"
               onClick={() => {
                 setShowActionMenu(false);
+                setEarlyWinner("");
                 setShowEndMatchConfirm(true);
               }}
             >
@@ -99,27 +120,6 @@ export default function MatchControls({
       ) : null}
 
       <div className="match-control-grid">
-        {showRacketActions ? <button
-          className="secondary match-control-grid__stroke-left"
-          disabled={disabled || matchComplete}
-          onClick={() => onEventAction("stroke", { player_side: "player1" })}
-        >
-          Stroke P1
-        </button> : null}
-        {showRacketActions ? <button
-          className="secondary match-control-grid__let"
-          disabled={disabled || matchComplete}
-          onClick={() => onEventAction("let", { note: "General let" })}
-        >
-          Let
-        </button> : null}
-        {showRacketActions ? <button
-          className="secondary match-control-grid__stroke-right"
-          disabled={disabled || matchComplete}
-          onClick={() => onEventAction("stroke", { player_side: "player2" })}
-        >
-          Stroke P2
-        </button> : null}
         <button
           aria-label="Match actions"
           className="secondary match-control-grid__actions"
@@ -132,6 +132,18 @@ export default function MatchControls({
             <circle cx="12" cy="5" r="2" />
             <circle cx="12" cy="12" r="2" />
             <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
+        <button
+          aria-label="Undo last action"
+          className="secondary match-control-grid__undo"
+          disabled={disabled || undoDisabled}
+          onClick={handleUndo}
+          title={undoDisabled ? "Undo is only available for 5 minutes after match completion." : "Undo last action"}
+          type="button"
+        >
+          <svg aria-hidden="true" className="match-control-grid__undo-icon" viewBox="0 0 24 24">
+            <path d="M9 7H4v-5M4.8 6.2A9 9 0 1 1 3 13" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
           </svg>
         </button>
         <button

@@ -29,9 +29,6 @@ export default function Scoreboard({
   const player2ShirtColor = live.player2_shirt_color
     ?? match?.player2_shirt_color
     ?? DEFAULT_PLAYER_SHIRT_COLORS.player2;
-  const matchStatus = (match?.status || "active").toLowerCase();
-  const isActive = matchStatus === "active";
-  const isCompleted = matchStatus === "completed" || Boolean(live.match_complete);
   const gameHistory = live.game_history || [];
   const pointStripEntries = match ? buildPointStripEntries(live.events || []) : [];
   const canToggleServiceSide = match
@@ -261,18 +258,9 @@ export default function Scoreboard({
           <h2 style={{ marginBottom: 0 }}>{match.court_name || "Court"}</h2>
         </div>
         <div className="scoreboard-header-meta">
-          <span
-            className={[
-              "status-pill",
-              isActive ? "status-pill--active" : "",
-              isCompleted ? "status-pill--completed" : "",
-            ].join(" ").trim()}
-          >
-            <span className="status-pill__dot" aria-hidden="true" />
-            {match.status || "active"}
-          </span>
           <div className="score-series-chip">
             Score to {match.score_type} • Game {currentGameNumber} • Best of {bestOf}
+            <span className="score-series-chip__live-dot" aria-label="Match active" role="img" />
           </div>
         </div>
       </div>
@@ -300,9 +288,13 @@ export default function Scoreboard({
                     key={event.id || `current-serve-${index}`}
                     title={`Current serve: ${serverSide === "player1" ? "P1" : "P2"} ${currentServiceSideLabel}`}
                   >
-                    <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? currentServiceSideLabel : "")}
-                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? currentServiceSideLabel : "")}
+                    <div className="scoreboard-point-row scoreboard-point-row--rally">
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player1">
+                        {serverSide === "player1" ? renderPointMarker("player1", "server", true, currentServiceSideLabel) : null}
+                      </span>
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player2">
+                        {serverSide === "player2" ? renderPointMarker("player2", "server", true, currentServiceSideLabel) : null}
+                      </span>
                     </div>
                   </div>
                 );
@@ -320,15 +312,22 @@ export default function Scoreboard({
                   title={`Serve: ${serverSide === "player1" ? "P1" : "P2"} • Point: ${winnerSide === "player1" ? "P1" : "P2"}`}
                 >
                   {showServeDetails ? (
-                    <div className="scoreboard-point-row">
-                      {renderPointMarker("player1", "server", serverSide === "player1", serverSide === "player1" ? serviceSideLabel : "")}
-                      {renderPointMarker("player2", "server", serverSide === "player2", serverSide === "player2" ? serviceSideLabel : "")}
+                    <div className="scoreboard-point-row scoreboard-point-row--rally">
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player1">
+                        {serverSide === "player1" ? renderPointMarker("player1", "server", true, serviceSideLabel) : null}
+                        {winnerSide === "player1" ? renderPointMarker("player1", "winner", true, String(winnerScore)) : null}
+                      </span>
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player2">
+                        {winnerSide === "player2" ? renderPointMarker("player2", "winner", true, String(winnerScore)) : null}
+                        {serverSide === "player2" ? renderPointMarker("player2", "server", true, serviceSideLabel) : null}
+                      </span>
                     </div>
-                  ) : null}
-                  <div className="scoreboard-point-row">
-                    {renderPointMarker("player1", "winner", winnerSide === "player1", winnerSide === "player1" ? String(winnerScore) : "")}
-                    {renderPointMarker("player2", "winner", winnerSide === "player2", winnerSide === "player2" ? String(winnerScore) : "")}
-                  </div>
+                  ) : (
+                    <div className="scoreboard-point-row scoreboard-point-row--rally">
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player1">{winnerSide === "player1" ? renderPointMarker("player1", "winner", true, String(winnerScore)) : null}</span>
+                      <span className="scoreboard-point-cell scoreboard-point-cell--player2">{winnerSide === "player2" ? renderPointMarker("player2", "winner", true, String(winnerScore)) : null}</span>
+                    </div>
+                  )}
                 </div>
               );
               })}

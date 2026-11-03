@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import AccountContextSwitcher from "../components/AccountContextSwitcher";
+import MatchSportArtwork from "../components/MatchSportArtwork";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { MATCH_SPORT_OPTIONS, getMatchSportOption, getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
@@ -795,7 +796,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
       {showMatchesOnly ? (
         <>
-          <AccountContextSwitcher className="account-context-switcher--matches" label="Showing matches for" />
           <div className="matches-category-switch" role="tablist" aria-label="Match category">
             <button className={matchesCategory === "current" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "current"} onClick={() => setMatchesCategory("current")}>Current</button>
             <button className={matchesCategory === "scheduled" ? "active" : ""} type="button" role="tab" aria-selected={matchesCategory === "scheduled"} onClick={() => setMatchesCategory("scheduled")}>Scheduled</button>
@@ -1116,15 +1116,17 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             aria-labelledby="match-sport-overlay-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="panel-heading">
-              <h2 id="match-sport-overlay-title">Choose Racket Sport</h2>
-              <p>Choose who this match is for, then pick an enabled racket sport.</p>
+            <div className="settings-header-row match-sport-overlay__heading">
+              <div className="panel-heading">
+                <h2 id="match-sport-overlay-title">Personal or Club Match</h2>
+                <p>Confirm the match account, then choose a racket sport.</p>
+              </div>
+              <button aria-label="Close match selection" className="help-close-button" type="button" onClick={handleCloseSportOverlay}>&times;</button>
             </div>
 
             <AccountContextSwitcher
-              className="account-context-choices--match-start"
+              className="account-context-switcher--match-start"
               label="Score this match for"
-              presentation="choices"
             />
 
             <div className="match-sport-overlay__grid">
@@ -1135,15 +1137,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   type="button"
                   onClick={() => handleSelectSport(sport.value)}
                 >
+                  <MatchSportArtwork sport={sport.value} />
                   <strong>{sport.label}</strong>
                 </button>
               ))}
-            </div>
-
-            <div className="button-row">
-              <button type="button" onClick={handleCloseSportOverlay}>
-                Close
-              </button>
             </div>
           </section>
         </div>

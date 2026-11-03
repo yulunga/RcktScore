@@ -1862,6 +1862,7 @@ def end_match(
     source="api",
     reason=None,
     ended_early=None,
+    winner_side=None,
     match_duration_seconds=None,
     commit=True,
 ):
@@ -1870,7 +1871,18 @@ def end_match(
         return None
 
     state = match["state"]
-    winner_side, winner_name = _match_leader(match, state)
+    if winner_side not in {None, "player1", "player2", "draw"}:
+        raise ValueError("winner_side must be player1, player2, or draw")
+    if winner_side is not None and not bool(ended_early):
+        raise ValueError("winner_side may only be selected when ending a match early")
+    calculated_winner_side, calculated_winner_name = _match_leader(match, state)
+    if winner_side == "draw":
+        final_winner_side, winner_name = None, None
+    elif winner_side in {"player1", "player2"}:
+        final_winner_side = winner_side
+        winner_name = _player_name(match, winner_side)
+    else:
+        final_winner_side, winner_name = calculated_winner_side, calculated_winner_name
     final_ended_early = bool(ended_early) if ended_early is not None else not state.get("match_complete")
     final_reason = reason or ("Ended by operator" if final_ended_early else None)
     now = shared._utcnow()
@@ -1878,7 +1890,7 @@ def end_match(
     final_state = {
         **state,
         "match_complete": True,
-        "winner_side": winner_side,
+        "winner_side": final_winner_side,
         "winner_name": winner_name,
         "ended_early": final_ended_early,
         "match_end_reason": final_reason,
@@ -1892,7 +1904,7 @@ def end_match(
         "status": "completed",
         "ended_early": final_ended_early,
         "reason": final_reason,
-        "winner_side": winner_side,
+        "winner_side": final_winner_side,
         "winner_name": winner_name,
         "player1_score": state["player1_score"],
         "player2_score": state["player2_score"],

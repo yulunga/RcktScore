@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-import AppFooter from "../components/AppFooter";
 import AccountContextSwitcher from "../components/AccountContextSwitcher";
 import ClubPageHeader from "../components/ClubPageHeader";
+import MatchSportArtwork from "../components/MatchSportArtwork";
 import { getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
 
@@ -17,19 +17,18 @@ export default function MatchSportSelectionPage() {
   }
 
   return (
-    <main className="page-shell stack">
+    <main className="page-shell stack match-sport-selection-page">
       <ClubPageHeader />
 
-      <section className="panel stack">
+      <section className="panel stack match-sport-selection-card">
         <div className="section-heading stack compact">
-          <h2>Start New Match</h2>
-          <p>Choose who this match is for, then pick an enabled racket sport.</p>
+          <h2>Personal or Club Match</h2>
+          <p>Confirm the match account, then choose a racket sport.</p>
         </div>
 
         <AccountContextSwitcher
-          className="account-context-choices--match-start"
+          className="account-context-switcher--match-start"
           label="Score this match for"
-          presentation="choices"
         />
 
         <div className="match-sport-overlay__grid">
@@ -40,13 +39,13 @@ export default function MatchSportSelectionPage() {
               type="button"
               onClick={() => handleSelectSport(sport.value)}
             >
+              <MatchSportArtwork sport={sport.value} />
               <strong>{sport.label}</strong>
             </button>
           ))}
         </div>
       </section>
 
-      <AppFooter />
     </main>
   );
 }

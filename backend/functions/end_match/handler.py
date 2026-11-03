@@ -36,6 +36,7 @@ def lambda_handler(event, context):
                         source=auth_context["session"].get("login_source") or "web_app",
                         reason=payload.get("reason"),
                         ended_early=payload.get("ended_early"),
+                        winner_side=payload.get("winner_side"),
                         match_duration_seconds=payload.get("match_duration_seconds"),
                     )
                     if claimed

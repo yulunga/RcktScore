@@ -204,8 +204,8 @@ test("creates tennis doubles metadata and configures the opening order @tennis",
     team1_player2_name: "Blair",
     team2_player1_name: "Casey",
     team2_player2_name: "Drew",
-    team1_player1_shirt_color: "navy",
-    team1_player2_shirt_color: "white",
+    team1_player1_shirt_color: "blue",
+    team1_player2_shirt_color: "pink",
     team2_player1_shirt_color: "blue",
     team2_player2_shirt_color: "red",
     tennis_no_ad_scoring: true,
@@ -459,9 +459,9 @@ test("presents tennis points, rotation and timed changeovers without racket acti
 
   await page.getByLabel("Match actions").click();
   await expect(page.getByRole("heading", { name: "Match Actions" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Undo Last Action/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /End Match Early/ })).toBeVisible();
   await page.getByLabel("Close match actions").click();
+  await expect(page.getByLabel("Undo last action")).toBeVisible();
 
   await page.getByTestId("tennis-score-player1").click();
   await expect.poll(() => scorePayload).toBeTruthy();
@@ -562,7 +562,10 @@ test("presents tiebreaks and a tennis completion summary @tennis", async ({ page
     },
   };
   await page.reload();
-  await expect(page.getByTestId("tennis-completion-summary")).toContainText("Tennis Match Complete");
-  await expect(page.getByTestId("tennis-completion-summary")).toContainText("Alex Ace / Blair Backhand");
-  await expect(page.getByTestId("tennis-completion-summary")).toContainText("2–1 sets");
+  const summary = page.getByTestId("match-completed-summary");
+  await expect(summary).toContainText("MATCH COMPLETED");
+  await expect(summary).toContainText("Alex Ace / Blair Backhand wins");
+  await expect(summary).toContainText("2");
+  await expect(summary).toContainText("1");
+  await expect(summary.getByRole("heading", { name: "Serve performance" })).toBeVisible();
 });

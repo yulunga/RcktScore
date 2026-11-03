@@ -323,7 +323,15 @@ def undo_last_action(connection, match_id, source="api", actor_username=None):
     )
 
 
-def end_match(connection, match_id, source="api", reason=None, ended_early=None, match_duration_seconds=None):
+def end_match(
+    connection,
+    match_id,
+    source="api",
+    reason=None,
+    ended_early=None,
+    winner_side=None,
+    match_duration_seconds=None,
+):
     return _run_match_mutation(
         connection,
         match_id,
@@ -333,6 +341,7 @@ def end_match(connection, match_id, source="api", reason=None, ended_early=None,
             source=source,
             reason=reason,
             ended_early=ended_early,
+            winner_side=winner_side,
             match_duration_seconds=match_duration_seconds,
             commit=False,
         ),

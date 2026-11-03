@@ -30,6 +30,7 @@ def end_match(
     source="api",
     reason=None,
     ended_early=None,
+    winner_side=None,
     match_duration_seconds=None,
     commit=True,
 ):

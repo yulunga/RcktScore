@@ -101,6 +101,56 @@ class _LegacyEventConnection(_UndoConnection):
         self.rolled_back = True
 
 
+@pytest.mark.parametrize(
+    ("requested_winner", "expected_side", "expected_name"),
+    [
+        ("player1", "player1", "Alex"),
+        ("player2", "player2", "Blair"),
+        ("draw", None, None),
+    ],
+)
+def test_early_end_uses_the_operator_confirmed_result(monkeypatch, requested_winner, expected_side, expected_name):
+    match = {
+        "player1_name": "Alex",
+        "player2_name": "Blair",
+        "state": {
+            "match_complete": False,
+            "player1_score": 7,
+            "player2_score": 3,
+            "player1_games_won": 0,
+            "player2_games_won": 0,
+            "current_game_number": 1,
+            "match_duration_seconds": 0,
+        },
+    }
+    captured = {}
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *args, **kwargs: match)
+
+    def fake_append(*args, **kwargs):
+        captured.update(kwargs)
+        return kwargs["state_override"]
+
+    monkeypatch.setattr(squash_match_logic, "_append_event", fake_append)
+    result = squash_match_logic.end_match(
+        object(),
+        "match-1",
+        ended_early=True,
+        winner_side=requested_winner,
+    )
+
+    assert result["winner_side"] == expected_side
+    assert result["winner_name"] == expected_name
+    assert captured["state_override"]["ended_early"] is True
+
+
+def test_early_end_rejects_an_unknown_result(monkeypatch):
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *args, **kwargs: {
+        "state": {},
+    })
+    with pytest.raises(ValueError, match="winner_side"):
+        squash_match_logic.end_match(object(), "match-1", ended_early=True, winner_side="visitor")
+
+
 def test_shared_undo_appends_compensation_for_score_and_later_timer():
     created_at = datetime.now(timezone.utc)
     connection = _UndoConnection(

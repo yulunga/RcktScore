@@ -93,10 +93,10 @@ for (const sport of ["squash", "racketball"]) {
     await expect(page.getByRole("heading", { name: `${sport === "racketball" ? "Racketball" : "Squash"} Match Setup` })).toBeVisible();
     await expect(page.getByText(/Create a New .* Match/)).toHaveCount(0);
     await expect(page.getByRole("radiogroup", { name: "Player 1 shirt color" })).toHaveCount(0);
-    await page.getByRole("button", { name: /Change Player 1 shirt color, currently Navy/ }).click();
+    await page.getByRole("button", { name: /Change Player 1 shirt color, currently Blue/ }).click();
     await expect(page.getByRole("radiogroup", { name: "Player 1 shirt color" })).toBeVisible();
     await expect(page.locator(".shirt-color-option").first()).toHaveText("");
-    await page.getByRole("radio", { name: "Navy" }).click();
+    await page.getByRole("radio", { name: "Blue" }).click();
     await expect(page.getByLabel("Timed warm-up and 90-second game breaks")).toBeChecked();
     await page.locator("#player1_name").fill("Alex");
     await page.locator("#player1_surname").fill("Ace");
@@ -225,10 +225,10 @@ test("Personal Free can create a squash handicap match @racket", async ({ page }
     player1_offset: -4,
     player2_offset: 2,
   });
-  await expect(page.locator(".player-card-action")).toHaveCount(2);
+  await expect(page.getByRole("heading", { name: "First Server" })).toBeVisible();
 });
 
-test("an untimed squash match opens directly on live scoring @racket", async ({ page }) => {
+test("an untimed squash match asks for the opening server before live scoring @racket", async ({ page }) => {
   const match = freshRacketMatch("squash", false);
   await page.addInitScript(() => {
     window.localStorage.setItem("rcktscore.matchTimer.web-squash-1", JSON.stringify({
@@ -244,12 +244,49 @@ test("an untimed squash match opens directly on live scoring @racket", async ({ 
 
   await page.goto("/match/web-squash-1");
   await expect(page.getByText("Warm-Up Ready", { exact: true })).toHaveCount(0);
-  await expect(page.locator(".player-card-action")).toHaveCount(2);
-  await expect(page.getByText("Match Time", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "First Server" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Alex Ace", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Blair Backhand", exact: true })).toBeVisible();
+});
+
+test("groups racket decisions and confirms an early draw before showing the summary @racket", async ({ page }) => {
+  let endPayload;
+  let match = freshRacketMatch("squash", false);
+  match.state.events.push({ id: "server", event_type: "server", payload: { current_server_side: "player1", service_side: "Right" } });
+  await page.route("**/get_score/web-squash-1", async (route) => {
+    await route.fulfill({ json: envelope({ match }) });
+  });
+  await page.route("**/end_match", async (route) => {
+    endPayload = route.request().postDataJSON();
+    match = {
+      ...match,
+      status: "completed",
+      ended_early: true,
+      winner_side: null,
+      state: { ...match.state, match_complete: true, ended_early: true, winner_side: null },
+    };
+    await route.fulfill({ json: envelope({ match }) });
+  });
+
+  await page.goto("/match/web-squash-1");
+  await page.getByLabel("Match actions").click();
+  await expect(page.getByRole("button", { name: "No Let" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Yes Let" })).toBeVisible();
+  const strokeButtons = page.locator(".match-action-decisions__row").nth(1).getByRole("button");
+  await expect(strokeButtons).toHaveText(["Blair Backhand", "Alex Ace"]);
+  await page.getByRole("button", { name: /End Match Early/ }).click();
+  await page.getByRole("radio", { name: "Draw / no winner" }).click();
+  await page.getByRole("button", { name: "End Match", exact: true }).click();
+
+  await expect.poll(() => endPayload).toBeTruthy();
+  expect(endPayload.winner_side).toBe("draw");
+  await expect(page.getByTestId("match-completed-summary")).toContainText("Draw / no winner");
+  await expect(page.getByRole("button", { name: "Close completed match" })).toBeVisible();
 });
 
 test("fits racket scoring controls and point order into tablet landscape without page scrolling @racket", async ({ page }) => {
   const match = freshRacketMatch("squash", false);
+  match.state.events.push({ id: "server", event_type: "server", payload: { current_server_side: "player1", service_side: "Right" } });
   await page.setViewportSize({ width: 1024, height: 600 });
   await page.route("**/get_score/web-squash-1", async (route) => {
     await route.fulfill({ json: envelope({ match }) });
@@ -258,10 +295,8 @@ test("fits racket scoring controls and point order into tablet landscape without
   await page.goto("/match/web-squash-1");
   await expect(page.locator(".club-page-header--match")).toHaveClass(/club-page-header--compact/);
   await expect(page.getByText("Match Timer", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Stroke P1" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Let", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Stroke P2" })).toBeVisible();
   await expect(page.getByLabel("Match actions")).toBeVisible();
+  await expect(page.getByLabel("Undo last action")).toBeVisible();
   await expect(page.getByLabel("Game settings")).toBeVisible();
   await expect(page.getByLabel("Point order")).toBeVisible();
 
@@ -269,7 +304,7 @@ test("fits racket scoring controls and point order into tablet landscape without
   for (const locator of [
     page.locator(".scoreboard-card"),
     page.locator(".match-timer-panel"),
-    page.getByRole("button", { name: "Stroke P1" }),
+    page.getByLabel("Undo last action"),
     page.getByLabel("Match actions"),
     page.getByLabel("Point order"),
   ]) {

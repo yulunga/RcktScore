@@ -1793,10 +1793,14 @@ struct MatchScoringView: View {
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
         let usesDarkForeground = isLightShirtColor(shirtColorValue)
+        let displayedScore = scoreLabel.isEmpty ? String(score) : scoreLabel
+        let scoreFontSize: CGFloat = landscapeTablet ? 112 : (compact ? 80 : 92)
 
         VStack(spacing: compact ? 8 : 10) {
-            Text(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
-                .font(.system(size: landscapeTablet ? 56 : (compact ? 40 : 46), weight: .heavy, design: .rounded))
+            Text(displayedScore)
+                .font(.system(size: scoreFontSize, weight: .heavy, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.58)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, landscapeTablet ? 18 : (compact ? 10 : 12))
                 .background(usesDarkForeground ? Color.black.opacity(0.06) : Color.white.opacity(0.18))
@@ -1899,20 +1903,20 @@ struct MatchScoringView: View {
         landscapeTablet: Bool
     ) -> some View {
         Text(label)
-            .font(.system(size: landscapeTablet ? 20 : (compact ? 13 : 17), weight: .bold, design: .rounded))
+            .font(.system(size: landscapeTablet ? 16 : (compact ? 11 : 14), weight: .bold, design: .rounded))
             .frame(
                 width: landscapeTablet ? 48 : (compact ? 28 : 38),
                 height: landscapeTablet ? 44 : (compact ? 30 : 34)
             )
             .background(
                 RoundedRectangle(cornerRadius: landscapeTablet ? 14 : 12, style: .continuous)
-                    .fill(isCurrentServe ? accent : Color.rcktCardBackground)
+                    .fill(isCurrentServe ? accent.opacity(0.14) : Color.rcktCardBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: landscapeTablet ? 14 : 12, style: .continuous)
-                    .stroke(accent, lineWidth: 2)
+                    .stroke(accent, lineWidth: isCurrentServe ? 3 : 2)
             )
-            .foregroundStyle(isCurrentServe ? Color.white : accent)
+            .foregroundStyle(accent)
     }
 
     private func timelineAccent(for side: String) -> Color {

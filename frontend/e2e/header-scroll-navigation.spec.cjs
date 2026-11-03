@@ -364,11 +364,11 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(page).toHaveURL(/\/dashboard#new-match$/);
     await expect(primaryNavigation.getByRole("button", { name: "Start New Match" })).toHaveAttribute("aria-current", "page");
     await expect(primaryNavigation.getByRole("button", { name: "Matches" })).not.toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
-    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
+    await page.getByRole("button", { name: "Close match selection" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await startMatch.click();
-    await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
   } else {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.getByRole("button", { name: "Open navigation menu" }).click();
@@ -404,18 +404,17 @@ test("switches identity context from the header and exposes it on Matches and ma
   await expect(headerContext.locator(".account-context-switcher__trigger")).toContainText("Personal");
 
   await openHeaderDestination("Matches");
-  await expect(page.locator(".account-context-switcher--matches")).toContainText("Showing matches for");
-  await expect(page.locator(".account-context-switcher--matches")).toContainText("Personal");
+  await expect(page.locator(".account-context-switcher--matches")).toHaveCount(0);
 
   await headerContext.locator(".account-context-switcher__trigger").click();
   await headerContext.getByRole("menuitem").filter({ hasText: "Header Test Club" }).click();
 
   await openHeaderDestination("Start New Match");
-  const matchContext = page.locator(".account-context-choices--match-start");
-  await expect(matchContext).toContainText("Score this match for");
-  await expect(matchContext.getByRole("radio", { name: /Header Test Club/ })).toHaveAttribute("aria-checked", "true");
-  await matchContext.getByRole("radio", { name: /Personal Plus/ }).click();
-  await expect(matchContext.getByRole("radio", { name: /Personal Plus/ })).toHaveAttribute("aria-checked", "true");
+  const matchContext = page.locator(".account-context-switcher--match-start");
+  await expect(matchContext.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
+  await matchContext.locator(".account-context-switcher__trigger").click();
+  await matchContext.getByRole("menuitem").filter({ hasText: "Personal Plus" }).click();
+  await expect(matchContext.locator(".account-context-switcher__trigger")).toContainText("Personal");
   await expect(page.getByRole("button", { name: /Tennis/ })).toBeVisible();
 });
 
@@ -625,7 +624,22 @@ test("opens the shared sport chooser from the responsive new-match menu action @
   }
 
   await expect(page).toHaveURL(/\/dashboard#new-match$/);
-  await expect(page.getByRole("dialog", { name: "Choose Racket Sport" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
+});
+
+test("fits the match account and sport chooser inside an iPhone 16 Pro viewport @header", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto("/dashboard");
+  await page.locator(".dashboard-start-hero").click();
+
+  const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
+  await expect(chooser).toBeVisible();
+  await expect(chooser.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
+  await expect(chooser.locator(".match-sport-artwork")).toHaveCount(3);
+  const box = await chooser.boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(852);
+  expect(await chooser.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
 });
 
 test("shows the personal-first single-row settings menu @header", async ({ page }) => {

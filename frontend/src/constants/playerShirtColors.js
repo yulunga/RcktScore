@@ -12,8 +12,8 @@ export const PLAYER_SHIRT_COLORS = [
 ];
 
 export const DEFAULT_PLAYER_SHIRT_COLORS = {
-  player1: "navy",
-  player2: "white",
+  player1: "blue",
+  player2: "pink",
 };
 
 export function getPlayerShirtColor(value) {

@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import EventTimeline from "../components/EventTimeline";
+import MatchCompletedSummary from "../components/MatchCompletedSummary";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
 import TennisScoreboard from "../components/TennisScoreboard";
@@ -376,7 +377,7 @@ export default function MatchScreen() {
       return;
     }
 
-    if (isFreshMatch(currentMatch) && isTennisMatch) {
+    if (isFreshMatch(currentMatch)) {
       setTimerPhase("first_server");
       setTimerSeconds(0);
       setTimerRunning(false);
@@ -867,6 +868,16 @@ export default function MatchScreen() {
     setTimerRunning(true);
   }
 
+  async function handleEndMatch(payload) {
+    const finalDuration = Math.max(0, resolveMatchDurationSeconds());
+    setTimerRunning(false);
+    setTimerSeconds(finalDuration);
+    await endMatch(matchId, {
+      ...payload,
+      match_duration_seconds: finalDuration,
+    });
+  }
+
   const showWarmupFlowOverlay = showWarmupOverlay
     || showFirstServerOverlay
     || timerPhase === "warmup_side_one"
@@ -875,6 +886,16 @@ export default function MatchScreen() {
     && (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two")
     && timerSeconds <= 10
     && timerSeconds > 0;
+
+  if (currentMatch && matchComplete) {
+    return (
+      <MatchCompletedSummary
+        match={currentMatch}
+        personalPlus={isPersonalAccount && String(session?.plan || "").toLowerCase() === "personal_plus"}
+        onClose={() => navigate("/dashboard")}
+      />
+    );
+  }
 
   return (
     <main className="page-shell stack match-screen-shell">
@@ -1176,18 +1197,7 @@ export default function MatchScreen() {
                   sendEventAction(matchId, actionType, payload)
                 }
                 onUndo={() => undoLastAction(matchId)}
-                onEndMatch={async (payload) => {
-                  const finalDuration = Math.max(0, resolveMatchDurationSeconds());
-                  setTimerRunning(false);
-                  setTimerSeconds(finalDuration);
-                  const updatedMatch = await endMatch(matchId, {
-                    ...payload,
-                    match_duration_seconds: finalDuration,
-                  });
-                  if (updatedMatch?.status === "completed") {
-                    navigate("/dashboard");
-                  }
-                }}
+                onEndMatch={handleEndMatch}
                 onOpenSettings={openGameSettings}
               />
             </TennisScoreboard>
@@ -1210,18 +1220,7 @@ export default function MatchScreen() {
                 sendEventAction(matchId, actionType, payload)
               }
               onUndo={() => undoLastAction(matchId)}
-              onEndMatch={async (payload) => {
-                const finalDuration = Math.max(0, resolveMatchDurationSeconds());
-                setTimerRunning(false);
-                setTimerSeconds(finalDuration);
-                const updatedMatch = await endMatch(matchId, {
-                  ...payload,
-                  match_duration_seconds: finalDuration,
-                });
-                if (updatedMatch?.status === "completed") {
-                  navigate("/dashboard");
-                }
-              }}
+              onEndMatch={handleEndMatch}
               onOpenSettings={openGameSettings}
             />
             </Scoreboard>
@@ -1282,15 +1281,6 @@ export default function MatchScreen() {
         </section>
       ) : null}
 
-      <div className="stack match-bottom-stack">
-        <button
-          className="match-bottom-back-button"
-          type="button"
-          onClick={() => navigate("/dashboard")}
-        >
-          Dashboard
-        </button>
-      </div>
       <AppFooter />
     </main>
   );

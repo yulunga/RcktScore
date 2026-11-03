@@ -148,8 +148,8 @@ chooser offers only one context, sign out and back in before debugging client
 state. After a switch, confirm subsequent dashboard/match requests use the new
 `organization_id`; personal Profile and Subscription should still resolve the
 personal membership independently.
-The web and iOS pre-match choosers should list every retained membership beneath
-`Score this match for`, rather than hiding them in a dropdown. If Personal or
+The web pre-match dropdown and iOS pre-match choices should expose every retained membership beneath
+`Score this match for`. If Personal or
 Personal Plus is absent, inspect the fresh login response and verify that the
 normalized email has an approved personal `SkwshOrgUsers` membership. Login
 authenticates the identity when the password matches any membership row and then
@@ -401,6 +401,7 @@ Common symptoms:
 - Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
+- an early-ended match records the wrong winner or cannot be recorded as a draw
 
 What to check:
 
@@ -418,6 +419,7 @@ What to check:
 - if timeline order changes after refresh, verify migration `042_append_only_match_events.sql` is deployed and event reads use `event_sequence`; `created_at` and UUID ordering are no longer the canonical replay order
 - if Undo returns a tournament progression error, confirm the completed scoring match is linked to a fixture whose winner has already advanced; this rejection is intentional until bracket reversal can be guaranteed safely
 - whether the action used `score_point` or `event_action`
+- for an early completion, inspect the `POST /end_match` body and the resulting `match_ended` event: `winner_side` must be `player1`, `player2`, or `draw`; `draw` intentionally persists null winner fields, while an omitted value still derives the leader from the score
 - the web scoreboard intentionally renders `service_side` as `Service side: Right/Left`; these are service-box sides, not separate physical courts, and ordinary deuce/advantage rules are labelled `Standard advantage scoring`
 - before a display code is entered, `/scoreboard` and `/display` use a compact code card centred in the space below the fixed-height public header; if it appears stretched or offset, verify the `display-session-inactive` grid and `scoreboard-entry-card` styles before changing the live-display layout
 - the `Tournament` and `Live Scoreboard` labels beneath the public wordmark intentionally use the platform system font at weight 600 with font smoothing; avoid inheriting the heavier global Avenir label weight when adjusting these headers
@@ -652,7 +654,7 @@ Important current truths:
 - optional tennis timed breaks come from `tennis_timed_breaks` in the `match_started` event; when enabled, there is no break after game 1, later odd games trigger 90 seconds, and a completed set triggers 120 seconds instead
 - at tennis Golden Point the deciding point proceeds automatically from the 40-40/Right service side; in padel, the receiving team chooses which named partner receives and that `receiver_choice` is queued like a point while offline and synchronised before the deciding point
 - the squash/racketball scorer now selects compact widths on phone-sized screens, scrolls long game history horizontally, adapts warm-up actions when they cannot fit side by side, and shows a completed-match summary after the final point
-- changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage, `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the credential-free Simulator regression, and the opt-in `testing/automated/mobile/run-live-racket-match-ui-test.sh` only when a completed match may be written to the Personal Plus test account
+- changing the current squash/racketball service box at an unchanged score must replace the latest rail marker (`R2` to `L2`), not add a second marker; the current pair should remain outlined with only a light player-colour tint, not become two solid-colour pills. The main player score is intentionally much larger than the compact rail text. Run `testing/automated/mobile/run-racket-point-rail-scenarios.sh` for fast reducer coverage, `testing/automated/mobile/run-racket-service-side-ui-test.sh` for the credential-free Simulator regression, and the opt-in `testing/automated/mobile/run-live-racket-match-ui-test.sh` only when a completed match may be written to the Personal Plus test account
 - white, yellow, and pink scoring cards use dark foregrounds and a contrasting score inset; a running match clock is light green, a paused clock remains slate, and stroke/let player choices stay in the pink-accented Match Actions sheet with explicit player names
 - the shared iOS bottom navigation now compacts labels and icon sizing under larger Dynamic Type settings, but extremely aggressive accessibility sizes may still need further tab-bar simplification if new labels are added later
 
