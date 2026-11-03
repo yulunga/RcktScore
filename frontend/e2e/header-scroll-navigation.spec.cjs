@@ -642,6 +642,44 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
   expect(await chooser.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
 });
 
+for (const viewportSize of [
+  { name: "iPhone SE", width: 568, height: 320 },
+  { name: "iPhone 16 Pro", width: 852, height: 393 },
+  { name: "iPhone Pro Max", width: 932, height: 430 },
+]) {
+  test(`uses the compact signed-in dashboard header in ${viewportSize.name} landscape @header`, async ({ page }) => {
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.goto("/dashboard");
+
+    const header = page.locator(".club-page-header");
+    const navigation = header.getByRole("navigation", { name: "Primary navigation" });
+    const headerBox = await header.boundingBox();
+    expect(headerBox).toBeTruthy();
+    expect(headerBox.height).toBeLessThanOrEqual(48);
+    expect(headerBox.x).toBeGreaterThanOrEqual(0);
+    expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(viewportSize.width + 1);
+
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Home" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Start New Match" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Matches" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Analytics" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Settings" })).toBeVisible();
+    await expect(navigation.getByRole("button", { name: "Help" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open navigation menu" })).toBeHidden();
+    await expect(page.locator(".dashboard-start-hero")).toBeVisible();
+
+    const [brandBox, navBox, messagesBox, contextBox] = await Promise.all([
+      header.locator(".club-page-header__brand-row").boundingBox(),
+      navigation.boundingBox(),
+      header.getByRole("button", { name: "Messages" }).boundingBox(),
+      header.locator(".account-context-switcher__trigger").boundingBox(),
+    ]);
+    const centres = [brandBox, navBox, messagesBox, contextBox].map((box) => box.y + (box.height / 2));
+    expect(Math.max(...centres) - Math.min(...centres)).toBeLessThanOrEqual(3);
+  });
+}
+
 test("shows the personal-first single-row settings menu @header", async ({ page }) => {
   await page.goto("/settings");
   const settingsMenu = page.locator(".root-admin-tab-row");

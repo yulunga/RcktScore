@@ -75,6 +75,12 @@ between 480×280 and 956×499. For a tablet, confirm it is between 720×500 and
 1400×1024. Then inspect the final phone- or tablet-landscape media block in
 `frontend/src/styles.css`.
 
+The signed-in header journey additionally checks 568×320, 852×393 (iPhone 16
+Pro), and 932×430 dashboard landscapes. The brand, icon navigation, Messages
+and account context should share one row no more than 48 CSS pixels high. If the
+old tall portrait header appears, inspect the CSS viewport rather than the
+simulator window size and confirm the landscape media query is active.
+
 Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
 a match and start it later from Matches. The mocked setup begins with another
 active match to verify that scheduling remains available; activation happens

@@ -861,6 +861,10 @@ the same authenticated match routes and server-authored state while keeping
 the timer, actions, and internal point timeline inside one dynamic viewport.
 No viewport-specific request or response field is added.
 
+The matching compact signed-in header and dashboard spacing at those phone
+landscape dimensions are also client-only. They reuse the existing session,
+notification and retained-membership context data without changing an API.
+
 - backend pytest logic tests, Playwright public-route smoke tests, and a
   lightweight native iOS UI test bundle are checked in. The native bundle now
   includes a deterministic, credential-free Simulator regression for the

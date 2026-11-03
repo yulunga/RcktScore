@@ -495,9 +495,12 @@ serves lost for Personal Plus from the point-time server event stream.
 plumbing and starts a 90-second break only after an odd completed game, or a
 120-second break after a completed set, when `tennis_timed_breaks` is enabled.
 It forces the shared signed-in header into its compact form throughout active
-scoring. Phone-landscape viewports from 480–956 CSS pixels wide and 280–499
-pixels high, covering iPhone SE through iPhone Pro Max, use a dedicated
-short-height layout with compact branding and no navigation row. Tablet
+scoring. Signed-in phone-landscape pages from 480–956 CSS pixels wide and
+280–499 pixels high, covering iPhone SE through iPhone Pro Max, first use a
+single shallow header row containing the brand, icon-only navigation, Messages
+and the context control, with compact dashboard actions/cards and no floating
+mobile navigation control. Active scoring then hides the navigation icons to
+give the board maximum height while retaining the compact brand. Tablet
 landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
 the compact navigation header. Both use a fixed dynamic-viewport shell instead
 of document scrolling: the score controls and timer remain visible, the
