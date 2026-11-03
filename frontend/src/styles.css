@@ -11332,3 +11332,463 @@ textarea {
     grid-template-columns: repeat(3, 42px);
   }
 }
+
+/* Phone landscape scorer: iPhone SE through iPhone Pro Max. */
+@media (min-width: 480px) and (max-width: 956px) and (min-height: 280px) and (max-height: 499px) and (orientation: landscape) {
+  html:has(.match-screen-shell),
+  body:has(.match-screen-shell),
+  #root:has(.match-screen-shell) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .match-screen-shell {
+    width: calc(100vw - 6px);
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 3px;
+    padding: max(2px, env(safe-area-inset-top)) max(3px, env(safe-area-inset-right)) max(2px, env(safe-area-inset-bottom)) max(3px, env(safe-area-inset-left));
+    overflow: hidden;
+  }
+
+  .match-screen-shell > .club-page-header--match.club-page-header--compact {
+    position: relative;
+    top: 0;
+    min-height: 0;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+
+  .club-page-header--match .club-page-header__top {
+    min-height: 28px;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .club-page-header--match .club-page-header__brand-row {
+    align-items: center;
+    gap: 4px;
+  }
+
+  .club-page-header--match.club-page-header--compact .club-page-header__logo {
+    width: 24px;
+    height: 24px;
+  }
+
+  .club-page-header--match.club-page-header--compact .club-page-header__top h1 {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .club-page-header--match .club-page-header__account,
+  .club-page-header--match .club-page-header__meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .club-page-header--match .club-page-header__meta {
+    margin-left: auto;
+    padding-right: 0;
+  }
+
+  .club-page-header--match .club-page-header__notification-button {
+    width: 25px;
+    height: 25px;
+  }
+
+  .club-page-header--match .club-page-header__notification-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .club-page-header--match .account-context-switcher__trigger {
+    min-height: 25px;
+    gap: 3px;
+    padding: 2px 6px;
+    font-size: 0.62rem;
+  }
+
+  .club-page-header--match .account-context-switcher__label {
+    display: none;
+  }
+
+  .club-page-header--match .account-context-switcher__trigger strong {
+    max-width: 100px;
+    font-size: 0.62rem;
+  }
+
+  .club-page-header--match .club-page-header__menu {
+    display: none;
+  }
+
+  .match-screen-shell .match-top-grid {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .match-screen-shell .match-primary-column {
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 30px;
+    gap: 3px;
+    overflow: hidden;
+  }
+
+  .match-screen-shell .match-primary-column:has(.padel-receiver-choice) {
+    grid-template-rows: auto minmax(0, 1fr) 30px;
+  }
+
+  .match-screen-shell .scoreboard-card {
+    min-height: 0;
+    height: 100%;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 3px;
+    padding: 4px 7px;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  .match-screen-shell .scoreboard-header {
+    align-items: center;
+    gap: 5px;
+  }
+
+  .match-screen-shell .scoreboard-header h2 {
+    font-size: 0.68rem;
+    line-height: 1;
+  }
+
+  .match-screen-shell .scoreboard-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .match-screen-shell .score-series-chip {
+    min-height: 0;
+    padding: 2px 5px;
+    font-size: 0.48rem;
+    line-height: 1.1;
+  }
+
+  .match-screen-shell .score-series-chip__live-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .match-screen-shell .scoreboard-grid {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) clamp(44px, 9vw, 62px) minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .match-screen-shell .player-card {
+    min-height: 0;
+    height: 100%;
+    align-content: stretch;
+    gap: 2px;
+    padding: 4px 6px;
+    border-radius: 9px;
+  }
+
+  .match-screen-shell .player-card-main,
+  .match-screen-shell .player-card-copy {
+    min-height: 0;
+    height: 100%;
+    gap: 2px;
+  }
+
+  .match-screen-shell .player-card h3 {
+    font-size: 0.58rem;
+    line-height: 1.05;
+  }
+
+  .match-screen-shell .player-score-button {
+    min-height: 38px;
+    height: 100%;
+    padding: 2px 5px;
+    border-radius: 9px;
+  }
+
+  .match-screen-shell .player-score {
+    font-size: clamp(2.1rem, 15vh, 3.5rem);
+  }
+
+  .match-screen-shell .player-games {
+    font-size: 0.5rem;
+  }
+
+  .match-screen-shell .server-badge-slot {
+    min-height: 18px;
+  }
+
+  .match-screen-shell .server-badge {
+    min-width: 42px;
+    min-height: 18px;
+    padding: 2px 5px;
+    font-size: 0.48rem;
+  }
+
+  .match-screen-shell .scoreboard-point-strip-wrap,
+  .match-screen-shell .scoreboard-point-strip {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .match-screen-shell .scoreboard-point-strip {
+    max-height: none;
+    gap: 2px;
+    padding: 1px 0;
+    overflow-y: auto;
+  }
+
+  .match-screen-shell .scoreboard-point-marker {
+    width: 19px;
+    height: 19px;
+    min-height: 19px;
+    font-size: 0.5rem;
+  }
+
+  .match-screen-shell .scoreboard-history-strip {
+    display: none;
+  }
+
+  .match-screen-shell .scoreboard-controls {
+    padding-top: 0;
+  }
+
+  .match-screen-shell .match-control-grid {
+    width: 114px;
+    grid-template-columns: repeat(3, 34px);
+    justify-content: center;
+    gap: 6px;
+    margin: 0 auto;
+  }
+
+  .match-screen-shell .match-control-grid__actions { grid-column: 1; }
+  .match-screen-shell .match-control-grid__undo { grid-column: 2; }
+  .match-screen-shell .match-control-grid__settings { grid-column: 3; }
+
+  .match-screen-shell .match-control-grid .match-control-grid__actions,
+  .match-screen-shell .match-control-grid .match-control-grid__undo,
+  .match-screen-shell .match-control-grid .match-control-grid__settings {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+  }
+
+  .match-screen-shell .match-control-grid__actions-icon,
+  .match-screen-shell .match-control-grid__undo-icon,
+  .match-screen-shell .match-control-grid__settings-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .match-screen-shell .match-timer-panel {
+    min-height: 30px;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 9px;
+  }
+
+  .match-screen-shell .match-timer-panel__top {
+    gap: 6px;
+  }
+
+  .match-screen-shell .match-timer-panel__copy {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .match-screen-shell .match-timer-panel__copy h2 {
+    font-size: 0.58rem;
+  }
+
+  .match-screen-shell .match-timer-label {
+    font-size: 0.44rem;
+  }
+
+  .match-screen-shell .match-timer-helper,
+  .match-screen-shell .match-timer-actions {
+    display: none;
+  }
+
+  .match-screen-shell .timer-chip {
+    min-width: 58px;
+    min-height: 24px;
+    padding: 2px 7px;
+    font-size: 0.58rem;
+  }
+
+  .match-screen-shell .match-detail-panel,
+  .match-screen-shell .match-bottom-stack,
+  .match-screen-shell > .app-footer,
+  .match-screen-shell .notice {
+    display: none;
+  }
+
+  .match-screen-shell .padel-receiver-choice {
+    gap: 3px;
+    padding: 4px 7px;
+  }
+
+  .match-screen-shell .padel-receiver-choice .panel-heading p {
+    display: none;
+  }
+
+  .match-screen-shell .padel-receiver-choice h2,
+  .match-screen-shell .padel-receiver-choice button {
+    font-size: 0.56rem;
+  }
+
+  .match-screen-shell .padel-receiver-choice button {
+    min-height: 24px;
+    padding: 3px 7px;
+  }
+
+  .match-screen-shell .tennis-scoreboard {
+    grid-template-columns: minmax(0, 1fr) clamp(126px, 24vw, 190px);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    column-gap: 5px;
+    row-gap: 3px;
+  }
+
+  .match-screen-shell .tennis-format-banner {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 18px;
+    padding: 2px 5px;
+    font-size: 0.48rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .match-screen-shell .tennis-completion-summary {
+    display: none;
+  }
+
+  .match-screen-shell .tennis-score-grid {
+    min-height: 0;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .match-screen-shell .tennis-team-card {
+    min-height: 0;
+    height: 100%;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 9px;
+  }
+
+  .match-screen-shell .tennis-team-card__name {
+    font-size: 0.52rem;
+    line-height: 1.05;
+  }
+
+  .match-screen-shell .tennis-team-card__point {
+    font-size: clamp(2rem, 15vh, 3.6rem);
+  }
+
+  .match-screen-shell .tennis-team-card__stats {
+    gap: 2px 5px;
+    font-size: 0.46rem;
+  }
+
+  .match-screen-shell .tennis-team-card__stats b {
+    font-size: 0.58rem;
+  }
+
+  .match-screen-shell .tennis-score-centre strong,
+  .match-screen-shell .tennis-score-centre span {
+    font-size: 0.48rem;
+  }
+
+  .match-screen-shell .tennis-serve-status,
+  .match-screen-shell .tennis-participant-lineups,
+  .match-screen-shell .tennis-set-history {
+    display: none;
+  }
+
+  .match-screen-shell .tennis-point-timeline {
+    min-height: 0;
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .match-screen-shell .tennis-point-timeline h3 {
+    font-size: 0.56rem;
+  }
+
+  .match-screen-shell .tennis-point-timeline__scroll {
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    gap: 2px;
+    padding: 3px;
+    overflow-y: auto;
+    border-radius: 7px;
+  }
+
+  .match-screen-shell .tennis-point-row {
+    min-height: 17px;
+    font-size: 0.54rem;
+  }
+
+  .match-screen-shell .tennis-game-divider {
+    font-size: 0.48rem;
+  }
+
+  .match-screen-shell .tennis-scoreboard > .scoreboard-controls {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .match-screen-shell .tennis-scoreboard .match-control-grid {
+    width: 114px;
+    grid-template-columns: repeat(3, 34px);
+  }
+
+  .match-screen-shell .overlay-backdrop {
+    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .match-screen-shell .overlay-panel--match-actions,
+  .match-screen-shell .overlay-panel--match-confirm,
+  .match-screen-shell .overlay-panel--game-settings,
+  .match-screen-shell .overlay-panel--warmup {
+    width: min(520px, calc(100vw - 24px));
+    max-height: calc(100dvh - 8px);
+    gap: 6px;
+    padding: 9px 12px;
+    overflow-y: auto;
+  }
+
+  .match-screen-shell .overlay-panel h2 {
+    font-size: 0.9rem;
+  }
+
+  .match-screen-shell .overlay-panel .helper-text {
+    font-size: 0.62rem;
+  }
+}

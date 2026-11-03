@@ -521,6 +521,48 @@ test("fits live scoring into a tablet landscape viewport without page scrolling 
   expect(pageOverflow).toBeLessThanOrEqual(1);
 });
 
+for (const viewportSize of [
+  { name: "iPhone SE", width: 568, height: 320 },
+  { name: "iPhone Pro Max", width: 932, height: 430 },
+]) {
+  test(`fits tennis scoring into ${viewportSize.name} landscape without page scrolling @tennis`, async ({ page }) => {
+    const match = liveTennisMatch();
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.route("**/get_score/web-tennis-live-1", async (route) => {
+      await route.fulfill({ json: envelope({ match }) });
+    });
+
+    await page.goto("/match/web-tennis-live-1");
+    await expect(page.getByTestId("tennis-scoreboard")).toBeVisible();
+    await expect(page.getByText("Match Timer", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Point timeline" })).toBeVisible();
+    await expect(page.getByLabel("Match actions")).toBeVisible();
+    await expect(page.getByLabel("Undo last action")).toBeVisible();
+    await expect(page.getByLabel("Game settings")).toBeVisible();
+
+    const viewport = page.viewportSize();
+    for (const locator of [
+      page.locator(".club-page-header--match"),
+      page.getByTestId("tennis-scoreboard"),
+      page.locator(".match-timer-panel"),
+      page.locator(".tennis-point-timeline"),
+      page.getByLabel("Match actions"),
+      page.getByLabel("Undo last action"),
+      page.getByLabel("Game settings"),
+    ]) {
+      const box = await locator.boundingBox();
+      expect(box).toBeTruthy();
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+    }
+
+    const pageOverflow = await page.evaluate(() => (
+      document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight
+    ));
+    expect(pageOverflow).toBeLessThanOrEqual(1);
+  });
+}
+
 test("presents tiebreaks and a tennis completion summary @tennis", async ({ page }) => {
   let match = liveTennisMatch();
   match = {

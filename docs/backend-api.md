@@ -855,6 +855,12 @@ What is not fully protected today:
 
 ## Current Known Gaps
 
+Phone-landscape scoring is a presentation-only extension of the existing web
+scoring contract. At 480–956 CSS pixels wide and 280–499 pixels high it uses
+the same authenticated match routes and server-authored state while keeping
+the timer, actions, and internal point timeline inside one dynamic viewport.
+No viewport-specific request or response field is added.
+
 - backend pytest logic tests, Playwright public-route smoke tests, and a
   lightweight native iOS UI test bundle are checked in. The native bundle now
   includes a deterministic, credential-free Simulator regression for the

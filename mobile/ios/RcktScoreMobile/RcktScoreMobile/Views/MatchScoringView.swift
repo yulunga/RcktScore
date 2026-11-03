@@ -1797,18 +1797,13 @@ struct MatchScoringView: View {
         let scoreFontSize: CGFloat = landscapeTablet ? 112 : (compact ? 80 : 92)
 
         VStack(spacing: compact ? 8 : 10) {
-            Text(displayedScore)
-                .font(.system(size: scoreFontSize, weight: .heavy, design: .rounded))
-                .lineLimit(1)
-                .minimumScaleFactor(0.58)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, landscapeTablet ? 18 : (compact ? 10 : 12))
-                .background(usesDarkForeground ? Color.black.opacity(0.06) : Color.white.opacity(0.18))
-                .overlay(
-                    RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous)
-                        .stroke(usesDarkForeground ? Color.black.opacity(0.20) : Color.white.opacity(0.24), lineWidth: 2)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: landscapeTablet ? 22 : 18, style: .continuous))
+            playerScoreDisplay(
+                displayedScore,
+                fontSize: scoreFontSize,
+                usesDarkForeground: usesDarkForeground,
+                compact: compact,
+                landscapeTablet: landscapeTablet
+            )
 
             Text("Games: \(games)")
                 .font(landscapeTablet ? .subheadline.weight(.semibold) : (compact ? .footnote.weight(.semibold) : .subheadline.weight(.semibold)))
@@ -1834,6 +1829,32 @@ struct MatchScoringView: View {
         .accessibilityIdentifier("scoring.scoreCard.\(side)")
         .accessibilityLabel(side == "player1" ? "Player 1 score" : "Player 2 score")
         .accessibilityValue(scoreLabel.isEmpty ? "\(score)" : scoreLabel)
+    }
+
+    private func playerScoreDisplay(
+        _ score: String,
+        fontSize: CGFloat,
+        usesDarkForeground: Bool,
+        compact: Bool,
+        landscapeTablet: Bool
+    ) -> some View {
+        let cornerRadius: CGFloat = landscapeTablet ? 22 : 18
+        let verticalPadding: CGFloat = landscapeTablet ? 18 : (compact ? 10 : 12)
+        let insetFill = usesDarkForeground ? Color.black.opacity(0.06) : Color.white.opacity(0.18)
+        let insetStroke = usesDarkForeground ? Color.black.opacity(0.20) : Color.white.opacity(0.24)
+
+        return Text(score)
+            .font(.system(size: fontSize, weight: .heavy, design: .rounded))
+            .lineLimit(1)
+            .minimumScaleFactor(0.58)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, verticalPadding)
+            .background(insetFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(insetStroke, lineWidth: 2)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
     @ViewBuilder

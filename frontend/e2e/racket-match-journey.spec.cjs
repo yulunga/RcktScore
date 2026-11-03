@@ -316,3 +316,46 @@ test("fits racket scoring controls and point order into tablet landscape without
 
   expect(await page.evaluate(() => document.scrollingElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 1);
 });
+
+for (const viewportSize of [
+  { name: "iPhone SE", width: 568, height: 320 },
+  { name: "iPhone Pro Max", width: 932, height: 430 },
+]) {
+  test(`fits racket scoring into ${viewportSize.name} landscape without page scrolling @racket`, async ({ page }) => {
+    const match = freshRacketMatch("squash", false);
+    match.state.events.push({ id: "server", event_type: "server", payload: { current_server_side: "player1", service_side: "Right" } });
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.route("**/get_score/web-squash-1", async (route) => {
+      await route.fulfill({ json: envelope({ match }) });
+    });
+
+    await page.goto("/match/web-squash-1");
+    await expect(page.locator(".club-page-header--match")).toBeVisible();
+    await expect(page.getByText("Match Timer", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Match actions")).toBeVisible();
+    await expect(page.getByLabel("Undo last action")).toBeVisible();
+    await expect(page.getByLabel("Game settings")).toBeVisible();
+    await expect(page.getByLabel("Point order")).toBeVisible();
+
+    const viewport = page.viewportSize();
+    for (const locator of [
+      page.locator(".club-page-header--match"),
+      page.locator(".scoreboard-card"),
+      page.locator(".match-timer-panel"),
+      page.getByLabel("Match actions"),
+      page.getByLabel("Undo last action"),
+      page.getByLabel("Game settings"),
+      page.getByLabel("Point order"),
+    ]) {
+      const box = await locator.boundingBox();
+      expect(box).toBeTruthy();
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+    }
+
+    const pageOverflow = await page.evaluate(() => (
+      document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight
+    ));
+    expect(pageOverflow).toBeLessThanOrEqual(1);
+  });
+}

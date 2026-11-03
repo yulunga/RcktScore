@@ -67,11 +67,13 @@ Use `npm run test:e2e:racket:watch` to watch the API-mocked Squash/Racketball
 journeys. They verify Golden Point and handicap payloads for Personal Free and
 Personal Plus, the saved per-sport timer default, and that an untimed match
 opens directly on scoring. The Racket and Tennis journey files also contain
-1024×600 tablet-landscape checks: the header must be compact, timer/actions and
-point history must stay inside the viewport, and the document scroll height
-must not exceed the viewport. If an Android tablet still scrolls, confirm its
-CSS viewport is landscape, at least 720×500 and no larger than 1400×1024; then
-inspect the final tablet-landscape media block in `frontend/src/styles.css`.
+landscape checks at 568×320 (iPhone SE), 932×430 (iPhone Pro Max), and 1024×600
+(tablet): the header must be compact, timer/actions and point history must stay
+inside the viewport, and the document scroll height must not exceed the
+viewport. If a phone still scrolls, confirm its landscape CSS viewport is
+between 480×280 and 956×499. For a tablet, confirm it is between 720×500 and
+1400×1024. Then inspect the final phone- or tablet-landscape media block in
+`frontend/src/styles.css`.
 
 Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
 a match and start it later from Matches. The mocked setup begins with another
