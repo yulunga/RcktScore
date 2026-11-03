@@ -81,6 +81,11 @@ and account context should share one row no more than 48 CSS pixels high. If the
 old tall portrait header appears, inspect the CSS viewport rather than the
 simulator window size and confirm the landscape media query is active.
 
+The same three phone landscape sizes open the Start New Match chooser and
+assert that the context control and every sport card remain inside the overlay
+in one row without internal scrolling. If lower sports are clipped, confirm the
+final phone-landscape rule overrides the generic `.match-sport-overlay` sizing.
+
 Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
 a match and start it later from Matches. The mocked setup begins with another
 active match to verify that scheduling remains available; activation happens

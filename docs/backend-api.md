@@ -864,6 +864,9 @@ No viewport-specific request or response field is added.
 The matching compact signed-in header and dashboard spacing at those phone
 landscape dimensions are also client-only. They reuse the existing session,
 notification and retained-membership context data without changing an API.
+The landscape Start New Match overlay and standalone selector only rearrange
+the already-filtered playable sports and retained context switcher; sport and
+membership authorization remain unchanged.
 
 - backend pytest logic tests, Playwright public-route smoke tests, and a
   lightweight native iOS UI test bundle are checked in. The native bundle now

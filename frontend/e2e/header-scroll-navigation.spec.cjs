@@ -647,6 +647,47 @@ for (const viewportSize of [
   { name: "iPhone 16 Pro", width: 852, height: 393 },
   { name: "iPhone Pro Max", width: 932, height: 430 },
 ]) {
+  test(`fits every start-match choice into ${viewportSize.name} landscape without scrolling @header`, async ({ page }) => {
+    await page.addInitScript(() => {
+      const auth = JSON.parse(window.sessionStorage.getItem("rcktscore.auth"));
+      auth.session.enabled_sports = ["squash", "racketball", "tennis", "padel"];
+      window.sessionStorage.setItem("rcktscore.auth", JSON.stringify(auth));
+    });
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.goto("/dashboard");
+    await page.locator(".dashboard-start-hero").click();
+
+    const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
+    const options = chooser.locator(".match-sport-overlay__option");
+    await expect(chooser).toBeVisible();
+    await expect(options).toHaveCount(4);
+    await expect(chooser.locator(".account-context-switcher__trigger")).toBeVisible();
+
+    const chooserBox = await chooser.boundingBox();
+    expect(chooserBox).toBeTruthy();
+    expect(chooserBox.y).toBeGreaterThanOrEqual(0);
+    expect(chooserBox.y + chooserBox.height).toBeLessThanOrEqual(viewportSize.height + 1);
+    expect(chooserBox.x).toBeGreaterThanOrEqual(0);
+    expect(chooserBox.x + chooserBox.width).toBeLessThanOrEqual(viewportSize.width + 1);
+    expect(await chooser.evaluate((element) => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+
+    for (const option of await options.all()) {
+      const optionBox = await option.boundingBox();
+      expect(optionBox).toBeTruthy();
+      expect(optionBox.y).toBeGreaterThanOrEqual(chooserBox.y);
+      expect(optionBox.y + optionBox.height).toBeLessThanOrEqual(chooserBox.y + chooserBox.height + 1);
+    }
+
+    const optionTops = await options.evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().top)));
+    expect(new Set(optionTops).size).toBe(1);
+  });
+}
+
+for (const viewportSize of [
+  { name: "iPhone SE", width: 568, height: 320 },
+  { name: "iPhone 16 Pro", width: 852, height: 393 },
+  { name: "iPhone Pro Max", width: 932, height: 430 },
+]) {
   test(`uses the compact signed-in dashboard header in ${viewportSize.name} landscape @header`, async ({ page }) => {
     await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
     await page.goto("/dashboard");

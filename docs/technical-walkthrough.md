@@ -500,8 +500,13 @@ scoring. Signed-in phone-landscape pages from 480–956 CSS pixels wide and
 single shallow header row containing the brand, icon-only navigation, Messages
 and the context control, with compact dashboard actions/cards and no floating
 mobile navigation control. Active scoring then hides the navigation icons to
-give the board maximum height while retaining the compact brand. Tablet
-landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
+give the board maximum height while retaining the compact brand.
+The shared Start New Match chooser also switches to a landscape grid: its title
+and context selector share the top row and all four implemented sports use one
+compact row beneath it. The overlay and standalone selector therefore fit
+without scrolling from iPhone SE through Pro Max landscape dimensions.
+
+Tablet landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
 the compact navigation header. Both use a fixed dynamic-viewport shell instead
 of document scrolling: the score controls and timer remain visible, the
 Squash/Racketball point rail scrolls internally, and Tennis/Padel place their
