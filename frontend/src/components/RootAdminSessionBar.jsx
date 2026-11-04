@@ -9,12 +9,15 @@ export default function RootAdminSessionBar() {
 
   return (
     <section className="session-bar">
-      <div>
-        <strong>RcktScore Root Admin</strong>
-        <span>
-          {(session?.username || "Root Admin")}
-          {session?.role ? ` • ${session.role}` : ""}
-        </span>
+      <div className="root-admin-session-brand">
+        <img src="/branding/logo/brand-logo.png" alt="HitnScore" width="44" height="44" />
+        <div>
+          <strong>RcktScore Root Admin</strong>
+          <span>
+            {(session?.username || "Root Admin")}
+            {session?.role ? ` • ${session.role}` : ""}
+          </span>
+        </div>
       </div>
       <div className="club-page-header__meta">
         <button

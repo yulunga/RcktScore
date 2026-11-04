@@ -119,6 +119,8 @@ Error:
 7. Each root-admin handler validates the token, expiry, revocation state, and current `SkRootAdmin` identity before doing any privileged work.
 8. Logout calls `POST /root_admin/logout`, which revokes the current token.
 
+The dashboard’s Club Admin Memberships count comes from non-personal organisation membership rows with the admin role. Platform root-admin accounts are separate. Database operators rotate their passwords with [rotate-root-admin-password.sql](../scripts/rotate-root-admin-password.sql), which also revokes existing root-admin sessions.
+
 ## 3. Personal Signup and Club-Enquiry Flow
 
 The end-to-end entry, email, activation, login and first-match paths are shown
@@ -159,7 +161,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 
 - [frontend/src/pages/HelpPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/HelpPage.jsx)
 
-The app `/help` route is also the public Help Centre and knowledge base. Its overview contains the web and iPhone registration/sign-in guides, password recovery, troubleshooting/contact routing, and legal links. Direct links use `?section=web-access`, `ios-access`, `terms`, `privacy`, or `cookies`; password recovery uses `?mode=reset`, while Personal email setup uses `?mode=confirm-email`. Both token pages validate the link with `POST /password_reset/validate` before enabling the form. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. `components/PublicSiteFooter.jsx` is the reusable React template for the complete public-homepage footer. The Help Centre renders that component rather than maintaining page-specific footer markup.
+The app `/help` route is also the public Help Centre. Its overview is a search-free Guides library divided into Getting started, Accounts & access, Matches & scoring, Live sharing & displays, and Insights/tournaments/settings. The guide definitions live in `frontend/src/content/helpGuides.jsx` and cover the web client, native iOS, Android web-client status, Personal/Personal Plus, club roles/admin, setup/scoring, scheduling/history, score viewing/displays, Analytics, tournaments, settings/security, notifications and offline boundaries. Every guide is addressable through `?section=<guide-id>`; legal links retain `terms`, `privacy` and `cookies`. Password recovery uses `?mode=reset`, while Personal email setup uses `?mode=confirm-email`. Both token pages validate the link with `POST /password_reset/validate` before enabling the form. The public landing footer points to this route and its privacy/cookie sections, so `weblanding/` does not carry a separate Help page. `components/PublicSiteFooter.jsx` is the reusable React template for the complete public-homepage footer. The Help Centre renders that component rather than maintaining page-specific footer markup.
 
 ### Current path
 

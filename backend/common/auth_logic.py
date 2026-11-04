@@ -111,6 +111,7 @@ def get_root_admin(connection, username):
             FROM "SkRootAdmin"
             WHERE rtusername = %(username)s
             LIMIT 1
+            FOR UPDATE
             """,
             {"username": username},
         )

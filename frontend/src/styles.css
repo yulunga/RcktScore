@@ -2343,43 +2343,25 @@ textarea {
   line-height: 1.65;
 }
 
-.help-centre-search {
-  display: grid;
-  min-height: 62px;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 13px;
-  border: 1px solid #d5e3ef;
-  border-radius: 999px;
-  margin-top: 30px;
-  padding: 0 22px;
-  color: #1675cf;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 36px rgba(24, 64, 99, 0.09);
-  text-align: left;
-}
-
-.help-centre-search span {
-  font-size: 1.35rem;
-}
-
-.help-centre-search input {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  color: #102a43;
-  background: transparent;
-  font-size: 1rem;
-}
-
 .help-centre-menu-group {
   margin-top: 30px;
 }
 
+.help-centre-group-heading {
+  margin: 0 0 13px;
+}
+
+.help-centre-group-heading h2,
 .help-centre-menu-group > h2 {
   margin: 0 0 13px;
   color: #082b4b;
   font-size: 1.25rem;
+}
+
+.help-centre-group-heading p {
+  margin: -5px 0 0;
+  color: #60778b;
+  line-height: 1.55;
 }
 
 .help-centre-menu {
@@ -2433,6 +2415,36 @@ textarea {
 .help-centre-menu-item--featured .help-centre-menu-icon {
   color: #b52d7a;
   background: #ffebf5;
+}
+
+.knowledge-guide-sections {
+  display: grid;
+  gap: 30px;
+  margin-top: 42px;
+}
+
+.knowledge-guide-section {
+  border-top: 1px solid #dce7f1;
+  padding-top: 26px;
+}
+
+.knowledge-guide-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.knowledge-guide-section h2 {
+  margin-top: 0;
+}
+
+.knowledge-guide-note {
+  border: 1px solid #cfe2f5;
+  border-radius: 16px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  color: #224c70;
+  background: #f0f7ff;
+  line-height: 1.55;
 }
 
 .help-centre-menu-item > span:nth-child(2) {
@@ -5704,6 +5716,18 @@ textarea {
 
 .session-bar span {
   color: #486581;
+}
+
+.root-admin-session-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.root-admin-session-brand img {
+  flex: none;
 }
 
 .session-link-button {

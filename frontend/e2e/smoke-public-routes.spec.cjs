@@ -79,6 +79,19 @@ test("dashboard redirects anonymous users back to login @smoke", async ({ page }
 test("help page opens password reset section @smoke", async ({ page }) => {
   await page.goto("/help");
 
+  await expect(page.getByRole("heading", { name: "Getting started" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Accounts & access" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Matches & scoring" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Live sharing & displays" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Insights, tournaments & settings" })).toBeVisible();
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Live score viewing/ }).click();
+  await expect(page).toHaveURL(/section=live-viewing/);
+  await expect(page.getByRole("heading", { name: "Live score viewing" })).toBeVisible();
+  await expect(page.getByText("It does not currently broadcast live video or audio.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Back to Help Centre" }).click();
+
   const footer = page.locator(".public-site-footer");
   await expect(footer).toBeVisible();
   await expect(footer.getByRole("link", { name: "HitNScore home" })).toHaveAttribute("href", "https://www.hitnscore.com/");

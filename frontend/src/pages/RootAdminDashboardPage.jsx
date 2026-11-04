@@ -155,7 +155,7 @@ export default function RootAdminDashboardPage() {
             <div>{summary.user_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Top Level Admin</strong>
+            <strong>Club Admin Memberships</strong>
             <div>{summary.admin_count ?? 0}</div>
           </div>
           <div className="meta-item">

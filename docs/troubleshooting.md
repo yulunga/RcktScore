@@ -534,13 +534,17 @@ On the web, package version/build details are intentionally absent from both the
 
 The login logo and HitnScore wordmark should link to `https://www.hitnscore.com/`. If they do not, verify the `.login-branding` anchor in `LoginPage.jsx` and deploy the current frontend bundle.
 
-The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. The complete Help Centre footer comes from `frontend/src/components/PublicSiteFooter.jsx`; update that component rather than adding page-specific footer markup. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct Help Centre section opens the overview instead, verify the `section` value against `web-access`, `ios-access`, `terms`, `privacy`, and `cookies` and deploy the current frontend bundle.
+The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. The complete Help Centre footer comes from `frontend/src/components/PublicSiteFooter.jsx`; update that component rather than adding page-specific footer markup. The guide catalogue and article content come from `frontend/src/content/helpGuides.jsx`, while `HelpPage.jsx` owns routing, recovery and legal sections. The overview intentionally has no search field and requires no backend search service. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct guide opens the overview instead, verify that its `section` value is included in `HELP_GUIDE_IDS`; legal values remain `terms`, `privacy`, and `cookies`.
 
 If web Analytics does not appear, inspect `hitnscore.analytics-consent` in local storage. A missing value should display the privacy-choice panel, `denied` must leave the Google tag unloaded, and `granted` should add one `script[data-hitnscore-analytics]` element for measurement ID `G-30V1YTPY1F`. Use GA4 DebugView or the browser network panel only after granting consent. SPA page-view payloads should contain route templates such as `/match/:matchId` or `/tournament-draw/:accessKey`, never the real path identifiers or query strings. The Cookie Policy's **Update cookie preferences** control reopens the panel; choosing **Essential only** disables collection and removes accessible `_ga` cookies.
 
 The Help Centre header should remain fixed and switch to `help-centre-header--compact` after scrolling beyond 48 pixels. If it does not shrink, check the scroll listener in `HelpPage.jsx` and the compact rules in `styles.css`. The Help Centre logo/wordmark should navigate to `https://www.hitnscore.com/`, not the app login route.
 
 The root-admin User Accounts `Unverified Users` card requests `GET /root_admin/users?account_type=unverified`. If its count is non-zero but selecting it does not filter the list, deploy the current root-admin users Lambda as well as the frontend; the card depends on backend support for that filter value.
+
+### Root-admin accounts
+
+Query `public."SkRootAdmin"` for `id` and `rtusername` to list platform root admins. To rotate a password, use [rotate-root-admin-password.sql](../scripts/rotate-root-admin-password.sql) in the target database as an authorised operator. Rotation revokes existing sessions for that account. Club Admin Memberships on the dashboard counts club membership rows.
 
 ## 7. Schema and Migration Issues
 

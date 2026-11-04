@@ -163,6 +163,7 @@ Root-admin credential checking and backend session enforcement are implemented.
 Current behavior:
 
 - `POST /root_admin/login` verifies credentials against `SkRootAdmin`
+- platform root-admin account details and salted password hashes are maintained through privileged SQL. The app has no root-admin account editing endpoint. The User Accounts password endpoint updates ordinary organisation memberships
 - successful login returns a 384-bit opaque session token and expiry timestamp
 - only the token hash is stored in `root_admin_sessions`
 - root-admin sessions expire after eight hours by default, configurable from one to 24 hours with `RootAdminSessionTtlHours`
@@ -199,7 +200,7 @@ Tournament Draw and Scoreboard Display use the same permanently compact, full-vi
 
 Standalone landing-page actions labelled Start Scoring route to the plain `https://app.hitnscore.com/login` state. Only explicitly labelled account-creation, registration and club-interest actions route to `?interest=1#want-in`.
 
-The public Help Centre and knowledge-base content at `/help`, including the direct `section` query values used by the landing footer, uses the shared React `PublicSiteFooter` presentation. Password and account-setup links first call `POST /password_reset/validate`; valid Personal setup links use `mode=confirm-email`, while ordinary recovery links retain `mode=reset`. Both finish through `POST /password_reset/confirm` and apply the same backend password policy: at least eight characters, an uppercase letter, a number, a symbol, and no configured common password term.
+The public Help Centre at `/help` uses a search-free, sectioned Guides library and the shared React `PublicSiteFooter` presentation. Guide selection and direct `section` query values are entirely client-side and add no search or guide-content API. Password and account-setup links first call `POST /password_reset/validate`; valid Personal setup links use `mode=confirm-email`, while ordinary recovery links retain `mode=reset`. Both finish through `POST /password_reset/confirm` and apply the same backend password policy: at least eight characters, an uppercase letter, a number, a symbol, and no configured common password term.
 
 The app shell and public landing homepage use the same browser title and description metadata. This is static client markup and has no backend API effect.
 
