@@ -86,9 +86,15 @@ assert that the context control and every sport card remain inside the overlay
 in one row without internal scrolling. If lower sports are clipped, confirm the
 final phone-landscape rule overrides the generic `.match-sport-overlay` sizing.
 The iPhone 16 Pro portrait check also verifies equal context/grid edges and the
-circular close control immediately to the right of the context selector. A
-close button appearing below the description or on a separate row means the
-shared context-row layout was lost.
+circular close control at the overlay's top-right above the context selector. A
+close button appearing beside the portrait context selector means the portrait
+positioning override was lost; that beside-selector layout is landscape-only.
+
+The public-route smoke suite checks the collapsed login at iPhone SE, iPhone 16
+Pro, iPhone 17 and Pro Max landscape sizes. Username, Password, Sign In, Want In
+and Need help must all remain inside the viewport with no document scrolling.
+If Sign In falls below the fold, confirm the final phone-landscape login rule is
+still after the generic login and responsive panel rules.
 
 Use `npm run test:e2e:scheduling:watch` to watch a Personal Plus user schedule
 a match and start it later from Matches. The mocked setup begins with another

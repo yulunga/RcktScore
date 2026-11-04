@@ -9,6 +9,40 @@ test("login page loads @smoke", async ({ page }) => {
   await expect(page.getByRole("link", { name: "View tournament draw" })).toHaveCount(0);
 });
 
+for (const viewportSize of [
+  { name: "iPhone SE", width: 568, height: 320 },
+  { name: "iPhone 16 Pro", width: 852, height: 393 },
+  { name: "iPhone 17", width: 874, height: 402 },
+  { name: "iPhone Pro Max", width: 932, height: 430 },
+]) {
+  test(`phone landscape login keeps every sign-in action visible on ${viewportSize.name} @smoke`, async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("hitnscore.analytics-consent", "denied");
+    });
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.goto("/login");
+
+    const controls = [
+      page.getByLabel("Username"),
+      page.getByLabel("Password"),
+      page.getByRole("button", { name: "Sign In" }),
+      page.getByRole("button", { name: "Want In" }),
+      page.getByRole("link", { name: "Need help?" }),
+    ];
+
+    for (const control of controls) {
+      await expect(control).toBeVisible();
+      const controlBox = await control.boundingBox();
+      expect(controlBox.x).toBeGreaterThanOrEqual(0);
+      expect(controlBox.y).toBeGreaterThanOrEqual(0);
+      expect(controlBox.x + controlBox.width).toBeLessThanOrEqual(viewportSize.width + 1);
+      expect(controlBox.y + controlBox.height).toBeLessThanOrEqual(viewportSize.height + 1);
+    }
+
+    expect(await page.evaluate(() => document.scrollingElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(1);
+  });
+}
+
 test("registration and privacy copy use the public product wording @smoke", async ({ page }) => {
   await page.goto("/login?interest=1#want-in");
 

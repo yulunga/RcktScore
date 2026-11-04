@@ -628,6 +628,11 @@ test("opens the shared sport chooser from the responsive new-match menu action @
 });
 
 test("fits the match account and sport chooser inside an iPhone 16 Pro viewport @header", async ({ page }) => {
+  await page.addInitScript(() => {
+    const auth = JSON.parse(window.sessionStorage.getItem("rcktscore.auth"));
+    auth.session.enabled_sports = ["squash", "racketball", "tennis", "padel"];
+    window.sessionStorage.setItem("rcktscore.auth", JSON.stringify(auth));
+  });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/dashboard");
   await page.locator(".dashboard-start-hero").click();
@@ -635,7 +640,7 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
   const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
   await expect(chooser).toBeVisible();
   await expect(chooser.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
-  await expect(chooser.locator(".match-sport-artwork")).toHaveCount(3);
+  await expect(chooser.locator(".match-sport-artwork")).toHaveCount(4);
   const box = await chooser.boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.y + box.height).toBeLessThanOrEqual(852);
@@ -648,8 +653,8 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
     chooser.locator(".match-sport-overlay__context-row").boundingBox(),
     chooser.locator(".match-sport-overlay__grid").boundingBox(),
   ]);
-  expect(closeBox.x).toBeGreaterThanOrEqual(contextBox.x + contextBox.width);
-  expect(Math.abs((closeBox.y + (closeBox.height / 2)) - (contextBox.y + (contextBox.height / 2)))).toBeLessThanOrEqual(1);
+  expect(closeBox.y + closeBox.height).toBeLessThanOrEqual(contextBox.y);
+  expect(Math.abs((closeBox.x + closeBox.width) - (box.x + box.width - 18))).toBeLessThanOrEqual(1);
   expect(Math.abs(contextRowBox.x - gridBox.x)).toBeLessThanOrEqual(1);
   expect(Math.abs((contextRowBox.x + contextRowBox.width) - (gridBox.x + gridBox.width))).toBeLessThanOrEqual(1);
   await expect(closeButton).toHaveCSS("border-radius", "50%");

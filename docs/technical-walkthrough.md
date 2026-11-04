@@ -507,8 +507,16 @@ compact row beneath it. The overlay and standalone selector therefore fit
 without scrolling from iPhone SE through Pro Max landscape dimensions.
 In phone portrait the same overlay remains centred within the backdrop, uses
 more of the available screen area, aligns the context selector to the sport-grid
-edges and places its standard circular close button immediately to the right of
-the context selector.
+edges and pins its standard circular close button to the overlay's top-right
+above the context selector. Phone landscape keeps the close button immediately
+to the context selector's right within the compact top row.
+
+The public login uses the same 480–956 by 280–499 phone-landscape boundary. Its
+collapsed sign-in state places compact branding on the left and the complete
+Username, Password, Sign In, Want In and Need help flow on the right, without
+document scrolling. Expanding Want In deliberately restores the normal
+scrollable registration layout because that longer form cannot fit safely into
+the landscape viewport.
 
 Tablet landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
 the compact navigation header. Both use a fixed dynamic-viewport shell instead
