@@ -1,5 +1,7 @@
 # Mobile API Contracts
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This directory holds mobile-facing API references derived from the existing v2
 backend contract.
 

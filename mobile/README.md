@@ -1,5 +1,7 @@
 # Mobile Workspace
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This directory contains the native mobile work that lives alongside the web
 frontend and Lambda backend.
 

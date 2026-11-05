@@ -1,5 +1,7 @@
 # Testing
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This folder turns the testing plans in [docs/Testing-automated-testing-plan.md](/Users/glennrowe/Development/Projects/RcktScore/docs/Testing-automated-testing-plan.md) and [docs/Testing-web-test-script.md](/Users/glennrowe/Development/Projects/RcktScore/docs/Testing-web-test-script.md) into a practical working structure.
 
 ## Folder layout

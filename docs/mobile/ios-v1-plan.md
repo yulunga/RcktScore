@@ -1,5 +1,7 @@
 # iOS V1 Plan
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document tracks the current native iOS baseline and the remaining work to

@@ -1,5 +1,7 @@
 # Troubleshooting Guide
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This guide is the practical debugging companion to the API and lifecycle docs.

@@ -1,5 +1,7 @@
 # Android Workspace
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Native Android app for HitNScore. It is a separate Gradle project beside
 `mobile/ios/`; it does not alter or wrap the iOS workspace.
 

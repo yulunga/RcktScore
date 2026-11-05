@@ -119,11 +119,11 @@ a { color: inherit; }
 .landing-footer > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 18px; }
 .landing-footer a, .landing-footer button { border: 0; padding: 0; color: var(--blue-deep); background: transparent; font-size: .78rem; font-weight: 800; text-decoration: none; cursor: pointer; }
 .landing-footer a:hover, .landing-footer button:hover { text-decoration: underline; }
-.app-store-badge { display: inline-flex; min-width: 172px; min-height: 54px; align-items: center; gap: 10px; border: 1px solid #39424b; border-radius: 10px; padding: 7px 14px; color: #fff !important; background: #050505 !important; text-decoration: none !important; }
-.app-store-badge svg { width: 29px; height: 29px; fill: currentColor; flex: 0 0 auto; }
+.app-store-badge { display: inline-flex; min-width: 132px; min-height: 40px; align-items: center; gap: 7px; border: 1px solid #39424b; border-radius: 8px; padding: 5px 10px; color: #fff !important; background: #050505 !important; text-decoration: none !important; }
+.app-store-badge svg { width: 22px; height: 22px; fill: currentColor; flex: 0 0 auto; }
 .app-store-badge span { display: grid; line-height: 1; }
-.app-store-badge small { margin-bottom: 3px; font-size: .62rem; font-weight: 500; letter-spacing: .01em; }
-.app-store-badge strong { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size: 1.14rem; font-weight: 500; letter-spacing: -.02em; }
+.app-store-badge small { margin-bottom: 2px; font-size: .48rem; font-weight: 500; letter-spacing: .01em; }
+.app-store-badge strong { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size: .86rem; font-weight: 500; letter-spacing: -.02em; }
 .app-store-badge:hover { transform: translateY(-1px); }
 
 .cookie-panel { position: fixed; z-index: 200; right: 14px; bottom: 14px; left: 14px; display: grid; grid-template-columns: 90px minmax(0,1fr) minmax(210px,280px); gap: 28px; align-items: center; border: 1px solid rgba(16,42,67,.09); border-radius: 24px; padding: 26px clamp(24px,4vw,52px); background: rgba(255,255,255,.98); box-shadow: 0 24px 80px rgba(6,34,58,.24); opacity: 0; transform: translateY(calc(100% + 30px)); transition: opacity 220ms ease,transform 260ms ease; backdrop-filter: blur(18px); }

@@ -1,5 +1,7 @@
 # UI / UX Manual Testing Checklist
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Use this checklist after UI changes and before releases.
 
 ## Authentication

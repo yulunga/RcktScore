@@ -1,5 +1,7 @@
 # Native tennis scenario tests
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Run from the repository root:
 
 ```bash

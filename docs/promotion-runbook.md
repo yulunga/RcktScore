@@ -1,5 +1,7 @@
 # RcktScore Promotion Runbook
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This runbook covers database migration, backend, frontend, and native-client
 compatibility checks for staging and production promotion. It deliberately uses
 a forward-only database model: application artifacts may be rolled back, while

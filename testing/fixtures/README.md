@@ -1,5 +1,7 @@
 # Manual test fixtures
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 These scripts are opt-in and must not be part of production migrations.
 
 ## Personal Plus match history

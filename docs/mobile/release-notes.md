@@ -1,5 +1,7 @@
 # Mobile Release Notes
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This document tracks native mobile release history for the iOS app in
 `mobile/ios/RcktScoreMobile/`.
 

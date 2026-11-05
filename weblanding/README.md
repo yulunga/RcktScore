@@ -1,5 +1,7 @@
 # Marketing Site (Standalone)
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This folder is intentionally separate from the React app in `frontend/`.
 
 ## Why

@@ -1,5 +1,7 @@
 # Mobile Docs
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This folder contains current mobile-platform notes for the native iOS app and
 the initial Android foundation in the same repository as the web and backend
 code.

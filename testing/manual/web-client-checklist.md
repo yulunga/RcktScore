@@ -1,5 +1,7 @@
 # HitnScore web client — manual testing checklist
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Prepared 15 October 2026. This is a test plan, not a record of completed testing. Scope: the responsive web client, including Safari on iPhone/iPad; not the native iOS app.
 
 ## 1. Devices and resolutions

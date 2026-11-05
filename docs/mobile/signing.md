@@ -1,5 +1,7 @@
 # Mobile Signing
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document is reserved for iOS code signing and distribution setup.

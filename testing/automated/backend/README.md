@@ -1,5 +1,7 @@
 # Backend Automation
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This area is for fast Python tests using Pytest.
 
 These tests should focus on pure logic first because they are:

@@ -1,5 +1,7 @@
 # Match State Reference
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This directory is for mobile scoring-state examples and walkthrough data.
 
 Recommended future contents:

@@ -1,5 +1,7 @@
 # iOS Workspace
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This directory is the home for the active native iOS app.
 
 Current workspace:

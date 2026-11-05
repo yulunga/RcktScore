@@ -1,5 +1,7 @@
 # RcktScore Web Application Test Script
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Scope and Goal
 
 This script is a **manual end-to-end test plan** for the current RcktScore web app, with a priority on:

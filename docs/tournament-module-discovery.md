@@ -1,5 +1,7 @@
 # Tournament Manager Discovery and Architecture
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Status
 
 This document began as an architectural discovery note. The first web-only

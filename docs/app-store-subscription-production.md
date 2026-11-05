@@ -1,5 +1,7 @@
 # Personal Plus App Store Subscription Plan
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Current implementation boundary
 
 The repository now has persistence for verified App Store subscriptions and incoming lifecycle events in migration `024_app_store_subscription_lifecycle.sql`. The native StoreKit 2 service offers only the yearly Personal Plus product to new purchasers, while continuing to recognise the legacy monthly product during restore, transaction updates and backend lifecycle processing. It also exposes Restore Purchases and Manage Subscription. The current tier presentation follows the latest backend organisation plan and applies a neutral card body, green current-plan outline and pink Current badge; a local StoreKit transaction does not override that plan. The app must not grant Personal Plus from an unverified device response, and the existing root-admin plan switch remains a testing/admin mechanism rather than proof of payment.

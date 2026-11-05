@@ -1,5 +1,7 @@
 # Mobile Build
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document captures the current local build and verification reality for the

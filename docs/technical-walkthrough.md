@@ -1,5 +1,7 @@
 # Technical Walkthrough
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document describes the current end-to-end request lifecycles in `RcktScore` v2.

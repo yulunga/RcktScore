@@ -1,5 +1,7 @@
 # HitnScore service relationships
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Current pre-launch architecture based on repository code, deployment templates and runbooks. Live provider settings were not checked. Arrows show who initiates the call or transfer.
 
 ## Application data flow

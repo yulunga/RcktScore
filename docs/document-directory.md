@@ -1,5 +1,7 @@
 # HitnScore Document Directory
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Last audited: 4 November 2026
 
 ## Purpose

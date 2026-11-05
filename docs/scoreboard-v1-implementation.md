@@ -1,5 +1,7 @@
 # Scoreboard V1 Implementation Spec
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Goal
 
 Ship a first-testable public scoreboard flow for a single court without requiring a user login.

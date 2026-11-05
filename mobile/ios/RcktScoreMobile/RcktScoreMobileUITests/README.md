@@ -1,5 +1,7 @@
 # Native UI-test credentials
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 The login smoke tests read their accounts from environment variables so real
 usernames and passwords are never committed to Git.
 

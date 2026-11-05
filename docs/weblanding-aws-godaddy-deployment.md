@@ -1,5 +1,7 @@
 # Hit N Score Landing Site Deployment
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This runbook deploys `weblanding/` as a standalone static site on AWS using:
 
 - S3 for file storage

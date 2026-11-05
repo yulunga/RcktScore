@@ -1,5 +1,7 @@
 # RcktScore production readiness, web parity and Personal Plus review
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 **Review date:** 8 September 2026  
 **Scope:** current local repository, delivery documentation, web responsiveness,
 native iPhone/iPad posture, backend/root administration and current premium

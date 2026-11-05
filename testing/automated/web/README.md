@@ -1,5 +1,7 @@
 # Web Automation
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This area is for browser automation using Playwright.
 
 The executable tests and configuration live under `frontend/e2e/` and

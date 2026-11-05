@@ -1,5 +1,7 @@
 # AGENTS.md
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This file is the short operating guide for the `RcktScore` repository.

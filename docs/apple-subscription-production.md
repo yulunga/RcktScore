@@ -1,5 +1,7 @@
 # Apple Personal Plus production plan
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Current repository status
 
 The StoreKit 2 purchase/context connection and the complete backend lifecycle

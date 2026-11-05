@@ -1,5 +1,7 @@
 # Registering and signing in on the HitnScore iPhone app
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Use this guide to register, complete any required approval, sign in, choose between linked accounts, and optionally enable Face ID or Touch ID in the HitnScore iPhone app.
 
 ## Before you begin

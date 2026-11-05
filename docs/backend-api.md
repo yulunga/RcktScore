@@ -1,5 +1,7 @@
 # Backend API Reference
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document describes the `RcktScore` v2 backend as it exists in code today.

@@ -1,5 +1,7 @@
 # RcktScore Automated Testing Implementation Plan
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Goal
 
 Build a practical automated test stack for the **web app first** (mobile web, iPad web, desktop web), while keeping backend and API checks reliable and fast.

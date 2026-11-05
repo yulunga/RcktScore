@@ -1,5 +1,7 @@
 # RcktScore v2
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 RcktScore v2 is the active application in this repository.
 
 Current implementation:

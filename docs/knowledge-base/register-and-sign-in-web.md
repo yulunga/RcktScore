@@ -1,5 +1,7 @@
 # Registering and signing in on the HitnScore web app
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Use this guide to create a Personal account, register interest for a Club account, accept an organisation invitation, and sign in at [app.hitnscore.com](https://app.hitnscore.com/).
 
 ## Before you begin

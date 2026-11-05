@@ -1,5 +1,7 @@
 # New-user onboarding walkthrough
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 This diagram describes the onboarding behavior implemented in the current web,
 backend, email and native iOS code. It begins at either the public website or a
 newly installed iPhone/iPad app and ends when the user reaches the live scoring

@@ -1,5 +1,7 @@
 # Automated Testing
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Automated testing in this repo is split by responsibility:
 
 - `web/` for browser-based behavior

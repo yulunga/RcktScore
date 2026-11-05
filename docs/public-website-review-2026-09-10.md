@@ -1,5 +1,7 @@
 # HitNScore public website review and expansion blueprint
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 **Review date:** 10 September 2026  
 **Website reviewed:** `https://www.hitnscore.com/`  
 **Scope:** the standalone public marketing website in `weblanding/`, its public help page, the hand-off to `app.hitnscore.com`, and comparison with capabilities currently implemented in the RcktScore repository.

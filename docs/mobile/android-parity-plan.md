@@ -1,5 +1,7 @@
 # Android App Parity Plan
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This is a practical, high-level plan for adding a native Android app that has

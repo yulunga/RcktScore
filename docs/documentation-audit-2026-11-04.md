@@ -1,5 +1,7 @@
 # HitnScore Documentation Audit
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Audit date: 4 November 2026
 
 ## Outcome

@@ -1,5 +1,7 @@
 # Manual Testing
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Manual testing stays important even when automation grows.
 
 Use this area for:

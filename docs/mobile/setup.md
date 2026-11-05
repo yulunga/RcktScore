@@ -1,5 +1,7 @@
 # Mobile Setup
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document is the starting point for a developer building a native mobile

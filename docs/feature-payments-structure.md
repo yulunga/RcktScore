@@ -1,5 +1,7 @@
 # RcktScore Feature Packaging and Current Entitlements
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 ## Purpose
 
 This document maps the current code-backed product capabilities to pricing and packaging conversations.

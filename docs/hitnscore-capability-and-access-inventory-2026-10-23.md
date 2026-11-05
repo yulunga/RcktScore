@@ -1,5 +1,7 @@
 # HitnScore capability and access inventory
 
+**Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
+
 Reviewed: 23 October 2026. Scope: current checked-out v2 web, Python backend and native iOS code. This is a code review for packaging discussions, not confirmation of deployed configuration or a runtime security test. Existing unrelated working-tree changes were left untouched.
 
 ## How to use this document
