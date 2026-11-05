@@ -16,7 +16,7 @@ There is no free trial in the intended product: a Personal Free user chooses Upg
 4. Obtain a stable UUID `appAccountToken` from the backend for the authenticated personal account and pass it into each purchase. This binds the Apple transaction to the correct Hit n Score account without trusting an email in the receipt.
 5. Add an authenticated backend verification endpoint. It must verify Apple's signed JWS certificate chain and payload, confirm bundle ID, product ID, environment, transaction ownership, expiry and revocation state, then upsert `app_store_subscriptions` idempotently.
 6. Configure App Store Server Notifications V2. The public webhook verifies every signed payload before inserting `app_store_subscription_events`, then updates the authoritative subscription row for purchase, renewal, billing retry, grace period, expiry, refund and revocation events.
-7. Change `personal_plan` to `personal_plus` only from a verified active/grace-period subscription. Cancellation with remaining paid time keeps Plus active until `expires_at`; downgrade to `personal_free` on verified expiry or revocation while retaining stored match data, after which access returns to the latest-three window.
+7. Change `personal_plan` to `personal_plus` only from a verified active/grace-period subscription. Cancellation with remaining paid time keeps Plus active until `expires_at`; downgrade to `personal_free` on verified expiry or revocation while retaining stored match data, after which access returns to the latest-25 window.
 8. Add reconciliation using App Store Server API history/status queries so missed webhooks cannot leave stale entitlements. Run it on purchase/restore and periodically for subscriptions near or beyond expiry.
 9. Return subscription status and the shared entitlement contract to web/iOS/admin. Web can display status but, under Apple's rules and the chosen product approach, iOS should be the purchase surface unless an approved external-purchase entitlement applies.
 10. Test new purchase, renewal, cancel-at-period-end, billing retry, grace period, expiry, refund, revoke, upgrade restore, reinstall, device change, account change, Sandbox and TestFlight before production release.
@@ -34,7 +34,7 @@ There is no free trial in the intended product: a Personal Free user chooses Upg
 
 ## Current product contract
 
-- Personal Free: latest 3 completed matches, no performance dashboard.
+- Personal Free: latest 25 completed matches, with an upgrade prompt as history card 26, and no performance dashboard.
 - Personal Plus: latest 100 completed matches and the implemented performance dashboard.
 - Both: core scoring and shirt-colour selection.
 

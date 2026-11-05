@@ -5,8 +5,8 @@ object DashboardFixtures {
     val dashboard = """
         {"success":true,"error":null,"meta":{},"data":{"dashboard":{
           "organization":{"id":50011,"name":"Pat Player","type":"personal","plan":"personal_free",
-            "history_limit":10,"completed_match_count":12,"locked_history_count":2,
-            "entitlements":{"history_limit":10,"performance_enabled":false},
+            "history_limit":25,"completed_match_count":27,"locked_history_count":2,
+            "entitlements":{"history_limit":25,"performance_enabled":false},
             "available_plan_entitlements":null,"court_count":0,"user_count":1,"roles":["admin"]},
           "active_matches":[{"id":"m-live","player1_name":"Pat","player1_surname":"Player",
             "player2_name":"Sam","player2_surname":null,"court_name":"Court 1","sport":"squash",

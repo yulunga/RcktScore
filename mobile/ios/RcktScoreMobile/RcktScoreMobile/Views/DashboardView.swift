@@ -128,7 +128,13 @@ struct DashboardView: View {
     }
     private var homeActiveMatches: [MatchSummary] { Array(activeMatches.prefix(3)) }
     private var homeScheduledMatches: [MatchSummary] { Array(scheduledMatches.prefix(3)) }
-    private var homeRecentMatches: [MatchSummary] { Array(recentMatches.prefix(3)) }
+    private var homeRecentMatches: [MatchSummary] {
+        let visibleMatches = Array(recentMatches.lazy.filter { !$0.locked }.prefix(3))
+        guard let lockedPreview = recentMatches.first(where: \.locked) else {
+            return visibleMatches
+        }
+        return visibleMatches + [lockedPreview]
+    }
     private var offlineActiveMatch: MatchDetail? {
         container.offlineMatchStore.cachedActiveMatch(session: session)
     }

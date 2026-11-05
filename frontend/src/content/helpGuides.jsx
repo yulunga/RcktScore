@@ -174,7 +174,7 @@ const GUIDES = {
         bullets: [
           "Create and score matches in enabled sports.",
           "Use the shared Home, Matches, Analytics, Settings and Help navigation.",
-          "Open the latest three completed matches and basic scored-match Analytics.",
+          "Open the latest 25 completed matches and basic scored-match Analytics.",
           "See an upgrade gate rather than creating scheduled Personal fixtures.",
         ],
       },
@@ -213,7 +213,7 @@ const GUIDES = {
         bullets: [
           "Current shows the active Personal match.",
           "Scheduled shows the Personal Plus upgrade route rather than fixture creation.",
-          "History exposes the latest three completed matches, including direct match-detail access.",
+          "History exposes the latest 25 completed matches, including direct match-detail access.",
           "Older restricted results are represented by an upgrade prompt without leaking match details.",
         ],
       },

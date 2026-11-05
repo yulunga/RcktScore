@@ -19,6 +19,7 @@ import {
 const DASHBOARD_CAROUSEL_PAGE_SIZE = 3;
 const DASHBOARD_HISTORY_PAGE_SIZE = 6;
 const DASHBOARD_HISTORY_MATCH_LIMIT = 24;
+const DASHBOARD_HISTORY_FETCH_LIMIT = 26;
 const MATCHES_HISTORY_PAGE_SIZE = 20;
 const SCHEDULED_DETAILS_AUTO_COLLAPSE_MS = 5 * 60 * 1000;
 
@@ -220,7 +221,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
       try {
         const response = await getDashboard(session.organization_id, {
           activeLimit: screenMode === "history" ? 0 : 200,
-          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : DASHBOARD_HISTORY_MATCH_LIMIT,
+          recentLimit: (screenMode === "history" || screenMode === "matches") ? 1000 : DASHBOARD_HISTORY_FETCH_LIMIT,
         });
         setDashboard(response.dashboard || null);
       } catch (requestError) {
@@ -432,7 +433,13 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const historyPreviewLimit = organizationPlan === "personal_free"
     ? 3
     : Math.min(historyLimit || DASHBOARD_HISTORY_MATCH_LIMIT, DASHBOARD_HISTORY_MATCH_LIMIT);
-  const historyMatches = recentMatches.slice(0, historyPreviewLimit);
+  const lockedHistoryPreview = recentMatches.find((match) => match.locked);
+  const historyMatches = organizationPlan === "personal_free"
+    ? [
+        ...recentMatches.filter((match) => !match.locked).slice(0, historyPreviewLimit),
+        ...(lockedHistoryPreview ? [lockedHistoryPreview] : []),
+      ]
+    : recentMatches.slice(0, historyPreviewLimit);
   const normalizedHistorySearch = historySearch.trim().toLowerCase();
   const showMatchesOnly = screenMode === "matches";
   const showHistoryOnly = screenMode === "history";
@@ -761,7 +768,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }
 
   return (
-    <main className="page-shell stack">
+    <main className={`page-shell stack${showingHistory ? " match-history-page" : ""}`}>
       <ClubPageHeader
         subtitle={dashboardSubtitle}
         title={

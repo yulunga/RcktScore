@@ -14,4 +14,4 @@ Apply it to the intended non-production Supabase database with the SQL editor or
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f testing/fixtures/testpersonal_plus_matches.sql
 ```
 
-Set the account to Personal Plus separately through the root-admin User Accounts profile before testing the 100-match history and Performance view. Switching it back to Personal Free should show three readable matches and one locked teaser.
+Set the account to Personal Plus separately through the root-admin User Accounts profile before testing the 100-match history and Performance view. Switching it back to Personal Free should show 25 readable matches and one locked teaser as card 26.

@@ -31,7 +31,7 @@ import com.hitnscore.mobile.feature.shell.ShellUiState
 
 private const val HOME_ITEMS = 3
 
-/** iOS Home: up to three active, scheduled (clubs) and recent matches. */
+/** Home: up to three active, scheduled and readable recent matches, plus any locked-history prompt. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: ShellActions) {
@@ -100,7 +100,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                         OfflineState(stringResource(R.string.offline_history))
                     } else {
                         MatchSection(
-                            matches = dashboard?.recentMatches.orEmpty().take(HOME_ITEMS),
+                            matches = homeRecentMatches(dashboard?.recentMatches.orEmpty()),
                             isLoading = state.isLoading,
                             emptyText = stringResource(R.string.empty_recent),
                         ) { match ->
@@ -116,6 +116,9 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
         }
     }
 }
+
+internal fun homeRecentMatches(matches: List<MatchSummary>): List<MatchSummary> =
+    matches.filterNot { it.locked }.take(HOME_ITEMS) + matches.firstOrNull { it.locked }.let(::listOfNotNull)
 
 @Composable
 fun MatchSection(

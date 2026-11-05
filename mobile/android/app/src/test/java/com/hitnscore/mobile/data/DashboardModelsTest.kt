@@ -6,6 +6,7 @@ import com.hitnscore.mobile.data.model.DashboardResponseData
 import com.hitnscore.mobile.data.model.MatchFormatting
 import com.hitnscore.mobile.data.model.MatchResponseData
 import com.hitnscore.mobile.feature.matches.MatchTimeline
+import com.hitnscore.mobile.feature.home.homeRecentMatches
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -21,12 +22,31 @@ class DashboardModelsTest {
         val dashboard = (parser.parse(200, DashboardFixtures.dashboard, DashboardResponseData.serializer()) as ApiResult.Success)
             .value.dashboard
         assertEquals("personal_free", dashboard.organization?.plan)
-        assertEquals(10, dashboard.organization?.entitlements?.historyLimit)
+        assertEquals(25, dashboard.organization?.entitlements?.historyLimit)
         assertEquals("m-live", dashboard.activeMatches.single().matchId)
         assertEquals("2 - 1", MatchFormatting.gamesLine(dashboard.activeMatches.single().state))
         assertTrue(dashboard.recentMatches.last().locked)
         assertNull(dashboard.recentMatches.first().bestOf)
         assertNull(dashboard.performance)
+    }
+
+    @Test
+    fun homeKeepsLockedPreviewAfterThreeReadableMatches() {
+        val dashboard = (parser.parse(200, DashboardFixtures.dashboard, DashboardResponseData.serializer()) as ApiResult.Success)
+            .value.dashboard
+        val readable = dashboard.recentMatches.first()
+        val locked = dashboard.recentMatches.last()
+        val homeMatches = homeRecentMatches(
+            listOf(
+                readable.copy(id = "match-1"),
+                readable.copy(id = "match-2"),
+                readable.copy(id = "match-3"),
+                readable.copy(id = "match-4"),
+                locked,
+            ),
+        )
+
+        assertEquals(listOf("match-1", "match-2", "match-3", "locked-history-preview"), homeMatches.map { it.id })
     }
 
     @Test

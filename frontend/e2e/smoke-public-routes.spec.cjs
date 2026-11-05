@@ -1,5 +1,9 @@
 const { test, expect } = require("@playwright/test");
 
+if (process.env.E2E_SYSTEM_CHROME === "1") {
+  test.use({ channel: "chrome", video: "off" });
+}
+
 test("login page loads @smoke", async ({ page }) => {
   await page.goto("/login");
 
@@ -145,4 +149,19 @@ test("public tournament page uses the compact public entry experience @smoke", a
   await expect(page.getByRole("heading", { name: "View a Tournament Draw" })).toBeVisible();
   await expect(page.getByLabel("Tournament Draw Key")).toBeVisible();
   await expect(page.getByText("Public Tournament Draw", { exact: true })).toHaveCount(0);
+});
+
+test("public tournament entry does not overflow a large desktop viewport @smoke", async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  await page.goto("/tournament-draw");
+
+  const layout = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+
+  const headerBox = await page.locator(".public-access-header").boundingBox();
+  expect(headerBox.x).toBeCloseTo(0, 0);
+  expect(headerBox.width).toBeCloseTo(layout.clientWidth, 0);
 });

@@ -81,7 +81,7 @@ defect discovery can extend them.
    across the user’s devices ([Apple guidelines](https://developer.apple.com/app-store/review/guidelines/)).
 3. **Keep the implemented entitlement contract under regression test.** The stale
    100-match/saved-player/filter/export claims have been removed. The authoritative
-   server contract now grants the latest 3 completed matches to Free and latest 100
+   server contract now grants the latest 25 completed matches to Free and latest 100
    to Plus, with performance enabled only for Plus; clients receive this contract
    in dashboard and organisation-settings responses.
 4. **Close tennis cross-client parity.** Web match setup and scoring must support

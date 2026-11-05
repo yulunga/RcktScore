@@ -133,6 +133,10 @@ match a participant identity exactly. Historical match events using source
 New events should carry `web_app` or `mobile_app` from the authenticated session.
 Setup-completion and member-adoption cards intentionally say **Not tracked**
 until setup-start and member-action/view attribution are persisted.
+If `/performance` scrolls sideways on a tablet portrait viewport, inspect
+`.analytics-heatmap` and `.analytics-table-wrap`; their outer containers must
+remain at `max-width: 100%`, with wide rows and tables scrolling internally
+rather than contributing to the document width.
 
 Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
 compact after a vertical scroll. The check confirms that the outer width does
@@ -348,7 +352,7 @@ What to check:
 - whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
 - whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
-- for Personal Free, confirm the dashboard returns no more than three readable completed matches and only a redacted `locked: true` fourth preview
+- for Personal Free, confirm the dashboard returns no more than 25 readable completed matches and only a redacted `locked: true` 26th preview; Home should retain that preview after its three readable recent cards
 - for Personal Plus statistics, verify the registered first name and surname exactly match player details stored on completed matches; otherwise those matches appear in `unclassified_match_count`
 - for Personal Plus remote viewing, apply migration `038_personal_plus_match_watch.sql`, verify `GET /match_display_access/{match_id}` returns `viewer_code`, and confirm lookup sends the viewer's own `organization_id` with an eight-character code to `POST /match_watch/lookup`
 - `PERSONAL_PLUS_REQUIRED` means the authenticated membership is not a personal tenant currently on `personal_plus`; `WATCH_CODE_INVALID` means the normalized code is not eight characters, and `WATCH_MATCH_NOT_FOUND` means no non-archived match owns it
@@ -793,6 +797,15 @@ On phone widths, selecting a partly hidden Settings section automatically scroll
 the single-row control to centre that section. If it remains clipped, confirm the
 section container still has horizontal overflow and the button has not regained
 the legacy wrapping layout.
+
+If Match History search, filter or completed-match buttons appear beneath the
+signed-in header on a phone or tablet, confirm the page root has
+`match-history-page` while the History tab is selected and that its direct
+`.club-page-header` uses `position: relative`. Other signed-in routes deliberately
+retain the compacting sticky header. If `/tournament-draw` scrolls sideways on a
+large desktop, inspect the document `scrollWidth` against `clientWidth` and confirm
+the tournament header is sized from the full-width page shell rather than a
+standalone `100vw` breakout.
 
 The migration-created `demouser@democlub.com` account has no known initial
 password. Set one through Root Admin → User Accounts before using the demo login.

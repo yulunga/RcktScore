@@ -1261,9 +1261,23 @@
   color: #fff;
 }
 
-.public-tournament-page {
-  width: calc(100vw - 24px);
-  max-width: 1880px;
+.page-shell.public-tournament-page {
+  width: 100%;
+  max-width: none;
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.public-tournament-page > .public-access-header {
+  width: calc(100% + 24px);
+  margin-left: -12px;
+}
+
+.public-tournament-page > .panel,
+.public-tournament-page > .notice {
+  width: min(100%, 1880px);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .page-shell.public-tournament-page,
@@ -3116,6 +3130,13 @@ textarea {
     gap 220ms ease,
     border-radius 220ms ease,
     box-shadow 220ms ease;
+}
+
+/* History contains dense interactive controls throughout the scroll area. Keep
+   its header in normal flow so sticky navigation cannot cover those controls. */
+.match-history-page > .club-page-header {
+  position: relative;
+  top: auto;
 }
 
 .club-page-header--compact {
@@ -7780,7 +7801,9 @@ textarea {
 .analytics-heatmap {
   display: grid;
   gap: 5px;
-  min-width: 620px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
 }

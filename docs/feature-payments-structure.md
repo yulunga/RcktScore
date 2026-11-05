@@ -91,7 +91,7 @@ Current limitation:
 Currently enforced in code:
 
 - one active personal match at a time
-- dashboard/history returns the latest `3` completed matches and, when older history exists, one redacted fourth card with a Personal Plus upgrade prompt
+- dashboard/history returns the latest `25` completed matches and, when older history exists, one redacted 26th card with a Personal Plus upgrade prompt
 - older matches remain stored in the backend; the entitlement limits what Personal Free clients can read
 - shirt-colour selection is enabled
 

@@ -523,7 +523,7 @@ def main() -> None:
         "Sign in with multiple memberships, select/switch an association, verify tenant isolation and confirm an expired cached session cannot be restored.",
         "Create, start, score, undo and finish squash, racketball and representative tennis matches; verify compact/Dynamic Type layouts and completed summaries.",
         "Open an active match online, go offline, score and restart the app, reconnect, replay once and verify match_action_receipts prevent duplicate mutation.",
-        "Confirm Personal Free sees only its latest three completed matches and cannot bypass the limit with a direct authenticated match read.",
+        "Confirm Personal Free sees only its latest 25 completed matches and cannot bypass the limit with a direct authenticated match read.",
         "Purchase Personal Plus, verify server activation, restore on a second device, reject a different HitnScore account, and execute the remaining exceptional lifecycle cases.",
         "Publish a notification to all users and to a plan; verify inbox polling, unread/read state and cross-device consistency.",
         "Exercise Root Admin with each production role, including denied actions, audit records, session expiry/revocation and the break-glass procedure.",

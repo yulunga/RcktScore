@@ -39,7 +39,7 @@ Already in place:
 - warm-up, interval, and match timer flow
 - historic-match timeline with grouped point history and game-duration summary
 - history search and separate matches/history views
-- Personal Free three-match history entitlement with a locked fourth upgrade teaser, plus expanded Personal Plus cross-device history and performance reporting
+- Personal Free 25-match history entitlement with a locked 26th upgrade teaser, plus expanded Personal Plus cross-device history and performance reporting
 - native plan-aware settings menus for subscription, profile, association,
   racket sports, game settings, help, and club-admin tools
 - native organisation, user, court, and court display-code mutations through the

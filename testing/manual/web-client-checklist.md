@@ -124,7 +124,7 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 |---|---|---|
 | REC-01 | Review Recent Matches and pagination with sufficient data. | Newest accessible completed matches appear; maximum 24 dashboard entries, six cards per page; desktop shows up to three two-card rows. |
 | REC-02 | Open a recent card for each sport; refresh detail and return. | Correct read-only result, participants, start/duration, game/set timing and grouped timeline; tennis/Padel use tennis labels. |
-| REC-03 | For Free, open the latest three completed matches then attempt a known older match URL. | Latest three are accessible; older history is redacted/gated and direct authenticated access is denied; teaser exposes no restricted details. |
+| REC-03 | For Free, open the latest 25 completed matches then attempt a known older match URL. | Latest 25 are accessible; older history is redacted/gated and direct authenticated access is denied; teaser is card 26 and exposes no restricted details. |
 | REC-04 | For Plus, review expanded history and attempt older entries beyond the allowance if seeded. | Latest 100 completed matches are accessible within entitlement; dashboard still caps at 24. |
 
 ### Matches and search

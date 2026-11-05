@@ -1,5 +1,9 @@
 const { test, expect } = require("@playwright/test");
 
+if (process.env.E2E_SYSTEM_CHROME === "1") {
+  test.use({ channel: "chrome", video: "off" });
+}
+
 const session = {
   username: "header@example.com",
   organization_id: 42,
@@ -484,6 +488,40 @@ test("opens all recent matches from the heading on the Matches history tab @head
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(historyCards).toHaveCount(20);
 });
+
+for (const viewport of [
+  { name: "iPhone 16 Pro landscape", width: 874, height: 402 },
+  { name: "iPhone 16 Pro Max landscape", width: 956, height: 440 },
+  { name: "iPhone 16 Pro Max portrait", width: 440, height: 956 },
+  { name: "iPhone SE portrait", width: 375, height: 667 },
+  { name: "Pixel 8 landscape", width: 915, height: 412 },
+  { name: "Pixel 8 portrait", width: 412, height: 915 },
+  { name: "Galaxy S24 portrait", width: 360, height: 780 },
+  { name: "Android tablet landscape", width: 960, height: 600 },
+  { name: "Android tablet portrait", width: 600, height: 960 },
+  { name: "iPad mini landscape", width: 1133, height: 744 },
+]) {
+  test(`keeps the Match History header out of interactive content on ${viewport.name} @header`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/matches#match-history-section");
+
+    const shell = page.locator("main.match-history-page");
+    const header = shell.locator(":scope > .club-page-header");
+    await expect(shell).toBeVisible();
+    await expect(header).toHaveCSS("position", "relative");
+    await expect(page.getByRole("tab", { name: "History", exact: true })).toHaveAttribute("aria-selected", "true");
+
+    const search = page.getByLabel("Search match history");
+    await search.evaluate((element) => element.scrollIntoView({ block: "start" }));
+    const [headerAfterSearch, searchBox] = await Promise.all([header.boundingBox(), search.boundingBox()]);
+    expect(headerAfterSearch.y + headerAfterSearch.height).toBeLessThanOrEqual(searchBox.y + 1);
+
+    const viewMatch = page.getByRole("button", { name: /View completed match/ }).first();
+    await viewMatch.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const [headerAfterCard, cardButtonBox] = await Promise.all([header.boundingBox(), viewMatch.boundingBox()]);
+    expect(headerAfterCard.y + headerAfterCard.height).toBeLessThanOrEqual(cardButtonBox.y + 1);
+  });
+}
 
 test("opens Current and Scheduled matches from their dashboard headings @header", async ({ page }) => {
   await page.goto("/dashboard");
