@@ -87,7 +87,7 @@ function MobileMenuIcon({ name }) {
   );
 }
 
-export default function ClubPageHeader({ title, subtitle, actions = [], className = "", forceCompact = false }) {
+export default function ClubPageHeader({ title, subtitle, actions = [], className = "", forceCompact = false, showMobileMenu = true }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, logout } = useAuth();
@@ -338,7 +338,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         </section>
       ) : null}
 
-      {!mobileMenuOpen ? (
+      {showMobileMenu && !mobileMenuOpen ? (
         <button
           className="mobile-fab-menu-button"
           type="button"
@@ -352,7 +352,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         </button>
       ) : null}
 
-      {mobileMenuOpen ? (
+      {showMobileMenu && mobileMenuOpen ? (
         <div
           className="mobile-fab-menu-overlay"
           role="presentation"

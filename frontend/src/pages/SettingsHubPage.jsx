@@ -72,6 +72,8 @@ export default function SettingsHubPage() {
   const [error, setError] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const fileInputRef = useRef(null);
+  const settingsMenuRef = useRef(null);
+  const [settingsMenuScroll, setSettingsMenuScroll] = useState({ left: false, right: false });
   const requestedSection = searchParams.get("section");
   const activeSection = SETTINGS_MENU.some((item) => item.id === requestedSection) ? requestedSection : "profile";
   const showClubWorkspace = searchParams.get("club") === "1";
@@ -109,12 +111,73 @@ export default function SettingsHubPage() {
     setProfileImage(window.localStorage.getItem(imageKey) || "");
   }, [session?.username]);
 
+  const updateSettingsMenuScroll = useCallback(() => {
+    const menu = settingsMenuRef.current;
+    if (!menu) return;
+    const buttons = Array.from(menu.querySelectorAll("button[data-settings-section]"));
+    const menuBounds = menu.getBoundingClientRect();
+    const firstBounds = buttons[0]?.getBoundingClientRect();
+    const lastBounds = buttons.at(-1)?.getBoundingClientRect();
+    const nextState = {
+      left: Boolean(firstBounds && firstBounds.left < menuBounds.left - 2),
+      right: Boolean(lastBounds && lastBounds.right > menuBounds.right + 2),
+    };
+    setSettingsMenuScroll((current) => (
+      current.left === nextState.left && current.right === nextState.right ? current : nextState
+    ));
+  }, []);
+
+  useEffect(() => {
+    const menu = settingsMenuRef.current;
+    if (!menu) return undefined;
+
+    const frameId = window.requestAnimationFrame(updateSettingsMenuScroll);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(updateSettingsMenuScroll);
+    resizeObserver?.observe(menu);
+    Array.from(menu.children).forEach((child) => resizeObserver?.observe(child));
+    window.addEventListener("resize", updateSettingsMenuScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateSettingsMenuScroll);
+    };
+  }, [showClubWorkspace, updateSettingsMenuScroll]);
+
+  useEffect(() => {
+    const menu = settingsMenuRef.current;
+    const activeButton = menu?.querySelector(`[data-settings-section="${activeSection}"]`);
+    if (!menu || !activeButton || menu.scrollWidth <= menu.clientWidth) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      activeButton.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeSection, showClubWorkspace]);
+
   if (showClubWorkspace) {
     return <OrganisationSettingsPage />;
   }
 
   function selectSection(section) {
     setSearchParams(section === "profile" ? {} : { section }, { replace: true });
+  }
+
+  function scrollSettingsMenu(direction) {
+    const menu = settingsMenuRef.current;
+    if (!menu) return;
+    const menuBounds = menu.getBoundingClientRect();
+    const buttons = Array.from(menu.querySelectorAll("button[data-settings-section]"));
+    const target = direction > 0
+      ? buttons.find((button) => button.getBoundingClientRect().right > menuBounds.right + 2)
+      : buttons.reverse().find((button) => button.getBoundingClientRect().left < menuBounds.left - 2);
+
+    if (target) {
+      target.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+    } else {
+      menu.scrollBy({ left: direction * menu.clientWidth * 0.7, behavior: "auto" });
+    }
   }
 
   async function saveProfile(event) {
@@ -165,13 +228,44 @@ export default function SettingsHubPage() {
     <main className="page-shell stack settings-hub-page">
       <ClubPageHeader />
 
-      <section className="root-admin-tab-row matches-category-switch settings-category-switch" aria-label="Settings sections">
-        {SETTINGS_MENU.map((item) => (
-          <button className={activeSection === item.id ? "active" : ""} key={item.id} type="button" onClick={() => selectSection(item.id)}>
-            {item.label}
-          </button>
-        ))}
-      </section>
+      <div className={`settings-category-switch-shell${settingsMenuScroll.left || settingsMenuScroll.right ? " settings-category-switch-shell--scrollable" : ""}`}>
+        <button
+          aria-label="Show previous settings sections"
+          className="settings-category-scroll-control settings-category-scroll-control--previous"
+          disabled={!settingsMenuScroll.left}
+          type="button"
+          onClick={() => scrollSettingsMenu(-1)}
+        >
+          <span aria-hidden="true">&#8249;</span>
+        </button>
+        <section
+          aria-label="Settings sections"
+          className="root-admin-tab-row matches-category-switch settings-category-switch"
+          ref={settingsMenuRef}
+          onScroll={updateSettingsMenuScroll}
+        >
+          {SETTINGS_MENU.map((item) => (
+            <button
+              className={activeSection === item.id ? "active" : ""}
+              data-settings-section={item.id}
+              key={item.id}
+              type="button"
+              onClick={() => selectSection(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </section>
+        <button
+          aria-label="Show more settings sections"
+          className="settings-category-scroll-control settings-category-scroll-control--next"
+          disabled={!settingsMenuScroll.right}
+          type="button"
+          onClick={() => scrollSettingsMenu(1)}
+        >
+          <span aria-hidden="true">&#8250;</span>
+        </button>
+      </div>
 
       {loading ? <div className="notice">Loading settings...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}

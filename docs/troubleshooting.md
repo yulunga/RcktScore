@@ -150,6 +150,12 @@ Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with six-card pages over at most 24 records,
 forming three complete two-card desktop rows. Its heading opens Matches → History;
 the Active Matches and Scheduled Matches headings open their corresponding tabs.
+On the standalone `/match/new` route, `ClubPageHeader` must receive
+`showMobileMenu={false}` because the page has its own Close action. If a sport
+card is covered at the bottom-right on a phone or portrait tablet, verify that
+the `mobile-fab-menu-button` is absent rather than merely repositioned. The sport
+grid should remain two columns and grow vertically as more implemented sports
+are enabled; its ball images are served from `frontend/public/sports/balls/`.
 On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
@@ -162,6 +168,15 @@ the user signs in again. A club user sees only Club Profile and the view-only
 notice, while a club admin sees Courts, Users and Settings actions. Those actions
 must preserve `club=1` and the selected membership's `organizationId` in the query
 string or the page will return to the personal Settings hub or active login club.
+On phone widths, the personal Settings strip must show a large right chevron inside
+the menu bar when App Settings is off-screen, then a left chevron inside its left
+edge after the strip advances. Both arrows have transparent backgrounds so the
+underlying menu text remains visible, have no separate button border, and the strip must still accept native
+left/right swipes. The controls are intentionally absent when every section fits
+and must never sit outside the bar. If the chevrons do not
+update after a swipe or resize, inspect the strip's scroll listener and
+`ResizeObserver` in `SettingsHubPage.jsx`; do not restore wrapping or permanently
+display an unavailable direction.
 Opening a listed association does not switch the active scoring context. Profile
 images are intentionally browser-local. League/interclub
 search requires migration `040_association_competitions.sql`; if the Settings or

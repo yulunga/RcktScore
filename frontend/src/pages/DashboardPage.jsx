@@ -1147,7 +1147,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                   onClick={() => handleSelectSport(sport.value)}
                 >
                   <MatchSportArtwork sport={sport.value} />
-                  <strong>{sport.label}</strong>
+                  <span className="match-sport-overlay__option-label"><i aria-hidden="true" /><strong>{sport.label}</strong></span>
                 </button>
               ))}
             </div>

@@ -699,6 +699,68 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
 });
 
 for (const viewportSize of [
+  { name: "iPhone 16 Pro", width: 402, height: 874 },
+  { name: "iPhone 16 Pro Max", width: 440, height: 956 },
+  { name: "iPhone SE", width: 375, height: 667 },
+  { name: "Pixel 8", width: 412, height: 915 },
+  { name: "Galaxy S24", width: 360, height: 780 },
+  { name: "Android 7in tablet", width: 600, height: 960 },
+  { name: "iPhone SE landscape", width: 568, height: 320 },
+  { name: "iPhone 16 Pro landscape", width: 852, height: 393 },
+  { name: "iPhone Pro Max landscape", width: 932, height: 430 },
+]) {
+  test(`standalone sport chooser has no floating-menu collision on ${viewportSize.name} @header`, async ({ page }) => {
+    await page.addInitScript(() => {
+      const auth = JSON.parse(window.sessionStorage.getItem("rcktscore.auth"));
+      auth.session.enabled_sports = ["squash", "racketball", "tennis", "padel"];
+      window.sessionStorage.setItem("rcktscore.auth", JSON.stringify(auth));
+    });
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.goto("/match/new");
+
+    await expect(page.getByRole("heading", { name: "Choose Racket Sport" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open navigation menu" })).toHaveCount(0);
+    await expect(page.locator(".match-sport-artwork__ball-image")).toHaveCount(4);
+
+    const options = page.locator(".match-sport-selection-card .match-sport-overlay__option");
+    await expect(options).toHaveCount(4);
+    const optionBoxes = await options.evaluateAll((items) => items.map((item) => {
+      const box = item.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }));
+    expect(Math.abs(optionBoxes[0].y - optionBoxes[1].y)).toBeLessThanOrEqual(1);
+    expect(optionBoxes[1].x).toBeGreaterThan(optionBoxes[0].x + optionBoxes[0].width - 1);
+    if (viewportSize.height < 500 && viewportSize.width >= 480) {
+      expect(new Set(optionBoxes.map((box) => Math.round(box.y))).size).toBe(1);
+    } else {
+      expect(optionBoxes[2].y).toBeGreaterThan(optionBoxes[0].y + optionBoxes[0].height - 1);
+      expect(Math.abs(optionBoxes[2].y - optionBoxes[3].y)).toBeLessThanOrEqual(1);
+    }
+
+    const shellWidth = await page.locator(".match-sport-selection-card").evaluate((element) => element.getBoundingClientRect().width);
+    expect(shellWidth).toBeLessThanOrEqual(viewportSize.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportSize.width);
+  });
+}
+
+test("standalone sport chooser uses native artwork and adaptive dark surfaces @header", async ({ page }) => {
+  await page.addInitScript(() => {
+    const auth = JSON.parse(window.sessionStorage.getItem("rcktscore.auth"));
+    auth.session.enabled_sports = ["squash", "racketball", "tennis", "padel"];
+    window.sessionStorage.setItem("rcktscore.auth", JSON.stringify(auth));
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.goto("/match/new");
+
+  await expect(page.locator(".match-sport-selection-card")).toHaveCSS("background-color", "rgb(11, 22, 36)");
+  const balls = page.locator(".match-sport-artwork__ball-image");
+  await expect(balls).toHaveCount(4);
+  expect(await balls.evaluateAll((images) => images.every((image) => image.complete && image.naturalWidth === 192))).toBe(true);
+  await expect(page.locator(".match-sport-selection-card .match-sport-artwork__court").first()).toHaveCSS("stroke", "rgb(104, 167, 223)");
+});
+
+for (const viewportSize of [
   { name: "iPhone SE", width: 568, height: 320 },
   { name: "iPhone 16 Pro", width: 852, height: 393 },
   { name: "iPhone Pro Max", width: 932, height: 430 },
@@ -806,6 +868,94 @@ test("shows the personal-first single-row settings menu @header", async ({ page 
     await settingsMenu.evaluate((element) => { element.scrollLeft = 0; });
     await settingsMenu.getByRole("button", { name: "App Settings", exact: true }).click();
     await expect(page).toHaveURL(/section=app/);
+  }
+});
+
+test("shows clear settings-strip navigation on tested phone widths @header", async ({ page }) => {
+  const phoneViewports = [
+    { name: "iPhone 16 Pro Max", width: 440, height: 956 },
+    { name: "iPhone 16 Pro", width: 402, height: 874 },
+    { name: "Pixel 8", width: 412, height: 915 },
+    { name: "iPhone SE", width: 375, height: 667 },
+    { name: "Galaxy S24", width: 360, height: 780 },
+  ];
+
+  for (const viewport of phoneViewports) {
+    await test.step(viewport.name, async () => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await page.goto("/settings");
+
+      const settingsMenu = page.getByRole("region", { name: "Settings sections" });
+      const previousControl = page.getByRole("button", { name: "Show previous settings sections" });
+      const nextControl = page.getByRole("button", { name: "Show more settings sections" });
+      const appSettings = settingsMenu.getByRole("button", { name: "App Settings", exact: true });
+      await expect(nextControl).toBeVisible();
+      await expect(nextControl).toBeEnabled();
+      await expect(previousControl).toBeHidden();
+
+      const [initialMenuBox, nextControlBox] = await Promise.all([
+        settingsMenu.boundingBox(),
+        nextControl.boundingBox(),
+      ]);
+      expect(nextControlBox.x).toBeGreaterThanOrEqual(initialMenuBox.x);
+      expect(nextControlBox.x + nextControlBox.width).toBeLessThanOrEqual(initialMenuBox.x + initialMenuBox.width);
+
+      const controlSizing = await nextControl.evaluate((control) => ({
+        arrowFontSize: Number.parseFloat(getComputedStyle(control.querySelector("span")).fontSize),
+        backgroundColor: getComputedStyle(control).backgroundColor,
+        borderWidth: getComputedStyle(control).borderTopWidth,
+        tabFontSize: Number.parseFloat(getComputedStyle(document.querySelector('[data-settings-section="profile"]')).fontSize),
+      }));
+      expect(controlSizing.arrowFontSize).toBeGreaterThanOrEqual(controlSizing.tabFontSize);
+      expect(controlSizing.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      expect(controlSizing.borderWidth).toBe("0px");
+      await expect(settingsMenu).toHaveCSS("overflow-x", "auto");
+
+      await settingsMenu.evaluate((menu) => {
+        menu.scrollTo({ left: Math.min(80, menu.scrollWidth - menu.clientWidth), behavior: "auto" });
+      });
+      await expect(previousControl).toBeVisible();
+      await settingsMenu.evaluate((menu) => {
+        menu.scrollTo({ left: 0, behavior: "auto" });
+      });
+      await expect(previousControl).toBeHidden();
+      await expect(nextControl).toBeVisible();
+
+      let appSettingsVisible = false;
+      for (let attempt = 0; attempt < 4 && !appSettingsVisible; attempt += 1) {
+        appSettingsVisible = await appSettings.evaluate((button) => {
+          const menu = button.closest("[aria-label='Settings sections']");
+          const menuBounds = menu.getBoundingClientRect();
+          const buttonBounds = button.getBoundingClientRect();
+          return buttonBounds.left >= menuBounds.left - 3 && buttonBounds.right <= menuBounds.right + 3;
+        });
+        if (!appSettingsVisible) {
+          const previousScroll = await settingsMenu.evaluate((menu) => menu.scrollLeft);
+          await nextControl.click();
+          await expect.poll(() => settingsMenu.evaluate((menu) => menu.scrollLeft)).toBeGreaterThan(previousScroll);
+        }
+      }
+
+      appSettingsVisible = await appSettings.evaluate((button) => {
+        const menu = button.closest("[aria-label='Settings sections']");
+        const menuBounds = menu.getBoundingClientRect();
+        const buttonBounds = button.getBoundingClientRect();
+        return buttonBounds.left >= menuBounds.left - 3 && buttonBounds.right <= menuBounds.right + 3;
+      });
+
+      expect(appSettingsVisible).toBe(true);
+      await expect(previousControl).toBeVisible();
+      await expect(previousControl).toBeEnabled();
+      await expect(nextControl).toBeHidden();
+      const [finalMenuBox, previousControlBox] = await Promise.all([
+        settingsMenu.boundingBox(),
+        previousControl.boundingBox(),
+      ]);
+      expect(previousControlBox.x).toBeGreaterThanOrEqual(finalMenuBox.x);
+      expect(previousControlBox.x + previousControlBox.width).toBeLessThanOrEqual(finalMenuBox.x + finalMenuBox.width);
+      await appSettings.click();
+      await expect(page).toHaveURL(/section=app/);
+    });
   }
 });
 

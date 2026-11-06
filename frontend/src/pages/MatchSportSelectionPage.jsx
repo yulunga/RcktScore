@@ -16,15 +16,22 @@ export default function MatchSportSelectionPage() {
     navigate(`/match/new/setup?sport=${encodeURIComponent(sport)}`);
   }
 
+  function handleClose() {
+    navigate("/dashboard");
+  }
+
   return (
     <main className="page-shell stack match-sport-selection-page">
-      <ClubPageHeader />
+      <ClubPageHeader showMobileMenu={false} />
 
       <section className="panel stack match-sport-selection-card">
-        <div className="section-heading stack compact">
-          <h2>Personal or Club Match</h2>
-          <p>Confirm the match account, then choose a racket sport.</p>
-        </div>
+        <header className="match-sport-selection-card__heading">
+          <div className="section-heading stack compact">
+            <h1>Choose Racket Sport</h1>
+            <p>Select a sport to start match setup.</p>
+          </div>
+          <button className="match-sport-selection-card__close" type="button" onClick={handleClose}>Close</button>
+        </header>
 
         <AccountContextSwitcher
           className="account-context-switcher--match-start"
@@ -37,10 +44,11 @@ export default function MatchSportSelectionPage() {
               key={sport.value}
               className="match-sport-overlay__option"
               type="button"
+              aria-label={`Start a ${sport.label} match`}
               onClick={() => handleSelectSport(sport.value)}
             >
               <MatchSportArtwork sport={sport.value} />
-              <strong>{sport.label}</strong>
+              <span className="match-sport-overlay__option-label"><i aria-hidden="true" /><strong>{sport.label}</strong></span>
             </button>
           ))}
         </div>
