@@ -79,6 +79,12 @@ Parameters:
     Default: 30
     MinValue: 1
     MaxValue: 90
+  CloudWatchLogRetentionDays:
+    Type: Number
+    Default: 60
+    MinValue: 1
+    MaxValue: 3653
+    Description: Number of days Lambda CloudWatch logs are retained before automatic deletion.
   IdentityFirstLoginEnabled:
     Type: String
     Default: "true"
@@ -121,6 +127,31 @@ Conditions:
   HasAppleServerApiSecret: !Not [!Equals [!Ref AppleServerApiSecretArn, ""]]
 
 Resources:
+  ConfigureLogRetentionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/configure_log_retention/handler.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          LOG_RETENTION_DAYS: !Ref CloudWatchLogRetentionDays
+          STACK_NAME: !Ref AWS::StackName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:DescribeLogGroups
+                - logs:PutRetentionPolicy
+              Resource: "*"
+      Events:
+        DailyLogRetention:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 day)
+            FlexibleTimeWindow:
+              Mode: "OFF"
+
   RcktScoreHttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -1452,6 +1483,101 @@ Resources:
         - !Ref ProductionAlarmTopic
       OKActions:
         - !Ref ProductionAlarmTopic
+
+  ApplyLambdaLogRetention:
+    Type: Custom::LambdaLogRetention
+    Properties:
+      ServiceToken: !GetAtt ConfigureLogRetentionFunction.Arn
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      FunctionNames:
+        - !Ref ConfigureLogRetentionFunction
+        - !Ref HealthFunction
+        - !Ref StartMatchFunction
+        - !Ref StartScheduledMatchFunction
+        - !Ref LoginFunction
+        - !Ref LogoutFunction
+        - !Ref GetSessionStatusFunction
+        - !Ref PasswordResetRequestFunction
+        - !Ref PasswordResetConfirmFunction
+        - !Ref PasswordResetValidateFunction
+        - !Ref ApproveOrgUserFunction
+        - !Ref RootAdminLoginFunction
+        - !Ref RootAdminLogoutFunction
+        - !Ref GetRootAdminDashboardFunction
+        - !Ref GetRootAdminPlatformSportsFunction
+        - !Ref UpdateRootAdminPlatformSportsFunction
+        - !Ref PreviewRootAdminPlatformSportsFunction
+        - !Ref GetRootAdminMatchesFunction
+        - !Ref ArchiveRootAdminMatchFunction
+        - !Ref DeleteRootAdminMatchFunction
+        - !Ref CreateRootAdminOrganizationFunction
+        - !Ref DeleteRootAdminAssociationCompetitionFunction
+        - !Ref CreateScoreboardDisplaySessionFunction
+        - !Ref GetScoreboardDisplayCurrentFunction
+        - !Ref GetMatchDisplayAccessFunction
+        - !Ref SearchRootAdminOrganizationsFunction
+        - !Ref CreateRootAdminOrgUserFunction
+        - !Ref UpdateRootAdminOrgUserFunction
+        - !Ref ApproveRootAdminOrgUserFunction
+        - !Ref GetRootAdminInterestRequestsFunction
+        - !Ref UpdateRootAdminInterestRequestFunction
+        - !Ref GetRootAdminPersonalAccountsFunction
+        - !Ref UpdateRootAdminPersonalAccountFunction
+        - !Ref GetRootAdminUsersFunction
+        - !Ref GetRootAdminUserProfileFunction
+        - !Ref DeleteRootAdminUserFunction
+        - !Ref UpdateRootAdminUserSportAccessFunction
+        - !Ref AddRootAdminUserMembershipFunction
+        - !Ref DeleteRootAdminUserMembershipFunction
+        - !Ref UpdateRootAdminUserPasswordFunction
+        - !Ref VerifyRootAdminUserEmailFunction
+        - !Ref RegisterInterestFunction
+        - !Ref SendFeedbackFunction
+        - !Ref GetMatchFunction
+        - !Ref GetWatchedMatchFunction
+        - !Ref SaveWatchedMatchFunction
+        - !Ref GetDashboardFunction
+        - !Ref GetAppleSubscriptionContextFunction
+        - !Ref VerifyAppleSubscriptionFunction
+        - !Ref AppleSubscriptionNotificationsFunction
+        - !Ref ReconcileAppleSubscriptionsFunction
+        - !Ref GetRootAdminSubscriptionsFunction
+        - !Ref GetNotificationsFunction
+        - !Ref ReadNotificationFunction
+        - !Ref RootAdminNotificationsFunction
+        - !Ref GetOrganizationSettingsFunction
+        - !Ref SearchMatchSetupLookupFunction
+        - !Ref UpdateOrganizationDetailsFunction
+        - !Ref UpdatePersonalProfileFunction
+        - !Ref DeletePersonalAccountFunction
+        - !Ref CreateOrgUserFunction
+        - !Ref UpdateOrgUserFunction
+        - !Ref DeleteOrgUserFunction
+        - !Ref CreateCourtFunction
+        - !Ref CreateCourtDisplayCodeFunction
+        - !Ref UpdateCourtFunction
+        - !Ref DeleteCourtFunction
+        - !Ref ScorePointFunction
+        - !Ref EventActionFunction
+        - !Ref UndoActionFunction
+        - !Ref EndMatchFunction
+        - !Ref WebsocketBroadcastFunction
+        - !Ref UpdateRootAdminTournamentFeatureFunction
+        - !Ref ListTournamentsFunction
+        - !Ref CreateTournamentFunction
+        - !Ref SearchTournamentPlayersFunction
+        - !Ref GetTournamentFunction
+        - !Ref CreateTournamentEntryFunction
+        - !Ref UpdateTournamentEntryFunction
+        - !Ref GenerateTournamentDrawFunction
+        - !Ref PublishTournamentDrawFunction
+        - !Ref SetTournamentPublicAccessFunction
+        - !Ref ReturnTournamentDrawToDraftFunction
+        - !Ref UpdateTournamentDrawSlotFunction
+        - !Ref GetPublicTournamentDrawFunction
+        - !Ref ScheduleTournamentMatchFunction
+        - !Ref RecordTournamentMatchResultFunction
+
 
 Outputs:
   HttpApiUrl:

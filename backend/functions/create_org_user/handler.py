@@ -20,6 +20,8 @@ def lambda_handler(event, context):
     missing_fields = require_fields(payload, ["organization_id", "username", "role"])
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
+    if "password" in payload:
+        return error_response(400, "INVALID_INPUT", "Club administrators cannot set member passwords. Send a secure password reset instead.")
 
     try:
         with get_db_connection() as connection:
@@ -28,7 +30,7 @@ def lambda_handler(event, context):
                 connection,
                 payload["organization_id"],
                 payload["username"],
-                payload.get("password"),
+                None,
                 payload["role"],
                 payload.get("first_name"),
                 payload.get("surname"),

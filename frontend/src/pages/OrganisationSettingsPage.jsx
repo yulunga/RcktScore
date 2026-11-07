@@ -33,7 +33,6 @@ const emptyUserForm = {
   first_name: "",
   surname: "",
   username: "",
-  password: "",
   role: "scorer",
 };
 
@@ -464,7 +463,6 @@ export default function OrganisationSettingsPage() {
         first_name: userForm.first_name,
         surname: userForm.surname,
         username: normalizedUsername,
-        password: userForm.password,
         role: userForm.role,
       }),
       "User added to organisation. Invitation email sent and access is pending approval.",
@@ -1159,17 +1157,9 @@ export default function OrganisationSettingsPage() {
                       onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
                     />
                   </div>
-                  <div className="field">
-                    <label htmlFor="new_password">Password (new users only)</label>
-                    <input
-                      disabled={!isAdmin}
-                      id="new_password"
-                      placeholder="Optional when email already exists"
-                      type="password"
-                      value={userForm.password}
-                      onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
-                    />
-                  </div>
+                  <p className="helper-text settings-field-wide">
+                    HitnScore will email this person a secure invitation. Club administrators never see or choose member passwords.
+                  </p>
                   <div className="field">
                     <label htmlFor="new_role">Role</label>
                     <select

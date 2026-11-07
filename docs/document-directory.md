@@ -2,7 +2,7 @@
 
 **Naming:** HitnScore is the customer-facing application. `RcktScore` is the internal project and repository code name.
 
-Last audited: 4 November 2026
+Last audited: 6 November 2026
 
 ## Purpose
 
@@ -30,6 +30,7 @@ Status meanings:
 | [Technical walkthrough](technical-walkthrough.md) | End-to-end request and lifecycle flows | Update proposed |
 | [Troubleshooting guide](troubleshooting.md) | Operational diagnosis and verification commands | Update proposed |
 | [Service relationships](service-relationships.md) | Hosting, providers, data flow, and service dependencies | Draft; Android section is stale |
+| [Backup and recovery runbook](backup-and-recovery.md) | Service dependencies, backup controls, provider recovery steps, full-service restoration, and validation | Current; live provider controls require verification |
 
 ## Product, Access, And Architecture
 

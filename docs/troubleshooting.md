@@ -196,9 +196,10 @@ The web pre-match dropdown and iOS pre-match choices should expose every retaine
 `Score this match for`. If Personal or
 Personal Plus is absent, inspect the fresh login response and verify that the
 normalized email has an approved personal `SkwshOrgUsers` membership. Login
-authenticates the identity when the password matches any membership row and then
-retains all approved rows, so a stale historical hash on only one row should no
-longer hide that context. Neither client creates a Personal membership locally.
+authenticates the identity only when the password matches every non-null
+membership hash. If legacy rows disagree, the API returns
+`PASSWORD_RESET_REQUIRED`, sends an identity-wide reset, and withholds every
+context until the reset is completed. Neither client creates a Personal membership locally.
 On both native and web Historic Match screens, Match Information should initially be
 collapsed, and the Match Time disclosure should remain a shallow, low-padding
 card in its closed state. Each game header should show player one, its completed point score,
@@ -325,6 +326,7 @@ Common outcomes:
 
 - `401 INVALID_CREDENTIALS`
 - `403 PENDING_APPROVAL`
+- `403 PASSWORD_RESET_REQUIRED`
 - `409 ACTIVE_SESSION_EXISTS`
 - `401 SESSION_REQUIRED`
 - `401 SESSION_INVALID`
@@ -335,11 +337,15 @@ What to check:
 
 - the user exists in `SkwshOrgUsers`
 - `password_hash` is present and valid
+- every non-null password hash for the normalized email verifies the same supplied password; a partial match intentionally requires reset
 - `approval_status` is approved when login should succeed
 - `org_user_sessions` contains the expected current or revoked rows
 - `org_user_sessions.expires_at` is in the future; the default lifetime is 30 days and the iOS app will discard an expired cached session
 - the browser is actually sending `Authorization: Bearer <token>`
 - the returned session or membership payload contains the expected client-effective `enabled_sports` list
+- failed-login, pending-login and duplicate-session entries should contain a masked identifier such as `p***@example.com`, never the complete address
+
+For CloudWatch retention, confirm the deployed `CloudWatchLogRetentionDays` parameter is `60`, the `ApplyLambdaLogRetention` custom resource completed successfully, and each `/aws/lambda/<stack function>` log group reports a 60-day retention policy. `ConfigureLogRetentionFunction` also runs daily and requires `logs:CreateLogGroup`, `logs:DescribeLogGroups`, and `logs:PutRetentionPolicy` permissions.
 
 ## 2. Dashboard, History, and Settings Issues
 
@@ -364,7 +370,7 @@ What to check:
 - the signed-in user belongs to that organisation
 - `SkwshOrgUsers.first_name` and `SkwshOrgUsers.surname` contain the expected values when user names look blank in settings or lookup flows
 - pending club users can now also be approved from the root-admin club page, so if email approval was skipped manually, check `SkwshOrgUsers.approval_status` and `approved_at` first before debugging the invitation link itself
-- whether the organisation user email is shared across more than one `SkwshOrgUsers` membership when password editing is unexpectedly disabled
+- club admins never edit member passwords; use **Send Password Reset** and reserve the identity-wide password control for root admin
 - whether the organisation is down to its last admin when a delete or role downgrade is blocked
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
 - for Personal Free, confirm the dashboard returns no more than 25 readable completed matches and only a redacted `locked: true` 26th preview; Home should retain that preview after its three readable recent cards
@@ -410,6 +416,7 @@ If a root-admin issue appears:
 - user-profile Last Activity is the latest `org_user_sessions.last_seen_at` value for that username; `Not recorded` means no retained session activity exists
 - adding a club association intentionally creates a pending membership and invitation; personal registration remains immediate
 - a root-admin password change updates every membership row sharing the username and revokes the user's active web/mobile sessions; the user must sign in again with the replacement password
+- root-admin **Last Logged In** comes from the latest `org_user_sessions.created_at`, while **Last Activity** uses `last_seen_at`. The 12- and 24-month cards use last login, or registration date when no session has ever existed; selecting a card only filters the directory and never deletes users
 - if a match seems to have vanished from normal club history, check whether `matches.is_archived` was set by the root-admin archive flow
 - if root-admin delete looks incomplete, confirm whether the `matches` row is gone and whether `match_events` cascaded with it
 - if a sport disappears for every account on one client, check the matching platform client list and whether migration `028_client_sport_access.sql` has been applied
@@ -539,6 +546,7 @@ Common symptoms:
 - password reset link points to the wrong host
 - a setup/reset page that remains on “Checking your secure link” indicates `POST /password_reset/validate` is missing from the deployed backend; an invalid/expired response should offer a fresh reset request
 - passwords must satisfy the same browser and backend policy (8+ characters, uppercase, number, symbol, and no configured common password term). A browser-only change is insufficient because the confirm and root-admin password APIs enforce it too
+- a normal reset updates every membership for the email and revokes all sessions without approving pending club invitations; only a first-account setup link approves its token-holding membership
 - organisation invite exists but user remains pending forever
 
 For `Ping Us`, verify that the deployed `FEEDBACK_FROM_EMAIL` identity exists in `eu-west-2` and that `FEEDBACK_TO_EMAIL` is permitted by the account's SES production or sandbox status. The checked-in feedback defaults use `hello@hitnscore.com`; redeploy the backend after changing these parameters because updating the iOS app alone cannot repair SES configuration.

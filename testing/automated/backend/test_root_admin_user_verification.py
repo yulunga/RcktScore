@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from common import root_admin_logic
 from common.root_admin_logic import _serialize_root_admin_user_summary
 from common.root_admin_logic import verify_root_admin_user_email
 
@@ -57,6 +58,95 @@ def test_approved_club_user_without_personal_registration_is_verified():
     )
 
     assert user["email_verified"] is True
+
+
+def test_user_summary_reports_last_login_and_inactivity_bands(monkeypatch):
+    monkeypatch.setattr(
+        root_admin_logic,
+        "_utcnow",
+        lambda: datetime(2026, 11, 6, tzinfo=timezone.utc),
+    )
+    last_login = datetime(2025, 10, 1, tzinfo=timezone.utc)
+
+    user = _serialize_root_admin_user_summary(
+        "club-player@example.com",
+        [membership_row(last_login_at=last_login)],
+    )
+
+    assert user["last_login_at"] == last_login.isoformat()
+    assert user["inactive_12_months"] is True
+    assert user["inactive_24_months"] is False
+
+
+def test_never_logged_in_user_uses_registration_date_for_inactivity(monkeypatch):
+    monkeypatch.setattr(
+        root_admin_logic,
+        "_utcnow",
+        lambda: datetime(2026, 11, 6, tzinfo=timezone.utc),
+    )
+
+    user = _serialize_root_admin_user_summary(
+        "never-logged-in@example.com",
+        [membership_row(created_at=datetime(2024, 1, 1, tzinfo=timezone.utc), last_login_at=None)],
+    )
+
+    assert user["last_login_at"] is None
+    assert user["inactive_12_months"] is True
+    assert user["inactive_24_months"] is True
+
+
+class DirectoryCursor:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, _statement, _params=None):
+        return None
+
+    def fetchall(self):
+        return self.rows
+
+
+class DirectoryConnection:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def cursor(self):
+        return DirectoryCursor(self.rows)
+
+
+def test_user_directory_counts_and_filters_inactive_users(monkeypatch):
+    monkeypatch.setattr(
+        root_admin_logic,
+        "_utcnow",
+        lambda: datetime(2026, 11, 6, tzinfo=timezone.utc),
+    )
+    old_row = membership_row(
+        membership_id=1,
+        clubusername="old@example.com",
+        created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        last_login_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+    )
+    recent_row = membership_row(
+        membership_id=2,
+        clubusername="recent@example.com",
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        last_login_at=datetime(2026, 10, 1, tzinfo=timezone.utc),
+    )
+
+    directory = root_admin_logic.get_root_admin_users(
+        DirectoryConnection([old_row, recent_row]),
+        account_type="inactive_24_months",
+    )
+
+    assert directory["summary"]["inactive_12_month_count"] == 1
+    assert directory["summary"]["inactive_24_month_count"] == 1
+    assert [user["username"] for user in directory["users"]] == ["old@example.com"]
 
 
 class VerificationCursor:

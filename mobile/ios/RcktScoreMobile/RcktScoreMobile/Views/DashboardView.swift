@@ -2020,25 +2020,9 @@ struct DashboardView: View {
                 )
                 .disabled(!isAdmin)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Password")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    SecureField("Required for new users", text: $newOrganizationUserDraft.password)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color.dashboardInputBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.dashboardBorder, lineWidth: 1)
-                        )
-                        .accessibilityIdentifier("settings.users.new.passwordField")
-                }
-                .disabled(!isAdmin)
+                Text("HitnScore will email this person a secure invitation so they can choose their own password.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 settingsRolePicker(selection: $newOrganizationUserDraft.role, accessibilityIdentifier: "settings.users.new.rolePicker")
                     .disabled(!isAdmin)
@@ -2242,27 +2226,11 @@ struct DashboardView: View {
             dashboardTextField(title: "Email", placeholder: "Email", text: binding.username, keyboardType: .emailAddress, accessibilityIdentifier: "settings.users.\(user.id).emailField")
                 .disabled(!isAdmin)
 
-            if user.canEditPassword {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Password")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    SecureField("Optional password change", text: binding.password)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color.dashboardInputBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.dashboardBorder, lineWidth: 1)
-                        )
-                        .accessibilityIdentifier("settings.users.\(user.id).passwordField")
-                }
-                .disabled(!isAdmin)
+            Button(currentSettingsButtonTitle(for: "user-password-\(user.id)", defaultTitle: "Send Password Reset")) {
+                sendOrganizationUserPasswordReset(user)
             }
+            .buttonStyle(.bordered)
+            .disabled(!isAdmin || savingSettingsKey != nil)
 
             settingsRolePicker(selection: binding.role, accessibilityIdentifier: "settings.users.\(user.id).rolePicker")
                 .disabled(!isAdmin)
@@ -4224,8 +4192,7 @@ struct DashboardView: View {
                 try await container.apiClient.updateOrganizationUser(
                     organizationID: organizationID,
                     userID: user.id,
-                    draft: draft,
-                    allowPasswordChange: user.canEditPassword
+                    draft: draft
                 )
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
@@ -4235,6 +4202,26 @@ struct DashboardView: View {
             } catch {
                 await MainActor.run {
                     settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to update the user."
+                    savingSettingsKey = nil
+                }
+            }
+        }
+    }
+
+    private func sendOrganizationUserPasswordReset(_ user: OrganizationUser) {
+        savingSettingsKey = "user-password-\(user.id)"
+        settingsErrorMessage = nil
+        settingsSuccessMessage = nil
+        Task {
+            do {
+                try await container.apiClient.requestPasswordReset(email: user.username)
+                await MainActor.run {
+                    settingsSuccessMessage = "A secure password reset link has been sent if this email is registered."
+                    savingSettingsKey = nil
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to send a password reset right now."
                     savingSettingsKey = nil
                 }
             }

@@ -975,7 +975,6 @@ final class APIClient {
         organizationID: Int,
         draft: OrganizationUserDraft
     ) async throws {
-        let password = draft.password.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = try makeRequest(
             path: "/organization_users",
             method: "POST",
@@ -984,7 +983,6 @@ final class APIClient {
                 firstName: draft.firstName,
                 surname: draft.surname,
                 username: draft.username,
-                password: password.isEmpty ? nil : password,
                 role: draft.role
             )
         )
@@ -994,10 +992,8 @@ final class APIClient {
     func updateOrganizationUser(
         organizationID: Int,
         userID: Int,
-        draft: OrganizationUserDraft,
-        allowPasswordChange: Bool
+        draft: OrganizationUserDraft
     ) async throws {
-        let password = draft.password.trimmingCharacters(in: .whitespacesAndNewlines)
         let request = try makeRequest(
             path: "/organization_users/\(userID)",
             method: "PUT",
@@ -1006,7 +1002,6 @@ final class APIClient {
                 firstName: draft.firstName,
                 surname: draft.surname,
                 username: draft.username,
-                password: allowPasswordChange && !password.isEmpty ? password : nil,
                 role: draft.role
             )
         )

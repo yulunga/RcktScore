@@ -49,6 +49,75 @@ flowchart TD
     SNS -->|Emails alerts| Ops["Confirmed subscribers"]
 ```
 
+## Email triggers and delivery
+
+Checked against the current repository on 6 November 2026. These are implemented send paths; live delivery and provider configuration were not verified. Each email-type node below represents a separate message submitted to SES.
+
+```mermaid
+flowchart TD
+    Client["React (AWS Amplify) or native iOS"] -->|Submit account or help action over HTTPS| API["AWS API Gateway"]
+    Admin["Club admin or root admin web tools"] -->|Add club member| API
+    API --> Backend["Python backend (AWS Lambda)"]
+    Backend -->|Create account and save verification token| Signup["Personal registration"]
+    Backend -->|Store enquiry| Enquiry["Club enquiry or plan-interest request"]
+    Backend --> Reset["Password reset request or login credential mismatch"]
+    Backend --> Invite["Club membership created"]
+    Backend --> Feedback["Feedback submitted"]
+
+    Signup --> SetupMail["Personal account setup email to registrant"]
+    Enquiry --> ThanksMail["Club enquiry confirmation to requester"]
+    Enquiry --> LeadMail["New club enquiry details to HitnScore team"]
+    Reset -->|Known email identity| ResetMail["Password reset link to account holder"]
+    Invite -->|Identity already has a password| AccessMail["Approve organisation access email to member"]
+    Invite -->|Identity has no password| WelcomeMail["Set password and activate email to member"]
+    Feedback --> FeedbackMail["Feedback details to HitnScore team"]
+
+    SetupMail --> SES["AWS SES"]
+    ThanksMail --> SES
+    LeadMail --> SES
+    ResetMail --> SES
+    AccessMail --> SES
+    WelcomeMail --> SES
+    FeedbackMail --> SES
+    SES --> Mailbox["Recipient mailbox"]
+    Mailbox -->|Click setup, reset or approval link| Web["React web account flow (AWS Amplify)"]
+    Web -->|Validate token and submit action| API
+    Backend <-->|Read or update accounts, tokens and enquiries| DB["Supabase Postgres"]
+```
+
+### What each email contains
+
+| Trigger | Recipient | Email subject / purpose | Link or next action |
+| --- | --- | --- | --- |
+| Successful self-service Personal registration, including retry of a pending setup | Registrant | `Hit n Score personal account setup`: welcome, username and email verification/password setup | Choose password through the web confirmation flow; setup link expires after two hours. |
+| Club enquiry, including an authenticated club plan-interest request | Requester | `Thanks for your Hit n Score club enquiry`: acknowledgement and supplied request details | Team will follow up; no automatic club activation. |
+| Same club enquiry | Configured `INTEREST_TO_EMAIL` team mailbox | `New Hit n Score club account enquiry`: contact, club, requested plan, approval/validation status and diagnostic details | Reply-To is the requester; team can reply directly. |
+| Password reset request for an existing identity | Account email | `Hit n Score password reset`: secure reset link | Choose a new password within two hours. Password changes apply across memberships and revoke active sessions. Unknown emails receive no message. |
+| Login finds inconsistent membership passwords requiring an identity-wide reset | Account email | Same password reset email | Login returns `PASSWORD_RESET_REQUIRED`; user resets before signing in. A normal successful login sends no email. |
+| Club admin or root admin creates membership for an identity with a password | Invited member | `Hit n Score: new organisation access for {organisation}`: club name, sign-in email and access confirmation | Approve access using the existing identity; invitation leaves membership pending until approval. |
+| Club admin or root admin creates membership for an identity without a password | Invited member | `Hit n Score: welcome to {organisation}`: invitation and account activation | Set password and activate through a dedicated setup token. Invitation delivery requires a configured sender. |
+| Valid feedback submission | Configured feedback/team mailbox | `RcktScore: {category}`: message, sender, organisation, version/build and page/device details | Reply-To is the submitter. No automatic acknowledgement email is sent to the submitter. |
+
+Subjects above use the current templates, including the internal `RcktScore` name still present in the feedback subject. Transactional emails include HTML and plain-text versions. Sender and destination addresses are deployment-configured: `INTEREST_FROM_EMAIL`, `INTEREST_TO_EMAIL`, `PASSWORD_RESET_FROM_EMAIL`, `USER_INVITATION_FROM_EMAIL`, `FEEDBACK_FROM_EMAIL` and `FEEDBACK_TO_EMAIL`; feedback falls back to the interest configuration and then `hello@hitnscore.com` as implemented.
+
+### Operational alert emails
+
+```mermaid
+flowchart TD
+    API["API errors or high latency"] --> CW["AWS CloudWatch alarms"]
+    Health["Database health-check failure or throttling"] --> CW
+    Apple["Apple notification, verification or reconciliation failure"] --> CW
+    Missing["Reconciliation invocation missing for two hours"] --> CW
+    CW -->|Enter ALARM or recover to OK| SNS["AWS SNS alarm topic"]
+    SNS -->|Email subscription| Ops["Confirmed operations subscriber"]
+```
+
+Operational alerts use SNS rather than the app's SES templates. Creating the email subscription also requires the recipient to confirm the AWS subscription email. Alarm delivery depends on the production monitoring configuration and subscription confirmation.
+
+Match creation, scoring, completion, scheduling, ordinary sign-in, password-reset completion, root-admin manual membership approval and persisted in-app notifications do not have additional automatic app email sends in the current code. Apple billing communications are managed by Apple; they are separate from these HitnScore email paths.
+
+Email implementation references: [registration and enquiries](../backend/functions/register_interest/handler.py), [personal setup](../backend/common/root_admin_logic.py), [club invitations](../backend/common/organization_logic.py), [password resets](../backend/common/password_reset_logic.py), [login reset trigger](../backend/functions/login/handler.py), [feedback](../backend/functions/send_feedback/handler.py), [SES mailer](../backend/common/mailer.py), [email templates](../backend/notifications/templates/) and [SNS/CloudWatch configuration](../backend/template.yaml).
+
 ## Service inventory
 
 | Component or supplier | Role in HitnScore | Who calls what and how data moves |
@@ -71,3 +140,6 @@ flowchart TD
 **Live score sync.** The scorer pushes a scoring action to the HTTP API. Lambda records it in Postgres. Spectator views pull updates over HTTPS. Court displays poll every five seconds by default. WebSocket broadcasting is scaffolded. Stripe checkout and Apple Push Notification service delivery are outside the current implementation.
 
 Repository references: [backend stack](../backend/template.yaml), [web build](../amplify.yml), [landing deployment](weblanding-aws-godaddy-deployment.md), [request flows](technical-walkthrough.md), [scoreboard polling](scoreboard-v1-implementation.md), and [release process](promotion-runbook.md).
+
+Backup ownership, recovery order, provider-specific restore steps, and recovery
+validation are documented in the [Backup and recovery runbook](backup-and-recovery.md).

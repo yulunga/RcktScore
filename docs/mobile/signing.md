@@ -30,5 +30,8 @@ Observed project values:
 - display name: `Hit n Score`
 - deployment target: iOS `17.6`
 
-Signing and distribution ownership still need to be finalised before TestFlight
-or App Store distribution.
+Glenn Rowe is the sole signing and distribution owner for the current one-person
+business. The remaining continuity work is to verify an encrypted recovery copy
+of any locally managed signing identity, retain Apple account MFA/recovery
+access, protect the separately downloaded In-App Purchase `.p8` key, and
+document the end-to-end archive/sign/distribute procedure.

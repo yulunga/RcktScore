@@ -44,7 +44,6 @@ function formatWebsiteForSave(value) {
 
 const emptyUserForm = {
   username: "",
-  password: "",
   role: "scorer",
 };
 
@@ -250,7 +249,6 @@ export default function RootAdminClubPage() {
       () => createRootAdminOrganizationUser({
         organization_id: organizationId,
         username: normalizedUsername,
-        password: userForm.password,
         role: userForm.role,
       }),
       "User added to organisation. Invitation email sent and access is pending approval.",
@@ -504,16 +502,9 @@ export default function RootAdminClubPage() {
                   onChange={(event) => setUserForm((current) => ({ ...current, username: event.target.value }))}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="club_user_password">Password (new users only)</label>
-                <input
-                  id="club_user_password"
-                  placeholder="Optional when username already exists"
-                  type="password"
-                  value={userForm.password}
-                  onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
-                />
-              </div>
+              <p className="helper-text settings-field-wide">
+                HitnScore sends a secure invitation; membership creation never sets the person's password.
+              </p>
               <div className="field">
                 <label htmlFor="club_user_role">Role</label>
                 <select

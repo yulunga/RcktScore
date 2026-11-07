@@ -12,14 +12,13 @@ export default function RootAdminSessionBar() {
       <div className="root-admin-session-brand">
         <img src="/branding/logo/brand-logo.png" alt="HitnScore" width="44" height="44" />
         <div>
-          <strong>RcktScore Root Admin</strong>
+          <strong><span>HitnScore</span> Control Panel</strong>
           <span>
             {(session?.username || "Root Admin")}
-            {session?.role ? ` • ${session.role}` : ""}
           </span>
         </div>
       </div>
-      <div className="club-page-header__meta">
+      <div className="club-page-header__meta root-admin-session-actions">
         <button
           className="session-link-button"
           type="button"
@@ -29,6 +28,17 @@ export default function RootAdminSessionBar() {
           }}
         >
           Log Out
+        </button>
+        <button
+          className="session-link-button root-admin-dashboard-link"
+          type="button"
+          aria-label="Control Panel dashboard"
+          title="Control Panel dashboard"
+          onClick={() => navigate("/rckscoreAdmin/dashboard")}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="m3 10 9-7 9 7v10h-6v-6H9v6H3z" />
+          </svg>
         </button>
       </div>
     </section>

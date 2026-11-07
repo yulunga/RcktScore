@@ -1,8 +1,29 @@
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
 from common.sport_config import client_sport_field, effective_enabled_sports, normalize_enabled_sports
 from common.access_control import normalize_membership_role
+
+
+class IdentityPasswordResetRequired(Exception):
+    """Raised when membership rows for one email no longer share one password."""
+
+
+def _synchronize_identity_password_hash(connection, username, password):
+    password_hash = generate_password_hash(password)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE "SkwshOrgUsers"
+            SET password_hash = %(password_hash)s
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+              AND password_hash IS NOT NULL
+            """,
+            {
+                "password_hash": password_hash,
+                "username": normalize_email_address(username),
+            },
+        )
 
 
 def _serialize_org_user(user_row, client_type="web_app"):
@@ -97,6 +118,7 @@ def get_org_users(connection, username):
                 ON platform.id = 'default'
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY o.organization_name ASC, u.organization_id ASC, u.id ASC
+            FOR UPDATE OF u
             """,
             {"username": normalize_email_address(username)},
         )
@@ -126,16 +148,24 @@ def authenticate_org_user_memberships(connection, username, password, client_typ
             "pending_memberships": [],
         }
 
-    identity_authenticated = any(
-        user_row.get("password_hash")
-        and check_password_hash(user_row["password_hash"], password)
-        for user_row in user_rows
-    )
-    if not identity_authenticated:
+    password_rows = [user_row for user_row in user_rows if user_row.get("password_hash")]
+    password_matches = [
+        check_password_hash(user_row["password_hash"], password)
+        for user_row in password_rows
+    ]
+    if not password_matches or not any(password_matches):
         return {
             "approved_memberships": [],
             "pending_memberships": [],
         }
+    if not all(password_matches):
+        raise IdentityPasswordResetRequired()
+
+    # Old membership-scoped password writes produced different hashes for the
+    # same identity. Once every hash verifies the supplied password, replace
+    # them with one freshly generated hash in the login transaction.
+    if len({user_row["password_hash"] for user_row in password_rows}) > 1:
+        _synchronize_identity_password_hash(connection, username, password)
 
     approved_memberships = []
     pending_memberships = []

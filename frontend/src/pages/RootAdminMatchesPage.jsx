@@ -142,7 +142,7 @@ export default function RootAdminMatchesPage() {
           </div>
           <div className="button-row root-admin-actions">
             <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Platform Control Centre
+              Back to Control Panel
             </button>
           </div>
         </div>

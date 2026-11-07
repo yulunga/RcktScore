@@ -3,7 +3,6 @@ import secrets
 from datetime import datetime, timezone
 
 from psycopg.types.json import Jsonb
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
@@ -113,7 +112,7 @@ def _serialize_user(row):
         "created_at": created_at.isoformat() if created_at else None,
         "approved_at": approved_at.isoformat() if approved_at else None,
         "invitation_sent_at": invitation_sent_at.isoformat() if invitation_sent_at else None,
-        "can_edit_password": int(membership_count or 1) <= 1,
+        "can_edit_password": False,
     }
 
 
@@ -130,6 +129,12 @@ def _build_approval_url(base_url, token):
         raise ValueError("USER_APPROVAL_BASE_URL must be configured")
 
     return f"{base_url.rstrip('/')}/organization_users/approve?token={token}"
+
+
+def _build_password_setup_url(base_url, token):
+    if not base_url:
+        raise ValueError("USER_APPROVAL_BASE_URL must be configured")
+    return f"{base_url.rstrip('/')}/help?mode=reset&token={token}"
 
 
 def _get_organization_name(connection, organization_id):
@@ -155,6 +160,7 @@ def _send_organization_user_invitation_email(
     approval_url,
     source_email,
     existing_account,
+    password_setup=False,
 ):
     template_context = {
         "app_name": APP_DISPLAY_NAME,
@@ -183,7 +189,7 @@ def _send_organization_user_invitation_email(
     body_html = render_branded_email(
         title=title,
         paragraphs=paragraphs,
-        action_label="Approve access",
+        action_label="Set password and activate" if password_setup else "Approve access",
         action_url=approval_url,
         detail_rows=[
             ("Organisation", organization_name),
@@ -660,30 +666,29 @@ def create_organization_user(
 
     existing_users = get_existing_org_users_by_username(connection, trimmed_username)
     existing_hash = None
-    existing_account = bool(existing_users)
     for existing_user in existing_users:
         if int(existing_user["organization_id"]) == org_id:
             raise ValueError("Username already exists in this organisation")
         if existing_user.get("password_hash") and existing_hash is None:
             existing_hash = existing_user["password_hash"]
 
-    if existing_hash:
-        if not allow_existing_password_reuse:
-            if not password:
-                raise ValueError("Password is required when adding an existing username")
-            if not check_password_hash(existing_hash, password):
-                raise ValueError("Username already exists with a different password")
-    elif not password:
-        raise ValueError("Password is required for a new user")
+    if password is not None:
+        raise ValueError("Club administrators cannot set member passwords. Send a secure password reset instead.")
 
     trimmed_first_name = (first_name or "").strip()
     trimmed_surname = (surname or "").strip()
     approval_token = secrets.token_urlsafe(32)
+    has_identity_password = existing_hash is not None
+    password_setup_token = f"setup_{secrets.token_urlsafe(32)}" if not has_identity_password else None
     approval_status = USER_STATUS_PENDING
     created_at = _utcnow()
     organization_name = _get_organization_name(connection, org_id)
     source_email = (invitation_source_email or "").strip() or None
-    approval_url = _build_approval_url(approval_base_url, approval_token)
+    approval_url = (
+        _build_approval_url(approval_base_url, approval_token)
+        if has_identity_password
+        else _build_password_setup_url(approval_base_url, password_setup_token)
+    )
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -698,6 +703,8 @@ def create_organization_user(
                 surname,
                 approval_status,
                 approval_token,
+                password_reset_token,
+                password_reset_requested_at,
                 invitation_sent_at
             )
             VALUES (
@@ -710,6 +717,8 @@ def create_organization_user(
                 %(surname)s,
                 %(approval_status)s,
                 %(approval_token)s,
+                %(password_reset_token)s,
+                %(password_reset_requested_at)s,
                 %(invitation_sent_at)s
             )
             RETURNING id, clubusername, role, approval_status, first_name, surname, created_at, invitation_sent_at, approved_at
@@ -717,13 +726,15 @@ def create_organization_user(
             {
                 "created_at": created_at,
                 "username": trimmed_username,
-                "password_hash": existing_hash or generate_password_hash(password),
+                "password_hash": existing_hash,
                 "organization_id": org_id,
                 "role": normalized_role,
                 "first_name": trimmed_first_name,
                 "surname": trimmed_surname,
                 "approval_status": approval_status,
                 "approval_token": approval_token,
+                "password_reset_token": password_setup_token,
+                "password_reset_requested_at": created_at if password_setup_token else None,
                 "invitation_sent_at": created_at,
             },
         )
@@ -735,7 +746,8 @@ def create_organization_user(
             organization_name=organization_name,
             approval_url=approval_url,
             source_email=source_email,
-            existing_account=existing_account,
+            existing_account=has_identity_password,
+            password_setup=not has_identity_password,
         )
 
     connection.commit()
@@ -747,6 +759,9 @@ def update_organization_user(connection, organization_id, user_id, payload):
     existing_row = _get_organization_user_row(connection, org_id, user_id)
     if not existing_row:
         return None
+
+    if "password" in payload:
+        raise ValueError("Club administrators cannot set member passwords. Send a secure password reset instead.")
 
     current_username = normalize_email_address(existing_row["clubusername"])
     target_username = normalize_email_address(payload.get("username") or current_username)
@@ -771,22 +786,8 @@ def update_organization_user(connection, organization_id, user_id, payload):
 
     trimmed_first_name = (payload.get("first_name") if "first_name" in payload else existing_row.get("first_name") or "").strip()
     trimmed_surname = (payload.get("surname") if "surname" in payload else existing_row.get("surname") or "").strip()
-    next_password = payload.get("password")
-    if next_password is not None:
-        next_password = str(next_password)
-        if next_password and len(next_password) < 8:
-            raise ValueError("Password must be at least 8 characters")
-
-    can_edit_password = len(other_memberships) == 0
-    if next_password and not can_edit_password:
-        raise ValueError("Password can only be changed when this email is not used in another organisation")
-
     if existing_row.get("role") == "admin" and normalized_role != "admin" and _organization_admin_count(connection, org_id) <= 1:
         raise ValueError("Organisation must keep at least one admin user")
-
-    password_hash = None
-    if next_password:
-        password_hash = generate_password_hash(next_password)
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -795,8 +796,7 @@ def update_organization_user(connection, organization_id, user_id, payload):
             SET clubusername = %(username)s,
                 role = %(role)s,
                 first_name = %(first_name)s,
-                surname = %(surname)s,
-                password_hash = COALESCE(%(password_hash)s, password_hash)
+                surname = %(surname)s
             WHERE id = %(user_id)s
               AND organization_id = %(organization_id)s
             """,
@@ -805,7 +805,6 @@ def update_organization_user(connection, organization_id, user_id, payload):
                 "role": normalized_role,
                 "first_name": trimmed_first_name,
                 "surname": trimmed_surname,
-                "password_hash": password_hash,
                 "user_id": int(user_id),
                 "organization_id": org_id,
             },
@@ -814,9 +813,6 @@ def update_organization_user(connection, organization_id, user_id, payload):
     if current_username != target_username:
         from common.session_logic import revoke_active_sessions_for_username
         revoke_active_sessions_for_username(connection, current_username, reason="profile_updated")
-    elif next_password:
-        from common.session_logic import revoke_active_sessions_for_username
-        revoke_active_sessions_for_username(connection, target_username, reason="password_reset")
 
     connection.commit()
     return get_organization_user(connection, org_id, user_id)

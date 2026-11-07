@@ -7,6 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email
 from common.utils import error_response, parse_body, require_fields, success_response
+from common.logging_utils import mask_email_for_log
 
 
 logger = Logger(service="send_feedback")
@@ -119,5 +120,5 @@ def lambda_handler(event, context):
             "We could not deliver your message right now. Please try again later.",
         )
 
-    logger.info("Feedback accepted for username=%s category=%s", payload.get("username"), category)
+    logger.info("Feedback accepted for username=%s category=%s", mask_email_for_log(payload.get("username")), category)
     return success_response(202, {"accepted": True})

@@ -322,7 +322,6 @@ struct OrganizationUserRequest: Encodable {
     let firstName: String
     let surname: String
     let username: String
-    let password: String?
     let role: String
 
     enum CodingKeys: String, CodingKey {
@@ -330,7 +329,6 @@ struct OrganizationUserRequest: Encodable {
         case firstName = "first_name"
         case surname
         case username
-        case password
         case role
     }
 }
@@ -340,7 +338,6 @@ struct OrganizationUserUpdateRequest: Encodable {
     let firstName: String?
     let surname: String?
     let username: String?
-    let password: String?
     let role: String?
 
     enum CodingKeys: String, CodingKey {
@@ -348,7 +345,6 @@ struct OrganizationUserUpdateRequest: Encodable {
         case firstName = "first_name"
         case surname
         case username
-        case password
         case role
     }
 }
@@ -399,7 +395,6 @@ struct OrganizationUserDraft {
     var firstName: String = ""
     var surname: String = ""
     var username: String = ""
-    var password: String = ""
     var role: String = "scorer"
 
     init() {}

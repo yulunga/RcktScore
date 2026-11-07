@@ -23,22 +23,58 @@ def membership_row(row_id, organization_id, organization_type, password_hash, ap
     }
 
 
-def test_identity_password_retains_every_approved_membership(monkeypatch):
+def test_identity_password_must_match_every_membership_and_self_heals(monkeypatch):
+    rows = [
+        membership_row(1, 42, "club", generate_password_hash("shared-password")),
+        membership_row(2, 99, "personal", generate_password_hash("shared-password")),
+    ]
+    synchronized = []
+    monkeypatch.setattr(auth_logic, "get_org_users", lambda *_args: rows)
+    monkeypatch.setattr(
+        auth_logic,
+        "_synchronize_identity_password_hash",
+        lambda connection, username, password: synchronized.append((connection, username, password)),
+    )
+    connection = object()
+
+    result = auth_logic.authenticate_org_user_memberships(
+        connection,
+        "player@example.com",
+        "shared-password",
+        client_type="web_app",
+    )
+
+    assert [membership["organization_id"] for membership in result["approved_memberships"]] == [42, 99]
+    assert result["approved_memberships"][1]["organization_type"] == "personal"
+    assert synchronized == [(connection, "player@example.com", "shared-password")]
+
+
+def test_identity_rejects_partial_password_match_and_requires_reset(monkeypatch):
     rows = [
         membership_row(1, 42, "club", generate_password_hash("current-password")),
         membership_row(2, 99, "personal", generate_password_hash("older-password")),
     ]
     monkeypatch.setattr(auth_logic, "get_org_users", lambda *_args: rows)
 
-    result = auth_logic.authenticate_org_user_memberships(
-        object(),
-        "player@example.com",
-        "current-password",
-        client_type="web_app",
-    )
+    try:
+        auth_logic.authenticate_org_user_memberships(object(), "player@example.com", "current-password")
+    except auth_logic.IdentityPasswordResetRequired:
+        pass
+    else:
+        raise AssertionError("A partial identity password match must require a reset")
+
+
+def test_null_password_membership_is_returned_after_valid_identity_password(monkeypatch):
+    password_hash = generate_password_hash("shared-password")
+    rows = [
+        membership_row(1, 42, "club", password_hash),
+        membership_row(2, 99, "personal", None),
+    ]
+    monkeypatch.setattr(auth_logic, "get_org_users", lambda *_args: rows)
+
+    result = auth_logic.authenticate_org_user_memberships(object(), "player@example.com", "shared-password")
 
     assert [membership["organization_id"] for membership in result["approved_memberships"]] == [42, 99]
-    assert result["approved_memberships"][1]["organization_type"] == "personal"
 
 
 def test_identity_rejects_password_that_matches_no_membership(monkeypatch):

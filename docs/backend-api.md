@@ -126,7 +126,7 @@ Organisation-user auth is real and backend-enforced.
 
 Current behavior:
 
-- `POST /login` verifies the normalized email identity when the password matches any of its `SkwshOrgUsers` membership rows, then retains every approved membership for that identity; this prevents an older per-membership password hash from hiding a valid Personal or club context
+- `POST /login` verifies the normalized email identity only when the password matches every non-null `SkwshOrgUsers.password_hash` for that email. If it matches some but not all rows, login returns `403 PASSWORD_RESET_REQUIRED`, issues an identity-wide reset email, and returns no memberships. If all hashes validate but their stored salted values differ, they are replaced with one fresh common hash in the login transaction
 - users may belong to multiple organisations
 - identity-first login is enabled by default. It creates a session immediately, preferring an approved personal membership and otherwise the first approved club membership, and returns every approved membership in `available_memberships`
 - deployment parameter `IdentityFirstLoginEnabled=false` restores the legacy `data.organizationSelection` response without removing that contract from the clients
@@ -157,6 +157,8 @@ Duplicate login behavior:
   list. It is derived from the platform client list, organisation list, and the
   membership's `enabled_sports_web` or `enabled_sports_ios` override.
 - migration `019_offline_scoring_support.sql` adds `org_user_sessions.expires_at` and the reconnect-idempotency receipt table
+
+Authentication, registration and feedback logs pass email-like identifiers through `common.logging_utils.mask_email_for_log`, retaining only the first local-part character and domain (for example `s***@example.com`). `CloudWatchLogRetentionDays` defaults to 60 in the SAM template. The deployment custom resource creates or updates every Lambda log group with that retention period, and a daily enforcement run repairs drift for stack-owned Lambda groups.
 
 ### Root-admin users
 
@@ -258,6 +260,7 @@ Current root-admin user-account behavior:
 - adding a club membership creates a pending invitation, preserving the club approval workflow
 - deleting a membership is limited to club associations; it does not delete the user's personal account
 - changing a password hashes the replacement across every membership for that username, clears outstanding reset tokens, and revokes all active sessions for the user
+- the root-admin user directory includes `last_login_at`, `inactive_12_months`, and `inactive_24_months`. Its summary includes both inactive counts, and `account_type=inactive_12_months|inactive_24_months` filters the directory. Last login is the latest session creation time; a never-signed-in identity uses its registration date only for inactivity classification
 - `PUT /root_admin/personal_accounts/{request_id}` remains the backing route for updating a personal organisation's `personal_plan` and `enabled_sports`
 - `GET /root_admin/personal_accounts` remains available for compatibility, but the web admin console now uses the unified user directory
 
@@ -493,7 +496,7 @@ and saved-view tables.
 
 [functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py)
 
-- authenticates the normalized email identity when the password matches any membership row, then returns every approved membership for that identity even if historical per-membership password hashes differ
+- authenticates the normalized email identity only when the password matches every non-null membership hash, then returns every approved membership for that identity. Partial matches return `PASSWORD_RESET_REQUIRED` and issue a reset email; successful legacy hashes for the same password are self-healed
 - returns `data.session` by default, preferring the approved personal membership and otherwise the first approved club, with all choices in `available_memberships`
 - returns `data.organizationSelection` for multiple approved organisations only when deployment parameter `IdentityFirstLoginEnabled` is `false`
 - returns `PENDING_APPROVAL` when credentials are valid but access is still pending invitation approval
@@ -517,6 +520,8 @@ Current behavior:
 - request path accepts `email`
 - reset link base URL comes from `PASSWORD_RESET_BASE_URL`, then falls back to the request `Origin`
 - successful request always returns `202 accepted`
+- reset confirmation writes one fresh password hash to every membership for the normalized email, clears all reset tokens, and revokes active sessions
+- a normal reset never approves pending memberships. Only a dedicated first-account `setup_` token approves the membership that holds that token
 
 ### Organisation membership approval
 
@@ -624,12 +629,12 @@ Current behavior:
 
 - club roles are `admin`, `scorer`, and `read_only`; migration `045_club_least_privilege_roles.sql` converts every legacy `user` membership to `scorer`
 - match creation, setup lookup, scheduled activation, point/event scoring, Undo, and early completion require the central `match.manage` capability. `read_only` retains match/history/result and permitted analytics reads but cannot mutate through direct API requests
-- create path is invite-oriented
+- create path is invite-oriented and rejects a supplied `password`
 - create path accepts optional `first_name` and `surname`
 - update path can change `username`, `first_name`, `surname`, and `role`
-- update path can change `password` only when the user email is not shared with another organisation membership
+- update path rejects `password`; club administrators send the member a secure reset link instead
 - new or existing email addresses may be attached to multiple organisations
-- membership remains `pending` until the emailed approval link is accepted
+- a new identity remains `pending` until its emailed set-password link is completed; an identity that already has a password receives the normal membership-approval link
 - administrator organisation-settings responses include org-user contact/profile fields when present; non-admin responses omit the complete user collection rather than relying on client-side hiding
 - Tournament Manager detail responses remove entrant email, registered username and canonical user ID for non-admins. Admin guest profiles can offer Personal signup links; registration with the same email links the reusable player identity without creating host-club access
 - delete path removes the user from the current organisation only

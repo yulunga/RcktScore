@@ -4,13 +4,13 @@ Welcome to $app_name.
 
 You have been invited to join $organization_name on Hit n Score, the live racquet sports scoring platform built to make match management, scorekeeping, and player experiences smoother from first serve to final point.
 
-To confirm your email address and activate your organisation access, open the approval link below:
+To confirm your email address, choose your private password, and activate your organisation access, open the secure link below:
 $approval_url
 
 Your sign-in email is:
 $username
 
-Once approved, you will be able to sign in and access live scoring, match history, and organisation tools available within your account.
+Once your password is set, you will be able to sign in and access live scoring, match history, and organisation tools available within your account. Your club administrator cannot see or choose this password.
 
 If you were not expecting this invitation, you can safely ignore this email.
 

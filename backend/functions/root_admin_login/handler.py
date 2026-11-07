@@ -1,6 +1,7 @@
 from aws_lambda_powertools import Logger
 
 from common.auth_logic import authenticate_root_admin
+from common.logging_utils import mask_email_for_log
 from common.root_admin_session_logic import create_root_admin_session
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
@@ -22,7 +23,7 @@ def lambda_handler(event, context):
         user = authenticate_root_admin(connection, username, password)
 
         if not user:
-            logger.warning("Invalid root admin login attempt for username=%s", username)
+            logger.warning("Invalid root admin login attempt for username=%s", mask_email_for_log(username))
             return error_response(401, "INVALID_CREDENTIALS", "Invalid credentials")
 
         session = create_root_admin_session(connection, user)

@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import {
   deleteOrganizationUser,
   getOrganizationSettings,
+  requestPasswordReset,
   updateOrganizationUser,
 } from "../services/api";
 
@@ -37,7 +38,6 @@ export default function OrganisationUserPage() {
     surname: "",
     username: "",
     role: "scorer",
-    password: "",
   });
 
   const organizationId = session?.organization_id;
@@ -61,7 +61,6 @@ export default function OrganisationUserPage() {
         surname: nextUser.surname || "",
         username: nextUser.username || "",
         role: nextUser.role === "user" ? "scorer" : (nextUser.role || "scorer"),
-        password: "",
       });
     }
   }, [userId]);
@@ -110,12 +109,25 @@ export default function OrganisationUserPage() {
         surname: form.surname,
         username: normalizedUsername,
         role: form.role,
-        ...(form.password ? { password: form.password } : {}),
       });
       await loadSettings();
       setMessage("User details updated.");
     } catch (requestError) {
       setError(requestError.message || "Unable to update this user.");
+    } finally {
+      setSavingSection("");
+    }
+  }
+
+  async function handlePasswordReset() {
+    setSavingSection("password-reset");
+    setMessage("");
+    setError("");
+    try {
+      await requestPasswordReset({ email: user.username });
+      setMessage("A secure password reset link has been sent if this email is registered.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to send a password reset right now.");
     } finally {
       setSavingSection("");
     }
@@ -186,7 +198,7 @@ export default function OrganisationUserPage() {
             </div>
             <div className="meta-item meta-item--compact">
               <strong>Password</strong>
-              <div>{user.can_edit_password ? "Can be edited here" : "Managed across another shared account"}</div>
+              <div>Managed securely by the member</div>
             </div>
           </div>
 
@@ -233,21 +245,11 @@ export default function OrganisationUserPage() {
                 </p>
               </div>
               <div className="field settings-field-wide">
-                <label htmlFor="edit_password">Password</label>
-                <input
-                  disabled={!user.can_edit_password}
-                  id="edit_password"
-                  minLength="8"
-                  placeholder={user.can_edit_password ? "Leave blank to keep the current password" : "Password cannot be changed here"}
-                  type="password"
-                  value={form.password}
-                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                />
-                <p className="helper-text">
-                  {user.can_edit_password
-                    ? "Set a new password only if you need to correct or replace the current one."
-                    : "This email is used in another organisation, so password changes must stay on the shared account."}
-                </p>
+                <span className="field-label">Password</span>
+                <p className="helper-text">Send the member a secure link so they can choose their own identity-wide password.</p>
+                <button disabled={Boolean(savingSection)} onClick={handlePasswordReset} type="button">
+                  {savingSection === "password-reset" ? "Sending..." : "Send Password Reset"}
+                </button>
               </div>
             </div>
 

@@ -12,6 +12,8 @@ def lambda_handler(event, context):
     missing_fields = require_fields(payload, ["organization_id", "username", "role"])
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
+    if "password" in payload:
+        return error_response(400, "INVALID_INPUT", "Create the membership first, then use the identity-wide password control.")
 
     try:
         with get_db_connection() as connection:

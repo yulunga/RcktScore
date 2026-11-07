@@ -157,43 +157,56 @@ def confirm_password_reset(connection, token, password):
         username = normalize_email_address(user_row["clubusername"])
         password_hash = generate_password_hash(validated_password)
         validated_at = _utcnow()
+        # Only a dedicated first-account setup token approves its holder. A
+        # normal identity-wide reset never approves pending club invitations.
+        if reset_token.startswith("setup_"):
+            cursor.execute(
+                """
+                UPDATE "SkwshOrgUsers"
+                SET approval_status = CASE
+                        WHEN approval_status = 'pending' THEN 'approved'
+                        ELSE approval_status
+                    END,
+                    approved_at = CASE
+                        WHEN approval_status = 'pending' THEN %(validated_at)s
+                        ELSE approved_at
+                    END,
+                    approval_token = NULL
+                WHERE LOWER(clubusername) = LOWER(%(username)s)
+                  AND password_reset_token = %(reset_token)s
+                """,
+                {
+                    "username": username,
+                    "reset_token": reset_token,
+                    "validated_at": validated_at,
+                },
+            )
+        # Passwords and reset tokens are identity-wide, regardless of which
+        # membership supplied the reset link.
         cursor.execute(
             """
             UPDATE "SkwshOrgUsers"
             SET password_hash = %(password_hash)s,
                 password_reset_token = NULL,
-                password_reset_requested_at = NULL,
-                approval_status = CASE
-                    WHEN approval_status = 'pending' THEN 'approved'
-                    ELSE approval_status
-                END,
-                approved_at = CASE
-                    WHEN approval_status = 'pending' THEN %(validated_at)s
-                    ELSE approved_at
-                END
+                password_reset_requested_at = NULL
             WHERE LOWER(clubusername) = LOWER(%(username)s)
-              AND password_reset_token = %(reset_token)s
             """,
-            {
-                "password_hash": password_hash,
-                "username": username,
-                "reset_token": reset_token,
-                "validated_at": validated_at,
-            },
+            {"password_hash": password_hash, "username": username},
         )
-        cursor.execute(
-            """
-            UPDATE "HitnScoreInterestRequests"
-            SET email_validated = true,
-                email_validated_at = COALESCE(email_validated_at, %(validated_at)s),
-                updated_at = %(validated_at)s
-            WHERE LOWER(email) = LOWER(%(username)s)
-            """,
-            {
-                "username": username,
-                "validated_at": validated_at,
-            },
-        )
+        if reset_token.startswith("setup_"):
+            cursor.execute(
+                """
+                UPDATE "HitnScoreInterestRequests"
+                SET email_validated = true,
+                    email_validated_at = COALESCE(email_validated_at, %(validated_at)s),
+                    updated_at = %(validated_at)s
+                WHERE LOWER(email) = LOWER(%(username)s)
+                """,
+                {
+                    "username": username,
+                    "validated_at": validated_at,
+                },
+            )
 
     revoke_active_sessions_for_username(connection, username, reason="password_reset")
     connection.commit()

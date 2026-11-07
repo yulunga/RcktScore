@@ -144,22 +144,24 @@ export default function RootAdminDashboardPage() {
       <RootAdminSessionBar />
 
       <section className="hero-card stack compact">
-        <h1>Platform Control Centre</h1>
-        <div className="meta-grid">
+        <div className="meta-grid root-admin-dashboard-summary">
           <div className="meta-item">
-            <strong>Organisations</strong>
+            <strong>Clubs</strong>
             <div>{summary.organization_count ?? 0}</div>
           </div>
           <div className="meta-item">
-            <strong>Club Memberships</strong>
-            <div>{summary.user_count ?? 0}</div>
+            <strong>Users</strong>
+            <button
+              className="root-admin-summary-count"
+              type="button"
+              onClick={() => navigate("/rckscoreAdmin/users")}
+            >
+              {summary.total_user_count ?? 0}
+            </button>
+            <span className="root-admin-summary-note">Personal and club users</span>
           </div>
           <div className="meta-item">
-            <strong>Club Admin Memberships</strong>
-            <div>{summary.admin_count ?? 0}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Club Account Enquiries</strong>
+            <strong>Club Enquiries</strong>
             <button
               className="root-admin-summary-count"
               type="button"
@@ -172,15 +174,12 @@ export default function RootAdminDashboardPage() {
             </span>
           </div>
           <div className="meta-item">
-            <strong>User Accounts</strong>
-            <button
-              className="root-admin-summary-count"
-              type="button"
-              onClick={() => navigate("/rckscoreAdmin/users")}
-            >
-              {summary.total_user_count ?? 0}
-            </button>
-            <span className="root-admin-summary-note">Personal and club users</span>
+            <strong>Club Memberships</strong>
+            <div>{summary.user_count ?? 0}</div>
+          </div>
+          <div className="meta-item">
+            <strong>Club Admin Memberships</strong>
+            <div>{summary.admin_count ?? 0}</div>
           </div>
           <div className="meta-item">
             <strong>Match Scores</strong>

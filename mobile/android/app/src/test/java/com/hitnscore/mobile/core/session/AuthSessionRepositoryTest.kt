@@ -107,6 +107,16 @@ class AuthSessionRepositoryTest {
     }
 
     @Test
+    fun divergentMembershipPasswordsShowTheBackendResetInstruction() = runTest {
+        val message = "For your security, please reset your password. We've emailed you a link."
+        respond(403, """{"success":false,"error":{"code":"PASSWORD_RESET_REQUIRED","message":"$message"}}""")
+
+        val result = repository().signIn("player@example.com", "old-password") as SignInResult.Failed
+
+        assertEquals(message, result.message)
+    }
+
+    @Test
     fun legacyOrganizationSelectionCompletesWithTheChosenAccount() = runTest {
         respond(200, LoginFixtures.organizationSelection)
         val repository = repository()

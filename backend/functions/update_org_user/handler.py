@@ -22,7 +22,9 @@ def lambda_handler(event, context):
     missing_fields = require_fields(payload, ["organization_id"])
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
-    if not any(field in payload for field in ["role", "username", "first_name", "surname", "password"]):
+    if "password" in payload:
+        return error_response(400, "INVALID_INPUT", "Club administrators cannot set member passwords. Send a secure password reset instead.")
+    if not any(field in payload for field in ["role", "username", "first_name", "surname"]):
         return error_response(400, "VALIDATION_ERROR", "At least one user field must be provided")
 
     try:

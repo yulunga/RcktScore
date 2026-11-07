@@ -249,6 +249,7 @@ export default function RootAdminUserProfilePage() {
                 <div><strong>Location</strong><span>{[user.city_location, user.country].filter(Boolean).join(", ") || "Not provided"}</span></div>
                 <div><strong>Telephone</strong><span>{user.telephone || "Not provided"}</span></div>
                 <div><strong>Date Registered</strong><span>{formatDateTime(user.registered_at)}</span></div>
+                <div><strong>Last Logged In</strong><span>{user.last_login_at ? formatDateTime(user.last_login_at) : "Never logged in"}</span></div>
                 <div><strong>Last Activity</strong><span>{formatDateTime(user.last_activity_at)}</span></div>
               </div>
               <section className={`root-admin-email-verification${user.email_verified ? " verified" : " unverified"}`}>

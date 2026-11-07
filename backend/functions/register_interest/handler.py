@@ -9,6 +9,7 @@ from psycopg.errors import UndefinedTable
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.root_admin_logic import create_self_service_personal_account
+from common.logging_utils import mask_email_for_log
 from common.session_logic import SessionAuthError, require_org_user_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
@@ -310,7 +311,7 @@ def lambda_handler(event, context):
 
     # Quietly absorb obvious bot submissions without sending an email.
     if honeypot:
-        logger.warning("Interest honeypot triggered for email=%s", email)
+        logger.warning("Interest honeypot triggered for email=%s", mask_email_for_log(email))
         return success_response(202, {"accepted": True})
 
     destination_email = os.getenv("INTEREST_TO_EMAIL", "hello@hitnscore.com")
@@ -398,7 +399,7 @@ def lambda_handler(event, context):
         logger.info(
             "Personal account signup accepted id=%s email=%s",
             interest_row.get("id"),
-            email,
+            mask_email_for_log(email),
         )
         return success_response(
             201,
@@ -434,7 +435,7 @@ def lambda_handler(event, context):
     logger.info(
         "Club account enquiry accepted id=%s email=%s use_type=%s",
         interest_row.get("id"),
-        email,
+        mask_email_for_log(email),
         use_type,
     )
 

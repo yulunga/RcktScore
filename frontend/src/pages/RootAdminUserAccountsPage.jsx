@@ -6,11 +6,26 @@ import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import { getRootAdminUsers } from "../services/api";
 
 const ACCOUNT_FILTERS = [
+  { value: "", label: "All Users", countKey: "total_user_count" },
   { value: "personal_free", label: "Personal Free", countKey: "personal_free_count" },
   { value: "personal_plus", label: "Personal Plus", countKey: "personal_plus_count" },
   { value: "club", label: "Club Accounts", countKey: "club_user_count" },
   { value: "unverified", label: "Unverified Users", countKey: "unverified_user_count" },
+  { value: "inactive_12_months", label: "No Login 12+ Months", countKey: "inactive_12_month_count" },
+  { value: "inactive_24_months", label: "No Login 24+ Months", countKey: "inactive_24_month_count" },
 ];
+
+function userRowClass(user) {
+  if (user.email_verified === false) return "root-admin-user-row--unverified";
+  if (user.account_types?.includes("personal_plus")) return "root-admin-user-row--personal-plus";
+  if (user.account_types?.includes("personal_free")) return "root-admin-user-row--personal-free";
+  return "";
+}
+
+function formatLastLogin(value) {
+  if (!value) return "Never logged in";
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
 
 export default function RootAdminUserAccountsPage() {
   const navigate = useNavigate();
@@ -21,6 +36,7 @@ export default function RootAdminUserAccountsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     const timeoutId = window.setTimeout(async () => {
       setLoading(true);
       setError("");
@@ -29,15 +45,18 @@ export default function RootAdminUserAccountsPage() {
           accountType: accountFilter,
           query: searchTerm.trim(),
         });
-        setDirectory(response.userDirectory || null);
+        if (!cancelled) setDirectory(response.userDirectory || null);
       } catch (requestError) {
-        setError(requestError.message || "Failed to load user accounts.");
+        if (!cancelled) setError(requestError.message || "Failed to load user accounts.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }, searchTerm.trim() ? 220 : 0);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [accountFilter, searchTerm]);
 
   const summary = directory?.summary || {};
@@ -53,10 +72,10 @@ export default function RootAdminUserAccountsPage() {
 
       <section className="hero-card stack compact">
         <div className="root-admin-section-header">
-          <h1>User Accounts</h1>
+          <h1>Users</h1>
           <div className="button-row root-admin-actions">
             <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Platform Control Centre
+              Back to Control Panel
             </button>
           </div>
         </div>
@@ -71,11 +90,12 @@ export default function RootAdminUserAccountsPage() {
               key={filter.value}
               className={`meta-item root-admin-filter-card${filter.value === "unverified" ? " root-admin-filter-card--unverified" : ""}${accountFilter === filter.value ? " active" : ""}`}
               type="button"
+              aria-pressed={accountFilter === filter.value}
               onClick={() => selectFilter(filter.value)}
             >
               <strong>{filter.label}</strong>
               <div>{summary[filter.countKey] ?? 0}</div>
-              <span>{accountFilter === filter.value ? "Showing this account type" : "Select to filter"}</span>
+              <span>{accountFilter === filter.value ? "Selected" : "Select to filter"}</span>
             </button>
           ))}
         </div>
@@ -104,7 +124,7 @@ export default function RootAdminUserAccountsPage() {
         <div className="dashboard-list">
           {users.map((user) => (
             <article
-              className={`dashboard-item root-admin-user-row${user.email_verified === false ? " root-admin-user-row--unverified" : ""}`}
+              className={`dashboard-item root-admin-user-row ${userRowClass(user)}`}
               key={user.id}
             >
               <div className="root-admin-user-directory-fields">
@@ -119,6 +139,10 @@ export default function RootAdminUserAccountsPage() {
                 <div>
                   <span className="helper-text">Surname</span>
                   <strong>{user.surname || "Not provided"}</strong>
+                </div>
+                <div>
+                  <span className="helper-text">Last Logged In</span>
+                  <strong>{formatLastLogin(user.last_login_at)}</strong>
                 </div>
               </div>
               <div className="button-row root-admin-user-actions">

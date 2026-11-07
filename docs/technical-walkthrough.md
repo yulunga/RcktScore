@@ -70,10 +70,13 @@ Error:
 2. `AuthContext.login(...)` calls `POST /login`.
 3. [backend/functions/login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/login/handler.py) validates the body.
 4. The handler calls [authenticate_org_user_memberships(...)](/Users/glennrowe/Development/Projects/RcktScore/backend/common/auth_logic.py).
-5. The normalized email identity is authenticated when the supplied password
-   matches any of its `SkwshOrgUsers` membership rows. Every approved membership
-   for that identity is then retained, including historical rows whose stored
-   password hash differs, and organisation details come from `SkwshOrgSettings`.
+5. The normalized email identity is authenticated only when the supplied password
+   matches every non-null `SkwshOrgUsers.password_hash` for that email. A partial
+   match returns `PASSWORD_RESET_REQUIRED`, emails an identity-wide reset, and
+   exposes no memberships. If every row verifies but its salted hash text differs,
+   login rewrites those rows to one fresh hash before continuing. Null-hash rows
+   do not participate in verification but are retained after another row proves
+   the identity. Organisation details come from `SkwshOrgSettings`.
 6. The handler checks for an already-active session for the identity across web
    and mobile. A forced continuation revokes the previous token regardless of
    client source.
@@ -99,9 +102,13 @@ Error:
 ### Troubleshooting cues
 
 - `401 INVALID_CREDENTIALS` means the password matched none of the identity's membership rows.
+- `403 PASSWORD_RESET_REQUIRED` means it matched only part of a legacy multi-membership identity; the user must complete the emailed reset before login.
 - `403 PENDING_APPROVAL` means the email invitation exists but has not been accepted.
 - `409 ACTIVE_SESSION_EXISTS` means the same identity is already signed in on web or mobile. Continuing revokes that previous device session.
 - web and iOS call `GET /session/status` while active and on foreground/focus; `SESSION_REPLACED` clears local state and returns the displaced client to login. Network failures do not clear an offline session.
+- authentication logs use masked identifiers such as `p***@example.com`; raw login emails must not be written to CloudWatch
+
+The SAM deployment runs `configure_log_retention` as a CloudFormation custom resource after resolving every Lambda function name. It ensures each `/aws/lambda/<function-name>` group exists and applies the configured 60-day retention policy. A daily scheduled run reapplies the policy to stack-prefixed Lambda groups so later-created or manually altered groups do not remain indefinitely.
 
 ## 2. Root-Admin Login Flow
 
@@ -121,7 +128,7 @@ Error:
 7. Each root-admin handler validates the token, expiry, revocation state, and current `SkRootAdmin` identity before doing any privileged work.
 8. Logout calls `POST /root_admin/logout`, which revokes the current token.
 
-The dashboard’s Club Admin Memberships count comes from non-personal organisation membership rows with the admin role. Platform root-admin accounts are separate. Database operators rotate their passwords with [rotate-root-admin-password.sql](../scripts/rotate-root-admin-password.sql), which also revokes existing root-admin sessions.
+The dashboard’s Club Admin Memberships count comes from non-personal organisation membership rows with the admin role. Platform root-admin accounts are separate. Database operators rotate their passwords with [rotate-root-admin-password.sql](../scripts/rotate-root-admin-password.sql), which also revokes existing root-admin sessions. The root-admin User Accounts directory derives each identity's latest login from `MAX(org_user_sessions.created_at)` and offers 12- and 24-month inactivity cards. For a user with no session history, registration time is the inactivity reference; these cards are review filters and do not trigger deletion.
 
 ## 3. Personal Signup and Club-Enquiry Flow
 
@@ -405,9 +412,9 @@ search and import testing.
    - `PUT /organization_users/{user_id}`, or
    - `DELETE /organization_users/{user_id}`
 3. Shared logic in `organization_logic.py`:
-   - validates updated email, role, and optional password
-   - only allows password edits when the email is not shared across other organisation memberships
-   - revokes active sessions when a user email or password changes, or when the membership is deleted
+   - validates updated email and role and rejects membership-scoped password fields
+   - directs administrators to send the member an identity-wide reset link
+   - revokes active sessions when a user email changes or when the membership is deleted; reset confirmation and the root-admin identity password control revoke sessions after updating every membership
    - blocks demoting or deleting the last remaining admin in the organisation
 
 ### Approve invite
@@ -419,7 +426,8 @@ search and import testing.
 
 ### Troubleshooting cues
 
-- a user may exist in multiple organisations with one password hash
+- a user may exist in multiple organisations but has one identity-wide password
+- new identities choose that password through their invitation; club admins cannot choose or edit it
 - login remains blocked until approval is accepted
 - the approval route returns HTML, not JSON
 - `USER_APPROVAL_BASE_URL` controls the branded approval-link host/path used in invitation emails

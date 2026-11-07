@@ -1,5 +1,6 @@
 import json
 
+from common.auth_logic import IdentityPasswordResetRequired
 from functions.login import handler
 from functions.login.handler import default_identity_membership, identity_first_login_enabled
 
@@ -67,3 +68,51 @@ def test_login_detects_an_active_session_across_client_types(monkeypatch):
     assert response["statusCode"] == 409
     assert observed == {"username": "player@example.com", "login_source": None}
     assert '"client_type": "web_app"' in response["body"]
+
+
+def test_partial_membership_password_match_returns_reset_required_and_sends_email(monkeypatch):
+    observed = {}
+    monkeypatch.setattr(handler, "get_db_connection", lambda: ConnectionContext())
+    monkeypatch.setattr(
+        handler,
+        "authenticate_org_user_memberships",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(IdentityPasswordResetRequired()),
+    )
+    monkeypatch.setattr(
+        handler,
+        "request_password_reset",
+        lambda db, username, **kwargs: observed.update(db=db, username=username, **kwargs),
+    )
+    monkeypatch.setenv("PASSWORD_RESET_FROM_EMAIL", "hello@hitnscore.com")
+    monkeypatch.setenv("PASSWORD_RESET_BASE_URL", "https://app.hitnscore.com")
+
+    response = handler.lambda_handler(
+        {"body": json.dumps({"username": "player@example.com", "password": "old-password"})},
+        None,
+    )
+
+    assert response["statusCode"] == 403
+    assert '"code": "PASSWORD_RESET_REQUIRED"' in response["body"]
+    assert observed["username"] == "player@example.com"
+    assert observed["source_email"] == "hello@hitnscore.com"
+    assert observed["reset_base_url"] == "https://app.hitnscore.com"
+
+
+def test_invalid_login_logs_only_a_masked_email(monkeypatch):
+    warnings = []
+    monkeypatch.setattr(handler, "get_db_connection", lambda: ConnectionContext())
+    monkeypatch.setattr(
+        handler,
+        "authenticate_org_user_memberships",
+        lambda *_args, **_kwargs: {"approved_memberships": [], "pending_memberships": []},
+    )
+    monkeypatch.setattr(handler.logger, "warning", lambda message, *args: warnings.append((message, args)))
+
+    response = handler.lambda_handler(
+        {"body": json.dumps({"username": "sarah@example.com", "password": "wrong"})},
+        None,
+    )
+
+    assert response["statusCode"] == 401
+    assert warnings == [("Invalid login attempt for username=%s", ("s***@example.com",))]
+    assert "sarah@example.com" not in repr(warnings)

@@ -60,7 +60,7 @@ export default function RootAdminLoginPage() {
     <main className="page-shell login-shell">
       <section className="login-panel stack">
         <div className="login-panel__top">
-          <h1 className="login-title">RcktScore Root Admin</h1>
+          <h1 className="login-title">HitnScore Control Panel</h1>
         </div>
         <p className="helper-text root-admin-login-note">
           Root administration access for tenant and user management. IP restrictions can be added later.

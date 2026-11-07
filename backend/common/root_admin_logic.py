@@ -1,4 +1,5 @@
 import secrets
+from calendar import monthrange
 
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
@@ -33,6 +34,13 @@ from common.password_policy import validate_password
 INTEREST_STATUSES = {"pending", "approved", "denied"}
 PERSONAL_PLANS = {"personal_free", "personal_plus"}
 PERSONAL_ACCOUNT_STATUS_PENDING_EMAIL = "pending_email_validation"
+
+
+def _months_before(value, months):
+    month_index = value.year * 12 + value.month - 1 - int(months)
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    return value.replace(year=year, month=month, day=min(value.day, monthrange(year, month)[1]))
 PERSONAL_ACCOUNT_STATUS_LIVE = "live"
 PERSONAL_ORG_ID_SEQUENCE = "hitnscore_personal_org_id_seq"
 
@@ -920,7 +928,7 @@ def get_root_admin_personal_accounts(connection, plan=None):
 
 def _create_or_refresh_personal_account_for_interest(connection, interest_row, *, updated_by, reset_base_url):
     now = _utcnow()
-    reset_token = secrets.token_urlsafe(32)
+    reset_token = f"setup_{secrets.token_urlsafe(32)}"
     username = (interest_row.get("email") or "").strip().lower()
     full_name = " ".join(
         part for part in [interest_row.get("first_name"), interest_row.get("surname")] if part
@@ -1405,6 +1413,12 @@ def _serialize_root_admin_user_summary(username, membership_rows):
             if row.get("approved_at")
         ]
     email_verified_at = max(verification_dates, default=None) if email_verified else None
+    last_login_at = max(
+        (row.get("last_login_at") for row in ordered_rows if row.get("last_login_at")),
+        default=None,
+    )
+    inactivity_reference = last_login_at or registered_at
+    now = _utcnow()
 
     account_types = []
     if personal_plan == "personal_free":
@@ -1420,6 +1434,9 @@ def _serialize_root_admin_user_summary(username, membership_rows):
         "first_name": _first_present(ordered_rows, "first_name"),
         "surname": _first_present(ordered_rows, "surname"),
         "registered_at": registered_at.isoformat() if registered_at else None,
+        "last_login_at": last_login_at.isoformat() if last_login_at else None,
+        "inactive_12_months": bool(inactivity_reference and inactivity_reference <= _months_before(now, 12)),
+        "inactive_24_months": bool(inactivity_reference and inactivity_reference <= _months_before(now, 24)),
         "personal_plan": personal_plan,
         "has_personal_account": bool(personal_rows),
         "has_club_account": bool(club_rows),
@@ -1449,12 +1466,19 @@ def get_root_admin_users(connection, account_type=None, query=None):
                 o.org_type,
                 o.plan,
                 o.interest_request_id,
-                i.email_validated
+                i.email_validated,
+                sessions.last_login_at
             FROM "SkwshOrgUsers" AS u
             INNER JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
             LEFT JOIN "HitnScoreInterestRequests" AS i
                 ON i.id = o.interest_request_id
+            LEFT JOIN (
+                SELECT LOWER(username) AS normalized_username, MAX(created_at) AS last_login_at
+                FROM org_user_sessions
+                GROUP BY LOWER(username)
+            ) AS sessions
+                ON sessions.normalized_username = LOWER(u.clubusername)
             ORDER BY LOWER(u.clubusername), u.created_at ASC, u.id ASC
             """
         )
@@ -1478,11 +1502,17 @@ def get_root_admin_users(connection, account_type=None, query=None):
         "personal_plus_count": sum("personal_plus" in user["account_types"] for user in users),
         "club_user_count": sum("club" in user["account_types"] for user in users),
         "unverified_user_count": sum(not user["email_verified"] for user in users),
+        "inactive_12_month_count": sum(user["inactive_12_months"] for user in users),
+        "inactive_24_month_count": sum(user["inactive_24_months"] for user in users),
     }
 
     requested_account_type = (account_type or "").strip().lower()
     if requested_account_type == "unverified":
         users = [user for user in users if not user["email_verified"]]
+    elif requested_account_type == "inactive_12_months":
+        users = [user for user in users if user["inactive_12_months"]]
+    elif requested_account_type == "inactive_24_months":
+        users = [user for user in users if user["inactive_24_months"]]
     elif requested_account_type in {"personal_free", "personal_plus", "club"}:
         users = [user for user in users if requested_account_type in user["account_types"]]
 
@@ -1645,7 +1675,9 @@ def get_root_admin_user_profile(connection, user_id):
 
         cursor.execute(
             """
-            SELECT MAX(last_seen_at) AS last_activity_at
+            SELECT
+                MAX(created_at) AS last_login_at,
+                MAX(last_seen_at) AS last_activity_at
             FROM org_user_sessions
             WHERE LOWER(username) = LOWER(%(username)s)
             """,
@@ -1730,6 +1762,11 @@ def get_root_admin_user_profile(connection, user_id):
             "last_activity_at": (
                 session_activity["last_activity_at"].isoformat()
                 if session_activity.get("last_activity_at")
+                else None
+            ),
+            "last_login_at": (
+                session_activity["last_login_at"].isoformat()
+                if session_activity.get("last_login_at")
                 else None
             ),
         }
@@ -2270,7 +2307,7 @@ def create_root_admin_org_user(
         connection,
         organization_id,
         username,
-        password,
+        None,
         role,
         allow_existing_password_reuse=True,
         invitation_source_email=invitation_source_email,
