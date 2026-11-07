@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 
 from common.session_logic import (
+    WEB_SESSION_COOKIE,
     SessionAuthError,
     authorize_organization_session,
     create_org_user_session,
     get_active_session_for_username,
     login_source_label,
     normalize_login_source,
+    require_org_user_session,
+    session_credentials_from_event,
     session_token_from_event,
 )
 from common.access_control import CAPABILITY_MATCH_MANAGE
@@ -71,14 +74,71 @@ def test_session_token_prefers_bearer_authorization_header():
     assert session_token_from_event(event) == "abc123"
 
 
-def test_session_token_falls_back_to_custom_header():
+def test_session_token_does_not_accept_legacy_custom_header():
     event = {
         "headers": {
             "x-session-token": "custom-token",
         }
     }
 
-    assert session_token_from_event(event) == "custom-token"
+    assert session_token_from_event(event) == ""
+
+
+def test_cookie_and_bearer_credentials_are_rejected_as_ambiguous():
+    event = {
+        "headers": {
+            "authorization": "Bearer native-token",
+            "cookie": f"{WEB_SESSION_COOKIE}=browser-token",
+        }
+    }
+    with pytest.raises(SessionAuthError) as error:
+        session_credentials_from_event(event)
+    assert error.value.code == "AMBIGUOUS_SESSION_CREDENTIALS"
+
+
+def test_cookie_mutation_requires_matching_origin_and_csrf(monkeypatch):
+    connection = RecordingConnection()
+    session_row = {
+        "id": 8,
+        "username": "player@example.com",
+        "expires_at": datetime.now(timezone.utc).replace(year=datetime.now(timezone.utc).year + 1),
+        "login_source": "web_app",
+        "csrf_token": "expected-csrf",
+    }
+    monkeypatch.setattr(session_logic, "_get_session_row", lambda *_args, **_kwargs: session_row)
+    event = {
+        "requestContext": {"http": {"method": "POST"}},
+        "headers": {
+            "origin": "https://app.hitnscore.com",
+            "x-csrf-token": "expected-csrf",
+            "cookie": f"{WEB_SESSION_COOKIE}=browser-token",
+        },
+    }
+    session = require_org_user_session(connection, event)
+    assert session["credential_type"] == "cookie"
+
+    event["headers"].pop("x-csrf-token")
+    with pytest.raises(SessionAuthError) as error:
+        require_org_user_session(connection, event)
+    assert error.value.code == "CSRF_VALIDATION_FAILED"
+
+
+def test_web_session_cannot_be_replayed_as_bearer(monkeypatch):
+    connection = RecordingConnection()
+    monkeypatch.setattr(
+        session_logic,
+        "_get_session_row",
+        lambda *_args, **_kwargs: {
+            "id": 8,
+            "username": "player@example.com",
+            "expires_at": datetime.now(timezone.utc).replace(year=datetime.now(timezone.utc).year + 1),
+            "login_source": "web_app",
+            "csrf_token": "csrf",
+        },
+    )
+    with pytest.raises(SessionAuthError) as error:
+        require_org_user_session(connection, {"headers": {"authorization": "Bearer browser-token"}})
+    assert error.value.code == "SESSION_TRANSPORT_MISMATCH"
 
 
 def test_org_user_session_has_a_capped_expiry(monkeypatch):

@@ -44,17 +44,18 @@ import com.hitnscore.mobile.core.designsystem.components.SectionCard
 import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.core.session.planDisplayName
-import com.hitnscore.mobile.data.model.MatchFormatting
+import com.hitnscore.mobile.data.model.ClubRoles
 import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellHeader
 import com.hitnscore.mobile.feature.shell.ShellUiState
 
-/** Settings pages. Club pages are listed for club admins only, as on iOS. */
+/** Settings pages, in the iOS menu order. Club pages are listed for club admins only. */
 enum class SettingsPage(val route: String, @StringRes val title: Int, val clubAdminOnly: Boolean = false) {
     Profile("profile", R.string.settings_profile),
     Subscription("subscription", R.string.settings_subscription),
     Association("association", R.string.settings_association),
-    RacketSports("sports", R.string.settings_racket_sports),
+    GameSettings("game-settings", R.string.settings_game_settings),
+    RacketSports("sports", R.string.settings_racket_sports, clubAdminOnly = true),
     About("about", R.string.settings_about),
     Organisation("organisation", R.string.settings_organisation, clubAdminOnly = true),
     Users("users", R.string.settings_users, clubAdminOnly = true),
@@ -66,8 +67,11 @@ enum class SettingsPage(val route: String, @StringRes val title: Int, val clubAd
     }
 }
 
-private val SessionState.SignedIn.isClubAdmin: Boolean
+internal val SessionState.SignedIn.isClubAdmin: Boolean
     get() = activeContext.type == AccountContextType.Club && activeContext.role.equals("admin", ignoreCase = true)
+
+internal val SessionState.SignedIn.isPersonal: Boolean
+    get() = activeContext.type == AccountContextType.Personal
 
 @Composable
 fun SettingsScreen(
@@ -84,9 +88,13 @@ fun SettingsScreen(
         SettingsPage.Profile,
         SettingsPage.Subscription,
         SettingsPage.Association.takeIf { session.availableContexts.size > 1 },
-        SettingsPage.RacketSports,
+        SettingsPage.GameSettings,
     )
-    val clubPages = if (session.isClubAdmin) listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts) else emptyList()
+    val clubPages = if (session.isClubAdmin) {
+        listOf(SettingsPage.Organisation, SettingsPage.RacketSports, SettingsPage.Users, SettingsPage.Courts)
+    } else {
+        emptyList()
+    }
 
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -168,24 +176,17 @@ fun SettingsPageScreen(
             )
         },
     ) { padding ->
-        val activeMembership = memberships.firstOrNull { it.id == session.activeContext.membershipId }
         LazyColumn(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = padding.calculateTopPadding() + 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
             when (page) {
-                SettingsPage.Profile -> {
-                    val name = activeMembership?.let { m ->
-                        m.fullName?.takeIf { it.isNotBlank() } ?: MatchFormatting.fullName(m.firstName.orEmpty(), m.surname)
-                    } ?: session.displayName
-                    item { InfoRow(stringResource(R.string.settings_name), name) }
-                    item { InfoRow(stringResource(R.string.settings_username), session.username) }
-                    item { InfoRow(stringResource(R.string.settings_email), activeMembership?.email.orEmpty()) }
-                    item { InfoRow(stringResource(R.string.settings_country), activeMembership?.country.orEmpty()) }
-                    item { InfoRow(stringResource(R.string.settings_telephone), activeMembership?.telephone.orEmpty()) }
-                    item { InfoRow(stringResource(R.string.settings_role), session.activeContext.role.replaceFirstChar { it.uppercase() }) }
-                    item { Note(stringResource(R.string.settings_edit_later)) }
+                SettingsPage.Profile -> item(key = "profile-${session.username}") {
+                    val viewModel: ProfileViewModel = viewModel(key = "profile-${session.username}", factory = ProfileViewModel.Factory)
+                    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+                    ProfileEditor(ui, viewModel)
+                    Note(stringResource(R.string.settings_role_line, session.activeContext.name, roleName(session.activeContext.role)))
                 }
                 SettingsPage.Subscription -> {
                     val organization = state.dashboard?.organization
@@ -227,15 +228,7 @@ fun SettingsPageScreen(
                         }
                     }
                 }
-                SettingsPage.RacketSports -> {
-                    val enabled = activeMembership?.enabledSports?.map { it.lowercase() } ?: listOf("squash", "racketball", "tennis")
-                    items(listOf("squash", "racketball", "tennis", "padel"), key = { it }) { sport ->
-                        InfoRow(
-                            MatchFormatting.sportName(sport),
-                            stringResource(if (sport in enabled) R.string.settings_sport_enabled else R.string.settings_sport_disabled),
-                        )
-                    }
-                }
+                SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, session)
                 SettingsPage.About -> {
                     item { InfoRow(stringResource(R.string.settings_version), AppEnvironment.versionName) }
                     item { InfoRow(stringResource(R.string.settings_environment), AppEnvironment.environmentName) }
@@ -248,12 +241,18 @@ fun SettingsPageScreen(
 
 private const val UNLIMITED_HISTORY = 100_000
 
+/**
+ * Pages backed by the organisation's settings. Club admins can change everything; a
+ * Personal owner changes their own sports and timer defaults; other club members only
+ * see Game Settings, read-only, as on iOS.
+ */
 private fun LazyListScope.clubPage(page: SettingsPage, session: SessionState.SignedIn) {
-    if (!session.isClubAdmin) {
+    val readOnlyGameSettings = page == SettingsPage.GameSettings && !session.isClubAdmin && !session.isPersonal
+    if (page.clubAdminOnly && !session.isClubAdmin) {
         item { Note(stringResource(R.string.settings_admin_only)) }
         return
     }
-    item(key = "club-${session.activeContext.organizationId}") {
+    item(key = "club-${session.activeContext.organizationId}-${page.route}") {
         val organizationId = session.activeContext.organizationId
         val viewModel: OrganizationSettingsViewModel = viewModel(
             key = "org-settings-$organizationId",
@@ -261,44 +260,43 @@ private fun LazyListScope.clubPage(page: SettingsPage, session: SessionState.Sig
         )
         val ui by viewModel.uiState.collectAsStateWithLifecycle()
         val settings = ui.settings
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ui.errorMessage?.let { ErrorBanner(it, onRetry = viewModel::load) }
             if (ui.isLoading && settings == null) CircularProgressIndicator()
             if (settings != null) {
                 when (page) {
                     SettingsPage.Organisation -> {
-                        val o = settings.organization
-                        InfoRow(stringResource(R.string.settings_name), o.organizationName)
-                        InfoRow(stringResource(R.string.settings_address), listOf(o.address, o.postcode).filter { it.isNotBlank() }.joinToString(", "))
-                        InfoRow(stringResource(R.string.settings_contact), o.contact)
-                        InfoRow(stringResource(R.string.settings_email), o.email)
-                        InfoRow(stringResource(R.string.settings_telephone), o.telephone)
-                        InfoRow(stringResource(R.string.settings_website), o.webAddress)
-                        InfoRow(stringResource(R.string.settings_plan), planDisplayName(o.plan, isPersonal = false))
+                        OrganisationEditor(ui, viewModel)
+                        InfoRow(stringResource(R.string.settings_plan), planDisplayName(settings.organization.plan, isPersonal = false))
                     }
-                    SettingsPage.Users -> settings.users.forEach { user ->
-                        InfoRow(
-                            MatchFormatting.fullName(user.firstName.ifBlank { user.username }, user.surname),
-                            "${user.username} · ${user.role.replaceFirstChar { it.uppercase() }} · ${user.status.replaceFirstChar { it.uppercase() }}",
-                        )
+                    SettingsPage.RacketSports -> {
+                        SportsEditor(ui, viewModel, canEdit = true, body = stringResource(R.string.settings_sports_club_body))
+                        StatusLine(ui.notice, ui.actionError)
                     }
-                    else -> if (settings.courts.isEmpty()) {
-                        Note(stringResource(R.string.settings_courts_empty))
-                    } else {
-                        settings.courts.forEach { court ->
-                            InfoRow(
-                                court.courtName.ifBlank { court.courtAlias },
-                                listOfNotNull(court.courtAlias.takeIf { it.isNotBlank() && it != court.courtName }, court.sport?.let(MatchFormatting::sportName))
-                                    .joinToString(" · "),
-                            )
+                    SettingsPage.GameSettings -> {
+                        if (session.isPersonal) {
+                            SportsEditor(ui, viewModel, canEdit = true, body = stringResource(R.string.settings_sports_personal_body))
                         }
+                        TimerDefaultsEditor(ui, viewModel, canEdit = !readOnlyGameSettings)
+                        StatusLine(ui.notice, ui.actionError)
                     }
+                    SettingsPage.Users -> UsersEditor(ui, viewModel, session.username)
+                    SettingsPage.Courts -> CourtsEditor(ui, viewModel)
+                    else -> Unit
                 }
-                Note(stringResource(R.string.settings_edit_later))
             }
         }
     }
 }
+
+@Composable
+private fun roleName(role: String): String = stringResource(
+    when (ClubRoles.normalize(role)) {
+        ClubRoles.ADMIN -> R.string.role_admin
+        ClubRoles.READ_ONLY -> R.string.role_read_only
+        else -> R.string.role_scorer
+    },
+)
 
 @Composable
 private fun Note(text: String) {

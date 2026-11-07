@@ -2,7 +2,8 @@ from aws_lambda_powertools import Logger
 
 from common.auth_logic import authenticate_root_admin
 from common.logging_utils import mask_email_for_log
-from common.root_admin_session_logic import create_root_admin_session
+from common.root_admin_session_logic import create_root_admin_session, root_admin_session_cookie_for_result
+from common.session_logic import SessionAuthError, session_error_response, validate_web_origin
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -19,6 +20,11 @@ def lambda_handler(event, context):
     username = payload["username"].strip()
     password = payload["password"]
 
+    try:
+        validate_web_origin(event)
+    except SessionAuthError as session_error:
+        return session_error_response(session_error)
+
     with get_db_connection() as connection:
         user = authenticate_root_admin(connection, username, password)
 
@@ -34,8 +40,9 @@ def lambda_handler(event, context):
         {
             "rootAdminSession": {
                 **user,
-                "session_token": session["token"],
+                "csrf_token": session["csrf_token"],
                 "expires_at": session["expires_at"].isoformat(),
             }
         },
+        cookies=[root_admin_session_cookie_for_result(session)],
     )

@@ -14,7 +14,7 @@
     <string name="login_show_password">Show password</string>
     <string name="login_hide_password">Hide password</string>
     <string name="login_sign_in">Sign in</string>
-    <string name="login_need_help">Need Help? Reset your password</string>
+    <string name="login_need_help">Need Help?</string>
     <string name="login_notice_expired">Your saved session has expired. Please sign in again.</string>
     <string name="login_notice_replaced">You were signed out because this account signed in on another device.</string>
     <string name="login_notice_ended">Your session has ended. Please sign in again.</string>
@@ -176,7 +176,6 @@
     <string name="settings_included">Included</string>
     <string name="settings_not_included">Not included</string>
     <string name="settings_subscription_note">Your plan belongs to your HitNScore account and is the same on every device you sign in on.</string>
-    <string name="settings_edit_later">Editing these details arrives in a later build.</string>
     <string name="settings_active">Active</string>
     <string name="settings_switch_to">Switch</string>
     <string name="settings_version">Version</string>
@@ -185,8 +184,6 @@
     <string name="settings_contact">Contact</string>
     <string name="settings_website">Website</string>
     <string name="settings_courts_empty">No courts set up yet.</string>
-    <string name="settings_sport_enabled">Enabled</string>
-    <string name="settings_sport_disabled">Not enabled</string>
     <string name="settings_admin_only">Only club admins can view this page.</string>
     <string name="help_placeholder">Feedback, help articles and privacy information arrive in a later build. Use the sign-in screen\'s Need Help link to reset your password.</string>
     <!-- New match (M3) -->
@@ -316,4 +313,149 @@
     <string name="setup_final_set_tiebreak_body">When the match reaches a deciding final set, play one tiebreak to 10 points instead. The winner must lead by two.</string>
     <string name="setup_tennis_timed_breaks">Timed breaks between games and sets</string>
     <string name="setup_tennis_timed_breaks_body">5-minute warm-up, 90-second changeovers and 120-second set breaks.</string>
+
+    <!-- M5: offline scoring -->
+    <string name="sync_offline">Offline · scoring is saved on this phone</string>
+    <plurals name="sync_offline_pending">
+        <item quantity="one">Offline · %d change saved on this phone, sent when you reconnect</item>
+        <item quantity="other">Offline · %d changes saved on this phone, sent when you reconnect</item>
+    </plurals>
+    <plurals name="sync_sending">
+        <item quantity="one">Sending %d change…</item>
+        <item quantity="other">Sending %d changes…</item>
+    </plurals>
+    <string name="sync_refused">Couldn\'t send scoring: %1$s</string>
+    <string name="sync_discard">Discard</string>
+    <string name="sync_discard_title">Discard unsent changes?</string>
+    <plurals name="sync_discard_body">
+        <item quantity="one">The %d change not yet sent will be removed and the score will return to the server\'s copy.</item>
+        <item quantity="other">The %d changes not yet sent will be removed and the score will return to the server\'s copy.</item>
+    </plurals>
+    <string name="section_continue_offline">Continue offline</string>
+
+    <!-- M6: registration (Want In) -->
+    <string name="login_want_in">Want In?</string>
+    <string name="login_notice_email_changed">Your email has changed. Sign in with your new email address.</string>
+    <string name="login_notice_account_deleted">Your account has been deleted.</string>
+    <string name="register_title">Join Hit n Score</string>
+    <string name="register_intro">Welcome to Hit n Score, the racket sport scoring app.\n\nCreate a free personal account to start scoring matches. You can upgrade later for more features.\n\nLooking for a multi-user option for your racket sports club? Club accounts let you manage multiple games, link courts to matches, schedule games and show live scores on screens. Register your interest and we\'ll be in touch.</string>
+    <string name="register_website">Find out more on our website</string>
+    <string name="register_email">Email address</string>
+    <string name="register_app_use">App use</string>
+    <string name="register_use_personal">Personal</string>
+    <string name="register_use_club">Club</string>
+    <string name="register_club_name">Club name</string>
+    <string name="register_human_check">Human check: what is %1$d + %2$d?</string>
+    <string name="register_create_personal">Create Personal Account</string>
+    <string name="register_send_club">Register Club Interest</string>
+    <string name="register_need_first_name">First name is required.</string>
+    <string name="register_need_surname">Surname is required.</string>
+    <string name="register_need_email">A valid email address is required.</string>
+    <string name="register_need_club">Club name is required for club use.</string>
+    <string name="register_human_wrong">That answer isn\'t right. Try the new sum.</string>
+    <string name="register_done_personal_title">Thank you for registering</string>
+    <string name="register_done_personal">Your personal account has been created. We have sent a verification email to %1$s. Open the link in the email to verify your address and set your password, then return here and sign in.</string>
+    <string name="register_done_club_title">Thank you for your interest</string>
+    <string name="register_done_club">We have received your club account enquiry. Our team will review the details and contact you at %1$s about the next steps.</string>
+    <string name="register_back_to_sign_in">Back to sign in</string>
+
+    <!-- M6: settings editing -->
+    <string name="settings_game_settings">Game Settings</string>
+    <string name="settings_role_line">%1$s · %2$s</string>
+    <string name="role_admin">Admin</string>
+    <string name="role_scorer">Scorer</string>
+    <string name="role_read_only">Read-only</string>
+    <string name="role_admin_body">Can score matches and manage the club\'s settings, members and courts.</string>
+    <string name="role_scorer_body">Can start and score matches.</string>
+    <string name="role_read_only_body">Can follow matches and history but can\'t score.</string>
+    <string name="settings_saved">Saved.</string>
+    <string name="settings_user_invited">Invitation sent. They\'ll get an email to set their password.</string>
+    <string name="settings_user_updated">Member updated.</string>
+    <string name="settings_user_removed">Member removed from the club.</string>
+    <string name="settings_reset_sent">Password reset email sent.</string>
+    <string name="settings_court_saved">Court saved.</string>
+    <string name="settings_court_removed">Court removed.</string>
+    <string name="settings_display_code_issued">New display code issued. Update the court screen with it.</string>
+    <string name="settings_email_change_note">Your email is also your sign-in name. Saving a new email signs you out on every device.</string>
+    <string name="settings_city">City / location</string>
+    <string name="settings_save_profile">Save Profile</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_password_body">We\'ll email you a secure link to set a new password.</string>
+    <string name="settings_send_reset">Send password reset email</string>
+    <string name="settings_delete_title">Delete account</string>
+    <string name="settings_delete_body">Permanently deletes your Personal account, its matches and your club memberships. Matches owned by clubs stay with the clubs.</string>
+    <string name="settings_delete_button">Delete my account</string>
+    <string name="settings_delete_confirm_1_title">Delete your account?</string>
+    <string name="settings_delete_confirm_1_body">Your Personal matches, history and memberships will be removed. This can\'t be undone.</string>
+    <string name="settings_continue">Continue</string>
+    <string name="settings_delete_confirm_2_title">Are you really sure?</string>
+    <string name="settings_delete_confirm_2_body">Your account will be deleted permanently and you\'ll be signed out.</string>
+    <string name="settings_delete_permanently">Delete Permanently</string>
+    <string name="settings_org_profile">Organisation profile</string>
+    <string name="settings_org_location">Location</string>
+    <string name="settings_postcode">Postcode</string>
+    <string name="settings_save_changes">Save Changes</string>
+    <string name="settings_sports_club_body">Choose which racket sports club members see when they start a match.</string>
+    <string name="settings_sports_personal_body">Choose which sports you see when scoring with your Personal account.</string>
+    <string name="settings_save_sports">Save Sport Access</string>
+    <string name="settings_timer_defaults">Timer defaults</string>
+    <string name="settings_timer_defaults_body">Choose which sports start new matches with the timed warm-up and breaks switched on. You can still change it for each match.</string>
+    <string name="settings_timer_on">Timer default on</string>
+    <string name="settings_timer_off">Timer default off</string>
+    <string name="settings_save_timers">Save Timer Defaults</string>
+    <string name="settings_add_user">Add member</string>
+    <string name="settings_edit_user">Edit member</string>
+    <string name="settings_user_pending">Invitation pending</string>
+    <string name="settings_invite_note">They\'ll receive an email to set their own password. Club admins can\'t set passwords.</string>
+    <string name="settings_send_member_reset">Send password reset email</string>
+    <string name="settings_remove_user">Remove from club</string>
+    <string name="settings_send_invite">Send invite</string>
+    <string name="settings_remove_user_title">Remove member?</string>
+    <string name="settings_remove_user_body">%1$s will lose access to this club. Their own account and other clubs are not affected.</string>
+    <string name="settings_remove">Remove</string>
+    <string name="settings_add_court">Add court</string>
+    <string name="settings_edit_court">Edit court</string>
+    <string name="settings_edit">Edit</string>
+    <string name="settings_any_sport">Any sport</string>
+    <string name="settings_display_code">Scoreboard display code</string>
+    <string name="settings_display_code_none">Not issued</string>
+    <string name="settings_new_display_code">New display code</string>
+    <string name="settings_new_display_code_body">The current code for %1$s will stop working. Any screen using it needs the new code.</string>
+    <string name="settings_new_display_code_confirm">Issue new code</string>
+    <string name="settings_court_name">Court name</string>
+    <string name="settings_court_alias">Short name (alias)</string>
+    <string name="settings_court_sport">Sport</string>
+    <string name="settings_remove_court">Remove court</string>
+    <string name="settings_remove_court_title">Remove court?</string>
+    <string name="settings_remove_court_body">%1$s will be removed. Past matches on it are kept.</string>
+
+    <!-- Password set-up / reset (links from email) -->
+    <string name="login_notice_password_changed">Your password has been changed. Sign in with your new password.</string>
+    <string name="password_have_link">I already have a link from the email</string>
+    <string name="password_paste_link">Paste the link from the email</string>
+    <string name="password_paste_link_open">Open link</string>
+    <string name="password_paste_link_invalid">That doesn\'t look like a HitnScore password link.</string>
+    <string name="password_link_checking">Checking your link…</string>
+    <string name="password_link_invalid_title">This link can\'t be used</string>
+    <string name="password_link_invalid_body">The link has expired or has already been used.</string>
+    <string name="password_link_invalid_help">Use Need Help? on the sign-in screen to send yourself a new link.</string>
+    <string name="password_setup_title">Set up your password</string>
+    <string name="password_setup_body">Choose a password to finish setting up your account.</string>
+    <string name="password_reset_title">Choose a new password</string>
+    <string name="password_reset_body">Your new password replaces the old one and signs you out on all devices.</string>
+    <string name="password_new">New password</string>
+    <string name="password_confirm">Confirm password</string>
+    <string name="password_mismatch">The passwords don\'t match.</string>
+    <string name="password_rule_length">At least 8 characters</string>
+    <string name="password_rule_uppercase">An uppercase letter</string>
+    <string name="password_rule_number">A number</string>
+    <string name="password_rule_symbol">A symbol</string>
+    <string name="password_rule_common">Not a common password</string>
+    <string name="password_setup_save">Set password</string>
+    <string name="password_reset_save">Save new password</string>
+    <string name="password_setup_done_title">You\'re all set</string>
+    <string name="password_setup_done_body">Your account is ready. Sign in with your email and new password.</string>
+    <string name="password_reset_done_title">Password changed</string>
+    <string name="password_reset_done_body">Sign in with your new password. Other devices have been signed out.</string>
+    <string name="password_go_to_sign_in">Go to sign in</string>
 </resources>

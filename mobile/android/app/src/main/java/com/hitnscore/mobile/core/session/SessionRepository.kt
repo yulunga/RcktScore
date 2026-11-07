@@ -5,6 +5,7 @@ import com.hitnscore.mobile.core.auth.OrganizationSelectionPayload
 import com.hitnscore.mobile.core.auth.SessionPreferences
 import com.hitnscore.mobile.core.auth.SessionStore
 import com.hitnscore.mobile.core.auth.StoredSession
+import com.hitnscore.mobile.core.auth.UserMembership
 import com.hitnscore.mobile.core.network.ApiError
 import com.hitnscore.mobile.core.network.ApiResult
 import java.time.Instant
@@ -41,7 +42,28 @@ interface SessionRepository {
     fun setBiometricUnlockEnabled(enabled: Boolean)
     fun lock()
     fun unlock()
+
+    /** Shows edited profile details at once, without signing in again (M6). */
+    fun updateLocalProfile(update: ProfileUpdate) = Unit
+
+    /**
+     * Ends the session on this phone after the backend has already ended it, e.g. an email
+     * change or account deletion. Skips the logout call.
+     */
+    fun endSession(reason: SignOutReason) = signOut()
+
+    /** Updates the sports a club offers after an admin changes them, so the sport picker follows. */
+    fun updateEnabledSports(organizationId: Int, sports: List<String>) = Unit
 }
+
+/** Profile fields saved through `PUT /personal_profile/{organization_id}`. */
+data class ProfileUpdate(
+    val firstName: String,
+    val surname: String,
+    val email: String,
+    val telephone: String,
+    val country: String,
+)
 
 /**
  * Backend-backed session, mirroring iOS `SessionStore`:
@@ -157,6 +179,36 @@ class AuthSessionRepository(
         val token = session?.token
         clearLocal(SignOutReason.UserRequested)
         if (token != null) backgroundScope.launch { authService.logout(token) }
+    }
+
+    override fun updateLocalProfile(update: ProfileUpdate) {
+        val current = session ?: return
+        fun UserMembership.edited() = copy(
+            firstName = update.firstName,
+            surname = update.surname,
+            fullName = listOf(update.firstName, update.surname).filter { it.isNotBlank() }.joinToString(" "),
+            email = update.email,
+            telephone = update.telephone,
+            country = update.country,
+        )
+        val updated = current.copy(activeMembership = current.activeMembership.edited(), memberships = current.memberships.map { it.edited() })
+        session = updated
+        sessionStore.save(updated)
+        if (mutableState.value is SessionState.SignedIn) mutableState.value = updated.toSignedIn()
+    }
+
+    override fun updateEnabledSports(organizationId: Int, sports: List<String>) {
+        val current = session ?: return
+        fun UserMembership.edited() = if (this.organizationId == organizationId) copy(enabledSports = sports) else this
+        val updated = current.copy(activeMembership = current.activeMembership.edited(), memberships = current.memberships.map { it.edited() })
+        session = updated
+        sessionStore.save(updated)
+        if (mutableState.value is SessionState.SignedIn) mutableState.value = updated.toSignedIn()
+    }
+
+    override fun endSession(reason: SignOutReason) {
+        if (session == null) return
+        clearLocal(reason)
     }
 
     override fun onSessionInvalidated(code: String) {

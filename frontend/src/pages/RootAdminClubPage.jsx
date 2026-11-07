@@ -503,7 +503,7 @@ export default function RootAdminClubPage() {
                 />
               </div>
               <p className="helper-text settings-field-wide">
-                HitnScore sends a secure invitation; membership creation never sets the person's password.
+                HitnScore creates or retains the person's Personal account and adds this club as an association. Membership creation never sets their password.
               </p>
               <div className="field">
                 <label htmlFor="club_user_role">Role</label>

@@ -8,19 +8,19 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.core.network.ApiResult
-import com.hitnscore.mobile.data.model.EndMatchRequest
-import com.hitnscore.mobile.data.model.EventActionRequest
 import com.hitnscore.mobile.data.model.MatchDetail
 import com.hitnscore.mobile.data.model.MatchFormatting
-import com.hitnscore.mobile.data.model.MatchIdRequest
-import com.hitnscore.mobile.data.model.ScorePointRequest
-import com.hitnscore.mobile.data.model.newClientActionId
 import com.hitnscore.mobile.data.remote.HitNScoreApi
+import com.hitnscore.mobile.feature.scoring.offline.OfflineActionKind
+import com.hitnscore.mobile.feature.scoring.offline.OfflineMatchAction
+import com.hitnscore.mobile.feature.scoring.offline.OfflineMatchStore
+import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
 import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,6 +36,12 @@ data class ScoringUiState(
     val gamesCompleted: Int = 0,
     /** Tennis/Padel point timeline. */
     val tennisPoints: List<TennisPoint> = emptyList(),
+    val isOnline: Boolean = true,
+    /** Actions scored on this phone that the server has not confirmed yet. */
+    val pendingActions: Int = 0,
+    val isSyncing: Boolean = false,
+    /** The server refused a queued action; Retry or Discard is offered. */
+    val syncFailure: String? = null,
 ) {
     val isComplete: Boolean get() = match?.let(ScoringRules::isComplete) == true
     val isScheduled: Boolean get() = match?.let(ScoringRules::isScheduled) == true
@@ -63,20 +69,29 @@ data class ScoringUiState(
 }
 
 /**
- * Live scorer for squash, racketball, tennis and Padel. The server's response to each action is the
- * authoritative match state; this ViewModel only drives the clock and the UI.
+ * Live scorer for squash, racketball, tennis and Padel (M5: offline-first).
+ *
+ * Every scoring action goes through [OfflineMatchStore]: it is queued with its projected
+ * scoreboard, shown immediately, and sent to the backend in order. Online, the queue
+ * drains in well under a second; offline, it waits and is sent when the connection
+ * returns. The server's response stays authoritative and replaces the projection.
+ * Only opening a match for the first time and starting a scheduled match need a connection.
  */
 class ScoringViewModel(
     private val matchId: String,
     private val api: HitNScoreApi,
     private val timerStore: MatchTimerStore,
+    private val offlineStore: OfflineMatchStore,
+    private val isOnline: StateFlow<Boolean>,
+    private val owner: () -> OfflineOwner?,
     private val nowMillis: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
-    private val mutableState = MutableStateFlow(ScoringUiState())
+    private val mutableState = MutableStateFlow(ScoringUiState(isOnline = isOnline.value))
     val uiState: StateFlow<ScoringUiState> = mutableState.asStateFlow()
 
     private var durationRecorded = false
+    private var bootstrapped = false
 
     init {
         load()
@@ -89,14 +104,49 @@ class ScoringViewModel(
                 persistTimer()
             }
         }
+        // Queue, sync progress and server responses all arrive through the store.
+        viewModelScope.launch {
+            combine(offlineStore.snapshots, offlineStore.isSyncing, offlineStore.syncFailure) { _, syncing, failure ->
+                syncing to failure?.takeIf { it.matchId == matchId }?.message
+            }.collect { (syncing, failure) ->
+                mutableState.update {
+                    it.copy(pendingActions = offlineStore.pendingCount(matchId), isSyncing = syncing, syncFailure = failure)
+                }
+                if (bootstrapped) offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = false) }
+            }
+        }
+        viewModelScope.launch {
+            isOnline.collect { online ->
+                val wasOnline = mutableState.value.isOnline
+                mutableState.update { it.copy(isOnline = online) }
+                if (online && !wasOnline) syncNow()
+            }
+        }
     }
 
     fun load() {
         mutableState.update { it.copy(isLoading = true, errorMessage = null) }
+        // Show the copy held on the phone straight away, then refresh it.
+        offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = !bootstrapped) }
         viewModelScope.launch {
+            if (!isOnline.value) {
+                mutableState.update {
+                    it.copy(isLoading = false, errorMessage = if (it.match == null) OFFLINE_NOT_HELD else null)
+                }
+                return@launch
+            }
+            offlineStore.sync(api, owner())
             when (val result = api.match(matchId)) {
-                is ApiResult.Success -> apply(result.value, bootstrap = true)
-                is ApiResult.Failure -> mutableState.update { it.copy(isLoading = false, errorMessage = result.error.message) }
+                is ApiResult.Success -> {
+                    val current = owner()
+                    if (current != null) offlineStore.cache(result.value, current)
+                    val shown = offlineStore.projectedMatch(matchId, current) ?: result.value
+                    apply(shown, bootstrap = !bootstrapped)
+                }
+                is ApiResult.Failure -> mutableState.update {
+                    // With a held copy the scorer keeps working; the error only matters without one.
+                    it.copy(isLoading = false, errorMessage = if (it.match == null) result.error.message else null)
+                }
             }
         }
     }
@@ -105,45 +155,41 @@ class ScoringViewModel(
 
     fun score(side: String) {
         if (!mutableState.value.canScore) return
-        mutate { api.scorePoint(ScorePointRequest(matchId, side, newClientActionId())) }
+        enqueue(action(OfflineActionKind.ScorePoint, scorer = side))
     }
 
     /** A stroke awarded to [side]. */
     fun stroke(side: String) {
         if (!mutableState.value.canScore) return
-        mutate { api.eventAction(EventActionRequest(matchId, "stroke", newClientActionId(), playerSide = side)) }
+        enqueue(action(OfflineActionKind.Stroke, playerSide = side))
     }
 
     /** A let: replay the rally. [side] is the player it was awarded to, or null for a general let. */
     fun let(side: String?) {
         if (!mutableState.value.canScore) return
-        val note = side?.let { "Let awarded to $it" } ?: "General let"
-        mutate { api.eventAction(EventActionRequest(matchId, "let", newClientActionId(), playerSide = side, note = note)) }
+        enqueue(action(OfflineActionKind.Let, playerSide = side, note = side?.let { "Let awarded to $it" } ?: "General let"))
     }
 
     fun toggleServeSide() {
         val state = mutableState.value
         if (state.isTennis || !state.canScore || !state.canToggleServeSide) return
         val next = if (state.match?.state?.serviceSide.equals("left", ignoreCase = true)) "Right" else "Left"
-        mutate { api.eventAction(EventActionRequest(matchId, "serve_side", newClientActionId(), side = next)) }
+        enqueue(action(OfflineActionKind.ServeSide, side = next))
     }
 
     fun chooseFirstServer(side: String) {
         val match = mutableState.value.match ?: return
         if (mutableState.value.isMutating) return
         val name = if (side == "player2") match.player2Name else match.player1Name
-        mutate(onSuccess = { mutableState.update { it.copy(timer = it.timer.beginLive()) } }) {
-            api.eventAction(
-                EventActionRequest(
-                    matchId = matchId,
-                    actionType = "server",
-                    clientActionId = newClientActionId(),
-                    currentServer = name,
-                    currentServerSide = side,
-                    serviceSide = ScoringRules.openingServiceSide(match, side),
-                ),
-            )
-        }
+        enqueue(
+            action(
+                OfflineActionKind.Server,
+                currentServer = name,
+                currentServerSide = side,
+                serviceSide = ScoringRules.openingServiceSide(match, side),
+            ),
+            onQueued = { mutableState.update { it.copy(timer = it.timer.beginLive()) } },
+        )
     }
 
     /**
@@ -156,37 +202,47 @@ class ScoringViewModel(
         val serverSide = TennisRules.sideOf(serverId)
         val receiverSide = TennisRules.sideOf(receiverId)
         if (serverSide == receiverSide) return
-        mutate(onSuccess = { mutableState.update { it.copy(timer = it.timer.beginLive()) } }) {
-            api.eventAction(
-                EventActionRequest(
-                    matchId = matchId,
-                    actionType = "server",
-                    clientActionId = newClientActionId(),
-                    currentServer = TennisRules.participantName(match, serverId),
-                    currentServerSide = serverSide,
-                    serviceSide = "Right",
-                    currentServerParticipantId = serverId,
-                    currentReceiver = TennisRules.participantName(match, receiverId),
-                    currentReceiverSide = receiverSide,
-                    currentReceiverParticipantId = receiverId,
-                    serveOrder = TennisRules.openingServeOrder(match.state, serverId),
-                    receiverDeuceOrder = TennisRules.openingReceiverDeuceOrder(match.state, serverId, receiverId),
-                ),
-            )
-        }
+        enqueue(
+            OfflineMatchAction(
+                matchId = matchId,
+                kind = OfflineActionKind.Server,
+                currentServer = TennisRules.participantName(match, serverId),
+                currentServerSide = serverSide,
+                serviceSide = "Right",
+                currentServerParticipantId = serverId,
+                currentReceiver = TennisRules.participantName(match, receiverId),
+                currentReceiverSide = receiverSide,
+                currentReceiverParticipantId = receiverId,
+                serveOrder = TennisRules.openingServeOrder(match.state, serverId),
+                receiverDeuceOrder = TennisRules.openingReceiverDeuceOrder(match.state, serverId, receiverId),
+            ),
+            onQueued = { mutableState.update { it.copy(timer = it.timer.beginLive()) } },
+        )
     }
 
     /** Padel Golden Point receiver: "Right" (deuce court) or "Left". */
     fun chooseGoldenPointReceiver(court: String) {
         val state = mutableState.value
         if (!state.canPlay || !state.requiresReceiverChoice) return
-        mutate { api.eventAction(EventActionRequest(matchId, "receiver_choice", newClientActionId(), side = court)) }
+        enqueue(action(OfflineActionKind.ReceiverChoice, side = court))
     }
 
+    /**
+     * Undo, as iOS: an action not yet sent is simply taken back on the phone. Undoing
+     * something the server already has needs a connection.
+     */
     fun undo() {
         val state = mutableState.value
         if (state.match == null || state.undoLocked) return
-        mutate { api.undo(MatchIdRequest(matchId, newClientActionId())) }
+        if (offlineStore.undoLastQueued(matchId)) {
+            offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = false) }
+            return
+        }
+        if (!isOnline.value) {
+            mutableState.update { it.copy(errorMessage = UNDO_NEEDS_CONNECTION) }
+            return
+        }
+        enqueue(action(OfflineActionKind.Undo))
     }
 
     fun endEarly() {
@@ -195,33 +251,51 @@ class ScoringViewModel(
         val duration = state.timer.matchDurationSeconds
         mutableState.update { it.copy(timer = it.timer.stopped(duration)) }
         durationRecorded = true
-        mutate {
-            api.endMatch(EndMatchRequest(matchId, endedEarly = true, clientActionId = newClientActionId(), reason = "Ended by operator", matchDurationSeconds = duration))
-        }
+        enqueue(action(OfflineActionKind.EndMatch, note = "Ended by operator", matchDurationSeconds = duration))
     }
 
+    /** Starting a scheduled match changes the court's schedule, so it needs a connection. */
     fun startScheduled() {
-        if (!mutableState.value.isScheduled) return
-        mutate(onSuccess = { match ->
-            timerStore.clear(matchId)
-            mutableState.update { it.copy(timer = initialTimer(match)) }
-        }) { api.startScheduledMatch(matchId) }
+        if (!mutableState.value.isScheduled || mutableState.value.isMutating) return
+        if (!isOnline.value) {
+            mutableState.update { it.copy(errorMessage = START_NEEDS_CONNECTION) }
+            return
+        }
+        mutableState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = api.startScheduledMatch(matchId)) {
+                is ApiResult.Success -> {
+                    owner()?.let { offlineStore.cache(result.value, it) }
+                    timerStore.clear(matchId)
+                    apply(result.value, bootstrap = false)
+                    mutableState.update { it.copy(timer = initialTimer(result.value)) }
+                }
+                is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
+            }
+            mutableState.update { it.copy(isMutating = false) }
+            persistTimer()
+        }
     }
 
     fun saveSettings(scoreType: Int, bestOf: Int, player1Shirt: String, player2Shirt: String) {
-        mutate {
-            api.eventAction(
-                EventActionRequest(
-                    matchId = matchId,
-                    actionType = "match_settings",
-                    clientActionId = newClientActionId(),
-                    scoreType = scoreType,
-                    bestOf = bestOf,
-                    player1ShirtColor = player1Shirt,
-                    player2ShirtColor = player2Shirt,
-                ),
-            )
-        }
+        enqueue(
+            action(
+                OfflineActionKind.MatchSettings,
+                scoreType = scoreType,
+                bestOf = bestOf,
+                player1ShirtColor = player1Shirt,
+                player2ShirtColor = player2Shirt,
+            ),
+        )
+    }
+
+    /** Try sending queued actions again (after a refusal or once back online). */
+    fun retrySync() = syncNow()
+
+    /** Drop actions the server refused and return to the server's score. */
+    fun discardPending() {
+        offlineStore.discardPending(matchId)
+        offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = false) }
     }
 
     fun clearError() = mutableState.update { it.copy(errorMessage = null) }
@@ -241,23 +315,56 @@ class ScoringViewModel(
 
     // Internals ------------------------------------------------------------
 
-    private fun mutate(onSuccess: (MatchDetail) -> Unit = {}, call: suspend () -> ApiResult<MatchDetail>) {
-        if (mutableState.value.isMutating) return
-        mutableState.update { it.copy(isMutating = true, errorMessage = null) }
-        viewModelScope.launch {
-            when (val result = call()) {
-                is ApiResult.Success -> {
-                    apply(result.value, bootstrap = false)
-                    onSuccess(result.value)
-                }
-                is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
-            }
-            mutableState.update { it.copy(isMutating = false) }
-            persistTimer()
+    private fun action(
+        kind: OfflineActionKind,
+        scorer: String? = null,
+        playerSide: String? = null,
+        note: String? = null,
+        side: String? = null,
+        currentServer: String? = null,
+        currentServerSide: String? = null,
+        serviceSide: String? = null,
+        matchDurationSeconds: Int? = null,
+        scoreType: Int? = null,
+        bestOf: Int? = null,
+        player1ShirtColor: String? = null,
+        player2ShirtColor: String? = null,
+    ) = OfflineMatchAction(
+        matchId = matchId,
+        kind = kind,
+        scorer = scorer,
+        playerSide = playerSide,
+        note = note,
+        side = side,
+        currentServer = currentServer,
+        currentServerSide = currentServerSide,
+        serviceSide = serviceSide,
+        matchDurationSeconds = matchDurationSeconds,
+        scoreType = scoreType,
+        bestOf = bestOf,
+        player1ShirtColor = player1ShirtColor,
+        player2ShirtColor = player2ShirtColor,
+    )
+
+    /** Queue, show the projected score at once, then send if online. */
+    private fun enqueue(action: OfflineMatchAction, onQueued: () -> Unit = {}) {
+        if (!offlineStore.enqueue(action)) {
+            mutableState.update { it.copy(errorMessage = NOT_HELD) }
+            return
         }
+        onQueued()
+        offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = false) }
+        persistTimer()
+        syncNow()
+    }
+
+    private fun syncNow() {
+        if (!isOnline.value) return
+        viewModelScope.launch { offlineStore.sync(api, owner()) }
     }
 
     private fun apply(match: MatchDetail, bootstrap: Boolean) {
+        if (bootstrap) bootstrapped = true
         val previous = mutableState.value
         var timer = if (bootstrap) restoredTimer(match) else previous.timer
         val previousGames = previous.match?.state?.gameHistory?.size ?: 0
@@ -285,7 +392,10 @@ class ScoringViewModel(
             val final = maxOf(recorded, timer.matchDurationSeconds)
             timer = timer.stopped(final)
             timerStore.clear(matchId)
-            if (recorded == 0 && final > 0 && !durationRecorded) recordDuration(final)
+            if (recorded == 0 && final > 0 && !durationRecorded) {
+                durationRecorded = true
+                recordDuration(final)
+            }
             durationRecorded = true
         }
 
@@ -299,16 +409,17 @@ class ScoringViewModel(
                     ScoringRules.canServerChooseSide(match.state?.events.orEmpty(), match.state?.currentServerSide ?: "player1"),
                 gamesCompleted = if (tennis) TennisRules.completedGames(match.state) else games,
                 tennisPoints = if (tennis) TennisRules.timeline(match.state) else emptyList(),
+                pendingActions = offlineStore.pendingCount(matchId),
             )
         }
     }
 
+    /** The finished match's time is queued like any other action, so it is kept offline too. */
     private fun recordDuration(seconds: Int) {
-        viewModelScope.launch {
-            api.eventAction(
-                EventActionRequest(matchId, "timer", newClientActionId(), note = "Match duration recorded", matchDurationSeconds = seconds),
-            )
-        }
+        val queued = offlineStore.enqueue(
+            action(OfflineActionKind.Timer, note = "Match duration recorded", matchDurationSeconds = seconds),
+        )
+        if (queued) syncNow()
     }
 
     private fun restoredTimer(match: MatchDetail): MatchTimer {
@@ -342,11 +453,22 @@ class ScoringViewModel(
 
     companion object {
         private const val TICK_MS = 1_000L
+        const val OFFLINE_NOT_HELD = "You're offline and this match isn't saved on this phone yet. Open it once while online to score it offline."
+        const val NOT_HELD = "This match isn't available for offline scoring on this phone. Reload it while online."
+        const val UNDO_NEEDS_CONNECTION = "Only points scored on this phone while offline can be undone until you reconnect."
+        const val START_NEEDS_CONNECTION = "Connect to the internet to start a scheduled match."
 
         fun factory(matchId: String): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as HitNScoreApplication).container
-                ScoringViewModel(matchId, container.api, container.timerStore)
+                ScoringViewModel(
+                    matchId = matchId,
+                    api = container.api,
+                    timerStore = container.timerStore,
+                    offlineStore = container.offlineMatchStore,
+                    isOnline = container.connectivity.isOnline,
+                    owner = { container.offlineOwner() },
+                )
             }
         }
     }

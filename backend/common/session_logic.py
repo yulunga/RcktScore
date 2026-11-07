@@ -18,6 +18,9 @@ def _utcnow():
 
 DEFAULT_ORG_USER_SESSION_TTL_DAYS = 30
 MAX_ORG_USER_SESSION_TTL_DAYS = 90
+WEB_SESSION_COOKIE = "__Host-hitnscore_session"
+ROOT_ADMIN_SESSION_COOKIE = "__Host-hitnscore_root_admin"
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def _session_ttl_days():
@@ -53,13 +56,83 @@ def _request_headers(event):
     }
 
 
-def session_token_from_event(event):
+def _cookie_value(event, cookie_name):
+    cookie_parts = list(event.get("cookies") or [])
+    headers = _request_headers(event)
+    if headers.get("cookie"):
+        cookie_parts.extend(headers["cookie"].split(";"))
+    for cookie_part in cookie_parts:
+        name, separator, value = str(cookie_part).strip().partition("=")
+        if separator and name == cookie_name:
+            return value.strip()
+    return ""
+
+
+def _bearer_token_from_event(event):
     headers = _request_headers(event)
     authorization = (headers.get("authorization") or "").strip()
     if authorization.lower().startswith("bearer "):
         return authorization[7:].strip()
+    return ""
 
-    return (headers.get("x-session-token") or "").strip()
+
+def session_token_from_event(event):
+    return _bearer_token_from_event(event)
+
+
+def session_credentials_from_event(event, cookie_name=WEB_SESSION_COOKIE):
+    bearer_token = _bearer_token_from_event(event)
+    cookie_token = _cookie_value(event, cookie_name)
+    if bearer_token and cookie_token:
+        raise SessionAuthError(
+            400,
+            "AMBIGUOUS_SESSION_CREDENTIALS",
+            "Use either browser-cookie authentication or native bearer authentication, not both.",
+        )
+    if cookie_token:
+        return cookie_token, "cookie"
+    if bearer_token:
+        return bearer_token, "bearer"
+    return "", None
+
+
+def web_app_origin():
+    return (os.getenv("WEB_APP_ORIGIN") or "https://app.hitnscore.com").rstrip("/")
+
+
+def validate_web_origin(event):
+    origin = (_request_headers(event).get("origin") or "").rstrip("/")
+    if origin != web_app_origin():
+        raise SessionAuthError(403, "ORIGIN_REJECTED", "This request did not originate from the HitnScore web app.")
+
+
+def _request_method(event):
+    request_context = event.get("requestContext") or {}
+    http_context = request_context.get("http") or {}
+    return str(http_context.get("method") or event.get("httpMethod") or "GET").upper()
+
+
+def _validate_cookie_csrf(event, session_row):
+    if _request_method(event) not in UNSAFE_METHODS:
+        return
+    validate_web_origin(event)
+    supplied = (_request_headers(event).get("x-csrf-token") or "").strip()
+    expected = str(session_row.get("csrf_token") or "")
+    if not supplied or not expected or not secrets.compare_digest(supplied, expected):
+        raise SessionAuthError(403, "CSRF_VALIDATION_FAILED", "The security token for this request is missing or invalid.")
+
+
+def session_cookie(token, max_age):
+    return f"{WEB_SESSION_COOKIE}={token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age={int(max_age)}"
+
+
+def session_cookie_for_result(session_result):
+    remaining = max(0, int((session_result["expires_at"] - _utcnow()).total_seconds()))
+    return session_cookie(session_result["token"], remaining)
+
+
+def clear_session_cookie():
+    return f"{WEB_SESSION_COOKIE}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0"
 
 
 def normalize_login_source(login_source):
@@ -114,6 +187,7 @@ def create_org_user_session(connection, username, login_source="login"):
 
     normalized_source = normalize_login_source(login_source)
     token = secrets.token_urlsafe(48)
+    csrf_token = secrets.token_urlsafe(32)
     now = _utcnow()
     expires_at = now + timedelta(days=_session_ttl_days())
     revoke_active_sessions_for_username(
@@ -131,7 +205,8 @@ def create_org_user_session(connection, username, login_source="login"):
                 login_source,
                 created_at,
                 last_seen_at,
-                expires_at
+                expires_at,
+                csrf_token
             )
             VALUES (
                 %(username)s,
@@ -139,7 +214,8 @@ def create_org_user_session(connection, username, login_source="login"):
                 %(login_source)s,
                 %(created_at)s,
                 %(last_seen_at)s,
-                %(expires_at)s
+                %(expires_at)s,
+                %(csrf_token)s
             )
             """,
             {
@@ -149,11 +225,12 @@ def create_org_user_session(connection, username, login_source="login"):
                 "created_at": now,
                 "last_seen_at": now,
                 "expires_at": expires_at,
+                "csrf_token": csrf_token,
             },
         )
 
     connection.commit()
-    return {"token": token, "expires_at": expires_at}
+    return {"token": token, "csrf_token": csrf_token, "expires_at": expires_at}
 
 
 def get_active_session_for_username(connection, username, login_source=None):
@@ -177,6 +254,7 @@ def get_active_session_for_username(connection, username, login_source=None):
                 id,
                 username,
                 login_source,
+                csrf_token,
                 created_at,
                 last_seen_at,
                 expires_at
@@ -235,6 +313,7 @@ def _get_session_row(connection, token, *, include_revoked=False):
                 last_seen_at,
                 expires_at,
                 login_source,
+                csrf_token,
                 revoked_at,
                 revoked_reason
             FROM org_user_sessions
@@ -249,7 +328,7 @@ def _get_session_row(connection, token, *, include_revoked=False):
 
 
 def require_org_user_session(connection, event):
-    token = session_token_from_event(event)
+    token, credential_type = session_credentials_from_event(event)
     if not token:
         raise SessionAuthError(401, "SESSION_REQUIRED", "Please sign in to continue.")
 
@@ -279,6 +358,14 @@ def require_org_user_session(connection, event):
         connection.commit()
         raise SessionAuthError(401, "SESSION_EXPIRED", "Your session has expired. Please sign in again.")
 
+    login_source = normalize_login_source(session_row.get("login_source"))
+    if credential_type == "cookie" and login_source != "web_app":
+        raise SessionAuthError(401, "SESSION_TRANSPORT_MISMATCH", "This native session cannot be used as a browser cookie.")
+    if credential_type == "bearer" and login_source == "web_app":
+        raise SessionAuthError(401, "SESSION_TRANSPORT_MISMATCH", "Browser sessions must use the secure session cookie.")
+    if credential_type == "cookie":
+        _validate_cookie_csrf(event, session_row)
+
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -297,7 +384,10 @@ def require_org_user_session(connection, event):
         "id": session_row["id"],
         "username": session_row["username"],
         "token": token,
-        "login_source": normalize_login_source(session_row.get("login_source")),
+        "login_source": login_source,
+        "credential_type": credential_type,
+        "csrf_token": session_row.get("csrf_token"),
+        "expires_at": session_row.get("expires_at"),
     }
 
 

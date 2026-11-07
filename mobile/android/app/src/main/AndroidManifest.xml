@@ -6,6 +6,15 @@
     <!-- Ongoing "match in progress" notification while scoring (Android 13+ asks the user). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Lets the app find the browser, to hand web Help links back to it (Android 11+ visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:name=".HitNScoreApplication"
         android:allowBackup="false"
@@ -27,6 +36,26 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Password set-up and reset links from HitnScore emails
+                (https://app.hitnscore.com/help?mode=reset|confirm-email&token=...) open the app.
+                autoVerify needs /.well-known/assetlinks.json on app.hitnscore.com listing this
+                app's signing certificate (see README "Password links"). Until it is published,
+                the link opens in the browser unless "Open supported links" is turned on for
+                the app in Android settings. Website /help links without a token are handed
+                back to the browser by MainActivity.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:host="app.hitnscore.com" />
+                <data android:path="/help" />
             </intent-filter>
         </activity>
     </application>

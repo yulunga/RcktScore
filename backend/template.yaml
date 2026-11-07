@@ -14,6 +14,7 @@ Globals:
         ROOT_ADMIN_SESSION_TTL_HOURS: !Ref RootAdminSessionTtlHours
         ORG_USER_SESSION_TTL_DAYS: !Ref OrgUserSessionTtlDays
         IDENTITY_FIRST_LOGIN_ENABLED: !Ref IdentityFirstLoginEnabled
+        WEB_APP_ORIGIN: !Ref WebAppOrigin
         EMAIL_LOGO_URL: !Ref EmailLogoUrl
         APPLE_PURCHASES_ENABLED: !Ref ApplePurchasesEnabled
         APPLE_PERSONAL_PLUS_MONTHLY_PRODUCT_ID: !Ref ApplePersonalPlusMonthlyProductId
@@ -92,6 +93,11 @@ Parameters:
       - "true"
       - "false"
     Description: Return an identity session immediately for multi-membership users; false restores the legacy sign-in membership chooser.
+  WebAppOrigin:
+    Type: String
+    Default: "https://app.hitnscore.com"
+    AllowedPattern: "^https://[A-Za-z0-9.-]+$"
+    Description: Exact browser origin allowed to send credentialed API requests.
   ApplePurchasesEnabled:
     Type: String
     Default: "false"
@@ -158,15 +164,19 @@ Resources:
       StageName: !Ref StageName
       CorsConfiguration:
         AllowOrigins:
-          - "*"
+          - !Ref WebAppOrigin
+        AllowCredentials: true
         AllowHeaders:
           - Content-Type
           - x-api-key
           - Authorization
+          - X-CSRF-Token
+          - X-HitnScore-Session
         AllowMethods:
           - GET
           - POST
           - PUT
+          - PATCH
           - DELETE
           - OPTIONS
 
@@ -335,6 +345,18 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/logout
             Method: POST
+
+  GetRootAdminSessionStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_root_admin_session_status/handler.lambda_handler
+      Events:
+        GetRootAdminSessionStatusApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/session/status
+            Method: GET
 
   GetRootAdminDashboardFunction:
     Type: AWS::Serverless::Function

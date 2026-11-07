@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from functions.get_session_status import handler
 
 
@@ -14,8 +16,14 @@ def test_session_status_returns_active_session(monkeypatch):
     monkeypatch.setattr(
         handler,
         "require_org_user_session",
-        lambda _connection, _event: {"login_source": "web_app"},
+        lambda _connection, _event: {
+            "username": "player@example.com",
+            "login_source": "web_app",
+            "expires_at": datetime.now(timezone.utc),
+            "csrf_token": "csrf-value",
+        },
     )
+    monkeypatch.setattr(handler, "get_org_users", lambda *_args: [])
 
     response = handler.lambda_handler({"headers": {"authorization": "Bearer token"}}, None)
 

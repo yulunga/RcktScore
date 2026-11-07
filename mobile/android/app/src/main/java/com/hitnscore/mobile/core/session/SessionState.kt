@@ -15,6 +15,15 @@ enum class SignOutReason {
 
     /** The backend ended the session for another reason. */
     Ended,
+
+    /** The user changed their sign-in email; the backend signs out every device. */
+    EmailChanged,
+
+    /** The user deleted their Personal account. */
+    AccountDeleted,
+
+    /** The password was reset or set from an emailed link; the backend signed out every device. */
+    PasswordChanged,
 }
 
 sealed interface SessionState {

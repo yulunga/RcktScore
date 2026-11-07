@@ -130,10 +130,11 @@ Current behavior:
 - users may belong to multiple organisations
 - identity-first login is enabled by default. It creates a session immediately, preferring an approved personal membership and otherwise the first approved club membership, and returns every approved membership in `available_memberships`
 - deployment parameter `IdentityFirstLoginEnabled=false` restores the legacy `data.organizationSelection` response without removing that contract from the clients
-- a successful login creates a session token in `org_user_sessions`
+- a successful login creates an opaque session in `org_user_sessions`; only its SHA-256 token hash is stored
 - organisation-user sessions expire after 30 days by default; `OrgUserSessionTtlDays` can configure a value from one to 90 days
 - successful login and multi-membership selection payloads include `session_expires_at`
-- session tokens are sent in `Authorization: Bearer <token>`
+- `client_type: web_app` receives `__Host-hitnscore_session` through `Set-Cookie` with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, no `Domain`, and no token in JSON. iOS and Android continue to receive the opaque token in JSON and send `Authorization: Bearer <token>`
+- web session responses return a non-authenticating CSRF value; cookie-authenticated POST/PUT/PATCH/DELETE requests require that value in `X-CSRF-Token` plus an exact `Origin: https://app.hitnscore.com`. Cookie and bearer credentials supplied together are rejected
 - most protected organisation and match routes validate that token server-side
 - session invalidation codes currently include:
   - `SESSION_REQUIRED`
@@ -149,14 +150,14 @@ Duplicate login behavior:
 - if an active session already exists for the username, `POST /login` returns `ACTIVE_SESSION_EXISTS` with the active client label
 - the frontend may retry with `force_logout_other`
 - a forced retry revokes every prior web/mobile token for that identity; rejected tokens return `SESSION_REPLACED`
-- `GET /session/status` is the lightweight authenticated heartbeat used by web and iOS to discover replacement while otherwise viewing cached UI
+- `GET /session/status` is the authenticated heartbeat used by web and iOS to discover replacement; for web it also rebuilds non-secret membership state and returns the in-memory CSRF value
 - when identity-first login is disabled, `POST /login` can return
   `data.organizationSelection` for users with multiple approved memberships;
   web and iOS deliberately continue to handle both response shapes
 - session and membership payloads include the client-effective `enabled_sports`
   list. It is derived from the platform client list, organisation list, and the
   membership's `enabled_sports_web` or `enabled_sports_ios` override.
-- migration `019_offline_scoring_support.sql` adds `org_user_sessions.expires_at` and the reconnect-idempotency receipt table
+- migration `019_offline_scoring_support.sql` adds `org_user_sessions.expires_at` and the reconnect-idempotency receipt table; migration `048_browser_cookie_csrf_sessions.sql` adds per-session CSRF state and revokes legacy browser-readable web/root-admin sessions during the cookie cutover
 
 Authentication, registration and feedback logs pass email-like identifiers through `common.logging_utils.mask_email_for_log`, retaining only the first local-part character and domain (for example `s***@example.com`). `CloudWatchLogRetentionDays` defaults to 60 in the SAM template. The deployment custom resource creates or updates every Lambda log group with that retention period, and a daily enforcement run repairs drift for stack-owned Lambda groups.
 
@@ -168,13 +169,15 @@ Current behavior:
 
 - `POST /root_admin/login` verifies credentials against `SkRootAdmin`
 - platform root-admin account details and salted password hashes are maintained through privileged SQL. The app has no root-admin account editing endpoint. The User Accounts password endpoint updates ordinary organisation memberships
-- successful login returns a 384-bit opaque session token and expiry timestamp
+- successful login sets the separate `__Host-hitnscore_root_admin` HttpOnly cookie and returns only non-secret identity, expiry and CSRF state
 - only the token hash is stored in `root_admin_sessions`
 - root-admin sessions expire after eight hours by default, configurable from one to 24 hours with `RootAdminSessionTtlHours`
 - a new login revokes prior active sessions for that root-admin account
-- every root-admin route validates the bearer token server-side
+- every root-admin route validates the cookie session server-side; state-changing requests also require the Root Admin CSRF value and exact web origin
 - reused organisation-management routes validate either a qualifying org-user session or a valid root-admin session
+- reused organisation routes inspect `X-HitnScore-Session: root_admin` only to choose the separate Root Admin cookie when both browser cookies exist; the selector is not authorization and the database-backed Root Admin session is still fully validated
 - `POST /root_admin/logout` revokes the presented root-admin session
+- `GET /root_admin/session/status` restores non-secret Root Admin browser state without exposing the cookie credential
 - the former `x-root-admin-request` bypass is no longer accepted
 
 ## Current Route Inventory
@@ -193,6 +196,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `GET /organization_users/approve`
 - `POST /root_admin/login`
 - `POST /root_admin/logout`
+- `GET /root_admin/session/status`
 - `POST /register_interest`
 - `POST /feedback`
 
@@ -388,7 +392,7 @@ Current root-admin club-user behavior:
 - `POST /root_admin/organization_users` creates a pending organisation membership and emails an approval link
 - `PUT /root_admin/organization_users/{user_id}/approve` lets root admin manually approve a pending organisation user without waiting for the email link flow
 - `GET /root_admin/interest_requests` now returns club enquiries only; personal registrations never enter the admin approval queue
-- `DELETE /root_admin/users/{user_id}` requires the exact `confirmation: "DELETE USER"`. It removes the normalized identity, memberships, sessions, notification reads, player-account links and registration rows. `delete_games: false` preserves shared history and archives any Personal tenant; `delete_games: true` also deletes matches owned by the Personal tenant or explicitly attributed to the username before removing the Personal tenant. The route always requires a valid root-admin bearer session.
+- `DELETE /root_admin/users/{user_id}` requires the exact `confirmation: "DELETE USER"`. It removes the normalized identity, memberships, sessions, notification reads, player-account links and registration rows. `delete_games: false` preserves shared history and archives any Personal tenant; `delete_games: true` also deletes matches owned by the Personal tenant or explicitly attributed to the username before removing the Personal tenant. The route always requires the valid Root Admin cookie session and CSRF validation.
 
 ### Organisation and dashboard routes
 
@@ -579,7 +583,7 @@ Current behavior:
 - migrations `025_apple_subscription_account_identity.sql`, `026_apple_purchase_verification.sql`, and `027_apple_subscription_lifecycle_processing.sql` provide stable identity, the verified transaction ledger, lifecycle/event state, retry/reconciliation metadata and an enforced append-only entitlement audit
 - `POST /subscriptions/apple/notifications` is the unauthenticated-by-session App Store Server Notifications V2 receiver. It authenticates Apple by verifying the outer `signedPayload` and nested JWS values, deduplicates `notificationUUID`, rejects out-of-order state, and applies renewals, auto-renew changes, billing retry/grace, expiry, refund and revocation through the common lifecycle processor
 - an hourly EventBridge Scheduler invokes reconciliation. Elapsed active/grace/retry rows are prioritised and checked with Apple `Get All Subscription Statuses` before local expiry is applied, using an In-App Purchase key held in AWS Secrets Manager. A 15-minute delivery/reconciliation window prevents delayed renewal notifications from producing temporary Plus-to-Free-to-Plus changes; unresolved elapsed access is then removed by the bounded fallback and failures retain retry state
-- `GET /root_admin/subscriptions` requires a root-admin bearer session and returns current Apple subscription state, processing/reconciliation errors, V2 event activity and entitlement audit history
+- `GET /root_admin/subscriptions` requires a Root Admin cookie session and returns current Apple subscription state, processing/reconciliation errors, V2 event activity and entitlement audit history
 - StoreKit now uses the returned account token and finishes a server-enabled purchase only after backend acceptance; local Xcode StoreKit tests remain non-authoritative while `APPLE_PURCHASES_ENABLED=false`
 - production activation remains outstanding until migration/configuration deployment and Sandbox/Production lifecycle evidence pass the release checklist
 - the complete production architecture, lifecycle mapping, configuration gates and test checklist are maintained in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md)
@@ -589,7 +593,7 @@ Current behavior:
 [functions/get_organization_settings/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_organization_settings/handler.py)
 
 - org-user sessions are authorized server-side
-- valid root-admin sessions may access this route, but the bearer token is checked against `root_admin_sessions` before data is returned
+- valid Root Admin sessions may access this route, but the cookie credential is checked against `root_admin_sessions` before data is returned
 - response includes:
   - `organization`
   - `users`
@@ -613,7 +617,7 @@ Current profile behavior:
 
 Current deletion behavior:
 
-- requires a valid org-user bearer session for the requested organisation
+- requires a valid organisation-user session for the requested organisation (web cookie or native bearer according to client type)
 - requires the JSON body `{ "confirmation": "DELETE MY ACCOUNT" }`
 - permits deletion only when the authenticated username is the owner of a tenant whose `org_type` is `personal`
 - permanently removes the personal tenant's matches, scoring events/action receipts through cascade, court display sessions, courts, memberships, organisation settings, associated personal signup record, and all active sessions for that username
@@ -639,6 +643,8 @@ Current behavior:
 - Tournament Manager detail responses remove entrant email, registered username and canonical user ID for non-admins. Admin guest profiles can offer Personal signup links; registration with the same email links the reusable player identity without creating host-club access
 - delete path removes the user from the current organisation only
 - the backend prevents deleting or demoting the last remaining admin in an organisation
+- every `SkwshOrgUsers` identity must also own one `personal_free` or `personal_plus` organisation. Creating a club membership first ensures the Personal Free workspace, owner membership and Personal Court, then adds the club as an association. Migration `047_personal_account_for_every_identity.sql` backfills legacy club-only identities and adds a deferred constraint trigger so direct membership writes cannot leave a registered identity without Personal
+- deleting the owned Personal account deletes all membership rows for that identity, including club associations, plus the Personal tenant's matches/scoring data and active sessions. It does not delete club-owned matches or other club data
 
 ### Courts
 
@@ -649,7 +655,7 @@ Current behavior:
 Current behavior:
 
 - org-user admin access is enforced for normal club operations
-- root-admin club requests use the root-admin bearer token and are validated server-side
+- Root Admin club requests use the separate Root Admin cookie and are validated server-side
 
 ### Match setup lookup
 

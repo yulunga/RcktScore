@@ -58,6 +58,17 @@ class ApiClient(
     suspend fun <T> delete(path: String, deserializer: DeserializationStrategy<T>): ApiResult<T> =
         execute(Request.Builder().url(urlFor(path)).delete().build(), deserializer)
 
+    /** DELETE with a JSON body: the backend reads the organisation or confirmation from it. */
+    suspend fun <B, T> delete(
+        path: String,
+        body: B,
+        bodySerializer: SerializationStrategy<B>,
+        deserializer: DeserializationStrategy<T>,
+    ): ApiResult<T> = execute(
+        Request.Builder().url(urlFor(path)).delete(encode(body, bodySerializer)).build(),
+        deserializer,
+    )
+
     private fun <B> encode(body: B, serializer: SerializationStrategy<B>) =
         json.encodeToString(serializer, body).toRequestBody(JSON_MEDIA_TYPE)
 

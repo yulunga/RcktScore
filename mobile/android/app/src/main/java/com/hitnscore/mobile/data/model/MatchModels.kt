@@ -99,6 +99,9 @@ data class MatchState(
     @SerialName("current_receiver_participant_id") val currentReceiverParticipantId: String? = null,
     @SerialName("serve_order") val serveOrder: List<String>? = null,
     @SerialName("receiver_deuce_order") val receiverDeuceOrder: Map<String, String>? = null,
+    @SerialName("team_service_order") val teamServiceOrder: Map<String, List<String>>? = null,
+    @SerialName("tiebreak_first_server_side") val tieBreakFirstServerSide: String? = null,
+    @SerialName("tiebreak_first_server_participant_id") val tieBreakFirstServerParticipantId: String? = null,
     val handicap: MatchHandicap? = null,
     @SerialName("match_duration_seconds") val matchDurationSeconds: Int = 0,
     @SerialName("game_history") val gameHistory: List<GameHistoryEntry> = emptyList(),
@@ -142,10 +145,15 @@ data class MatchEvent(
     val summary: String? = null,
 )
 
-/** The subset of event payload fields the read-only views use. */
+/** The event payload fields the views and the offline projection use. */
 @Serializable
 data class MatchEventPayload(
     val scorer: String? = null,
+    val note: String? = null,
+    @SerialName("player1_games_won") val player1GamesWon: Int? = null,
+    @SerialName("player2_games_won") val player2GamesWon: Int? = null,
+    @SerialName("player1_set_games") val player1SetGames: Int? = null,
+    @SerialName("player2_set_games") val player2SetGames: Int? = null,
     @SerialName("player_side") val playerSide: String? = null,
     @SerialName("current_server_side") val currentServerSide: String? = null,
     @SerialName("service_side") val serviceSide: String? = null,

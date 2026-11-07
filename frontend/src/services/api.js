@@ -1,7 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_KEY = import.meta.env.VITE_API_KEY;
-const SESSION_KEY = "rcktscore.auth";
-const ROOT_ADMIN_SESSION_KEY = "rcktscore.root_admin";
+let webCsrfToken = "";
+let rootAdminCsrfToken = "";
 const SESSION_INVALIDATION_CODES = new Set(["SESSION_REQUIRED", "SESSION_INVALID", "SESSION_REPLACED", "SESSION_EXPIRED"]);
 const ROOT_ADMIN_SESSION_INVALIDATION_CODES = new Set([
   "ROOT_ADMIN_SESSION_REQUIRED",
@@ -10,40 +10,12 @@ const ROOT_ADMIN_SESSION_INVALIDATION_CODES = new Set([
   "ROOT_ADMIN_SESSION_EXPIRED",
 ]);
 
-function readStoredSessionToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const rawValue = window.sessionStorage.getItem(SESSION_KEY);
-    if (!rawValue) {
-      return null;
-    }
-
-    const parsedValue = JSON.parse(rawValue);
-    return parsedValue?.session?.session_token || parsedValue?.session?.sessionToken || parsedValue?.session_token || null;
-  } catch {
-    return null;
-  }
+export function setWebCsrfToken(value) {
+  webCsrfToken = String(value || "");
 }
 
-function readStoredRootAdminSessionToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const rawValue = window.sessionStorage.getItem(ROOT_ADMIN_SESSION_KEY);
-    if (!rawValue) {
-      return null;
-    }
-
-    const parsedValue = JSON.parse(rawValue);
-    return parsedValue?.session_token || parsedValue?.sessionToken || null;
-  } catch {
-    return null;
-  }
+export function setRootAdminCsrfToken(value) {
+  rootAdminCsrfToken = String(value || "");
 }
 
 function notifySessionInvalidated(code, rootAdmin = false) {
@@ -64,24 +36,30 @@ async function apiRequest(path, options = {}) {
   const rootAdminRequest = Boolean(options.rootAdminRequest);
   const rootAdminPath = path.startsWith("/root_admin/") && path !== "/root_admin/login";
   const usesRootAdminSession = rootAdminRequest || rootAdminPath;
-  const defaultSessionToken = usesRootAdminSession ? readStoredRootAdminSessionToken() : readStoredSessionToken();
-  const sessionToken = options.sessionToken === undefined ? defaultSessionToken : options.sessionToken;
+  const method = String(options.method || "GET").toUpperCase();
+  const csrfToken = usesRootAdminSession ? rootAdminCsrfToken : webCsrfToken;
+  const bearerToken = options.bearerToken;
+  const stateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
   const headers = {
     "Content-Type": "application/json",
     ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-    ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+    ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
+    ...(stateChanging && csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+    ...(usesRootAdminSession ? { "X-HitnScore-Session": "root_admin" } : {}),
     ...(options.headers || {}),
   };
 
   const requestOptions = { ...options };
-  delete requestOptions.sessionToken;
   delete requestOptions.rootAdminRequest;
+  delete requestOptions.bearerToken;
+  delete requestOptions.sessionToken;
 
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...requestOptions,
       headers,
+      credentials: "include",
     });
   } catch (requestError) {
     const error = new Error(
@@ -133,10 +111,9 @@ export function login(payload) {
   });
 }
 
-export function logout(sessionToken) {
+export function logout() {
   return apiRequest("/logout", {
     method: "POST",
-    sessionToken,
   });
 }
 
@@ -151,11 +128,14 @@ export function rootAdminLogin(payload) {
   });
 }
 
-export function rootAdminLogout(sessionToken) {
+export function rootAdminLogout() {
   return apiRequest("/root_admin/logout", {
     method: "POST",
-    sessionToken,
   });
+}
+
+export function getRootAdminSessionStatus() {
+  return apiRequest("/root_admin/session/status", { rootAdminRequest: true });
 }
 
 export function registerInterest(payload) {
@@ -493,7 +473,7 @@ export function recordTournamentMatchResult(tournamentId, matchId, payload) {
 }
 
 export function getPublicTournamentDraw(accessKey) {
-  return apiRequest(`/public/tournament-draws/${encodeURIComponent(accessKey)}`, { sessionToken: null });
+  return apiRequest(`/public/tournament-draws/${encodeURIComponent(accessKey)}`);
 }
 
 export function searchMatchSetupLookup(organizationId, query) {
@@ -626,7 +606,6 @@ export function saveWatchedMatch(payload) {
 export function createScoreboardDisplaySession(payload) {
   return apiRequest("/scoreboard_display/session", {
     method: "POST",
-    sessionToken: null,
     body: JSON.stringify(payload),
   });
 }
@@ -634,6 +613,6 @@ export function createScoreboardDisplaySession(payload) {
 export function getScoreboardDisplayCurrent(displaySessionToken) {
   return apiRequest("/scoreboard_display/current", {
     method: "GET",
-    sessionToken: displaySessionToken,
+    bearerToken: displaySessionToken,
   });
 }

@@ -70,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -195,11 +196,29 @@ fun ScoringScreen(
                     state.errorMessage ?: stringResource(R.string.not_available),
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
-                state.isComplete -> CompletedCard(match, state, onOpenMatchView = { onOpenMatchView(match.id) }, onUndo = viewModel::undo)
-                else -> Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!isOnline) {
-                        Text(stringResource(R.string.offline), color = ServeOrange, style = MaterialTheme.typography.labelLarge)
+                state.isComplete -> Column(Modifier.fillMaxSize()) {
+                    // A match finished offline still shows that its last points are waiting to send.
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        SyncBanner(
+                            isOnline = state.isOnline && isOnline,
+                            pending = state.pendingActions,
+                            isSyncing = state.isSyncing,
+                            failure = state.syncFailure,
+                            onRetry = viewModel::retrySync,
+                            onDiscard = viewModel::discardPending,
+                        )
                     }
+                    CompletedCard(match, state, onOpenMatchView = { onOpenMatchView(match.id) }, onUndo = viewModel::undo)
+                }
+                else -> Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SyncBanner(
+                        isOnline = state.isOnline && isOnline,
+                        pending = state.pendingActions,
+                        isSyncing = state.isSyncing,
+                        failure = state.syncFailure,
+                        onRetry = viewModel::retrySync,
+                        onDiscard = viewModel::discardPending,
+                    )
                     if (state.isScheduled) {
                         ScheduledBanner(isMutating = state.isMutating, onStart = viewModel::startScheduled)
                     }
@@ -688,6 +707,61 @@ private fun IntervalOverlay(timer: MatchTimer, isTennis: Boolean, onToggle: () -
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Slate),
     ) { Text(stringResource(R.string.skip_break)) }
+}
+
+/**
+ * Offline scoring status (M5). Offline: how many points are saved on the phone.
+ * Online: a short "sending" line while the queue drains, or Retry / Discard when the
+ * server refused an action. Nothing shows when everything is in sync.
+ */
+@Composable
+private fun SyncBanner(
+    isOnline: Boolean,
+    pending: Int,
+    isSyncing: Boolean,
+    failure: String?,
+    onRetry: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
+    val text = when {
+        failure != null -> stringResource(R.string.sync_refused, failure)
+        !isOnline && pending > 0 -> pluralStringResource(R.plurals.sync_offline_pending, pending, pending)
+        !isOnline -> stringResource(R.string.sync_offline)
+        isSyncing && pending > 0 -> pluralStringResource(R.plurals.sync_sending, pending, pending)
+        else -> null
+    } ?: return
+    val accent = if (failure != null) Danger else ServeOrange
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = accent.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(painterResource(R.drawable.ic_wifi_off), contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
+            if (failure != null) {
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+                TextButton(onClick = { confirmDiscard = true }) { Text(stringResource(R.string.sync_discard), color = Danger) }
+            }
+        }
+    }
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(R.string.sync_discard_title)) },
+            text = { Text(pluralStringResource(R.plurals.sync_discard_body, pending, pending)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    onDiscard()
+                }) { Text(stringResource(R.string.sync_discard), color = Danger) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }
 
 @Composable

@@ -588,7 +588,7 @@ const GUIDES = {
           "Use Reset Password when the current password is unavailable.",
           "A replacement login revokes the previous identity session across web and mobile.",
           "Role, sport-access, email and password changes can deliberately revoke sessions so permissions are refreshed.",
-          "Personal-account deletion uses repeated destructive confirmation and removes the owned Personal data described in the privacy notice.",
+          "Personal-account deletion uses repeated destructive confirmation and removes the owned Personal workspace, Personal matches and scoring data, active sessions, and all club associations. Club-owned match records remain with the relevant club.",
         ],
       },
     ],

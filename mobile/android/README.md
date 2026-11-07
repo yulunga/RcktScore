@@ -5,7 +5,7 @@
 Native Android app for HitNScore. It is a separate Gradle project beside
 `mobile/ios/`; it does not alter or wrap the iOS workspace.
 
-## Current Status (M4 tennis and Padel, October 2026)
+## Current Status (M5 offline scoring, registration, settings editing and password links, November 2026)
 
 In place:
 
@@ -57,6 +57,39 @@ In place:
   receiver, serving/receiving line, point timeline with game dividers, Padel
   Golden Point receiver choice, 5-minute warm-up, 90 s changeovers and 120 s
   set breaks
+- **offline scoring (M5)**: every scoring action (points, strokes, lets,
+  serve side, first server, Golden Point receiver, undo, settings, end early)
+  is queued on the phone with its projected score and shown at once, then sent
+  to the backend in order with its own `client_action_id`. Offline, the queue
+  waits (it survives the app closing) and is sent when the connection returns,
+  even if the scorer is closed. Squash/racketball and tennis/Padel rules are
+  ported from the iOS reducers; the server's response stays authoritative.
+  Up to five recent matches are held, Home shows **Continue offline** when
+  there is no connection, and a refused action offers Retry or Discard.
+  Opening a match for the first time and starting a scheduled match need a
+  connection; undo of an already-sent action needs a connection, as iOS
+- **Want In** on the sign-in screen: create a free Personal account (the
+  server emails a link to verify the address and set a password) or send a
+  club enquiry, with the iOS human check
+- **settings editing (M6, first part)**: Profile (name, email, phone, city,
+  country; an email change signs out every device), password-reset email,
+  Personal account deletion (two-step confirmation), Game Settings (Personal
+  sport access and per-sport timer defaults), and for club admins:
+  Organisation profile and location, Racket Sports access, Users (invite by
+  email, edit name/email/role, send reset email, remove; no password field,
+  as required by B17) and Courts (add, edit, remove, sport per court, new
+  scoreboard display code)
+- **password set-up and reset in the app**: the emailed link
+  (`https://app.hitnscore.com/help?mode=reset&token=…`, or
+  `mode=confirm-email&token=setup_…` for a new account) opens a Set password
+  screen that checks the link, shows the password rules as you type (8+
+  characters, uppercase, number, symbol, no common words, as the backend), and
+  saves it. A reset signs every device out, including this one. If the email
+  opened in a browser, paste the link under Need Help? → "I already have a
+  link". Website Help links without a token are handed back to the browser.
+  See [Password Links](#password-links)
+- club roles `admin`, `scorer` and `read_only`: read-only members get no Start
+  button and open matches in the read-only match view (B18)
 - ongoing "match in progress" notification, screen kept on, phones held in
   portrait, haptics on points and games
 - API layer: `{ success, data, error, meta }` envelope, bearer-token
@@ -64,13 +97,13 @@ In place:
 - release hardening: R8, optional upload-key signing, CI version codes,
   HTTPS-only, no cloud backup or device transfer of app data
 - unit tests (login decoding, session repository, API parsing, navigation,
-  match clock, squash point rail, tennis/Padel rules)
-  and a Compose sign-in screen smoke test
+  match clock, squash point rail, tennis/Padel rules, offline reducers and
+  queue, registration, password links and rules, set-password screen) and Compose sign-in and Want In smoke tests
 - a GitHub Actions workflow template in `ci/`
 
-Not yet built: offline queue and optimistic scoring (M5),
-settings editing, help/feedback flows and "Want In" registration (M6),
-Watch a Match, billing.
+Not yet built: scorer Match Details (scoreboard URL and codes), Help &
+Feedback and Watch a Match (M6b), crash reporting and release hardening (M7),
+Google Play Billing and passkeys (v1.1).
 
 Sign-in is tested manually until a staging backend exists, because the dev
 build talks to the production API. Use the agreed test accounts (personal,
@@ -142,6 +175,39 @@ keyPassword=...
 
 Never commit keystores or passwords. In CI they come from repository secrets
 (see `ci/android-ci.yml`).
+
+## Password Links
+
+The app claims `https://app.hitnscore.com/help` as an Android App Link, so a
+tap on the reset or set-up link in the email opens the app. Android only
+trusts that claim once the website publishes
+`https://app.hitnscore.com/.well-known/assetlinks.json` listing this app's
+signing certificates. Until then, the link opens in the browser and the web
+page works as before; the paste-a-link fallback works in every case.
+
+Publishing that file is a website change, outside `mobile/android/`. The
+template is `play-store/assetlinks.json.template`:
+
+1. Fill in the SHA-256 fingerprints: the **app signing key** from Play
+   Console → Test and release → App integrity (required for Play installs),
+   and for local testing the debug key from `./gradlew signingReport`.
+2. Add one entry per installed package name you want links to open:
+   `com.hitnscore.mobile` (prod), and optionally `.dev.debug` /
+   `.staging.debug` builds.
+3. Serve it at the address above as `application/json`, over HTTPS, with no
+   redirect.
+
+Check: `adb shell pm verify-app-links --re-verify com.hitnscore.mobile`, then
+`adb shell pm get-app-links com.hitnscore.mobile` should show
+`app.hitnscore.com: verified`. To test the screen without verification:
+
+```bash
+adb shell am start -a android.intent.action.VIEW \
+  -d "https://app.hitnscore.com/help?mode=reset\&token=TOKEN" com.hitnscore.mobile.dev.debug
+```
+
+A real token comes from Need Help? on the sign-in screen (it is single-use and
+expires). A made-up token shows "This link can't be used".
 
 ## Continuous Integration
 

@@ -4,7 +4,12 @@ import android.content.Context
 import com.hitnscore.mobile.core.auth.AuthService
 import com.hitnscore.mobile.core.auth.EncryptedSessionStore
 import com.hitnscore.mobile.core.auth.KeystoreCipher
+import com.hitnscore.mobile.core.auth.PasswordLinkInbox
+import com.hitnscore.mobile.core.auth.PasswordResetService
+import com.hitnscore.mobile.core.auth.RegistrationService
+import com.hitnscore.mobile.core.auth.RemotePasswordResetService
 import com.hitnscore.mobile.core.auth.RemoteAuthService
+import com.hitnscore.mobile.core.auth.RemoteRegistrationService
 import com.hitnscore.mobile.core.auth.SharedSessionPreferences
 import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.connectivity.AndroidConnectivityMonitor
@@ -14,10 +19,19 @@ import com.hitnscore.mobile.feature.scoring.LiveMatchNotifier
 import com.hitnscore.mobile.feature.scoring.MatchTimerStore
 import com.hitnscore.mobile.feature.scoring.SharedPreferencesTimerStore
 import com.hitnscore.mobile.data.remote.RemoteHitNScoreApi
+import com.hitnscore.mobile.data.remote.RemoteSettingsApi
+import com.hitnscore.mobile.data.remote.SettingsApi
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.network.AuthInterceptor
 import com.hitnscore.mobile.core.session.AuthSessionRepository
 import com.hitnscore.mobile.core.session.SessionRepository
+import com.hitnscore.mobile.core.session.SessionState
+import com.hitnscore.mobile.core.session.SignOutReason
+import com.hitnscore.mobile.feature.scoring.offline.OfflineMatchStore
+import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
+import com.hitnscore.mobile.feature.scoring.offline.SharedPreferencesSnapshotStorage
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +78,16 @@ class AppContainer(context: Context) {
 
     val authService: AuthService by lazy { RemoteAuthService(apiClient) }
 
+    val registrationService: RegistrationService by lazy { RemoteRegistrationService(apiClient) }
+
+    val passwordResetService: PasswordResetService by lazy { RemotePasswordResetService(apiClient) }
+
+    /** Password set-up/reset links the app was opened with (App Links) or that were pasted in. */
+    val passwordLinks = PasswordLinkInbox()
+
     val api: HitNScoreApi by lazy { RemoteHitNScoreApi(apiClient) }
+
+    val settingsApi: SettingsApi by lazy { RemoteSettingsApi(apiClient) }
 
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 
@@ -73,6 +96,39 @@ class AppContainer(context: Context) {
     }
 
     val liveMatchNotifier: LiveMatchNotifier by lazy { LiveMatchNotifier(appContext) }
+
+    /** Matches held on the phone for offline scoring (M5). */
+    val offlineMatchStore: OfflineMatchStore by lazy {
+        OfflineMatchStore(SharedPreferencesSnapshotStorage(appContext.getSharedPreferences("hitnscore_offline_matches", Context.MODE_PRIVATE)))
+    }
+
+    /** The signed-in user and account that offline data belongs to. */
+    fun offlineOwner(): OfflineOwner? =
+        (sessionRepository.state.value as? SessionState.SignedIn)?.let { OfflineOwner(it.username, it.activeContext.organizationId) }
+
+    /**
+     * Sends offline scoring whenever the phone is online with a signed-in user, even if the
+     * scorer is closed (as iOS `AppContainer`), and forgets it when the user signs out.
+     * Called once from [com.hitnscore.mobile.HitNScoreApplication.onCreate].
+     */
+    fun startOfflineSync() {
+        mainScope.launch {
+            combine(connectivity.isOnline, sessionRepository.state) { online, session -> online to session }
+                .collect { (online, session) ->
+                    when {
+                        session is SessionState.SignedOut && session.reason in CLEARS_OFFLINE_DATA -> offlineMatchStore.clear()
+                        online && session is SessionState.SignedIn -> offlineMatchStore.sync(api, offlineOwner())
+                    }
+                }
+        }
+    }
+
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private companion object {
+        /** Sign-outs the user chose. A session ended elsewhere keeps unsent points for the next sign-in. */
+        val CLEARS_OFFLINE_DATA = setOf(SignOutReason.UserRequested, SignOutReason.AccountDeleted)
+    }
 
     val sessionRepository: SessionRepository by lazy {
         AuthSessionRepository(

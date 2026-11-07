@@ -80,7 +80,7 @@ Error:
 6. The handler checks for an already-active session for the identity across web
    and mobile. A forced continuation revokes the previous token regardless of
    client source.
-7. The handler creates an expiring session token in `org_user_sessions`; the default lifetime is 30 days.
+7. The handler creates an expiring opaque session in `org_user_sessions`; the default lifetime is 30 days. Web receives it only in the `__Host-hitnscore_session` HttpOnly cookie, while native clients retain the JSON bearer contract.
 8. With the default `IdentityFirstLoginEnabled=true`, the API returns
    `data.session` immediately. It prefers the user's approved personal
    membership, falls back to the first approved club, and includes every
@@ -91,9 +91,9 @@ Error:
    - `PENDING_APPROVAL`
    - `ACTIVE_SESSION_EXISTS`
    Successful session and organisation-selection responses also include `session_expires_at`.
-9. The frontend stores the result in `sessionStorage`. Its context switcher
-   replaces only the active membership fields while preserving the token,
-   expiry and complete membership list. Context changes reload Dashboard and
+9. The frontend stores no authentication credential. It restores non-secret
+   membership state and the in-memory CSRF value through `/session/status`;
+   its context switcher changes only the active membership. Context changes reload Dashboard and
    Matches data. Web and iOS render every retained membership as a visible
    `Score this match for` choice before racket-sport selection, labelling the
    personal choice as Personal or Personal Plus, so a match cannot be started
@@ -123,10 +123,10 @@ The SAM deployment runs `configure_log_retention` as a CloudFormation custom res
 2. The frontend calls `POST /root_admin/login`.
 3. [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py) verifies credentials against `SkRootAdmin`.
 4. The backend revokes older sessions for the same root-admin account and creates an eight-hour session in `root_admin_sessions`.
-5. The API returns `data.rootAdminSession` with the opaque bearer token and `expires_at`; only its SHA-256 hash is stored in the database.
-6. The frontend stores the session in `sessionStorage` and sends the bearer token on every root-admin request.
-7. Each root-admin handler validates the token, expiry, revocation state, and current `SkRootAdmin` identity before doing any privileged work.
-8. Logout calls `POST /root_admin/logout`, which revokes the current token.
+5. The API sets the separate `__Host-hitnscore_root_admin` HttpOnly cookie and returns identity, expiry and a non-authenticating CSRF value; only the opaque cookie token's SHA-256 hash is stored.
+6. The frontend keeps CSRF in memory and restores identity through `GET /root_admin/session/status`; it stores no Root Admin authentication token.
+7. Each root-admin handler validates the cookie, expiry, revocation state and current `SkRootAdmin` identity; mutations additionally validate exact Origin and `X-CSRF-Token`.
+8. Logout calls `POST /root_admin/logout`, revokes the database session and expires the cookie.
 
 The dashboard’s Club Admin Memberships count comes from non-personal organisation membership rows with the admin role. Platform root-admin accounts are separate. Database operators rotate their passwords with [rotate-root-admin-password.sql](../scripts/rotate-root-admin-password.sql), which also revokes existing root-admin sessions. The root-admin User Accounts directory derives each identity's latest login from `MAX(org_user_sessions.created_at)` and offers 12- and 24-month inactivity cards. For a user with no session history, registration time is the inactivity reference; these cards are review filters and do not trigger deletion.
 
@@ -150,7 +150,7 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
-   - for Personal, rejects an existing Personal membership for the normalized email with `ACCOUNT_ALREADY_REGISTERED`, otherwise records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a `mode=confirm-email` password-setup email without entering an admin approval queue; a club-only identity is still allowed to add Personal
+   - for Personal, rejects an existing Personal membership for the normalized email with `ACCOUNT_ALREADY_REGISTERED`, otherwise records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a `mode=confirm-email` password-setup email without entering an admin approval queue. Club-associated identities already own Personal because Personal is now the required base account
    - for Club, keeps the request pending and sends confirmation/admin enquiry emails; the requester copy renders only supplied optional fields while the admin copy retains all fields
    - for a logged-in native Club Essentials or Club Pro enquiry, validates the bearer session, derives the requester email from it, and stores the club name, address/postcode, club email, website, telephone, and requested plan for root-admin review
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
@@ -405,6 +405,8 @@ search and import testing.
    - sends an invitation email when email settings are configured
 4. The root-admin club page can later approve that pending membership directly with `PUT /root_admin/organization_users/{user_id}/approve` if email approval is not desired.
 
+Before a new club membership is inserted, `ensure_personal_account_for_identity(...)` creates Personal Free when the normalized email does not already own Personal/Personal Plus. A brand-new invite uses the same setup token for its Personal owner membership and requested club association, so choosing a password activates the linked account model in one flow. Existing identities retain their Personal plan and simply gain another pending club association. Migration `047_personal_account_for_every_identity.sql` applies the same model to historical club-only rows and enforces it with a deferred constraint trigger.
+
 ### Edit or remove user
 
 1. The organisation user details page submits an update or delete action.
@@ -443,7 +445,7 @@ search and import testing.
 
 ### Root-admin note
 
-The root-admin club page marks these shared calls as root-admin requests in the API client. The client sends the stored root-admin bearer token, and the backend validates it before permitting access. No caller-controlled trust header is used.
+The root-admin club page marks these shared calls as root-admin requests in the API client. The browser sends the separate Root Admin HttpOnly cookie and `X-HitnScore-Session: root_admin` selects that cookie when an ordinary user cookie also exists. The selector grants no privilege; the backend validates the Root Admin database session before permitting access.
 
 ## 10. Match Setup Lookup Flow
 
@@ -671,7 +673,7 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 ### Current path
 
 1. The root-admin UI loads dashboard, club, club-enquiry, and unified user-account data from root-admin routes.
-2. Every root-admin route validates the bearer token against `root_admin_sessions`.
+2. Every root-admin route validates the separate cookie session against `root_admin_sessions`; mutations additionally require Root Admin CSRF validation.
 3. Club-detail calls to shared organisation endpoints accept root access only after the same session validation succeeds.
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
 5. Match archive is implemented as a flag on `matches`, so archived matches drop out of standard dashboard/history lists without deleting the underlying row.

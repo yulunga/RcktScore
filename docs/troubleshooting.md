@@ -401,7 +401,7 @@ Relevant files:
 
 Current risk areas:
 
-- root-admin requests require an unexpired bearer token backed by `root_admin_sessions`
+- root-admin requests require the unexpired `__Host-hitnscore_root_admin` cookie backed by `root_admin_sessions`; mutations also require the in-memory CSRF value and exact web origin
 - only one active root-admin session per root-admin account is retained; a newer login revokes the previous session
 
 If a root-admin issue appears:
@@ -410,7 +410,8 @@ If a root-admin issue appears:
 - check for `ROOT_ADMIN_SESSION_REQUIRED`, `ROOT_ADMIN_SESSION_INVALID`, `ROOT_ADMIN_SESSION_REPLACED`, or `ROOT_ADMIN_SESSION_EXPIRED`
 - verify migration `018_root_admin_sessions.sql` has been applied before testing login
 - verify migration `020_personal_registration_status.sql` has been applied if historical personal signups still show approval terminology
-- confirm the frontend is sending `Authorization: Bearer <token>` and is not relying on the removed `x-root-admin-request` header
+- confirm the browser request includes credentials, the Root Admin cookie exists in browser storage as HttpOnly, and mutations send `X-CSRF-Token`; JavaScript must not be able to read the cookie
+- for organisation routes reused by Root Admin, confirm `X-HitnScore-Session: root_admin` is present; without it the backend deliberately evaluates the ordinary user cookie so simultaneous user and Root Admin logins do not collide
 - if User Accounts totals look higher than the visible list, remember the summary cards count distinct usernames by account category and a user with both personal and club memberships can appear in more than one category
 - club match activity on a user profile is attributed from `matches.referee_name`; personal-account activity is attributed from the user's personal organisation
 - user-profile Last Activity is the latest `org_user_sessions.last_seen_at` value for that username; `Not recorded` means no retained session activity exists
@@ -692,7 +693,7 @@ What to check:
 - whether the installed build includes the adaptive dark-mode styling now used by `StartNewMatchFlowView` and `StartNewMatchView`
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
 - whether migration `023_system_notifications.sql` was applied and `GET /notifications/{organization_id}` returns the expected `all` or plan-specific audience
-- whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user bearer token
+- whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user session, including CSRF/Origin for web or bearer authorization for native
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
 
 Important current truths:
@@ -703,7 +704,8 @@ Important current truths:
 - one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns
 - offline undo can remove actions still queued on that device; undoing an older server-synchronised action requires connectivity
 - the dashboard stays quiet when offline and replaces the bell with an offline icon; online, an unread persisted notification makes the bell yellow until the user explicitly marks it read
-- self-service deletion applies only to the authenticated owner of a personal account; club memberships remain club-admin managed, and deletion requires two client confirmations plus server-side ownership validation
+- self-service deletion applies only to the authenticated owner of Personal and requires two client confirmations plus server-side ownership validation. Because Personal is the base identity, deletion also removes every club association and active session; club-owned match records remain with their clubs
+- if a registered user is missing Personal, verify migration `047_personal_account_for_every_identity.sql` has run. New club membership writes call `ensure_personal_account_for_identity`, and the deferred `skwsh_org_users_require_personal_account` constraint rejects a transaction that leaves memberships without a Personal owner membership
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only
 - native tennis scoring automatically assigns the other singles player as receiver when the opening server is chosen; doubles still expects explicit opening serve/receive selections, and its lineup/order and per-participant shirt colours come from the native match-setup payload rather than from a dedicated participant table
@@ -764,7 +766,8 @@ These are current product limitations, not accidental breakage:
 - lifecycle processing additionally requires migration `027_apple_subscription_lifecycle_processing.sql`. Configure App Store Connect V2 Sandbox/Production URLs as `/subscriptions/apple/notifications`; the endpoint has no user bearer token because its trust boundary is Apple's verified `signedPayload`
 - scheduled reconciliation prioritises elapsed subscriptions and asks Apple for current status before removing access. The local expiry fallback waits 15 minutes so a delayed renewal notification does not cause a temporary Plus-to-Free-to-Plus transition or false audit pair. The fallback still runs without Apple credentials; full missed-notification repair requires `APPLE_SERVER_API_SECRET_ARN` to reference a Secrets Manager JSON value containing `private_key`, `key_id`, and `issuer_id`. Inspect `reconciliation_error`, retry count and next reconciliation time in root admin if the Apple status lookup fails
 - cancellation is not immediate expiry: `auto_renew_enabled=false` retains Plus until `expires_at`. Refund/revoke removes Plus immediately; billing retry removes it unless Apple reports an active grace period
-- CORS currently uses `Access-Control-Allow-Origin: *` in both API Gateway/SAM and Lambda response headers. This permits JavaScript from any website origin to call the API and read its responses when it can supply valid credentials; it does not bypass bearer-token checks and does not govern native iOS networking. Before production, replace the wildcard with exact trusted web origins, keep `OPTIONS` and Lambda headers consistent, emit `Vary: Origin`, and give preview/local environments their own explicit allowlists
+- production CORS allows only `https://app.hitnscore.com`, enables credentials, permits `X-CSRF-Token`, and emits `Vary: Origin`. If web requests fail after deployment, confirm Amplify uses `VITE_API_BASE_URL=https://api.hitnscore.com`, the API Gateway custom-domain mapping targets `rcktscore-backend` stage `prod`, and the request Origin is exact. Preview/local environments need their own same-site hostnames or an explicit development proxy; do not weaken production CORS
+- migration `048_browser_cookie_csrf_sessions.sql` must be applied before the cookie-enabled Lambdas. It adds CSRF state and deliberately revokes old web and Root Admin sessions, so those users must sign in once after cutover; native bearer sessions remain intact
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
   and they are not wired into a documented CI pipeline

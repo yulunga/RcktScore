@@ -33,9 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -55,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.core.auth.PasswordLink
 import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.session.AccountContext
@@ -68,6 +74,8 @@ fun LoginScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
+    val registrationViewModel: RegistrationViewModel = viewModel(factory = RegistrationViewModel.Factory)
+    var showRegistration by rememberSaveable { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -201,17 +209,32 @@ fun LoginScreen(
                         }
                     }
 
-                    TextButton(
-                        onClick = viewModel::openPasswordReset,
+                    Row(
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .align(Alignment.CenterHorizontally),
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(
-                            text = stringResource(R.string.login_need_help),
-                            color = HitNScoreTheme.colors.brandPink,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
+                        TextButton(onClick = viewModel::openPasswordReset) {
+                            Text(
+                                text = stringResource(R.string.login_need_help),
+                                color = HitNScoreTheme.colors.brandPink,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                registrationViewModel.reset(state.username)
+                                showRegistration = true
+                            },
+                            modifier = Modifier.testTag(TestTags.WANT_IN),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.login_want_in),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
                     }
                 }
             }
@@ -251,12 +274,26 @@ fun LoginScreen(
         )
     }
 
+    if (showRegistration) {
+        RegistrationSheet(onDismiss = { showRegistration = false }, viewModel = registrationViewModel)
+    }
+
+    val context = LocalContext.current
     state.passwordReset?.let { reset ->
         PasswordResetDialog(
             state = reset,
             onEmailChange = viewModel::onResetEmailChange,
             onSend = viewModel::sendPasswordReset,
             onClose = viewModel::closePasswordReset,
+            // When the emailed link opened in a browser, the user can paste it here instead.
+            onOpenLink = { text ->
+                val link = PasswordLink.fromText(text)
+                if (link != null) {
+                    (context.applicationContext as HitNScoreApplication).container.passwordLinks.deliver(link)
+                    viewModel.closePasswordReset()
+                }
+                link != null
+            },
         )
     }
 }
@@ -287,6 +324,9 @@ private fun signOutNotice(reason: SignOutReason): String? = when (reason) {
     SignOutReason.Expired -> stringResource(R.string.login_notice_expired)
     SignOutReason.Replaced -> stringResource(R.string.login_notice_replaced)
     SignOutReason.Ended -> stringResource(R.string.login_notice_ended)
+    SignOutReason.EmailChanged -> stringResource(R.string.login_notice_email_changed)
+    SignOutReason.AccountDeleted -> stringResource(R.string.login_notice_account_deleted)
+    SignOutReason.PasswordChanged -> stringResource(R.string.login_notice_password_changed)
 }
 
 @Composable
@@ -356,7 +396,11 @@ private fun PasswordResetDialog(
     onEmailChange: (String) -> Unit,
     onSend: () -> Unit,
     onClose: () -> Unit,
+    onOpenLink: (String) -> Boolean,
 ) {
+    var pastedLink by rememberSaveable { mutableStateOf("") }
+    var linkInvalid by rememberSaveable { mutableStateOf(false) }
+    var showPaste by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(R.string.reset_title)) },
@@ -391,6 +435,22 @@ private fun PasswordResetDialog(
                         )
                     }
                 }
+                if (showPaste) {
+                    Spacer(Modifier.height(12.dp))
+                    PasteLinkField(
+                        value = pastedLink,
+                        onValueChange = {
+                            pastedLink = it
+                            linkInvalid = false
+                        },
+                        onOpen = { linkInvalid = !onOpenLink(pastedLink) },
+                        invalid = linkInvalid,
+                    )
+                } else {
+                    TextButton(onClick = { showPaste = true }, modifier = Modifier.padding(top = 4.dp)) {
+                        Text(stringResource(R.string.password_have_link))
+                    }
+                }
             }
         },
         confirmButton = {
@@ -413,4 +473,5 @@ object TestTags {
     const val PASSWORD = "login.password"
     const val SIGN_IN = "login.signIn"
     const val MESSAGE = "login.message"
+    const val WANT_IN = "login.wantIn"
 }

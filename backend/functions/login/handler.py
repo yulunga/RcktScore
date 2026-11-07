@@ -6,10 +6,14 @@ from common.auth_logic import IdentityPasswordResetRequired, authenticate_org_us
 from common.logging_utils import mask_email_for_log
 from common.password_reset_logic import request_password_reset
 from common.session_logic import (
+    SessionAuthError,
     create_org_user_session,
     get_active_session_for_username,
     login_source_label,
     normalize_login_source,
+    session_cookie_for_result,
+    session_error_response,
+    validate_web_origin,
 )
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
@@ -50,6 +54,12 @@ def lambda_handler(event, context):
     password = payload["password"]
     client_type = normalize_login_source(payload.get("client_type"))
     force_logout_other = bool(payload.get("force_logout_other"))
+
+    if client_type == "web_app":
+        try:
+            validate_web_origin(event)
+        except SessionAuthError as session_error:
+            return session_error_response(session_error)
 
     with get_db_connection() as connection:
         try:
@@ -105,9 +115,12 @@ def lambda_handler(event, context):
         user = {
             **selected_membership,
             "available_memberships": memberships,
-            "session_token": created_session["token"],
             "session_expires_at": created_session["expires_at"].isoformat(),
         }
+        if client_type == "web_app":
+            user["csrf_token"] = created_session["csrf_token"]
+        else:
+            user["session_token"] = created_session["token"]
         logger.info(
             "Authenticated identity user id=%s organization_id=%s membership_count=%s identity_first=%s",
             user["id"],
@@ -115,7 +128,11 @@ def lambda_handler(event, context):
             len(memberships),
             identity_first_login_enabled(),
         )
-        return success_response(200, {"session": user})
+        return success_response(
+            200,
+            {"session": user},
+            cookies=[session_cookie_for_result(created_session)] if client_type == "web_app" else None,
+        )
 
     logger.info("Authenticated multi-org user username=%s membership_count=%s", masked_username, len(memberships))
     return success_response(
@@ -124,8 +141,13 @@ def lambda_handler(event, context):
             "organizationSelection": {
                 "username": username,
                 "memberships": memberships,
-                "session_token": created_session["token"],
                 "session_expires_at": created_session["expires_at"].isoformat(),
+                **(
+                    {"csrf_token": created_session["csrf_token"]}
+                    if client_type == "web_app"
+                    else {"session_token": created_session["token"]}
+                ),
             },
         },
+        cookies=[session_cookie_for_result(created_session)] if client_type == "web_app" else None,
     )

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 from common.auth_logic import IdentityPasswordResetRequired
 from functions.login import handler
@@ -87,7 +88,10 @@ def test_partial_membership_password_match_returns_reset_required_and_sends_emai
     monkeypatch.setenv("PASSWORD_RESET_BASE_URL", "https://app.hitnscore.com")
 
     response = handler.lambda_handler(
-        {"body": json.dumps({"username": "player@example.com", "password": "old-password"})},
+        {
+            "headers": {"origin": "https://app.hitnscore.com"},
+            "body": json.dumps({"username": "player@example.com", "password": "old-password"}),
+        },
         None,
     )
 
@@ -109,10 +113,76 @@ def test_invalid_login_logs_only_a_masked_email(monkeypatch):
     monkeypatch.setattr(handler.logger, "warning", lambda message, *args: warnings.append((message, args)))
 
     response = handler.lambda_handler(
-        {"body": json.dumps({"username": "sarah@example.com", "password": "wrong"})},
+        {
+            "headers": {"origin": "https://app.hitnscore.com"},
+            "body": json.dumps({"username": "sarah@example.com", "password": "wrong"}),
+        },
         None,
     )
 
     assert response["statusCode"] == 401
     assert warnings == [("Invalid login attempt for username=%s", ("s***@example.com",))]
     assert "sarah@example.com" not in repr(warnings)
+
+
+def test_web_login_sets_httponly_cookie_and_omits_json_token(monkeypatch):
+    monkeypatch.setattr(handler, "get_db_connection", lambda: ConnectionContext())
+    monkeypatch.setattr(
+        handler,
+        "authenticate_org_user_memberships",
+        lambda *_args, **_kwargs: {
+            "approved_memberships": [{"id": 1, "username": "player@example.com", "organization_id": 42, "organization_type": "personal"}],
+            "pending_memberships": [],
+        },
+    )
+    monkeypatch.setattr(handler, "get_active_session_for_username", lambda *_args: None)
+    monkeypatch.setattr(
+        handler,
+        "create_org_user_session",
+        lambda *_args, **_kwargs: {
+            "token": "opaque-secret",
+            "csrf_token": "csrf-value",
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=30),
+        },
+    )
+    response = handler.lambda_handler(
+        {
+            "headers": {"origin": "https://app.hitnscore.com"},
+            "body": json.dumps({"username": "player@example.com", "password": "secret", "client_type": "web_app"}),
+        },
+        None,
+    )
+    assert response["statusCode"] == 200
+    assert "opaque-secret" not in response["body"]
+    assert '"csrf_token": "csrf-value"' in response["body"]
+    cookie = response["cookies"][0]
+    assert cookie.startswith("__Host-hitnscore_session=opaque-secret;")
+    assert "Secure" in cookie and "HttpOnly" in cookie and "SameSite=Strict" in cookie and "Path=/" in cookie
+
+
+def test_native_login_retains_json_bearer_without_cookie(monkeypatch):
+    monkeypatch.setattr(handler, "get_db_connection", lambda: ConnectionContext())
+    monkeypatch.setattr(
+        handler,
+        "authenticate_org_user_memberships",
+        lambda *_args, **_kwargs: {
+            "approved_memberships": [{"id": 1, "username": "player@example.com", "organization_id": 42, "organization_type": "personal"}],
+            "pending_memberships": [],
+        },
+    )
+    monkeypatch.setattr(handler, "get_active_session_for_username", lambda *_args: None)
+    monkeypatch.setattr(
+        handler,
+        "create_org_user_session",
+        lambda *_args, **_kwargs: {
+            "token": "native-secret",
+            "csrf_token": "unused",
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=30),
+        },
+    )
+    response = handler.lambda_handler(
+        {"body": json.dumps({"username": "player@example.com", "password": "secret", "client_type": "mobile_app"})},
+        None,
+    )
+    assert '"session_token": "native-secret"' in response["body"]
+    assert "cookies" not in response

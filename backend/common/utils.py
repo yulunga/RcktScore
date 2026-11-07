@@ -4,21 +4,30 @@ import os
 
 DEFAULT_HEADERS = {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type,x-api-key,Authorization",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Origin": os.getenv("WEB_APP_ORIGIN", "https://app.hitnscore.com"),
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type,x-api-key,Authorization,X-CSRF-Token,X-HitnScore-Session",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    "Cache-Control": "no-store",
+    "Vary": "Origin",
 }
 
 
-def _response(status_code, body):
-    return {
+def _response(status_code, body, headers=None, cookies=None):
+    response_headers = dict(DEFAULT_HEADERS)
+    if headers:
+        response_headers.update(headers)
+    response = {
         "statusCode": status_code,
-        "headers": DEFAULT_HEADERS,
+        "headers": response_headers,
         "body": json.dumps(body),
     }
+    if cookies:
+        response["cookies"] = list(cookies)
+    return response
 
 
-def success_response(status_code, data=None, meta=None):
+def success_response(status_code, data=None, meta=None, headers=None, cookies=None):
     return _response(
         status_code,
         {
@@ -27,10 +36,12 @@ def success_response(status_code, data=None, meta=None):
             "error": None,
             "meta": meta or {},
         },
+        headers=headers,
+        cookies=cookies,
     )
 
 
-def error_response(status_code, code, message, details=None):
+def error_response(status_code, code, message, details=None, headers=None, cookies=None):
     error = {
         "code": code,
         "message": message,
@@ -46,11 +57,13 @@ def error_response(status_code, code, message, details=None):
             "error": error,
             "meta": {},
         },
+        headers=headers,
+        cookies=cookies,
     )
 
 
-def json_response(status_code, body):
-    return _response(status_code, body)
+def json_response(status_code, body, headers=None, cookies=None):
+    return _response(status_code, body, headers=headers, cookies=cookies)
 
 
 def html_response(status_code, html, headers=None):

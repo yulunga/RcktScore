@@ -8,6 +8,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hitnscore.mobile.HitNScoreApplication
+import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
+import com.hitnscore.mobile.feature.scoring.offline.toSummary
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -37,6 +44,13 @@ private const val HOME_ITEMS = 3
 fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: ShellActions) {
     val dashboard = state.dashboard
     val isClub = session.activeContext.type == AccountContextType.Club
+    // Matches held on the phone, so scoring can carry on without a connection (M5).
+    val context = LocalContext.current
+    val offlineStore = remember(context) { (context.applicationContext as HitNScoreApplication).container.offlineMatchStore }
+    val held by offlineStore.snapshots.collectAsStateWithLifecycle()
+    val offlineMatches = remember(held, session.username, session.activeContext.organizationId) {
+        offlineStore.cachedActiveMatches(OfflineOwner(session.username, session.activeContext.organizationId)).map { it.toSummary() }
+    }
 
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
@@ -61,6 +75,15 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
             }
             state.errorMessage?.let { message ->
                 item(key = "error") { ErrorBanner(message, onRetry = actions.onRefresh) }
+            }
+            if (!state.isOnline && offlineMatches.isNotEmpty()) {
+                item(key = "offline") {
+                    SectionCard(title = stringResource(R.string.section_continue_offline), iconRes = R.drawable.ic_wifi_off) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            offlineMatches.forEach { match -> ActiveMatchCard(match) { actions.onOpenMatch(match) } }
+                        }
+                    }
+                }
             }
             item(key = "active") {
                 SectionCard(

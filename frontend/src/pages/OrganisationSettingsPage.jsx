@@ -1158,7 +1158,7 @@ export default function OrganisationSettingsPage() {
                     />
                   </div>
                   <p className="helper-text settings-field-wide">
-                    HitnScore will email this person a secure invitation. Club administrators never see or choose member passwords.
+                    HitnScore will create or retain this person's Personal Free/Personal Plus account, add this club as an association, and email any required secure invitation. Club administrators never see or choose member passwords.
                   </p>
                   <div className="field">
                     <label htmlFor="new_role">Role</label>

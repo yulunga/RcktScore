@@ -3,7 +3,13 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from common.session_logic import SessionAuthError, session_token_from_event
+from common.session_logic import (
+    ROOT_ADMIN_SESSION_COOKIE,
+    SessionAuthError,
+    _request_headers,
+    _validate_cookie_csrf,
+    session_credentials_from_event,
+)
 
 
 DEFAULT_ROOT_ADMIN_SESSION_TTL_HOURS = 8
@@ -51,6 +57,7 @@ def create_root_admin_session(connection, root_admin):
         raise ValueError("root admin id is required")
 
     token = f"rra_{secrets.token_urlsafe(48)}"
+    csrf_token = secrets.token_urlsafe(32)
     now = _utcnow()
     expires_at = now + timedelta(hours=_session_ttl_hours())
 
@@ -76,14 +83,16 @@ def create_root_admin_session(connection, root_admin):
                 token_hash,
                 created_at,
                 expires_at,
-                last_seen_at
+                last_seen_at,
+                csrf_token
             )
             VALUES (
                 %(root_admin_id)s,
                 %(token_hash)s,
                 %(created_at)s,
                 %(expires_at)s,
-                %(last_seen_at)s
+                %(last_seen_at)s,
+                %(csrf_token)s
             )
             """,
             {
@@ -92,12 +101,14 @@ def create_root_admin_session(connection, root_admin):
                 "created_at": now,
                 "expires_at": expires_at,
                 "last_seen_at": now,
+                "csrf_token": csrf_token,
             },
         )
 
     connection.commit()
     return {
         "token": token,
+        "csrf_token": csrf_token,
         "expires_at": expires_at,
     }
 
@@ -118,6 +129,7 @@ def _get_root_admin_session_row(connection, token):
                 session.last_seen_at,
                 session.revoked_at,
                 session.revoked_reason,
+                session.csrf_token,
                 admin.rtusername
             FROM root_admin_sessions AS session
             INNER JOIN "SkRootAdmin" AS admin
@@ -130,7 +142,7 @@ def _get_root_admin_session_row(connection, token):
         return cursor.fetchone()
 
 
-def _validate_root_admin_session_row(connection, session_row, token):
+def _validate_root_admin_session_row(connection, session_row, token, event=None):
     if session_row.get("revoked_at") is not None:
         code = (
             "ROOT_ADMIN_SESSION_REPLACED"
@@ -167,6 +179,9 @@ def _validate_root_admin_session_row(connection, session_row, token):
             "Your root-admin session has expired. Please sign in again.",
         )
 
+    if event is not None:
+        _validate_cookie_csrf(event, session_row)
+
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -186,13 +201,21 @@ def _validate_root_admin_session_row(connection, session_row, token):
         "username": session_row["rtusername"],
         "role": "root_admin",
         "session_id": session_row["id"],
-        "session_token": token,
+        "token": token,
+        "csrf_token": session_row.get("csrf_token"),
         "expires_at": session_row["expires_at"].isoformat(),
     }
 
 
 def find_root_admin_session(connection, event):
-    token = session_token_from_event(event)
+    # Reused organisation routes can accept either an ordinary user cookie or
+    # the separate Root Admin cookie. This header selects which credential the
+    # caller intends to use; it grants no trust by itself.
+    if (_request_headers(event).get("x-hitnscore-session") or "").strip().lower() != "root_admin":
+        return None
+    token, credential_type = session_credentials_from_event(event, ROOT_ADMIN_SESSION_COOKIE)
+    if credential_type == "bearer":
+        return None
     if not token or not token.startswith("rra_"):
         return None
 
@@ -200,11 +223,11 @@ def find_root_admin_session(connection, event):
     if not session_row:
         return None
 
-    return _validate_root_admin_session_row(connection, session_row, token)
+    return _validate_root_admin_session_row(connection, session_row, token, event=event)
 
 
 def require_root_admin_session(connection, event):
-    token = session_token_from_event(event)
+    token, credential_type = session_credentials_from_event(event, ROOT_ADMIN_SESSION_COOKIE)
     if not token:
         raise SessionAuthError(401, "ROOT_ADMIN_SESSION_REQUIRED", "Please sign in as root admin to continue.")
 
@@ -216,7 +239,27 @@ def require_root_admin_session(connection, event):
             "Your root-admin session is no longer valid. Please sign in again.",
         )
 
-    return _validate_root_admin_session_row(connection, session_row, token)
+    if credential_type != "cookie":
+        raise SessionAuthError(
+            401,
+            "ROOT_ADMIN_SESSION_TRANSPORT_MISMATCH",
+            "Root Admin sessions must use the secure browser cookie.",
+        )
+
+    return _validate_root_admin_session_row(connection, session_row, token, event=event)
+
+
+def root_admin_session_cookie(token, max_age):
+    return f"{ROOT_ADMIN_SESSION_COOKIE}={token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age={int(max_age)}"
+
+
+def root_admin_session_cookie_for_result(session_result):
+    remaining = max(0, int((session_result["expires_at"] - _utcnow()).total_seconds()))
+    return root_admin_session_cookie(session_result["token"], remaining)
+
+
+def clear_root_admin_session_cookie():
+    return f"{ROOT_ADMIN_SESSION_COOKIE}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0"
 
 
 def revoke_root_admin_session(connection, token, reason="logout"):

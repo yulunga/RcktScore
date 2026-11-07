@@ -1,300 +1,181 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { getSessionStatus, login as loginRequest, logout as logoutRequest } from "../services/api";
+import { getSessionStatus, login as loginRequest, logout as logoutRequest, setWebCsrfToken } from "../services/api";
 
 const SESSION_KEY = "rcktscore.auth";
-
 export const AuthContext = createContext(null);
 
+function withoutSecrets(value) {
+  if (!value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(withoutSecrets);
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !["session_token", "sessionToken", "csrf_token", "csrfToken"].includes(key))
+    .map(([key, item]) => [key, withoutSecrets(item)]));
+}
+
 function readStoredAuthState() {
-  if (typeof window === "undefined") {
-    return { session: null, pendingSelection: null };
-  }
-
+  if (typeof window === "undefined") return { session: null, pendingSelection: null };
   try {
-    const rawValue = window.sessionStorage.getItem(SESSION_KEY);
-    if (!rawValue) {
-      return { session: null, pendingSelection: null };
-    }
-
-    const parsedValue = JSON.parse(rawValue);
-    if (parsedValue?.username) {
-      return {
-        session: parsedValue,
-        pendingSelection: null,
-      };
-    }
-
+    const parsed = JSON.parse(window.sessionStorage.getItem(SESSION_KEY) || "null");
+    const cleaned = withoutSecrets(parsed);
+    if (parsed) window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(cleaned));
+    if (cleaned?.username) return { session: cleaned, pendingSelection: null };
     return {
-      session: parsedValue?.session?.username ? parsedValue.session : null,
-      pendingSelection: parsedValue?.pendingSelection?.memberships?.length ? parsedValue.pendingSelection : null,
+      session: cleaned?.session?.username ? cleaned.session : null,
+      pendingSelection: cleaned?.pendingSelection?.memberships?.length ? cleaned.pendingSelection : null,
     };
   } catch {
+    window.sessionStorage.removeItem(SESSION_KEY);
     return { session: null, pendingSelection: null };
   }
 }
 
 function writeStoredAuthState(nextState) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const session = nextState?.session || null;
-  const pendingSelection = nextState?.pendingSelection || null;
-
-  if (!session && !pendingSelection) {
+  if (typeof window === "undefined") return;
+  const cleaned = withoutSecrets(nextState);
+  if (!cleaned?.session && !cleaned?.pendingSelection) {
     window.sessionStorage.removeItem(SESSION_KEY);
     return;
   }
+  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(cleaned));
+}
 
-  window.sessionStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({
-      session,
-      pendingSelection,
-    }),
-  );
+function consumeSessionPayload(payload, preferredOrganizationId = null) {
+  setWebCsrfToken(payload?.csrf_token || "");
+  const cleanPayload = withoutSecrets(payload);
+  const memberships = cleanPayload?.available_memberships || cleanPayload?.memberships || (cleanPayload ? [cleanPayload] : []);
+  const selected = memberships.find((item) => Number(item?.organization_id) === Number(preferredOrganizationId)) || cleanPayload;
+  return selected ? { ...selected, available_memberships: memberships } : null;
 }
 
 export function AuthProvider({ children }) {
-  const [authState, setAuthState] = useState(() => readStoredAuthState());
-  const [loading, setLoading] = useState(false);
+  const [authState, setAuthState] = useState({ session: null, pendingSelection: null });
+  const [loading, setLoading] = useState(true);
   const session = authState.session;
   const pendingSelection = authState.pendingSelection;
 
   useEffect(() => {
-    writeStoredAuthState({
-      session,
-      pendingSelection,
+    const stored = readStoredAuthState();
+    let cancelled = false;
+    getSessionStatus().then((response) => {
+      if (cancelled) return;
+      const restored = consumeSessionPayload(response?.session, stored.session?.organization_id);
+      const nextState = { session: restored, pendingSelection: null };
+      writeStoredAuthState(nextState);
+      setAuthState(nextState);
+    }).catch(() => {
+      if (cancelled) return;
+      setWebCsrfToken("");
+      writeStoredAuthState({ session: null, pendingSelection: null });
+      setAuthState({ session: null, pendingSelection: null });
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
     });
-  }, [pendingSelection, session]);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => { writeStoredAuthState({ session, pendingSelection }); }, [pendingSelection, session]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
+    if (typeof window === "undefined") return undefined;
     const handleSessionInvalidated = (event) => {
       if (event?.detail?.code === "SESSION_REPLACED") {
-        window.sessionStorage.setItem(
-          "rcktscore.session-message",
-          "You were signed out because this account was used to sign in on another device.",
-        );
+        window.sessionStorage.setItem("rcktscore.session-message", "You were signed out because this account was used to sign in on another device.");
       }
-      setAuthState({
-        session: null,
-        pendingSelection: null,
-      });
+      setWebCsrfToken("");
+      setAuthState({ session: null, pendingSelection: null });
     };
-
     window.addEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
-    return () => {
-      window.removeEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
-    };
+    return () => window.removeEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
   }, []);
 
   useEffect(() => {
-    if (!session?.session_token || typeof window === "undefined") {
-      return undefined;
-    }
-
+    if (!session || typeof window === "undefined") return undefined;
     let cancelled = false;
     async function validateSession() {
       if (cancelled || document.visibilityState === "hidden") return;
       try {
-        await getSessionStatus();
+        const response = await getSessionStatus();
+        if (response?.session?.csrf_token) setWebCsrfToken(response.session.csrf_token);
       } catch {
-        // apiRequest emits the shared invalidation event for rejected sessions.
-        // Transport failures leave the current session intact for offline recovery.
+        // Rejected sessions emit the shared invalidation event. Network errors
+        // leave the non-secret interface state available for offline recovery.
       }
     }
-
-    validateSession();
     const intervalId = window.setInterval(validateSession, 30000);
     const validateOnFocus = () => validateSession();
-    const validateOnVisibility = () => {
-      if (document.visibilityState === "visible") validateSession();
-    };
+    const validateOnVisibility = () => { if (document.visibilityState === "visible") validateSession(); };
     window.addEventListener("focus", validateOnFocus);
     document.addEventListener("visibilitychange", validateOnVisibility);
-
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
       window.removeEventListener("focus", validateOnFocus);
       document.removeEventListener("visibilitychange", validateOnVisibility);
     };
-  }, [session?.session_token]);
+  }, [session]);
 
   const login = useCallback(async (username, password, options = {}) => {
     const trimmedUsername = username.trim();
     const trimmedPassword = password.trim();
-
-    if (!trimmedUsername || !trimmedPassword) {
-      return {
-        ok: false,
-        message: "Username and password are required.",
-      };
-    }
-
+    if (!trimmedUsername || !trimmedPassword) return { ok: false, message: "Username and password are required." };
     setLoading(true);
     try {
-      const response = await loginRequest({
-        username: trimmedUsername,
-        password: trimmedPassword,
-        client_type: "web_app",
-        force_logout_other: Boolean(options.forceLogoutOther),
-      });
+      const response = await loginRequest({ username: trimmedUsername, password: trimmedPassword, client_type: "web_app", force_logout_other: Boolean(options.forceLogoutOther) });
       if (response.session) {
-        const nextSession = {
-          ...response.session,
-          loggedInAt: new Date().toISOString(),
-        };
-        writeStoredAuthState({
-          session: nextSession,
-          pendingSelection: null,
-        });
-        setAuthState({
-          session: nextSession,
-          pendingSelection: null,
-        });
+        const nextSession = { ...consumeSessionPayload(response.session), loggedInAt: new Date().toISOString() };
+        setAuthState({ session: nextSession, pendingSelection: null });
         return { ok: true, session: nextSession };
       }
-
       if (response.organizationSelection?.memberships?.length) {
-        const nextPendingSelection = {
+        setWebCsrfToken(response.organizationSelection.csrf_token || "");
+        const nextPendingSelection = withoutSecrets({
           username: response.organizationSelection.username || trimmedUsername,
           memberships: response.organizationSelection.memberships,
-          session_token: response.organizationSelection.session_token || null,
           session_expires_at: response.organizationSelection.session_expires_at || null,
           loggedInAt: new Date().toISOString(),
-        };
-        writeStoredAuthState({
-          session: null,
-          pendingSelection: nextPendingSelection,
         });
-        setAuthState({
-          session: null,
-          pendingSelection: nextPendingSelection,
-        });
+        setAuthState({ session: null, pendingSelection: nextPendingSelection });
         return { ok: true, requiresOrganizationSelection: true };
       }
-
-      return {
-        ok: false,
-        message: "Login failed.",
-      };
+      return { ok: false, message: "Login failed." };
     } catch (requestError) {
       if (requestError.code === "ACTIVE_SESSION_EXISTS") {
-        return {
-          ok: false,
-          requiresSessionReplacement: true,
-          message: requestError.message || "This account is already signed in on the web app.",
-          clientLabel: requestError.details?.client_label || "web app",
-        };
+        return { ok: false, requiresSessionReplacement: true, message: requestError.message || "This account is already signed in on the web app.", clientLabel: requestError.details?.client_label || "web app" };
       }
-
-      return {
-        ok: false,
-        message: requestError.message || "Login failed.",
-      };
+      return { ok: false, message: requestError.message || "Login failed." };
     } finally {
       setLoading(false);
     }
   }, []);
 
   const selectOrganization = useCallback((membership) => {
-    if (!membership?.username || !membership?.organization_id) {
-      return;
-    }
-
-    const sessionToken = pendingSelection?.session_token || null;
-    const sessionExpiresAt = pendingSelection?.session_expires_at || null;
-    const nextSession = {
-      ...membership,
-      available_memberships: pendingSelection?.memberships || [membership],
-      ...(sessionToken ? { session_token: sessionToken } : {}),
-      ...(sessionExpiresAt ? { session_expires_at: sessionExpiresAt } : {}),
-      loggedInAt: new Date().toISOString(),
-    };
-    writeStoredAuthState({
-      session: nextSession,
-      pendingSelection: null,
-    });
-    setAuthState({
-      session: nextSession,
-      pendingSelection: null,
-    });
+    if (!membership?.username || !membership?.organization_id) return;
+    const nextSession = withoutSecrets({ ...membership, available_memberships: pendingSelection?.memberships || [membership], session_expires_at: pendingSelection?.session_expires_at || null, loggedInAt: new Date().toISOString() });
+    setAuthState({ session: nextSession, pendingSelection: null });
   }, [pendingSelection]);
 
   const switchOrganization = useCallback((membership) => {
-    if (!session || !membership?.username || !membership?.organization_id) {
-      return false;
-    }
-
+    if (!session || !membership?.username || !membership?.organization_id) return false;
     const availableMemberships = session.available_memberships || session.memberships || [session];
-    const allowedMembership = availableMemberships.find((item) => (
-      Number(item?.organization_id) === Number(membership.organization_id)
-    ));
-    if (!allowedMembership) {
-      return false;
-    }
-
-    const nextSession = {
-      ...allowedMembership,
-      available_memberships: availableMemberships,
-      ...(session.session_token ? { session_token: session.session_token } : {}),
-      ...(session.session_expires_at ? { session_expires_at: session.session_expires_at } : {}),
-      loggedInAt: session.loggedInAt || new Date().toISOString(),
-    };
-    writeStoredAuthState({ session: nextSession, pendingSelection: null });
-    setAuthState({ session: nextSession, pendingSelection: null });
+    const allowed = availableMemberships.find((item) => Number(item?.organization_id) === Number(membership.organization_id));
+    if (!allowed) return false;
+    setAuthState({ session: withoutSecrets({ ...allowed, available_memberships: availableMemberships, session_expires_at: session.session_expires_at, loggedInAt: session.loggedInAt || new Date().toISOString() }), pendingSelection: null });
     return true;
   }, [session]);
 
-  const cancelOrganizationSelection = useCallback(() => {
-    writeStoredAuthState({
-      session: null,
-      pendingSelection: null,
-    });
-    setAuthState({
-      session: null,
-      pendingSelection: null,
-    });
-  }, []);
-
   const logout = useCallback(() => {
-    const token = session?.session_token || pendingSelection?.session_token || null;
-    if (token) {
-      logoutRequest(token).catch(() => {});
-    }
+    logoutRequest().catch(() => {}).finally(() => setWebCsrfToken(""));
+    setAuthState({ session: null, pendingSelection: null });
+  }, []);
+  const cancelOrganizationSelection = useCallback(() => logout(), [logout]);
 
-    writeStoredAuthState({
-      session: null,
-      pendingSelection: null,
-    });
-    setAuthState({
-      session: null,
-      pendingSelection: null,
-    });
-  }, [pendingSelection, session]);
-
-  const contextValue = useMemo(
-    () => ({
-      isAuthenticated: Boolean(session),
-      session,
-      pendingSelection,
-      requiresOrganizationSelection: Boolean(pendingSelection),
-      loading,
-      setSession: (nextSession) => setAuthState({ session: nextSession, pendingSelection: null }),
-      login,
-      selectOrganization,
-      switchOrganization,
-      cancelOrganizationSelection,
-      logout,
-    }),
-    [loading, login, logout, pendingSelection, selectOrganization, switchOrganization, cancelOrganizationSelection, session],
-  );
+  const contextValue = useMemo(() => ({
+    isAuthenticated: Boolean(session), session, pendingSelection,
+    requiresOrganizationSelection: Boolean(pendingSelection), loading,
+    setSession: (nextSession) => setAuthState({ session: withoutSecrets(nextSession), pendingSelection: null }),
+    login, selectOrganization, switchOrganization, cancelOrganizationSelection, logout,
+  }), [loading, login, logout, pendingSelection, selectOrganization, switchOrganization, cancelOrganizationSelection, session]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }

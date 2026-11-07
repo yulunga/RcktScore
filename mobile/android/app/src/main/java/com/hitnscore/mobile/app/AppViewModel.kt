@@ -9,15 +9,23 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.core.session.AccountContext
+import com.hitnscore.mobile.core.auth.PasswordLink
+import com.hitnscore.mobile.core.auth.PasswordLinkInbox
 import com.hitnscore.mobile.core.session.SessionRepository
 import com.hitnscore.mobile.core.session.SessionState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /** Root state holder: decides between splash, sign-in, lock and the signed-in shell. */
-class AppViewModel(private val sessionRepository: SessionRepository) : ViewModel() {
+class AppViewModel(
+    private val sessionRepository: SessionRepository,
+    private val passwordLinks: PasswordLinkInbox = PasswordLinkInbox(),
+) : ViewModel() {
 
     val sessionState: StateFlow<SessionState> = sessionRepository.state
+
+    /** A password set-up/reset link waiting to be completed (shown over the app). */
+    val passwordLink: StateFlow<PasswordLink?> = passwordLinks.pending
     val biometricUnlockEnabled: StateFlow<Boolean> = sessionRepository.biometricUnlockEnabled
 
     private var backgroundedAtMillis: Long? = null
@@ -31,6 +39,8 @@ class AppViewModel(private val sessionRepository: SessionRepository) : ViewModel
     fun signOut() = sessionRepository.signOut()
 
     fun unlock() = sessionRepository.unlock()
+
+    fun closePasswordLink() = passwordLinks.clear()
 
     fun setBiometricUnlockEnabled(enabled: Boolean) = sessionRepository.setBiometricUnlockEnabled(enabled)
 
@@ -54,7 +64,7 @@ class AppViewModel(private val sessionRepository: SessionRepository) : ViewModel
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY] as HitNScoreApplication
-                AppViewModel(application.container.sessionRepository)
+                AppViewModel(application.container.sessionRepository, application.container.passwordLinks)
             }
         }
     }

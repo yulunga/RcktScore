@@ -43,6 +43,10 @@ def test_personal_account_deletion_removes_tenant_data_and_sessions():
     assert any("DELETE FROM matches" in statement for statement in statements)
     assert any('DELETE FROM "SkwshCourts"' in statement for statement in statements)
     assert any('DELETE FROM "SkwshOrgUsers"' in statement for statement in statements)
+    assert any(
+        'DELETE FROM "SkwshOrgUsers" WHERE LOWER(clubusername)' in statement
+        for statement in statements
+    )
     assert any('DELETE FROM "SkwshOrgSettings"' in statement for statement in statements)
     assert any('DELETE FROM "HitnScoreInterestRequests"' in statement for statement in statements)
     assert any("DELETE FROM org_user_sessions" in statement for statement in statements)

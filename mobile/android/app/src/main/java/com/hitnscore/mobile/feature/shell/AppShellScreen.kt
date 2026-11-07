@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -28,6 +29,7 @@ import com.hitnscore.mobile.app.navigation.navigateToTab
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.feature.settings.SettingsPage
+import com.hitnscore.mobile.data.model.ClubRoles
 
 /**
  * Signed-in shell. One Scaffold and bottom bar for the whole session; only the
@@ -46,13 +48,17 @@ fun AppShellScreen(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val shellState by shellViewModel.uiState.collectAsStateWithLifecycle()
     val currentRoute = backStackEntry?.destination?.route
+    // Read-only club members can follow matches but not score them (B18, as iOS and web).
+    val canManageMatches = ClubRoles.canManageMatches(session.activeContext.role)
+    val canManageState = rememberUpdatedState(canManageMatches)
 
     val actions = remember(navController, shellViewModel) {
         ShellActions(
             onRefresh = shellViewModel::refresh,
-            // Live and scheduled matches open the scorer; finished ones open the match view.
+            // Live and scheduled matches open the scorer; finished ones (and read-only members) open the match view.
             onOpenMatch = { match ->
-                val route = if (match.status.equals("completed", ignoreCase = true)) ShellRoutes.match(match.matchId) else ShellRoutes.score(match.matchId)
+                val completed = match.status.equals("completed", ignoreCase = true)
+                val route = if (completed || !canManageState.value) ShellRoutes.match(match.matchId) else ShellRoutes.score(match.matchId)
                 navController.navigate(route)
             },
             onOpenNotifications = { navController.navigate(ShellRoutes.NOTIFICATIONS) { launchSingleTop = true } },
@@ -67,7 +73,7 @@ fun AppShellScreen(
     }
 
     val fullScreen = ShellRoutes.isFullScreen(currentRoute)
-    val showStartButton = currentRoute == AppDestination.Home.route || currentRoute == AppDestination.Matches.route
+    val showStartButton = canManageMatches && (currentRoute == AppDestination.Home.route || currentRoute == AppDestination.Matches.route)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

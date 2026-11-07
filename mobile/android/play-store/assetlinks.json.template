@@ -1,0 +1,23 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hitnscore.mobile",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_PLAY_APP_SIGNING_KEY_SHA256 (Play Console > App integrity)",
+        "REPLACE_WITH_UPLOAD_KEY_SHA256 (optional: sideloaded release builds)"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.hitnscore.mobile.dev.debug",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_DEBUG_KEY_SHA256 (./gradlew signingReport, debug variant)"
+      ]
+    }
+  }
+]

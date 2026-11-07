@@ -183,9 +183,9 @@ def _send_organization_user_invitation_email(
         title = "Welcome to HitnScore"
         paragraphs = [
             f"You have been invited to join {organization_name} on Hit n Score.",
-            "Confirm your email address to activate your organisation access.",
+            "Confirm your email address and choose a password to activate your Personal Free account and club association.",
         ]
-        follow_up = "Once approved, you can sign in and access live scoring, match history, and organisation tools available within your account."
+        follow_up = "Once activated, Personal remains your base account and the club appears as an association you can switch to when scoring or viewing club activity."
 
     body_html = render_branded_email(
         title=title,

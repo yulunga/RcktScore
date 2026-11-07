@@ -2020,7 +2020,7 @@ struct DashboardView: View {
                 )
                 .disabled(!isAdmin)
 
-                Text("HitnScore will email this person a secure invitation so they can choose their own password.")
+                Text("HitnScore creates or retains this person's Personal account, adds this club as an association, and emails any required secure invitation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
