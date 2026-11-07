@@ -5748,16 +5748,22 @@ textarea {
 }
 
 .root-admin-session-brand strong {
+  white-space: nowrap;
   color: var(--brand-blue, #1769aa);
 }
 
 .root-admin-session-brand strong span {
+  display: inline;
   color: #c4445c;
 }
 
 .root-admin-session-actions {
   flex-direction: column;
   align-items: flex-end;
+}
+
+.root-admin-session-nav {
+  display: flex;
 }
 
 .root-admin-dashboard-link {

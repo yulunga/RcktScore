@@ -7,7 +7,7 @@ from psycopg.types.json import Jsonb
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
-from common.sport_config import constrain_enabled_sports, normalize_enabled_sports, normalize_sport_id
+from common.sport_config import constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports, normalize_sport_id
 from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
 from common.access_control import VALID_MEMBERSHIP_ROLES, normalize_membership_role
 
@@ -27,6 +27,7 @@ ORGANIZATION_FIELDS = [
     "org_webaddress",
 ]
 TIMED_BREAK_SPORTS = ("squash", "racketball", "tennis", "padel")
+PERSONAL_ORG_ID_SEQUENCE = "hitnscore_personal_org_id_seq"
 
 
 def normalize_timed_break_defaults(value):
@@ -618,6 +619,17 @@ def delete_personal_account(connection, organization_id, username):
             {"organization_id": org_id},
         )
 
+        # Personal is the base account for every registered identity. Deleting
+        # it therefore removes the user's club associations as well, while club
+        # matches and other club-owned records remain with their organisations.
+        cursor.execute(
+            '''
+            DELETE FROM "SkwshOrgUsers"
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+            ''',
+            {"username": current_username},
+        )
+
         interest_request_id = organization_row.get("interest_request_id")
         if interest_request_id:
             cursor.execute(
@@ -638,6 +650,151 @@ def delete_personal_account(connection, organization_id, username):
 
     connection.commit()
     return True
+
+
+def ensure_personal_account_for_identity(
+    connection,
+    username,
+    *,
+    first_name="",
+    surname="",
+    password_hash=None,
+    approval_status=None,
+    password_reset_token=None,
+    password_reset_requested_at=None,
+):
+    """Ensure a registered identity owns one Personal Free workspace."""
+    normalized_username = normalize_email_address(username)
+    if not is_valid_email_address(normalized_username):
+        raise ValueError("Username must be a valid email address")
+
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(%(username)s))",
+            {"username": normalized_username},
+        )
+        cursor.execute(
+            '''
+            SELECT organization.id, membership.id AS membership_id
+            FROM "SkwshOrgSettings" AS organization
+            INNER JOIN "SkwshOrgUsers" AS membership
+                ON membership.organization_id = organization.id
+            WHERE organization.org_type = 'personal'
+              AND LOWER(membership.clubusername) = LOWER(%(username)s)
+            LIMIT 1
+            ''',
+            {"username": normalized_username},
+        )
+        existing_personal = cursor.fetchone()
+        if existing_personal:
+            return {
+                "organization_id": existing_personal["id"],
+                "membership_id": existing_personal["membership_id"],
+                "created": False,
+            }
+
+        cursor.execute(
+            '''
+            SELECT password_hash, first_name, surname, approval_status,
+                   password_reset_token, password_reset_requested_at
+            FROM "SkwshOrgUsers"
+            WHERE LOWER(clubusername) = LOWER(%(username)s)
+            ORDER BY
+                CASE WHEN password_hash IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN approval_status = 'approved' THEN 0 ELSE 1 END,
+                id ASC
+            LIMIT 1
+            ''',
+            {"username": normalized_username},
+        )
+        identity_row = cursor.fetchone() or {}
+        effective_hash = password_hash or identity_row.get("password_hash")
+        effective_first_name = (first_name or identity_row.get("first_name") or "").strip()
+        effective_surname = (surname or identity_row.get("surname") or "").strip()
+        effective_status = approval_status or (
+            USER_STATUS_APPROVED if effective_hash else USER_STATUS_PENDING
+        )
+        effective_reset_token = password_reset_token or identity_row.get("password_reset_token")
+        effective_reset_requested_at = (
+            password_reset_requested_at or identity_row.get("password_reset_requested_at")
+        )
+        display_name = " ".join(
+            part for part in [effective_first_name, effective_surname] if part
+        ).strip()
+        organization_name = f"{display_name or normalized_username} Personal"
+        enabled_sports = fetch_platform_enabled_sports(connection)
+
+        cursor.execute(f"SELECT nextval('{PERSONAL_ORG_ID_SEQUENCE}') AS organization_id")
+        personal_org_id = cursor.fetchone()["organization_id"]
+        cursor.execute(
+            '''
+            INSERT INTO "SkwshOrgSettings" (
+                id, created_at, organization_name, org_contact, org_email,
+                org_type, plan, owner_username, is_hidden, enabled_sports
+            )
+            VALUES (
+                %(organization_id)s, %(created_at)s, %(organization_name)s,
+                %(org_contact)s, %(org_email)s, 'personal', 'personal_free',
+                %(owner_username)s, true, %(enabled_sports)s
+            )
+            ''',
+            {
+                "organization_id": personal_org_id,
+                "created_at": now,
+                "organization_name": organization_name,
+                "org_contact": display_name or normalized_username,
+                "org_email": normalized_username,
+                "owner_username": normalized_username,
+                "enabled_sports": Jsonb(enabled_sports),
+            },
+        )
+        cursor.execute(
+            '''
+            INSERT INTO "SkwshOrgUsers" (
+                created_at, clubusername, password_hash, organization_id,
+                role, first_name, surname, approval_status, approved_at,
+                password_reset_token, password_reset_requested_at
+            )
+            VALUES (
+                %(created_at)s, %(username)s, %(password_hash)s,
+                %(organization_id)s, 'admin', %(first_name)s, %(surname)s,
+                %(approval_status)s, %(approved_at)s,
+                %(password_reset_token)s, %(password_reset_requested_at)s
+            )
+            RETURNING id
+            ''',
+            {
+                "created_at": now,
+                "username": normalized_username,
+                "password_hash": effective_hash,
+                "organization_id": personal_org_id,
+                "first_name": effective_first_name,
+                "surname": effective_surname,
+                "approval_status": effective_status,
+                "approved_at": now if effective_status == USER_STATUS_APPROVED else None,
+                "password_reset_token": effective_reset_token,
+                "password_reset_requested_at": effective_reset_requested_at,
+            },
+        )
+        membership_id = cursor.fetchone()["id"]
+        cursor.execute(
+            '''
+            INSERT INTO "SkwshCourts" (
+                created_at, court_name, court_alias, organization_name
+            )
+            VALUES (
+                %(created_at)s, 'Personal Court', 'Personal Court', %(organization_id)s
+            )
+            ''',
+            {"created_at": now, "organization_id": personal_org_id},
+        )
+
+    return {
+        "organization_id": personal_org_id,
+        "membership_id": membership_id,
+        "created": True,
+    }
 
 
 def create_organization_user(
@@ -688,6 +845,17 @@ def create_organization_user(
         _build_approval_url(approval_base_url, approval_token)
         if has_identity_password
         else _build_password_setup_url(approval_base_url, password_setup_token)
+    )
+
+    ensure_personal_account_for_identity(
+        connection,
+        trimmed_username,
+        first_name=trimmed_first_name,
+        surname=trimmed_surname,
+        password_hash=existing_hash,
+        approval_status=USER_STATUS_APPROVED if existing_hash else USER_STATUS_PENDING,
+        password_reset_token=password_setup_token,
+        password_reset_requested_at=created_at if password_setup_token else None,
     )
 
     with connection.cursor() as cursor:

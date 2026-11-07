@@ -2580,7 +2580,7 @@ struct DashboardView: View {
         case .first:
             return Alert(
                 title: Text("Delete your account?"),
-                message: Text("This will permanently remove your personal account, matches and scoring history. This action cannot be undone."),
+                message: Text("This will permanently remove your Personal account, Personal matches, scoring history and all club associations. Club-owned match records remain with their clubs. This action cannot be undone."),
                 primaryButton: .destructive(Text("Continue")) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         accountDeletionPrompt = .final
@@ -2591,7 +2591,7 @@ struct DashboardView: View {
         case .final:
             return Alert(
                 title: Text("Are you really sure?"),
-                message: Text("Your account and its data will be permanently deleted now."),
+                message: Text("Your identity, Personal data and club access will be permanently deleted now."),
                 primaryButton: .destructive(Text("Delete Permanently")) {
                     deletePersonalAccount()
                 },
