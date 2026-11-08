@@ -21,6 +21,9 @@ struct DashboardResponse: Decodable {
     let recentMatches: [MatchSummary]
     let viewedMatches: [MatchSummary]
     let performance: PersonalPerformanceSummary?
+    let appAnalytics: AppAnalyticsSummary?
+    let playerAnalytics: BasicPlayerAnalyticsSummary?
+    let clubAnalytics: ClubAnalyticsSummary?
 
     enum CodingKeys: String, CodingKey {
         case organization
@@ -29,6 +32,9 @@ struct DashboardResponse: Decodable {
         case recentMatches = "recent_matches"
         case viewedMatches = "viewed_matches"
         case performance
+        case appAnalytics = "app_analytics"
+        case playerAnalytics = "player_analytics"
+        case clubAnalytics = "club_analytics"
     }
 
     init(from decoder: Decoder) throws {
@@ -39,8 +45,154 @@ struct DashboardResponse: Decodable {
         recentMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .recentMatches) ?? []
         viewedMatches = try container.decodeIfPresent([MatchSummary].self, forKey: .viewedMatches) ?? []
         performance = try container.decodeIfPresent(PersonalPerformanceSummary.self, forKey: .performance)
+        appAnalytics = try container.decodeIfPresent(AppAnalyticsSummary.self, forKey: .appAnalytics)
+        playerAnalytics = try container.decodeIfPresent(BasicPlayerAnalyticsSummary.self, forKey: .playerAnalytics)
+        clubAnalytics = try container.decodeIfPresent(ClubAnalyticsSummary.self, forKey: .clubAnalytics)
     }
 }
+
+struct SetupCompletionAnalytics: Decodable {
+    let tracked: Bool
+    let started: Int?
+    let completed: Int?
+    let abandoned: Int?
+    let open: Int?
+    let rate: Double?
+    let abandonmentRate: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case tracked, started, completed, abandoned, open, rate
+        case abandonmentRate = "abandonment_rate"
+    }
+}
+
+struct AnalyticsSportCount: Decodable, Identifiable {
+    let sport: String
+    let count: Int
+    var id: String { sport }
+}
+
+struct AppAnalyticsSummary: Decodable {
+    let periodDays: Int
+    let matchesScored: Int
+    let completedMatches: Int
+    let completedMatchRate: Double?
+    let averageMatchDurationSeconds: Int?
+    let matchesBySport: [AnalyticsSportCount]
+    let setupCompletion: SetupCompletionAnalytics?
+    let activeDays: Int?
+    let returningUsageWeeks: Int?
+    let averageMatchesPerActiveDay: Double?
+    let totalPoints: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case periodDays = "period_days"
+        case matchesScored = "matches_scored"
+        case completedMatches = "completed_matches"
+        case completedMatchRate = "completed_match_rate"
+        case averageMatchDurationSeconds = "average_match_duration_seconds"
+        case matchesBySport = "matches_by_sport"
+        case setupCompletion = "setup_completion"
+        case activeDays = "active_days"
+        case returningUsageWeeks = "returning_usage_weeks"
+        case averageMatchesPerActiveDay = "average_matches_per_active_day"
+        case totalPoints = "total_points"
+    }
+}
+
+struct BasicPlayerAnalyticsSummary: Decodable {
+    let matchesPlayed: Int
+    let matchesWon: Int
+    let matchesLost: Int
+    let winPercentage: Double?
+    let pointsWon: Int
+    let playingTimeSeconds: Int
+    let averageMatchDurationSeconds: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case matchesPlayed = "matches_played"
+        case matchesWon = "matches_won"
+        case matchesLost = "matches_lost"
+        case winPercentage = "win_percentage"
+        case pointsWon = "points_won"
+        case playingTimeSeconds = "playing_time_seconds"
+        case averageMatchDurationSeconds = "average_match_duration_seconds"
+    }
+}
+
+struct ClubCourtUsage: Decodable, Identifiable {
+    let court: String
+    let matches: Int
+    let durationSeconds: Int
+    var id: String { court }
+
+    enum CodingKeys: String, CodingKey {
+        case court, matches
+        case durationSeconds = "duration_seconds"
+    }
+}
+
+struct ClubAnalyticsSummary: Decodable {
+    let clubMatchesScored: Int
+    let peakHours: [Int]
+    let peakTimeConcentration: Double?
+    let offPeakMatches: Int
+    let courtUsage: [ClubCourtUsage]
+    let simultaneousCourtActivity: Int
+    let premiumDigest: String
+    let memberActivity: ClubMemberActivity
+
+    enum CodingKeys: String, CodingKey {
+        case clubMatchesScored = "club_matches_scored"
+        case peakHours = "peak_hours"
+        case peakTimeConcentration = "peak_time_concentration"
+        case offPeakMatches = "off_peak_matches"
+        case courtUsage = "court_usage"
+        case simultaneousCourtActivity = "simultaneous_court_activity"
+        case premiumDigest = "premium_digest"
+        case memberActivity = "member_activity"
+    }
+}
+
+struct ClubMemberActivity: Decodable {
+    let tracked: Bool
+    let userCount: Int
+    let activeUsers: Int
+    let adoptionRate: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case tracked
+        case userCount = "user_count"
+        case activeUsers = "active_users"
+        case adoptionRate = "adoption_rate"
+    }
+}
+
+struct AnalyticsExportPayload: Decodable {
+    let reportType: String
+    let filename: String
+    let contentType: String
+    let csvContent: String
+    let containsPersonalDetails: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case reportType = "report_type"
+        case filename
+        case contentType = "content_type"
+        case csvContent = "csv_content"
+        case containsPersonalDetails = "contains_personal_details"
+    }
+}
+
+private struct AnalyticsExportResponseData: Decodable { let export: AnalyticsExportPayload }
+private struct MatchSetupAnalyticsRequest: Encodable { let sport: String }
+private struct MatchSetupAnalyticsFinishRequest: Encodable {
+    let outcome: String
+    let matchID: String?
+    enum CodingKeys: String, CodingKey { case outcome; case matchID = "match_id" }
+}
+private struct MatchSetupAnalyticsRecord: Decodable { let id: String }
+private struct MatchSetupAnalyticsResponseData: Decodable { let setup: MatchSetupAnalyticsRecord }
 
 struct MatchWatchPayload: Decodable {
     let code: String
@@ -479,6 +631,23 @@ struct PasswordResetRequest: Encodable {
     let email: String
 }
 
+private struct PasswordResetTokenRequest: Encodable {
+    let token: String
+}
+
+private struct PasswordResetConfirmRequest: Encodable {
+    let token: String
+    let password: String
+}
+
+private struct PasswordResetValidateResponseData: Decodable {
+    let valid: Bool
+}
+
+private struct PasswordResetConfirmResponseData: Decodable {
+    let reset: Bool
+}
+
 struct RegisterInterestRequest: Encodable {
     let firstName: String
     let surname: String
@@ -640,9 +809,38 @@ final class APIClient {
         let request = try makeRequest(
             path: "/password_reset/request",
             method: "POST",
-            body: PasswordResetRequest(email: email)
+            body: PasswordResetRequest(email: email),
+            includeAuthentication: false
         )
         let _: APIEnvelope<AcceptedResponseData> = try await send(request)
+    }
+
+    func validatePasswordResetToken(_ token: String) async throws -> Bool {
+        let request = try makeRequest(
+            path: "/password_reset/validate",
+            method: "POST",
+            body: PasswordResetTokenRequest(token: token),
+            includeAuthentication: false
+        )
+        let envelope: APIEnvelope<PasswordResetValidateResponseData> = try await send(request)
+        return envelope.data?.valid == true
+    }
+
+    func confirmPasswordReset(token: String, password: String) async throws {
+        let request = try makeRequest(
+            path: "/password_reset/confirm",
+            method: "POST",
+            body: PasswordResetConfirmRequest(token: token, password: password),
+            includeAuthentication: false
+        )
+        let envelope: APIEnvelope<PasswordResetConfirmResponseData> = try await send(request)
+        guard envelope.data?.reset == true else {
+            throw APIErrorResponse(
+                code: "password_reset_failed",
+                message: "The password could not be saved. Please request a new link.",
+                details: nil
+            )
+        }
     }
 
     func logout(sessionTokenOverride: String? = nil) async {
@@ -740,7 +938,8 @@ final class APIClient {
     func getDashboard(
         organizationID: Int,
         activeLimit: Int? = nil,
-        recentLimit: Int? = nil
+        recentLimit: Int? = nil,
+        analyticsPeriodDays: Int? = nil
     ) async throws -> DashboardResponse {
         var queryItems: [URLQueryItem] = []
         if let activeLimit {
@@ -748,6 +947,9 @@ final class APIClient {
         }
         if let recentLimit {
             queryItems.append(URLQueryItem(name: "recent_limit", value: String(recentLimit)))
+        }
+        if let analyticsPeriodDays {
+            queryItems.append(URLQueryItem(name: "analytics_period_days", value: String(analyticsPeriodDays)))
         }
 
         let request: URLRequest
@@ -767,6 +969,46 @@ final class APIClient {
         }
 
         return dashboard
+    }
+
+    func beginMatchSetupAnalytics(organizationID: Int, sport: String) async throws -> String {
+        let request = try makeRequest(
+            path: "/analytics/setup/\(organizationID)",
+            method: "POST",
+            body: MatchSetupAnalyticsRequest(sport: sport)
+        )
+        let envelope: APIEnvelope<MatchSetupAnalyticsResponseData> = try await send(request)
+        guard let setupID = envelope.data?.setup.id else {
+            throw APIErrorResponse(code: "empty_response", message: "No match setup analytics identifier returned.", details: nil)
+        }
+        return setupID
+    }
+
+    func finishMatchSetupAnalytics(
+        organizationID: Int,
+        setupID: String,
+        outcome: String,
+        matchID: String? = nil
+    ) async throws {
+        let request = try makeRequest(
+            path: "/analytics/setup/\(organizationID)/\(setupID)",
+            method: "PUT",
+            body: MatchSetupAnalyticsFinishRequest(outcome: outcome, matchID: matchID)
+        )
+        let _: APIEnvelope<MatchSetupAnalyticsResponseData> = try await send(request)
+    }
+
+    func exportAnalytics(organizationID: Int, periodDays: Int = 30) async throws -> AnalyticsExportPayload {
+        let request = try makeRequest(
+            path: "/analytics/export/\(organizationID)",
+            method: "GET",
+            queryItems: [URLQueryItem(name: "period_days", value: String(periodDays))]
+        )
+        let envelope: APIEnvelope<AnalyticsExportResponseData> = try await send(request)
+        guard let report = envelope.data?.export else {
+            throw APIErrorResponse(code: "empty_response", message: "No analytics export returned.", details: nil)
+        }
+        return report
     }
 
     func getWatchedMatch(organizationID: Int, code: String) async throws -> MatchWatchPayload {
@@ -1354,13 +1596,18 @@ final class APIClient {
         return try await unwrapMatchResponse(request)
     }
 
-    private func makeRequest(path: String, method: String, authTokenOverride: String? = nil) throws -> URLRequest {
+    private func makeRequest(
+        path: String,
+        method: String,
+        authTokenOverride: String? = nil,
+        includeAuthentication: Bool = true
+    ) throws -> URLRequest {
         let normalizedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let endpoint = apiBaseURL.appendingPathComponent(normalizedPath)
         var request = URLRequest(url: endpoint)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let resolvedAuthToken = authTokenOverride ?? authToken
+        let resolvedAuthToken = includeAuthentication ? (authTokenOverride ?? authToken) : nil
         if let resolvedAuthToken, !resolvedAuthToken.isEmpty {
             request.setValue("Bearer \(resolvedAuthToken)", forHTTPHeaderField: "Authorization")
         }
@@ -1395,8 +1642,17 @@ final class APIClient {
         return request
     }
 
-    private func makeRequest<T: Encodable>(path: String, method: String, body: T) throws -> URLRequest {
-        var request = try makeRequest(path: path, method: method)
+    private func makeRequest<T: Encodable>(
+        path: String,
+        method: String,
+        body: T,
+        includeAuthentication: Bool = true
+    ) throws -> URLRequest {
+        var request = try makeRequest(
+            path: path,
+            method: method,
+            includeAuthentication: includeAuthentication
+        )
         request.httpBody = try JSONEncoder().encode(body)
         return request
     }

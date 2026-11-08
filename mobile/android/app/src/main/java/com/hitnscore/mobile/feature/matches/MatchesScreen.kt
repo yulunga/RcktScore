@@ -41,6 +41,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.feature.watch.WatchMatchCard
 import com.hitnscore.mobile.core.designsystem.components.EmptyState
 import com.hitnscore.mobile.core.designsystem.components.ErrorBanner
 import com.hitnscore.mobile.core.designsystem.components.OfflineState
@@ -118,7 +119,18 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
             }
 
             when (state.matchesCategory) {
-                MatchesCategory.Current -> item(key = "current") {
+                MatchesCategory.Current -> {
+                  // Score Stream, as iOS: Personal Plus members follow other players' matches by code.
+                  if (isPersonal && isPersonalPlus) {
+                    item(key = "watch") {
+                        WatchMatchCard(
+                            viewedMatches = dashboard?.viewedMatches.orEmpty(),
+                            isOnline = state.isOnline,
+                            onWatch = actions.onWatchMatch,
+                        )
+                    }
+                  }
+                  item(key = "current") {
                     SectionCard(
                         title = stringResource(R.string.section_current_matches),
                         subtitle = stringResource(if (isPersonal) R.string.current_matches_personal else R.string.current_matches_club),
@@ -127,6 +139,7 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                             ActiveMatchCard(it) { actions.onOpenMatch(it) }
                         }
                     }
+                  }
                 }
 
                 MatchesCategory.Scheduled -> item(key = "scheduled") {

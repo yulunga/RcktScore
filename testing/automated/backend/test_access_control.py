@@ -1,4 +1,5 @@
 from common.access_control import (
+    CAPABILITY_ANALYTICS_READ,
     CAPABILITY_CLUB_MEMBERS_READ,
     CAPABILITY_MATCH_MANAGE,
     CAPABILITY_MATCH_READ,
@@ -21,6 +22,7 @@ def test_read_only_can_view_but_cannot_mutate_matches():
     membership = club_membership("read_only")
 
     assert membership_has_capability(membership, CAPABILITY_MATCH_READ)
+    assert membership_has_capability(membership, CAPABILITY_ANALYTICS_READ)
     assert not membership_has_capability(membership, CAPABILITY_MATCH_MANAGE)
 
 

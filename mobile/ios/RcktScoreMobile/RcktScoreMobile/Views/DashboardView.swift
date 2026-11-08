@@ -13,6 +13,13 @@ struct DashboardView: View {
     @State private var recentMatches: [MatchSummary] = []
     @State private var viewedMatches: [MatchSummary] = []
     @State private var performanceSummary: PersonalPerformanceSummary?
+    @State private var personalAppAnalytics: AppAnalyticsSummary?
+    @State private var personalPlayerAnalytics: BasicPlayerAnalyticsSummary?
+    @State private var clubAppAnalytics: AppAnalyticsSummary?
+    @State private var clubAnalytics: ClubAnalyticsSummary?
+    @State private var analyticsExportURL: URL?
+    @State private var isExportingAnalytics = false
+    @State private var analyticsExportError: String?
     @State private var organizationSummary: DashboardOrganizationSummary?
     @State private var organizationSettings: OrganizationSettings?
     @State private var isLoading = false
@@ -63,7 +70,8 @@ struct DashboardView: View {
     @State private var notificationErrorMessage: String?
     @State private var selectedMatchesCategory: MatchesCategory = .current
     @State private var matchWatchCode = ""
-    @State private var selectedAnalyticsCategory: AnalyticsCategory = .stats
+    @State private var selectedAnalyticsCategory: AnalyticsCategory = .personal
+    @State private var analyticsPeriodDays = 30
     @State private var showsManageSubscriptions = false
     @State private var isPersonalPlusOptionsExpanded = false
     @State private var personalPlusCollapseTask: Task<Void, Never>?
@@ -76,6 +84,17 @@ struct DashboardView: View {
             .lowercased()
     }
     private var isPersonalPlus: Bool { currentPlanCode == "personal_plus" }
+    private var personalMembership: UserMembership? {
+        availableMemberships.first { membership in
+            membership.organizationType?.lowercased() == "personal" || membership.organizationID >= 50_000
+        }
+    }
+    private var personalAnalyticsIsPlus: Bool {
+        if let personalMembership {
+            return personalMembership.plan?.lowercased() == "personal_plus"
+        }
+        return isPersonalAccount && isPersonalPlus
+    }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var canManageMatches: Bool { session?.canManageMatches ?? false }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
@@ -689,11 +708,10 @@ struct DashboardView: View {
 
     private var performanceContent: some View {
         VStack(spacing: 18) {
-            if isPersonalPlus {
+            if !isPersonalAccount {
                 Picker("Analytics category", selection: $selectedAnalyticsCategory) {
-                    ForEach(AnalyticsCategory.allCases) { category in
-                        Text(category.title).tag(category)
-                    }
+                    Text("Personal").tag(AnalyticsCategory.personal)
+                    Text("Club").tag(AnalyticsCategory.club)
                 }
                 .pickerStyle(.segmented)
                 .padding(6)
@@ -702,131 +720,238 @@ struct DashboardView: View {
             }
 
             dashboardSection(
-                title: selectedAnalyticsCategory == .personal && isPersonalPlus ? "Personal Analytics" : "Stats",
+                title: selectedAnalyticsCategory == .club ? "Club Analytics" : "Personal Analytics",
                 systemImage: "chart.xyaxis.line",
-                subtitle: selectedAnalyticsCategory == .personal && isPersonalPlus
-                    ? "Your results, court time, serving and progress across your sports."
-                    : "A summary of the matches scored in this app."
+                subtitle: selectedAnalyticsCategory == .club
+                    ? "Aggregate club use, match setup, demand and court reporting."
+                    : "Your app usage and, with Personal Plus, game and player performance."
             ) {
-                if selectedAnalyticsCategory == .stats || !isPersonalPlus {
-                    basicAnalyticsContent
-                } else if isLoading && performanceSummary == nil {
-                    HStack {
-                        ProgressView()
-                        Spacer()
+                HStack {
+                    Text("Reporting period")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Picker("Reporting period", selection: $analyticsPeriodDays) {
+                        Text("7 days").tag(7)
+                        Text("30 days").tag(30)
+                        Text("90 days").tag(90)
+                        Text("12 months").tag(365)
+                        Text("All time").tag(0)
                     }
-                } else if let performance = performanceSummary {
-                    VStack(spacing: 16) {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                            performanceStatCard(title: "Matches won", value: "\(performance.matchesWon)", detail: "\(performancePercentage(performance.winPercentage)) win rate")
-                            performanceStatCard(title: "Playing time", value: performanceDuration(performance.playingTimeSeconds), detail: "\(performance.matchesPlayed) matches")
-                            performanceStatCard(title: "Games won", value: "\(performance.gamesWon)", detail: "\(performancePercentage(performance.gameWinPercentage)) win rate")
-                            performanceStatCard(title: "Points won", value: "\(performance.pointsWon)", detail: "\(performancePercentage(performance.pointWinPercentage)) win rate")
-                            performanceStatCard(title: "Close games / sets", value: "\(performance.closeGamesWon)/\(performance.closeGamesPlayed)", detail: performancePercentage(performance.closeGameWinPercentage))
-                            performanceStatCard(title: "Points won on serve", value: "\(performance.servicePointsWon)", detail: "\(performancePercentage(performance.servicePointWinPercentage)) of serve points")
-                            performanceStatCard(title: "Current streak", value: "\(performance.currentWinStreak)", detail: "Best: \(performance.bestWinStreak)")
-                            performanceStatCard(title: "Points lost on serve", value: "\(performance.servicePointsLost)", detail: "From recorded actions")
-                        }
-
-                        performanceGroup(title: "Progress summaries") {
-                            performancePeriodRow(title: "This week", summary: performance.weeklySummary)
-                            Divider()
-                            performancePeriodRow(title: "This month", summary: performance.monthlySummary)
-                        }
-
-                        if !performance.monthlyImprovement.isEmpty {
-                            performanceGroup(title: "Monthly improvement") {
-                                ForEach(performance.monthlyImprovement) { item in
-                                    performanceRow(
-                                        title: item.sport,
-                                        value: item.percentagePointChange.map { String(format: "%+.1f pts", $0) } ?? "Not enough data",
-                                        detail: "\(item.currentMonthMatches) this month"
-                                    )
-                                }
-                            }
-                        }
-
-                        if !performance.sports.isEmpty {
-                            performanceGroup(title: "By sport") {
-                                ForEach(performance.sports) { sport in
-                                    performanceRow(
-                                        title: sport.sport,
-                                        value: "\(sport.won)-\(sport.lost)",
-                                        detail: "\(performancePercentage(sport.winPercentage)) · \(performanceDuration(sport.playingTimeSeconds))"
-                                    )
-                                }
-                            }
-                        }
-
-                        if !performance.opponents.isEmpty {
-                            performanceGroup(title: "Opponents") {
-                                ForEach(performance.opponents) { opponent in
-                                    performanceRow(
-                                        title: opponent.name,
-                                        value: "\(opponent.won)-\(opponent.lost)",
-                                        detail: "\(performancePercentage(opponent.winPercentage)) win rate"
-                                    )
-                                }
-                            }
-                        }
-
-                        if !performance.scorelineWins.isEmpty {
-                            performanceGroup(title: "Winning scorelines") {
-                                ForEach(performance.scorelineWins) { scoreline in
-                                    performanceRow(title: scoreline.scoreline, value: "\(scoreline.count)", detail: scoreline.count == 1 ? "win" : "wins")
-                                }
-                            }
-                        }
-
-                        if performance.unclassifiedMatchCount > 0 {
-                            Text("\(performance.unclassifiedMatchCount) match\(performance.unclassifiedMatchCount == 1 ? "" : "es") could not be assigned to your profile because the recorded player name differs from your registered name.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                } else {
-                    emptyState("No completed matches are available for performance reporting yet.")
+                    .pickerStyle(.menu)
                 }
+
+                analyticsExportControls
+
+                if let analyticsExportError {
+                    Text(analyticsExportError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if selectedAnalyticsCategory == .club && !isPersonalAccount {
+                    clubAnalyticsContent
+                } else {
+                    basicAnalyticsContent
+
+                    if personalAnalyticsIsPlus {
+                        if isLoading && performanceSummary == nil {
+                            HStack {
+                                ProgressView()
+                                Spacer()
+                            }
+                        } else if let performance = performanceSummary {
+                            VStack(spacing: 16) {
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                                    performanceStatCard(title: "Matches won", value: "\(performance.matchesWon)", detail: "\(performancePercentage(performance.winPercentage)) win rate")
+                                    performanceStatCard(title: "Playing time", value: performanceDuration(performance.playingTimeSeconds), detail: "\(performance.matchesPlayed) matches")
+                                    performanceStatCard(title: "Games won", value: "\(performance.gamesWon)", detail: "\(performancePercentage(performance.gameWinPercentage)) win rate")
+                                    performanceStatCard(title: "Points won", value: "\(performance.pointsWon)", detail: "\(performancePercentage(performance.pointWinPercentage)) win rate")
+                                    performanceStatCard(title: "Close games / sets", value: "\(performance.closeGamesWon)/\(performance.closeGamesPlayed)", detail: performancePercentage(performance.closeGameWinPercentage))
+                                    performanceStatCard(title: "Points won on serve", value: "\(performance.servicePointsWon)", detail: "\(performancePercentage(performance.servicePointWinPercentage)) of serve points")
+                                    performanceStatCard(title: "Current streak", value: "\(performance.currentWinStreak)", detail: "Best: \(performance.bestWinStreak)")
+                                    performanceStatCard(title: "Points lost on serve", value: "\(performance.servicePointsLost)", detail: "From recorded actions")
+                                }
+
+                                performanceGroup(title: "Progress summaries") {
+                                    performancePeriodRow(title: "This week", summary: performance.weeklySummary)
+                                    Divider()
+                                    performancePeriodRow(title: "This month", summary: performance.monthlySummary)
+                                }
+
+                                if !performance.monthlyImprovement.isEmpty {
+                                    performanceGroup(title: "Monthly improvement") {
+                                        ForEach(performance.monthlyImprovement) { item in
+                                            performanceRow(
+                                                title: item.sport,
+                                                value: item.percentagePointChange.map { String(format: "%+.1f pts", $0) } ?? "Not enough data",
+                                                detail: "\(item.currentMonthMatches) this month"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if !performance.sports.isEmpty {
+                                    performanceGroup(title: "By sport") {
+                                        ForEach(performance.sports) { sport in
+                                            performanceRow(
+                                                title: sport.sport,
+                                                value: "\(sport.won)-\(sport.lost)",
+                                                detail: "\(performancePercentage(sport.winPercentage)) · \(performanceDuration(sport.playingTimeSeconds))"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if !performance.opponents.isEmpty {
+                                    performanceGroup(title: "Opponents") {
+                                        ForEach(performance.opponents) { opponent in
+                                            performanceRow(
+                                                title: opponent.name,
+                                                value: "\(opponent.won)-\(opponent.lost)",
+                                                detail: "\(performancePercentage(opponent.winPercentage)) win rate"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if !performance.scorelineWins.isEmpty {
+                                    performanceGroup(title: "Winning scorelines") {
+                                        ForEach(performance.scorelineWins) { scoreline in
+                                            performanceRow(title: scoreline.scoreline, value: "\(scoreline.count)", detail: scoreline.count == 1 ? "win" : "wins")
+                                        }
+                                    }
+                                }
+
+                                if performance.unclassifiedMatchCount > 0 {
+                                    Text("\(performance.unclassifiedMatchCount) match\(performance.unclassifiedMatchCount == 1 ? "" : "es") could not be assigned to your profile because the recorded player name differs from your registered name.")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                        } else {
+                            emptyState("No completed matches are available for player reporting yet.")
+                        }
+                    } else {
+                        upgradePerformanceCard
+                    }
+                }
+            }
+        }
+        .onChange(of: analyticsPeriodDays) { _, _ in
+            analyticsExportURL = nil
+            Task { await loadDashboard() }
+        }
+    }
+    private var basicAnalyticsContent: some View {
+        let analytics = personalAppAnalytics
+        let setup = analytics?.setupCompletion
+
+        return VStack(spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                performanceStatCard(title: "Matches scored", value: "\(analytics?.matchesScored ?? 0)", detail: "\(analytics?.completedMatches ?? 0) completed")
+                performanceStatCard(title: "Completion rate", value: performancePercentage(analytics?.completedMatchRate), detail: "Recorded matches")
+                performanceStatCard(title: "Average duration", value: analytics?.averageMatchDurationSeconds.map { performanceDuration($0) } ?? "—", detail: "Completed matches")
+                performanceStatCard(title: "Active days", value: "\(analytics?.activeDays ?? 0)", detail: "\(analytics?.returningUsageWeeks ?? 0) active weeks")
+                performanceStatCard(title: "Setups started", value: "\(setup?.started ?? 0)", detail: "\(setup?.completed ?? 0) completed")
+                performanceStatCard(title: "Setup abandonment", value: performancePercentage(setup?.abandonmentRate), detail: "\(setup?.abandoned ?? 0) abandoned")
+            }
+
+            if let sports = analytics?.matchesBySport.filter({ $0.count > 0 }), !sports.isEmpty {
+                performanceGroup(title: "Scoring by sport") {
+                    ForEach(sports) { sport in
+                        performanceRow(
+                            title: sportDisplayName(sport.sport),
+                            value: "\(sport.count)",
+                            detail: "matches scored"
+                        )
+                        if sport.id != sports.last?.id { Divider() }
+                    }
+                }
+            }
+
+            if !personalAnalyticsIsPlus {
+                Text("Personal includes basic app-usage and setup analytics. Upgrade for player, game, serve, opponent, progress and export reporting.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    private var basicAnalyticsContent: some View {
-        let completedCount = organizationSummary?.completedMatchCount ?? recentMatches.filter { !$0.locked }.count
-        let recordedMatches = recentMatches.filter { !$0.locked }
-        let totalSeconds = recordedMatches.reduce(0) { $0 + ($1.matchDurationSeconds ?? $1.state?.matchDurationSeconds ?? 0) }
-        let longestSeconds = recordedMatches.map { $0.matchDurationSeconds ?? $0.state?.matchDurationSeconds ?? 0 }.max() ?? 0
-        let groupedSports = Dictionary(grouping: recordedMatches) { sportDisplayName($0.sport) }
+    @ViewBuilder
+    private var clubAnalyticsContent: some View {
+        if let analytics = clubAnalytics {
+            let setup = clubAppAnalytics?.setupCompletion
+            VStack(spacing: 16) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    performanceStatCard(title: "Club matches", value: "\(analytics.clubMatchesScored)", detail: "All recorded club matches")
+                    performanceStatCard(title: "Active setup users", value: "\(analytics.memberActivity.activeUsers)", detail: "\(analytics.memberActivity.userCount) approved club users")
+                    performanceStatCard(title: "Setup adoption", value: performancePercentage(analytics.memberActivity.adoptionRate), detail: "Users who opened match setup")
+                    performanceStatCard(title: "Setups started", value: "\(setup?.started ?? 0)", detail: "\(setup?.completed ?? 0) completed")
+                    performanceStatCard(title: "Setup abandonment", value: performancePercentage(setup?.abandonmentRate), detail: "\(setup?.abandoned ?? 0) abandoned")
+                    performanceStatCard(title: "Peak-time concentration", value: performancePercentage(analytics.peakTimeConcentration), detail: analytics.peakHours.map { String(format: "%02d:00", $0) }.joined(separator: ", "))
+                    performanceStatCard(title: "Off-peak matches", value: "\(analytics.offPeakMatches)", detail: "Outside the three busiest hours")
+                    performanceStatCard(title: "Simultaneous courts", value: "\(analytics.simultaneousCourtActivity)", detail: "Highest overlapping activity")
+                }
 
-        return VStack(spacing: 16) {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                performanceStatCard(title: "Matches scored", value: "\(completedCount)", detail: "Completed matches")
-                performanceStatCard(title: "Average duration", value: recordedMatches.isEmpty ? "—" : performanceDuration(totalSeconds / recordedMatches.count), detail: "Across available history")
-                performanceStatCard(title: "Longest match", value: longestSeconds > 0 ? performanceDuration(longestSeconds) : "—", detail: "Across available history")
-                performanceStatCard(title: "Sports played", value: "\(groupedSports.count)", detail: "Different racket sports")
-            }
-
-            if !groupedSports.isEmpty {
-                performanceGroup(title: "Scoring by sport") {
-                    ForEach(groupedSports.keys.sorted(), id: \.self) { sport in
-                        let matches = groupedSports[sport] ?? []
-                        let duration = matches.reduce(0) { $0 + ($1.matchDurationSeconds ?? $1.state?.matchDurationSeconds ?? 0) }
-                        performanceRow(
-                            title: sport,
-                            value: "\(matches.count)",
-                            detail: matches.isEmpty ? "No matches" : "Average \(performanceDuration(duration / matches.count))"
-                        )
-                        if sport != groupedSports.keys.sorted().last { Divider() }
+                if !analytics.courtUsage.isEmpty {
+                    performanceGroup(title: "Court usage") {
+                        ForEach(analytics.courtUsage) { court in
+                            performanceRow(
+                                title: court.court,
+                                value: "\(court.matches)",
+                                detail: String(format: "%.1f court hours", Double(court.durationSeconds) / 3600)
+                            )
+                            if court.id != analytics.courtUsage.last?.id { Divider() }
+                        }
                     }
                 }
-            }
 
-            if !isPersonalPlus && isPersonalAccount {
-                Text("Personal Free stats use the completed matches available in your plan. Upgrade for personal win, serve, opponent and progress analytics.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Text(analytics.premiumDigest)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+        } else if isLoading {
+            ProgressView()
+        } else {
+            emptyState("No club analytics are available yet.")
+        }
+    }
+
+    @ViewBuilder
+    private var analyticsExportControls: some View {
+        let canExport = selectedAnalyticsCategory == .club || personalAnalyticsIsPlus
+        if canExport {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Button {
+                        Task { await prepareAnalyticsExport() }
+                    } label: {
+                        if isExportingAnalytics {
+                            ProgressView()
+                        } else {
+                            Label("Prepare CSV report", systemImage: "arrow.down.doc")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isExportingAnalytics)
+
+                    if let analyticsExportURL {
+                        ShareLink(item: analyticsExportURL) {
+                            Label("Share CSV", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+
+                if selectedAnalyticsCategory == .club {
+                    Text("Club reports contain aggregate club, court and match-use data only. They do not include player names, member names, usernames or email addresses.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -2526,7 +2651,7 @@ struct DashboardView: View {
                 )
                 privacySection(
                     title: "Retention and deletion",
-                    text: "Account data is retained while the account is active and only as long as reasonably necessary for service, security, legal and operational purposes. Personal-account owners can permanently delete their account from Profile settings. Deletion removes the personal account, its owned matches and scoring records, its signup record and active sessions, except for limited information that must be retained by law or in time-limited backups."
+                    text: "Account data is retained while the account is active and only as long as reasonably necessary for service, security, legal and operational purposes. Personal-account owners can request deletion from Profile settings. Access is disabled immediately and the account is marked delete pending; the Personal workspace, its matches and scoring records are cleared after 12 months, except for limited information that must be retained by law or in time-limited backups."
                 )
                 privacySection(
                     title: "Your rights",
@@ -2580,7 +2705,7 @@ struct DashboardView: View {
         case .first:
             return Alert(
                 title: Text("Delete your account?"),
-                message: Text("This will permanently remove your Personal account, Personal matches, scoring history and all club associations. Club-owned match records remain with their clubs. This action cannot be undone."),
+                message: Text("This immediately disables your account and signs out every device. Your Personal matches and scoring history are retained in delete-pending state for 12 months, then permanently cleared. Club-owned match records remain with their clubs."),
                 primaryButton: .destructive(Text("Continue")) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         accountDeletionPrompt = .final
@@ -2591,8 +2716,8 @@ struct DashboardView: View {
         case .final:
             return Alert(
                 title: Text("Are you really sure?"),
-                message: Text("Your identity, Personal data and club access will be permanently deleted now."),
-                primaryButton: .destructive(Text("Delete Permanently")) {
+                message: Text("Your account will no longer be accessible. The scheduled clearing date will be 12 months from today."),
+                primaryButton: .destructive(Text("Request Deletion")) {
                     deletePersonalAccount()
                 },
                 secondaryButton: .cancel()
@@ -3749,10 +3874,14 @@ struct DashboardView: View {
     }
 
     private func loadDashboard() async {
-        guard let organizationID = container.sessionStore.session?.organizationID else {
+        guard let currentSession = container.sessionStore.session else {
             print("DASHBOARD LOAD: missing organization ID in session")
             return
         }
+        let organizationID = currentSession.organizationID
+        let personalOrganizationID = currentSession.isPersonalAccount
+            ? organizationID
+            : personalMembership?.organizationID
 
         await MainActor.run {
             isLoading = true
@@ -3768,30 +3897,48 @@ struct DashboardView: View {
         }
 
         do {
-            print("DASHBOARD LOAD: requesting organization ID \(organizationID)")
             let dashboard = try await container.apiClient.getDashboard(
                 organizationID: organizationID,
                 activeLimit: 200,
-                recentLimit: 1000
+                recentLimit: 1000,
+                analyticsPeriodDays: analyticsPeriodDays
             )
+            let personalDashboard: DashboardResponse?
+            if let personalOrganizationID, personalOrganizationID != organizationID {
+                personalDashboard = try await container.apiClient.getDashboard(
+                    organizationID: personalOrganizationID,
+                    activeLimit: 0,
+                    recentLimit: 0,
+                    analyticsPeriodDays: analyticsPeriodDays
+                )
+            } else {
+                personalDashboard = dashboard
+            }
+
             await MainActor.run {
                 organizationSummary = dashboard.organization
-                performanceSummary = dashboard.performance
                 activeMatches = dashboard.activeMatches
                 scheduledMatches = dashboard.scheduledMatches
                 recentMatches = dashboard.recentMatches
                 viewedMatches = dashboard.viewedMatches
+
+                performanceSummary = personalDashboard?.performance
+                personalAppAnalytics = personalDashboard?.appAnalytics
+                personalPlayerAnalytics = personalDashboard?.playerAnalytics
+
+                if currentSession.isPersonalAccount {
+                    selectedAnalyticsCategory = .personal
+                    clubAppAnalytics = nil
+                    clubAnalytics = nil
+                } else {
+                    clubAppAnalytics = dashboard.appAnalytics
+                    clubAnalytics = dashboard.clubAnalytics
+                }
+
                 isLoading = false
-                print(
-                    "DASHBOARD LOAD: active=\(dashboard.activeMatches.count) " +
-                    "scheduled=\(dashboard.scheduledMatches.count) " +
-                    "recent=\(dashboard.recentMatches.count)"
-                )
             }
         } catch is CancellationError {
             await MainActor.run {
-                // SwiftUI can cancel an in-flight refresh when the gesture or
-                // containing view ends. That is not a failed dashboard fetch.
                 isLoading = false
             }
         } catch let urlError as URLError where urlError.code == .cancelled {
@@ -3807,6 +3954,45 @@ struct DashboardView: View {
         }
     }
 
+    private func prepareAnalyticsExport() async {
+        guard isOnline else {
+            await MainActor.run { analyticsExportError = "Connect to the internet to export analytics." }
+            return
+        }
+
+        let organizationID: Int?
+        if selectedAnalyticsCategory == .club {
+            organizationID = isPersonalAccount ? nil : session?.organizationID
+        } else {
+            organizationID = personalMembership?.organizationID ?? (isPersonalAccount ? session?.organizationID : nil)
+        }
+        guard let organizationID else { return }
+
+        await MainActor.run {
+            isExportingAnalytics = true
+            analyticsExportError = nil
+            analyticsExportURL = nil
+        }
+
+        do {
+            let report = try await container.apiClient.exportAnalytics(
+                organizationID: organizationID,
+                periodDays: analyticsPeriodDays
+            )
+            let safeFilename = report.filename.replacingOccurrences(of: "/", with: "-")
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(safeFilename)
+            try report.csvContent.write(to: url, atomically: true, encoding: .utf8)
+            await MainActor.run {
+                analyticsExportURL = url
+                isExportingAnalytics = false
+            }
+        } catch {
+            await MainActor.run {
+                analyticsExportError = (error as? APIErrorResponse)?.message ?? "Unable to prepare the analytics export."
+                isExportingAnalytics = false
+            }
+        }
+    }
     private func loadNotifications() async {
         guard isOnline, let organizationID = session?.organizationID else { return }
         do {
@@ -5023,11 +5209,11 @@ private enum MatchesCategory: String, CaseIterable, Identifiable {
 }
 
 private enum AnalyticsCategory: String, CaseIterable, Identifiable {
-    case stats
     case personal
+    case club
 
     var id: String { rawValue }
-    var title: String { self == .stats ? "Stats" : "Personal" }
+    var title: String { self == .personal ? "Personal" : "Club" }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {

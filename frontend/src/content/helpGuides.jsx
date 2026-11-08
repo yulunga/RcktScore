@@ -509,21 +509,21 @@ const GUIDES = {
     lead: "Use recorded match data to understand activity, player performance and club demand.",
     sections: [
       {
-        title: "App Analytics",
+        title: "Personal Analytics",
         paragraphs: [
-          "App reporting covers selected time periods and can include match volume, sport mix, completion or abandonment, match and game/set durations, activity by day/hour, trends, rules, formats, competitiveness, points and participant reuse.",
+          "Personal includes basic app usage, sport mix and match-setup completion or abandonment. Personal Plus adds game and player results, serving, opponents, progress and a CSV export.",
         ],
       },
       {
         title: "Player Analytics",
         paragraphs: [
-          "Player reporting links the signed-in profile name to recorded participants. Basic results are available across Personal tiers; Personal Plus adds deeper results, playing time, point/game/set and serve performance where the required events exist, streaks, opponents, scorelines and progress.",
+          "Personal Plus player reporting links the signed-in profile name to recorded participants and adds results, playing time, point/game/set and serve performance where the required events exist, streaks, opponents, scorelines and progress.",
         ],
       },
       {
         title: "Club Analytics",
         paragraphs: [
-          "Club administrators can review club volume, peak and off-peak demand, court matches and hours, simultaneous activity, scheduled demand, sport trends and the club digest. Historical values that were never captured are labelled untracked rather than estimated.",
+          "Every club subscription tier can review aggregate club volume, setup adoption and abandonment, peak and off-peak demand, court matches and hours, simultaneous activity, scheduled demand, sport trends and the club digest. Club CSV exports contain no player or member names, usernames or email addresses.",
         ],
       },
     ],
@@ -588,7 +588,7 @@ const GUIDES = {
           "Use Reset Password when the current password is unavailable.",
           "A replacement login revokes the previous identity session across web and mobile.",
           "Role, sport-access, email and password changes can deliberately revoke sessions so permissions are refreshed.",
-          "Personal-account deletion uses repeated destructive confirmation and removes the owned Personal workspace, Personal matches and scoring data, active sessions, and all club associations. Club-owned match records remain with the relevant club.",
+          "Personal-account deletion requires destructive confirmation, disables access and signs out every device immediately. Root Admin shows the account as Delete Pending for 12 months; the scheduled clearing job then removes the Personal workspace, Personal matches and scoring data, and club associations. Club-owned match records remain with the relevant club.",
         ],
       },
     ],

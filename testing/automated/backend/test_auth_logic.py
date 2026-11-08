@@ -88,3 +88,17 @@ def test_identity_rejects_password_that_matches_no_membership(monkeypatch):
     )
 
     assert result == {"approved_memberships": [], "pending_memberships": []}
+
+
+def test_identity_with_valid_password_cannot_login_while_deletion_is_pending(monkeypatch):
+    password_hash = generate_password_hash("shared-password")
+    rows = [membership_row(2, 99, "personal", password_hash)]
+    rows[0]["deletion_requested_at"] = "2026-11-08T00:00:00+00:00"
+    monkeypatch.setattr(auth_logic, "get_org_users", lambda *_args: rows)
+
+    try:
+        auth_logic.authenticate_org_user_memberships(object(), "player@example.com", "shared-password")
+    except auth_logic.AccountDeletionPending:
+        pass
+    else:
+        raise AssertionError("Deletion-pending identity must not be able to create a session")

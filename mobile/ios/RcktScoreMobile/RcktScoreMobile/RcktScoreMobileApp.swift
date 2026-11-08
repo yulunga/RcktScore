@@ -26,6 +26,9 @@ struct RcktScoreMobileApp: App {
             ContentView()
                 .environmentObject(container)
                 .preferredColorScheme(uiTestLaunchOptions.preferredColorScheme)
+                .onOpenURL { url in
+                    _ = container.handleIncomingURL(url)
+                }
         }
     }
 }

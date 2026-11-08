@@ -20,8 +20,11 @@ import com.hitnscore.mobile.feature.scoring.MatchTimerStore
 import com.hitnscore.mobile.feature.scoring.SharedPreferencesTimerStore
 import com.hitnscore.mobile.data.remote.RemoteHitNScoreApi
 import com.hitnscore.mobile.data.remote.RemoteSettingsApi
+import com.hitnscore.mobile.data.remote.MatchWatchApi
+import com.hitnscore.mobile.data.remote.RemoteMatchWatchApi
 import com.hitnscore.mobile.data.remote.SettingsApi
 import com.hitnscore.mobile.core.network.ApiClient
+import com.hitnscore.mobile.core.profile.ProfilePhotoStore
 import com.hitnscore.mobile.core.network.AuthInterceptor
 import com.hitnscore.mobile.core.session.AuthSessionRepository
 import com.hitnscore.mobile.core.session.SessionRepository
@@ -32,6 +35,7 @@ import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
 import com.hitnscore.mobile.feature.scoring.offline.SharedPreferencesSnapshotStorage
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +93,9 @@ class AppContainer(context: Context) {
 
     val settingsApi: SettingsApi by lazy { RemoteSettingsApi(apiClient) }
 
+    /** Score Stream: share a live match's viewing code, and watch one by code (Personal Plus). */
+    val matchWatchApi: MatchWatchApi by lazy { RemoteMatchWatchApi(apiClient) }
+
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 
     val timerStore: MatchTimerStore by lazy {
@@ -101,6 +108,9 @@ class AppContainer(context: Context) {
     val offlineMatchStore: OfflineMatchStore by lazy {
         OfflineMatchStore(SharedPreferencesSnapshotStorage(appContext.getSharedPreferences("hitnscore_offline_matches", Context.MODE_PRIVATE)))
     }
+
+    /** Profile photographs, kept only on this phone (no backup, never uploaded), as iOS. */
+    val profilePhotos: ProfilePhotoStore by lazy { ProfilePhotoStore(File(appContext.noBackupFilesDir, "profile_photos")) }
 
     /** The signed-in user and account that offline data belongs to. */
     fun offlineOwner(): OfflineOwner? =

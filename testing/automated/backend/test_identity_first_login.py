@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from common.auth_logic import IdentityPasswordResetRequired
+from common.auth_logic import AccountDeletionPending, IdentityPasswordResetRequired
 from functions.login import handler
 from functions.login.handler import default_identity_membership, identity_first_login_enabled
 
@@ -123,6 +123,26 @@ def test_invalid_login_logs_only_a_masked_email(monkeypatch):
     assert response["statusCode"] == 401
     assert warnings == [("Invalid login attempt for username=%s", ("s***@example.com",))]
     assert "sarah@example.com" not in repr(warnings)
+
+
+def test_deletion_pending_login_is_rejected_without_creating_a_session(monkeypatch):
+    monkeypatch.setattr(handler, "get_db_connection", lambda: ConnectionContext())
+    monkeypatch.setattr(
+        handler,
+        "authenticate_org_user_memberships",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AccountDeletionPending()),
+    )
+
+    response = handler.lambda_handler(
+        {
+            "headers": {"origin": "https://app.hitnscore.com"},
+            "body": json.dumps({"username": "player@example.com", "password": "correct"}),
+        },
+        None,
+    )
+
+    assert response["statusCode"] == 403
+    assert '"code": "ACCOUNT_DELETE_PENDING"' in response["body"]
 
 
 def test_web_login_sets_httponly_cookie_and_omits_json_token(monkeypatch):

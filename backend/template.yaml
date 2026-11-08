@@ -811,6 +811,36 @@ Resources:
             Path: /dashboard/{organization_id}
             Method: GET
 
+  MatchSetupAnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/match_setup_analytics/handler.lambda_handler
+      Events:
+        BeginMatchSetupAnalytics:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /analytics/setup/{organization_id}
+            Method: POST
+        FinishMatchSetupAnalytics:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /analytics/setup/{organization_id}/{setup_id}
+            Method: PUT
+
+  ExportAnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/export_analytics/handler.lambda_handler
+      Events:
+        ExportAnalytics:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /analytics/export/{organization_id}
+            Method: GET
+
   GetAppleSubscriptionContextFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -984,6 +1014,19 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /personal_account/{organization_id}
             Method: DELETE
+
+  PurgePersonalAccountsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/purge_personal_accounts/handler.lambda_handler
+      Timeout: 60
+      Events:
+        DailyPersonalAccountClearing:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 day)
+            FlexibleTimeWindow:
+              Mode: "OFF"
 
   CreateOrgUserFunction:
     Type: AWS::Serverless::Function
@@ -1418,6 +1461,50 @@ Resources:
       OKActions:
         - !Ref ProductionAlarmTopic
 
+  PersonalAccountClearingErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-personal-account-clearing-errors"
+      AlarmDescription: The daily Personal account clearing job failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PurgePersonalAccountsFunction
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
+  PersonalAccountClearingMissingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-personal-account-clearing-missing"
+      AlarmDescription: The Personal account clearing job did not run for two days.
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PurgePersonalAccountsFunction
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
   AppleNotificationErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1559,6 +1646,8 @@ Resources:
         - !Ref GetWatchedMatchFunction
         - !Ref SaveWatchedMatchFunction
         - !Ref GetDashboardFunction
+        - !Ref MatchSetupAnalyticsFunction
+        - !Ref ExportAnalyticsFunction
         - !Ref GetAppleSubscriptionContextFunction
         - !Ref VerifyAppleSubscriptionFunction
         - !Ref AppleSubscriptionNotificationsFunction
@@ -1572,6 +1661,7 @@ Resources:
         - !Ref UpdateOrganizationDetailsFunction
         - !Ref UpdatePersonalProfileFunction
         - !Ref DeletePersonalAccountFunction
+        - !Ref PurgePersonalAccountsFunction
         - !Ref CreateOrgUserFunction
         - !Ref UpdateOrgUserFunction
         - !Ref DeleteOrgUserFunction

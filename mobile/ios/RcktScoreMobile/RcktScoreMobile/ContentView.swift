@@ -48,6 +48,15 @@ struct ContentView: View {
                 break
             }
         }
+        .fullScreenCover(item: Binding(
+            get: { container.pendingPasswordResetLink },
+            set: { newValue in
+                if newValue == nil { container.closePasswordReset() }
+            }
+        )) { link in
+            PasswordSetupView(link: link)
+                .environmentObject(container)
+        }
     }
 
     private var biometricUnlockView: some View {

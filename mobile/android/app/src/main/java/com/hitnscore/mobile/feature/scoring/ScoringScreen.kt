@@ -85,6 +85,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.feature.watch.ShareLiveScoreSheet
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.designsystem.theme.ScoreTextStyles
 import com.hitnscore.mobile.data.model.MatchDetail
@@ -113,6 +114,7 @@ fun ScoringScreen(
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     var showActions by rememberSaveable { mutableStateOf(false) }
+    var showShare by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var confirmEnd by rememberSaveable { mutableStateOf(false) }
 
@@ -271,10 +273,26 @@ fun ScoringScreen(
             showStrokeAndLet = !state.isTennis,
             onUndo = viewModel::undo,
             onEndEarly = { confirmEnd = true },
+            onShareLiveScore = { showShare = true },
         )
     }
     if (showSettings && match != null) {
-        GameSettingsSheet(match = match, isTennis = state.isTennis, onDismiss = { showSettings = false }, onSave = viewModel::saveSettings)
+        GameSettingsSheet(
+            match = match,
+            isTennis = state.isTennis,
+            onDismiss = { showSettings = false },
+            onSave = viewModel::saveSettings,
+            onShareLiveScore = { showShare = true },
+        )
+    }
+    if (showShare && match != null) {
+        ShareLiveScoreSheet(
+            matchId = matchId,
+            matchTitle = "${MatchFormatting.fullName(match.player1Name, match.player1Surname)} ${stringResource(R.string.versus)} " +
+                MatchFormatting.fullName(match.player2Name, match.player2Surname),
+            isOnline = isOnline,
+            onDismiss = { showShare = false },
+        )
     }
     if (confirmEnd) {
         AlertDialog(

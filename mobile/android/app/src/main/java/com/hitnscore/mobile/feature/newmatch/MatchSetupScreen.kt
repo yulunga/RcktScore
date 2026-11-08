@@ -211,7 +211,7 @@ fun MatchSetupScreen(
                     FormCard(stringResource(R.string.setup_referee)) {
                         OutlinedTextField(
                             value = form.refereeName,
-                            onValueChange = { v -> viewModel.update { it.copy(refereeName = v) } },
+                            onValueChange = viewModel::updateRefereeName,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { viewModel.focus(LookupTarget.Referee, it.isFocused) },
@@ -219,6 +219,27 @@ fun MatchSetupScreen(
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                         )
+                        // The web's "Me" switch: the signed-in user referees (name • email beside it).
+                        SwitchRow(
+                            title = stringResource(R.string.setup_referee_me),
+                            body = listOf(args.signedInUser.name, args.signedInUser.email)
+                                .filter(String::isNotBlank).joinToString(" • ").ifBlank { null },
+                            checked = state.refereeIsMe,
+                            enabled = state.refereeIsMe || state.canRefereeAsMe,
+                            onChange = viewModel::setRefereeIsMe,
+                        )
+                        when {
+                            state.refereeConflict || state.refereeMeRevoked -> Text(
+                                stringResource(R.string.setup_referee_cannot_referee),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            state.signedInUserIsPlaying -> Text(
+                                stringResource(R.string.setup_referee_player_conflict),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (state.lookupTarget == LookupTarget.Referee) {
                             state.refereeSuggestions.forEach { name ->
                                 TextButton(onClick = { viewModel.applyReferee(name) }) { Text(name) }
@@ -308,7 +329,7 @@ private fun PlayerCard(
                 keyboardOptions = nameOptions,
                 modifier = Modifier.fillMaxWidth(),
             )
-            SwitchRow(stringResource(R.string.setup_left_handed), null, leftHanded, onLeftHanded)
+            SwitchRow(stringResource(R.string.setup_left_handed), null, leftHanded, onChange = onLeftHanded)
         }
         ShirtPicker(stringResource(R.string.setup_shirt), shirt, onShirt)
     }
@@ -468,13 +489,13 @@ private fun FormCard(title: String, content: @Composable ColumnScope.() -> Unit)
 }
 
 @Composable
-private fun SwitchRow(title: String, body: String?, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun SwitchRow(title: String, body: String?, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (enabled) 1f else 0.55f)) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             body?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }
 

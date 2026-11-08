@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { useAuth } from "../hooks/useAuth";
-import { getDashboard } from "../services/api";
+import { exportAnalytics, getDashboard } from "../services/api";
 
 function percentage(value) {
   return value === null || value === undefined ? "Not enough data" : `${value}%`;
@@ -77,6 +77,43 @@ function AnalyticsList({ items, empty = "No recorded activity in this period." }
   );
 }
 
+function BasicAppUsage({ stats, periodDays, setPeriodDays }) {
+  const sports = stats.matches_by_sport || [];
+  const setup = stats.setup_completion || {};
+  return (
+    <section className="panel stack analytics-app-panel">
+      <div className="panel-heading panel-heading--with-action analytics-panel-heading">
+        <div>
+          <h2>Personal App Usage</h2>
+          <p className="helper-text">A basic view of matches and match setup activity recorded by your account.</p>
+        </div>
+        <label className="analytics-period-field" htmlFor="analytics-period">
+          <span>Period</span>
+          <select id="analytics-period" value={periodDays} onChange={(event) => setPeriodDays(Number(event.target.value))}>
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+            <option value={365}>Last 12 months</option>
+            <option value={0}>All time</option>
+          </select>
+        </label>
+      </div>
+      <div className="performance-stat-grid">
+        <StatCard label="Matches scored" value={stats.matches_scored || 0} />
+        <StatCard label="Completed matches" value={stats.completed_matches || 0} detail={percentage(stats.completed_match_rate)} />
+        <StatCard label="Match setups started" value={setup.started || 0} detail={`${setup.completed || 0} completed`} />
+        <StatCard label="Setup abandonment" value={percentage(setup.abandonment_rate)} detail={`${setup.abandoned || 0} abandoned`} />
+      </div>
+      <div className="analytics-sport-breakdown stack">
+        <div className="panel-heading"><h2>Matches by Sport</h2></div>
+        <div className="performance-stat-grid">
+          {sports.map((item) => <StatCard key={item.sport} label={sportLabel(item.sport)} value={item.count || 0} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AppAnalytics({ stats, periodDays, setPeriodDays }) {
   const sports = stats.matches_by_sport || [
     { sport: "squash", count: 0 },
@@ -94,6 +131,7 @@ function AppAnalytics({ stats, periodDays, setPeriodDays }) {
         <label className="analytics-period-field" htmlFor="analytics-period">
           <span>Period</span>
           <select id="analytics-period" value={periodDays} onChange={(event) => setPeriodDays(Number(event.target.value))}>
+            <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
             <option value={90}>Last 90 days</option>
             <option value={365}>Last 12 months</option>
@@ -220,16 +258,17 @@ function BasicPlayerAnalytics({ stats }) {
   );
 }
 
-function ClubAnalytics({ stats }) {
-  const memberReason = stats.member_activity?.reason;
+function ClubAnalytics({ stats, setupCompletion }) {
+  const memberActivity = stats.member_activity || {};
   return (
     <section className="panel stack analytics-club-panel">
       <div className="panel-heading"><h2>Club Usage Analytics</h2><p className="helper-text">Administrative usage, demand, and court reporting for this club.</p></div>
       <div className="performance-stat-grid">
         <StatCard label="Club matches scored" value={stats.club_matches_scored || 0} />
-        <NotTracked label="Active club members" reason={memberReason} />
-        <NotTracked label="Member adoption rate" reason={memberReason} />
-        <NotTracked label="New member activation" reason={memberReason} />
+        <StatCard label="Match setups started" value={setupCompletion?.started || 0} />
+        <StatCard label="Setup completion rate" value={percentage(setupCompletion?.rate)} detail={`${setupCompletion?.abandoned || 0} abandoned setups`} />
+        {memberActivity.tracked ? <StatCard label="Active setup users" value={memberActivity.active_users || 0} detail={`${memberActivity.user_count || 0} approved club users`} /> : <NotTracked label="Active setup users" reason={memberActivity.reason} />}
+        {memberActivity.tracked ? <StatCard label="Setup adoption rate" value={percentage(memberActivity.adoption_rate)} /> : <NotTracked label="Setup adoption rate" reason={memberActivity.reason} />}
         <StatCard label="Peak-time concentration" value={percentage(stats.peak_time_concentration)} detail={(stats.peak_hours || []).map((hour) => `${String(hour).padStart(2, "0")}:00`).join(", ") || "Not enough data"} />
         <StatCard label="Off-peak usage" value={stats.off_peak_matches || 0} detail="Matches outside the three busiest hours" />
         <StatCard label="Simultaneous court activity" value={stats.simultaneous_court_activity || 0} detail="Highest overlapping match count" />
@@ -335,29 +374,36 @@ function PlayerAnalytics({ stats }) {
 export default function PerformancePage() {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const [activeTab, setActiveTab] = useState("app");
+  const [activeTab, setActiveTab] = useState("personal");
   const [periodDays, setPeriodDays] = useState(30);
-  const [dashboard, setDashboard] = useState(null);
+  const [personalDashboard, setPersonalDashboard] = useState(null);
+  const [clubDashboard, setClubDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const isPersonalPlus = (session?.organization_type === "personal" || Number(session?.organization_id) >= 50000)
-    && session?.plan === "personal_plus";
+  const [exporting, setExporting] = useState(false);
+  const memberships = session?.available_memberships || session?.memberships || (session ? [session] : []);
+  const personalMembership = memberships.find((membership) => (
+    membership?.organization_type === "personal" || Number(membership?.organization_id) >= 50000
+  ));
+  const isClubAccount = session?.organization_type === "club" && Number(session?.organization_id) < 50000;
+  const isPersonalPlus = personalMembership?.plan === "personal_plus";
+  const analyticsTabs = isClubAccount ? ["personal", "club"] : ["personal"];
 
   useEffect(() => {
     async function load() {
-      if (!session?.organization_id) {
+      if (!session?.organization_id || !personalMembership?.organization_id) {
         setLoading(false);
         return;
       }
       setLoading(true);
       setError("");
       try {
-        const response = await getDashboard(session.organization_id, {
-          activeLimit: 0,
-          recentLimit: 0,
-          analyticsPeriodDays: periodDays,
-        });
-        setDashboard(response?.dashboard || null);
+        const options = { activeLimit: 0, recentLimit: 0, analyticsPeriodDays: periodDays };
+        const personalRequest = getDashboard(personalMembership.organization_id, options);
+        const clubRequest = isClubAccount ? getDashboard(session.organization_id, options) : Promise.resolve(null);
+        const [personalResponse, clubResponse] = await Promise.all([personalRequest, clubRequest]);
+        setPersonalDashboard(personalResponse?.dashboard || null);
+        setClubDashboard(clubResponse?.dashboard || null);
       } catch (requestError) {
         setError(requestError.message || "Unable to load analytics.");
       } finally {
@@ -365,15 +411,36 @@ export default function PerformancePage() {
       }
     }
     load();
-  }, [periodDays, session?.organization_id]);
+  }, [isClubAccount, periodDays, personalMembership?.organization_id, session?.organization_id]);
 
-  const appStats = dashboard?.app_analytics || {};
-  const playerStats = dashboard?.performance || {};
-  const basicPlayerStats = dashboard?.player_analytics;
-  const clubStats = dashboard?.club_analytics;
-  const isClubAccount = session?.organization_type === "club" && Number(session?.organization_id) < 50000;
-  const canSeeClubAnalytics = isClubAccount && session?.role === "admin";
-  const analyticsTabs = canSeeClubAnalytics ? ["app", "player", "club"] : ["app", "player"];
+  const appStats = personalDashboard?.app_analytics || {};
+  const playerStats = personalDashboard?.performance || {};
+  const basicPlayerStats = personalDashboard?.player_analytics;
+  const clubStats = clubDashboard?.club_analytics;
+
+  async function downloadExport(reportType) {
+    const organizationId = reportType === "club" ? session?.organization_id : personalMembership?.organization_id;
+    if (!organizationId) return;
+    setExporting(true);
+    setError("");
+    try {
+      const response = await exportAnalytics(organizationId, periodDays);
+      const report = response?.export;
+      const blob = new Blob([report?.csv_content || ""], { type: report?.content_type || "text/csv;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = report?.filename || `hitnscore-${reportType}-analytics.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to export analytics.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <main className="page-shell stack">
@@ -394,25 +461,49 @@ export default function PerformancePage() {
         ))}
       </div>
 
+      <div className="analytics-export-row">
+        {activeTab === "club" && isClubAccount ? (
+          <label className="analytics-period-field" htmlFor="analytics-club-period">
+            <span>Period</span>
+            <select id="analytics-club-period" value={periodDays} onChange={(event) => setPeriodDays(Number(event.target.value))}>
+              <option value={7}>Last 7 days</option>
+              <option value={30}>Last 30 days</option>
+              <option value={90}>Last 90 days</option>
+              <option value={365}>Last 12 months</option>
+              <option value={0}>All time</option>
+            </select>
+          </label>
+        ) : null}
+        {activeTab === "personal" && isPersonalPlus ? (
+          <button className="secondary" disabled={exporting} type="button" onClick={() => downloadExport("personal")}>Export Personal report</button>
+        ) : null}
+        {activeTab === "club" && isClubAccount ? (
+          <button className="secondary" disabled={exporting} type="button" onClick={() => downloadExport("club")}>Export Club report</button>
+        ) : null}
+        {activeTab === "club" ? <span className="helper-text">Club exports contain aggregate venue data only—no player or member personal details.</span> : null}
+      </div>
+
       {loading ? <div className="notice">Loading analytics...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
-      {!loading && !error && activeTab === "app" ? <AppAnalytics stats={appStats} periodDays={periodDays} setPeriodDays={setPeriodDays} /> : null}
-
-      {!loading && !error && activeTab === "player" && !basicPlayerStats ? (
-        <section className="panel performance-upgrade-panel">
-          <h2>Player analytics are included with Personal+</h2>
-          <p>Personal+ adds trends, opponent records, serving performance and progress summaries.</p>
-          <button type="button" onClick={() => navigate("/settings")}>View Personal+</button>
-        </section>
-      ) : null}
-      {!loading && !error && activeTab === "player" && basicPlayerStats ? (
+      {!loading && !error && activeTab === "personal" ? (
         <>
-          <BasicPlayerAnalytics stats={basicPlayerStats} />
-          {isPersonalPlus ? <PlayerAnalytics stats={playerStats} /> : null}
+          {isPersonalPlus
+            ? <AppAnalytics stats={appStats} periodDays={periodDays} setPeriodDays={setPeriodDays} />
+            : <BasicAppUsage stats={appStats} periodDays={periodDays} setPeriodDays={setPeriodDays} />}
+          {isPersonalPlus && basicPlayerStats ? <BasicPlayerAnalytics stats={basicPlayerStats} /> : null}
+          {isPersonalPlus ? <PlayerAnalytics stats={playerStats} /> : (
+            <section className="panel performance-upgrade-panel">
+              <h2>Enhanced player analytics are included with Personal Plus</h2>
+              <p>Personal Free includes basic app usage. Personal Plus adds game, player, opponent, serving and progress reporting with CSV export.</p>
+              <button type="button" onClick={() => navigate("/settings")}>View Personal Plus</button>
+            </section>
+          )}
         </>
       ) : null}
 
-      {!loading && !error && activeTab === "club" && canSeeClubAnalytics && clubStats ? <ClubAnalytics stats={clubStats} /> : null}
+      {!loading && !error && activeTab === "club" && isClubAccount && clubStats ? (
+        <ClubAnalytics stats={clubStats} setupCompletion={clubDashboard?.app_analytics?.setup_completion} />
+      ) : null}
 
       <AppFooter />
     </main>

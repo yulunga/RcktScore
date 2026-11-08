@@ -623,6 +623,7 @@ struct StartNewMatchView: View {
     @State private var availableCourts: [CourtSummary] = []
     @State private var playerSuggestions: [PlayerLookup] = []
     @State private var refereeSuggestions: [String] = []
+    @State private var refereeIsMe = false
     @State private var loadedOrganizationType: String?
     @State private var loadedEnabledSports: [String] = []
     @State private var loadedTimedBreakDefaults: [String: Bool] = [:]
@@ -631,6 +632,8 @@ struct StartNewMatchView: View {
     @State private var errorMessage: String?
     @State private var setupNotice: String?
     @State private var lookupTask: Task<Void, Never>?
+    @State private var setupAnalyticsID: String?
+    @State private var setupAnalyticsFinished = false
 
     private var session: UserSession? { container.sessionStore.session }
 
@@ -653,6 +656,45 @@ struct StartNewMatchView: View {
     private var isPadelMatch: Bool { selectedSport == .padel }
     private var isTennisMatch: Bool { selectedSport == .tennis || isPadelMatch }
     private var showsTennisDoublesToggle: Bool { selectedSport == .tennis }
+
+    private var loggedInUserName: String {
+        if let fullName = session?.fullName?.trimmingCharacters(in: .whitespacesAndNewlines), !fullName.isEmpty {
+            return fullName
+        }
+
+        let profileName = [session?.firstName, session?.surname]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if !profileName.isEmpty {
+            return profileName
+        }
+
+        return (session?.username ?? "").split(separator: "@").first.map(String.init) ?? ""
+    }
+
+    private var loggedInUserIsPlaying: Bool {
+        let signedInName = normalizedPersonName(loggedInUserName)
+        guard !signedInName.isEmpty else { return false }
+        return participantNames.contains(signedInName)
+    }
+
+    private var participantNames: [String] {
+        [
+            displayName(firstName: formState.player1Name, surname: formState.player1Surname),
+            displayName(firstName: formState.player2Name, surname: formState.player2Surname),
+            displayName(firstName: formState.player3Name, surname: formState.player3Surname),
+            displayName(firstName: formState.player4Name, surname: formState.player4Surname)
+        ]
+        .map { normalizedPersonName($0) }
+        .filter { !$0.isEmpty }
+    }
+
+    private var refereeConflict: Bool {
+        !isPersonalAccount
+            && loggedInUserIsPlaying
+            && normalizedPersonName(formState.refereeName) == normalizedPersonName(loggedInUserName)
+    }
 
     private var enabledSportIDs: Set<String> {
         let source = loadedEnabledSports.isEmpty
@@ -688,7 +730,8 @@ struct StartNewMatchView: View {
             )
         let hasCourt = isPersonalAccount || (!formState.courtID.isEmpty && !formState.courtName.isEmpty)
         let hasBands = !formState.handicapEnabled || (!formState.player1Band.isEmpty && !formState.player2Band.isEmpty)
-        return hasPrimaryPlayers && hasDoublesPlayers && hasCourt && hasBands && personalActiveMatch == nil && enabledSportIDs.contains(selectedSport.rawValue)
+        return hasPrimaryPlayers && hasDoublesPlayers && hasCourt && hasBands && !refereeConflict
+            && personalActiveMatch == nil && enabledSportIDs.contains(selectedSport.rawValue)
     }
 
     var body: some View {
@@ -811,7 +854,10 @@ struct StartNewMatchView: View {
         )
         .navigationTitle(selectedSport.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadSetup() }
+        .task {
+            await beginSetupAnalytics()
+            await loadSetup()
+        }
         .onChange(of: formState.player1Name) { queueLookupIfNeeded() }
         .onChange(of: formState.player1Surname) { queueLookupIfNeeded() }
         .onChange(of: formState.player2Name) { queueLookupIfNeeded() }
@@ -821,10 +867,20 @@ struct StartNewMatchView: View {
         .onChange(of: formState.player4Name) { queueLookupIfNeeded() }
         .onChange(of: formState.player4Surname) { queueLookupIfNeeded() }
         .onChange(of: formState.refereeName) { queueLookupIfNeeded() }
+        .onChange(of: loggedInUserIsPlaying) {
+            guard loggedInUserIsPlaying, refereeIsMe else { return }
+            refereeIsMe = false
+            formState.refereeName = ""
+            refereeSuggestions = []
+            focusedField = nil
+        }
         .onChange(of: focusedField) { queueLookupIfNeeded() }
         .onChange(of: formState.courtID) { updateSelectedCourt() }
         .onChange(of: formState.scheduleMatch) { refreshSetupNotice() }
-        .onDisappear { lookupTask?.cancel() }
+        .onDisappear {
+            lookupTask?.cancel()
+            abandonSetupAnalytics()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Close") {
@@ -1069,13 +1125,45 @@ struct StartNewMatchView: View {
                 labeledField(
                     title: "Referee",
                     placeholder: "Match official",
-                    text: $formState.refereeName,
+                    text: Binding(
+                        get: { formState.refereeName },
+                        set: { value in
+                            refereeIsMe = false
+                            formState.refereeName = value
+                        }
+                    ),
                     focus: .referee
                 )
+
+                Toggle(isOn: Binding(
+                    get: { refereeIsMe },
+                    set: { useSignedInUserAsReferee($0) }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Me")
+                            .font(.subheadline.weight(.semibold))
+                        if !loggedInUserName.isEmpty {
+                            Text(loggedInUserName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .tint(Color.dashboardBrand)
+                .disabled(loggedInUserIsPlaying || loggedInUserName.isEmpty)
+                .accessibilityIdentifier("startMatch.refereeMeToggle")
+
+                if loggedInUserIsPlaying {
+                    Text("You are listed as a player, so you cannot referee this match.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 if activeLookupTarget == .referee && !refereeSuggestions.isEmpty {
                     suggestionList(refereeSuggestions, id: \.self) { suggestion in
                         Button {
+                            refereeIsMe = false
                             formState.refereeName = suggestion
                             refereeSuggestions = []
                             focusedField = nil
@@ -1089,6 +1177,14 @@ struct StartNewMatchView: View {
                 }
             }
         }
+    }
+
+    private func useSignedInUserAsReferee(_ enabled: Bool) {
+        guard !enabled || (!loggedInUserIsPlaying && !loggedInUserName.isEmpty) else { return }
+        refereeIsMe = enabled
+        formState.refereeName = enabled ? loggedInUserName : ""
+        refereeSuggestions = []
+        focusedField = nil
     }
 
     private var handicapCard: some View {
@@ -1872,6 +1968,7 @@ struct StartNewMatchView: View {
 
         do {
             let match = try await container.apiClient.createMatch(request)
+            await finishSetupAnalytics(outcome: "completed", matchID: match.id)
             await MainActor.run {
                 isSubmitting = false
             }
@@ -1888,6 +1985,44 @@ struct StartNewMatchView: View {
                 isSubmitting = false
                 errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to create the match."
             }
+        }
+    }
+
+    private func beginSetupAnalytics() async {
+        guard let organizationID, setupAnalyticsID == nil, !setupAnalyticsFinished else { return }
+        do {
+            let setupID = try await container.apiClient.beginMatchSetupAnalytics(
+                organizationID: organizationID,
+                sport: selectedSport.rawValue
+            )
+            await MainActor.run {
+                setupAnalyticsID = setupID
+            }
+        } catch {
+            // Analytics must never prevent a scorer from setting up a match.
+        }
+    }
+
+    private func finishSetupAnalytics(outcome: String, matchID: String? = nil) async {
+        guard let organizationID, let setupAnalyticsID, !setupAnalyticsFinished else { return }
+        await MainActor.run { setupAnalyticsFinished = true }
+        try? await container.apiClient.finishMatchSetupAnalytics(
+            organizationID: organizationID,
+            setupID: setupAnalyticsID,
+            outcome: outcome,
+            matchID: matchID
+        )
+    }
+
+    private func abandonSetupAnalytics() {
+        guard let organizationID, let setupAnalyticsID, !setupAnalyticsFinished else { return }
+        setupAnalyticsFinished = true
+        Task {
+            try? await container.apiClient.finishMatchSetupAnalytics(
+                organizationID: organizationID,
+                setupID: setupAnalyticsID,
+                outcome: "abandoned"
+            )
         }
     }
 
@@ -1930,6 +2065,13 @@ struct StartNewMatchView: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+
+    private func normalizedPersonName(_ value: String) -> String {
+        value
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+            .lowercased()
     }
 
     private var handicapBands: [String] {

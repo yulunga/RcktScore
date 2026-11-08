@@ -9,6 +9,10 @@ class IdentityPasswordResetRequired(Exception):
     """Raised when membership rows for one email no longer share one password."""
 
 
+class AccountDeletionPending(Exception):
+    """Raised after valid credentials are supplied for a deletion-pending identity."""
+
+
 def _synchronize_identity_password_hash(connection, username, password):
     password_hash = generate_password_hash(password)
     with connection.cursor() as cursor:
@@ -104,6 +108,8 @@ def get_org_users(connection, username):
                 u.approval_status,
                 o.org_type,
                 o.plan,
+                o.deletion_requested_at,
+                o.deletion_purge_after,
                 o.enabled_sports,
                 u.enabled_sports_web,
                 u.enabled_sports_ios,
@@ -160,6 +166,12 @@ def authenticate_org_user_memberships(connection, username, password, client_typ
         }
     if not all(password_matches):
         raise IdentityPasswordResetRequired()
+
+    if any(
+        (row.get("org_type") or "club") == "personal" and row.get("deletion_requested_at")
+        for row in user_rows
+    ):
+        raise AccountDeletionPending()
 
     # Old membership-scoped password writes produced different hashes for the
     # same identity. Once every hash verifies the supplied password, replace

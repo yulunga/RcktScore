@@ -78,7 +78,12 @@ data class SetupArgs(
     val isPersonalPlus: Boolean,
     val sessionSports: List<String>,
     val activeMatches: List<MatchSummary>,
+    /** The signed-in person, offered as the referee ("Me"), as the web client. */
+    val signedInUser: SignedInPerson = SignedInPerson(),
 )
+
+/** Who is signed in, for "Me" as referee: the display name and the email shown beside it. */
+data class SignedInPerson(val name: String = "", val email: String = "")
 
 data class MatchSetupUiState(
     val args: SetupArgs,
@@ -91,6 +96,10 @@ data class MatchSetupUiState(
     val lookupTarget: LookupTarget? = null,
     val playerSuggestions: List<PlayerLookup> = emptyList(),
     val refereeSuggestions: List<String> = emptyList(),
+    /** The referee is the signed-in user, chosen with "Me". */
+    val refereeIsMe: Boolean = false,
+    /** "Me" was switched off because the signed-in user was then entered as a player. */
+    val refereeMeRevoked: Boolean = false,
     val result: SetupResult? = null,
 ) {
     /** A club match on a court that already has a match in progress. */
@@ -111,13 +120,27 @@ data class MatchSetupUiState(
     val personalActiveMatch: MatchSummary?
         get() = if (args.isPersonal && !shouldSchedule) args.activeMatches.firstOrNull() else null
 
+    /** The signed-in user is one of the players (singles or doubles), so can't referee. */
+    val signedInUserIsPlaying: Boolean
+        get() = isSignedInUserPlaying(form, args.signedInUser.name)
+
+    /** A club match whose referee is also a player, the signed-in user: refused, as the web. */
+    val refereeConflict: Boolean
+        get() = !args.isPersonal && signedInUserIsPlaying &&
+            normalizedPersonName(form.refereeName) == normalizedPersonName(args.signedInUser.name)
+
+    /** "Me" can be switched on: a club match, a known name, and not one of the players. */
+    val canRefereeAsMe: Boolean
+        get() = !args.isPersonal && args.signedInUser.name.isNotBlank() && !signedInUserIsPlaying
+
     val canSubmit: Boolean
         get() {
             val players = form.player1Name.isNotBlank() && form.player2Name.isNotBlank() &&
                 (!form.doubles || (form.player3Name.isNotBlank() && form.player4Name.isNotBlank()))
             val court = args.isPersonal || (form.courtId.isNotBlank() && form.courtName.isNotBlank())
             val bands = !form.handicap || (form.player1Band.isNotBlank() && form.player2Band.isNotBlank())
-            return !isLoading && !isSubmitting && sportEnabled && players && court && bands && personalActiveMatch == null
+            return !isLoading && !isSubmitting && sportEnabled && players && court && bands &&
+                !refereeConflict && personalActiveMatch == null
         }
 }
 
@@ -189,7 +212,13 @@ class MatchSetupViewModel(
                     player2Offset = Handicap.offset(form.player2Band, form.player1Band),
                 )
             }
-            state.copy(form = form)
+            // As the web: entering yourself as a player takes you off as referee, with a notice.
+            val playing = isSignedInUserPlaying(form, state.args.signedInUser.name)
+            if (state.refereeIsMe && playing) {
+                state.copy(form = form.copy(refereeName = ""), refereeIsMe = false, refereeMeRevoked = true, refereeSuggestions = emptyList())
+            } else {
+                state.copy(form = form, refereeMeRevoked = state.refereeMeRevoked && playing)
+            }
         }
         queueLookup()
     }
@@ -225,7 +254,38 @@ class MatchSetupViewModel(
 
     fun applyReferee(name: String) {
         lookupJob?.cancel()
-        mutableState.update { it.copy(form = it.form.copy(refereeName = name), lookupTarget = null, refereeSuggestions = emptyList()) }
+        mutableState.update {
+            it.copy(
+                form = it.form.copy(refereeName = name),
+                refereeIsMe = false,
+                refereeMeRevoked = false,
+                lookupTarget = null,
+                refereeSuggestions = emptyList(),
+            )
+        }
+    }
+
+    /** Typing a referee name replaces "Me". */
+    fun updateRefereeName(name: String) {
+        mutableState.update { it.copy(form = it.form.copy(refereeName = name), refereeIsMe = false, refereeMeRevoked = false) }
+        queueLookup()
+    }
+
+    /** The web's "Me" switch: fills the referee with the signed-in user's name, or clears it. */
+    fun setRefereeIsMe(enabled: Boolean) {
+        lookupJob?.cancel()
+        mutableState.update { state ->
+            when {
+                enabled && !state.canRefereeAsMe -> state
+                else -> state.copy(
+                    form = state.form.copy(refereeName = if (enabled) state.args.signedInUser.name else ""),
+                    refereeIsMe = enabled,
+                    refereeMeRevoked = false,
+                    lookupTarget = null,
+                    refereeSuggestions = emptyList(),
+                )
+            }
+        }
     }
 
     fun submit() {
@@ -405,3 +465,28 @@ object Handicap {
         return matrix[band]?.getOrNull(column) ?: 0
     }
 }
+
+/** Same as the web's `normalizePersonName`: trimmed, single spaces, lower case. */
+internal fun normalizedPersonName(value: String): String =
+    value.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ").lowercase()
+
+/** Whether [signedInName] is entered as any of the four players (first name + surname). */
+internal fun isSignedInUserPlaying(form: MatchSetupForm, signedInName: String): Boolean {
+    val name = normalizedPersonName(signedInName)
+    if (name.isEmpty()) return false
+    return listOf(
+        form.player1Name to form.player1Surname,
+        form.player2Name to form.player2Surname,
+        form.player3Name to form.player3Surname,
+        form.player4Name to form.player4Surname,
+    ).any { (first, surname) -> normalizedPersonName("$first $surname") == name }
+}
+
+/**
+ * The name used for "Me", as the web: the membership's full name, else first name and
+ * surname, else the part of the username before "@".
+ */
+internal fun signedInPersonName(fullName: String?, firstName: String?, surname: String?, username: String): String =
+    fullName?.trim().orEmpty()
+        .ifBlank { listOfNotNull(firstName, surname).map(String::trim).filter(String::isNotEmpty).joinToString(" ") }
+        .ifBlank { username.substringBefore("@").trim() }

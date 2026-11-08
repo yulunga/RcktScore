@@ -66,6 +66,8 @@ struct LoginView: View {
     @State private var resetMessage: String?
     @State private var resetErrorMessage: String?
     @State private var isRequestingPasswordReset = false
+    @State private var pastedResetLink = ""
+    @State private var pastedResetLinkIsInvalid = false
     @FocusState private var focusedField: LoginFocusField?
 
     private var isOverlayBusy: Bool {
@@ -683,6 +685,37 @@ struct LoginView: View {
                     requestPasswordReset()
                 }
                 .disabled(isRequestingPasswordReset)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Already have the reset link?")
+                    .font(.subheadline.weight(.semibold))
+
+                styledField(title: "Paste link or token") {
+                    TextField("https://app.hitnscore.com/help?...", text: $pastedResetLink)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.URL)
+                        .autocorrectionDisabled(true)
+                        .onChange(of: pastedResetLink) { pastedResetLinkIsInvalid = false }
+                }
+
+                if pastedResetLinkIsInvalid {
+                    Text("Paste the complete HitnScore reset link, or its secure token.")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+
+                Button("Open Reset Link") {
+                    pastedResetLinkIsInvalid = !container.openPasswordResetText(pastedResetLink)
+                    if !pastedResetLinkIsInvalid {
+                        overlayMode = nil
+                        pastedResetLink = ""
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(pastedResetLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding(24)

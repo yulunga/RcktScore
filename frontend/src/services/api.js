@@ -188,6 +188,25 @@ export function getDashboard(organizationId, options = {}) {
   return apiRequest(`/dashboard/${organizationId}${suffix}`);
 }
 
+export function beginMatchSetupAnalytics(organizationId, sport) {
+  return apiRequest(`/analytics/setup/${organizationId}`, {
+    method: "POST",
+    body: JSON.stringify({ sport }),
+  });
+}
+
+export function finishMatchSetupAnalytics(organizationId, setupId, outcome, matchId, options = {}) {
+  return apiRequest(`/analytics/setup/${organizationId}/${setupId}`, {
+    method: "PUT",
+    body: JSON.stringify({ outcome, match_id: matchId || null }),
+    keepalive: Boolean(options.keepalive),
+  });
+}
+
+export function exportAnalytics(organizationId, periodDays = 30) {
+  return apiRequest(`/analytics/export/${organizationId}?period_days=${encodeURIComponent(periodDays)}`);
+}
+
 export function getNotifications(organizationId) {
   return apiRequest(`/notifications/${organizationId}`);
 }
@@ -493,6 +512,13 @@ export function updatePersonalProfile(organizationId, payload) {
   return apiRequest(`/personal_profile/${organizationId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function deletePersonalAccount(organizationId) {
+  return apiRequest(`/personal_account/${organizationId}`, {
+    method: "DELETE",
+    body: JSON.stringify({ confirmation: "DELETE MY ACCOUNT" }),
   });
 }
 

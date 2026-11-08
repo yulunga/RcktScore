@@ -69,6 +69,7 @@ fun AppShellScreen(
             onSelectMatchesCategory = shellViewModel::selectMatchesCategory,
             onOpenSubscription = { navController.navigate(ShellRoutes.settingsPage(SettingsPage.Subscription)) },
             onContextSelected = onContextSelected,
+            onWatchMatch = { code -> navController.navigate(ShellRoutes.watch(code)) },
         )
     }
 

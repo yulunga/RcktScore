@@ -10,12 +10,14 @@ const ACCOUNT_FILTERS = [
   { value: "personal_free", label: "Personal Free", countKey: "personal_free_count" },
   { value: "personal_plus", label: "Personal Plus", countKey: "personal_plus_count" },
   { value: "club", label: "Club Accounts", countKey: "club_user_count" },
+  { value: "delete_pending", label: "Delete Pending", countKey: "delete_pending_count" },
   { value: "unverified", label: "Unverified Users", countKey: "unverified_user_count" },
   { value: "inactive_12_months", label: "No Login 12+ Months", countKey: "inactive_12_month_count" },
   { value: "inactive_24_months", label: "No Login 24+ Months", countKey: "inactive_24_month_count" },
 ];
 
 function userRowClass(user) {
+  if (user.account_status === "delete_pending") return "root-admin-user-row--delete-pending";
   if (user.email_verified === false) return "root-admin-user-row--unverified";
   if (user.account_types?.includes("personal_plus")) return "root-admin-user-row--personal-plus";
   if (user.account_types?.includes("personal_free")) return "root-admin-user-row--personal-free";
@@ -146,6 +148,11 @@ export default function RootAdminUserAccountsPage() {
                 </div>
               </div>
               <div className="button-row root-admin-user-actions">
+                {user.account_status === "delete_pending" ? (
+                  <span className="root-admin-delete-pending-warning">
+                    Delete pending · clears {formatLastLogin(user.deletion_purge_after)}
+                  </span>
+                ) : null}
                 {user.email_verified === false ? (
                   <span className="root-admin-verification-warning">Email not verified</span>
                 ) : null}

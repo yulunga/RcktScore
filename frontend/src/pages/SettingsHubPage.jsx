@@ -7,7 +7,12 @@ import SubscriptionPreview from "../components/SubscriptionPreview";
 import { clubRoleLabel } from "../utils/accessControl";
 import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
-import { getOrganizationSettings, requestPasswordReset, updatePersonalProfile } from "../services/api";
+import {
+  deletePersonalAccount,
+  getOrganizationSettings,
+  requestPasswordReset,
+  updatePersonalProfile,
+} from "../services/api";
 import OrganisationSettingsPage from "./OrganisationSettingsPage";
 
 const SETTINGS_MENU = [
@@ -71,6 +76,9 @@ export default function SettingsHubPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [deletePanelOpen, setDeletePanelOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const fileInputRef = useRef(null);
   const settingsMenuRef = useRef(null);
   const [settingsMenuScroll, setSettingsMenuScroll] = useState({ left: false, right: false });
@@ -224,6 +232,27 @@ export default function SettingsHubPage() {
     reader.readAsDataURL(file);
   }
 
+  async function requestAccountDeletion() {
+    if (deleteConfirmation !== "DELETE MY ACCOUNT" || !organizationId || deletingAccount) return;
+    setDeletingAccount(true);
+    setMessage("");
+    setError("");
+    try {
+      await deletePersonalAccount(organizationId);
+      const imageKey = `rcktscore.profile-image.${String(session?.username || "").toLowerCase()}`;
+      window.localStorage.removeItem(imageKey);
+      window.sessionStorage.setItem(
+        "rcktscore.session-message",
+        "Your account is now pending deletion. Access has been disabled and your Personal match data is scheduled for clearing after 12 months.",
+      );
+      logout();
+      navigate("/", { replace: true });
+    } catch (requestError) {
+      setError(requestError.message || "Unable to request account deletion right now.");
+      setDeletingAccount(false);
+    }
+  }
+
   return (
     <main className="page-shell stack settings-hub-page">
       <ClubPageHeader />
@@ -313,6 +342,59 @@ export default function SettingsHubPage() {
             {clubMemberships.length ? <div className="settings-association-summary">
               {clubMemberships.map((membership) => <div className="dashboard-item" key={membership.organization_id}><strong>{membership.organization_name}</strong><span>{`Club ${clubRoleLabel(membership.role).toLowerCase()}`} · {planLabel(membership.plan)}</span></div>)}
             </div> : <div className="dashboard-empty">No club associations are linked to this account.</div>}
+          </section>
+          <section className="panel stack settings-delete-account">
+            <div className="panel-heading">
+              <h2>Delete Personal Account</h2>
+              <p className="helper-text">
+                Access will be disabled immediately and all devices will be signed out. Your account will remain marked
+                as delete pending for 12 months, after which a clearing job permanently removes the Personal workspace,
+                Personal matches and their scoring records. Club-owned match records remain with the club.
+              </p>
+            </div>
+            {!deletePanelOpen ? (
+              <div className="button-row">
+                <button className="danger" type="button" onClick={() => setDeletePanelOpen(true)}>
+                  Delete Personal Account
+                </button>
+              </div>
+            ) : (
+              <div className="stack compact settings-delete-account__confirm">
+                <strong>This request cannot be reversed through the app.</strong>
+                <div className="field">
+                  <label htmlFor="settings-delete-account-confirmation">
+                    Type DELETE MY ACCOUNT to confirm
+                  </label>
+                  <input
+                    autoComplete="off"
+                    id="settings-delete-account-confirmation"
+                    value={deleteConfirmation}
+                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  />
+                </div>
+                <div className="button-row">
+                  <button
+                    className="danger"
+                    disabled={deleteConfirmation !== "DELETE MY ACCOUNT" || deletingAccount}
+                    type="button"
+                    onClick={requestAccountDeletion}
+                  >
+                    {deletingAccount ? "Requesting Deletion..." : "Confirm Account Deletion"}
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={deletingAccount}
+                    type="button"
+                    onClick={() => {
+                      setDeletePanelOpen(false);
+                      setDeleteConfirmation("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </>
       ) : null}

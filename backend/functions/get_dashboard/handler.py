@@ -51,10 +51,7 @@ def lambda_handler(event, context):
                 analytics_period_days=analytics_period_days,
                 actor_first_name=membership.get("first_name"),
                 actor_surname=membership.get("surname"),
-                include_club_analytics=(
-                    membership.get("organization_type") == "club"
-                    and membership.get("role") == "admin"
-                ),
+                include_club_analytics=membership.get("organization_type") == "club",
                 include_extended_analytics=include_extended_analytics,
             )
     except SessionAuthError as auth_error:

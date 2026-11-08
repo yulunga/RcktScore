@@ -2,7 +2,11 @@ import os
 
 from aws_lambda_powertools import Logger
 
-from common.auth_logic import IdentityPasswordResetRequired, authenticate_org_user_memberships
+from common.auth_logic import (
+    AccountDeletionPending,
+    IdentityPasswordResetRequired,
+    authenticate_org_user_memberships,
+)
 from common.logging_utils import mask_email_for_log
 from common.password_reset_logic import request_password_reset
 from common.session_logic import (
@@ -76,6 +80,13 @@ def lambda_handler(event, context):
                 403,
                 "PASSWORD_RESET_REQUIRED",
                 "For your security, please reset your password. We've emailed you a link.",
+            )
+        except AccountDeletionPending:
+            logger.warning("Deletion-pending login attempt for username=%s", masked_username)
+            return error_response(
+                403,
+                "ACCOUNT_DELETE_PENDING",
+                "This account is pending deletion and can no longer be used.",
             )
 
         memberships = auth_result["approved_memberships"]

@@ -5840,6 +5840,24 @@ textarea {
   box-shadow: inset 4px 0 0 #d9822b;
 }
 
+.root-admin-user-row--delete-pending {
+  border-color: #d14b63;
+  background: #fff0f3;
+  box-shadow: inset 4px 0 0 #c92f55;
+}
+
+.root-admin-user-row .root-admin-delete-pending-warning {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #c92f55;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .root-admin-user-row .root-admin-verification-warning {
   display: inline-flex;
   align-items: center;
@@ -7779,6 +7797,18 @@ textarea {
   margin-top: 2px;
 }
 
+.analytics-export-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.analytics-export-row .helper-text {
+  max-width: 560px;
+}
+
 .analytics-period-field {
   display: grid;
   gap: 6px;
@@ -8126,6 +8156,25 @@ textarea {
   background: #f3f6fa;
   color: #263f59;
   opacity: 1;
+}
+
+.settings-delete-account {
+  border-color: rgba(201, 47, 85, 0.3);
+}
+
+.settings-delete-account__confirm {
+  max-width: 620px;
+  padding: 16px;
+  border: 1px solid rgba(201, 47, 85, 0.3);
+  border-radius: 16px;
+  background: #fff5f7;
+}
+
+.root-admin-delete-pending-notice {
+  padding: 16px;
+  border: 1px solid rgba(201, 47, 85, 0.35);
+  border-radius: 16px;
+  background: #fff0f3;
 }
 
 .settings-association-summary,

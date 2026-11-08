@@ -59,6 +59,8 @@ fun MatchActionsSheet(
     onEndEarly: () -> Unit,
     /** Stroke and let are squash/racketball calls; tennis and Padel only undo or end early. */
     showStrokeAndLet: Boolean = true,
+    /** Score Stream: share the viewing code with Personal Plus players. */
+    onShareLiveScore: (() -> Unit)? = null,
 ) {
     var pending by rememberSaveable { mutableStateOf<PendingAction?>(null) }
     val p1 = MatchFormatting.fullName(match.player1Name, match.player1Surname)
@@ -75,6 +77,12 @@ fun MatchActionsSheet(
             Text("$p1 ${stringResource(R.string.versus)} $p2", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when (pending) {
                 null -> {
+                    if (onShareLiveScore != null) {
+                        ActionRow(stringResource(R.string.share_live_title), enabled = true) {
+                            onDismiss()
+                            onShareLiveScore()
+                        }
+                    }
                     if (showStrokeAndLet) {
                         ActionRow(stringResource(R.string.action_stroke), enabled = state.canScore) { pending = PendingAction.Stroke }
                         ActionRow(stringResource(R.string.action_let), enabled = state.canScore) { pending = PendingAction.Let }
@@ -140,6 +148,8 @@ fun GameSettingsSheet(
     isTennis: Boolean,
     onDismiss: () -> Unit,
     onSave: (Int, Int, String, String) -> Unit,
+    /** As iOS Game Settings › Remote Match Viewing. */
+    onShareLiveScore: (() -> Unit)? = null,
 ) {
     val live = match.state
     var scoreType by rememberSaveable { mutableStateOf(live?.scoreType ?: match.scoreType) }
@@ -155,6 +165,15 @@ fun GameSettingsSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(stringResource(R.string.match_settings), style = MaterialTheme.typography.headlineSmall)
+            if (onShareLiveScore != null) {
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onShareLiveScore()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.share_live_title)) }
+            }
             // Tennis/Padel sets are always first to 6 games, so only the match format changes.
             if (!isTennis) {
                 Text(stringResource(R.string.setup_game_format), style = MaterialTheme.typography.labelLarge)

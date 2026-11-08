@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -11,7 +11,13 @@ import {
 } from "../constants/playerShirtColors";
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
-import { getDashboard, getOrganizationSettings, searchMatchSetupLookup } from "../services/api";
+import {
+  beginMatchSetupAnalytics,
+  finishMatchSetupAnalytics,
+  getDashboard,
+  getOrganizationSettings,
+  searchMatchSetupLookup,
+} from "../services/api";
 
 const scoreTypeOptions = [
   { value: 11, label: "PAR-11" },
@@ -117,6 +123,7 @@ export default function NewMatch() {
   });
   const [activeCountryLookupField, setActiveCountryLookupField] = useState("");
   const [activeCountryOptionIndex, setActiveCountryOptionIndex] = useState(-1);
+  const setupAnalyticsRef = useRef({ id: "", finished: false, outcome: "", matchId: "" });
   const [organizationType, setOrganizationType] = useState(() => inferOrganizationType(session));
   const [organizationPlan, setOrganizationPlan] = useState(() => String(session?.plan || "").toLowerCase());
   const navigate = useNavigate();
@@ -201,6 +208,44 @@ export default function NewMatch() {
   }, [activeCountryLookupField, playerCountryQueries]);
   const shouldScheduleMatch = requestedScheduledMatch || (!isPersonalAccount && Boolean(activeCourtMatch));
   const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
+
+  useEffect(() => {
+    if (!organizationId || !selectedSport) return undefined;
+    let active = true;
+    const telemetry = { id: "", finished: false, outcome: "", matchId: "" };
+    setupAnalyticsRef.current = telemetry;
+
+    beginMatchSetupAnalytics(organizationId, selectedSport)
+      .then((response) => {
+        const setupId = response?.setup?.id || "";
+        telemetry.id = setupId;
+        if (setupId && telemetry.finished) {
+          finishMatchSetupAnalytics(
+            organizationId,
+            setupId,
+            telemetry.outcome || "abandoned",
+            telemetry.matchId || null,
+            { keepalive: !active },
+          ).catch(() => {});
+        } else if (!active && setupId) {
+          telemetry.finished = true;
+          telemetry.outcome = "abandoned";
+          finishMatchSetupAnalytics(organizationId, setupId, "abandoned", null, { keepalive: true }).catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+      if (!telemetry.finished) {
+        telemetry.finished = true;
+        telemetry.outcome = "abandoned";
+        if (telemetry.id) {
+          finishMatchSetupAnalytics(organizationId, telemetry.id, "abandoned", null, { keepalive: true }).catch(() => {});
+        }
+      }
+    };
+  }, [organizationId, selectedSport]);
 
   function handleChange(name, value) {
     setFormState((current) => ({
@@ -869,6 +914,15 @@ export default function NewMatch() {
     }
 
     if (response?.match?.id) {
+      const telemetry = setupAnalyticsRef.current;
+      if (!telemetry.finished) {
+        telemetry.finished = true;
+        telemetry.outcome = "completed";
+        telemetry.matchId = response.match.id;
+        if (telemetry.id) {
+          finishMatchSetupAnalytics(organizationId, telemetry.id, "completed", response.match.id).catch(() => {});
+        }
+      }
       if (response.match.status === "scheduled" || response.match.auto_scheduled) {
         navigate("/matches#scheduled-matches-section");
         return;

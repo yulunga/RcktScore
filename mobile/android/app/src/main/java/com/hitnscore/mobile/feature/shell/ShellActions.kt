@@ -12,4 +12,6 @@ data class ShellActions(
     val onSelectMatchesCategory: (MatchesCategory) -> Unit,
     val onOpenSubscription: () -> Unit,
     val onContextSelected: (AccountContext) -> Unit,
+    /** Score Stream: follow a match by its viewing code (Personal Plus). */
+    val onWatchMatch: (String) -> Unit = {},
 )

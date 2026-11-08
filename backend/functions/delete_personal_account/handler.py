@@ -29,7 +29,7 @@ def lambda_handler(event, context):
     try:
         with get_db_connection() as connection:
             auth_context = authorize_personal_profile_session(connection, event, organization_id)
-            delete_personal_account(
+            deletion = delete_personal_account(
                 connection,
                 organization_id,
                 auth_context["session"]["username"],
@@ -42,5 +42,15 @@ def lambda_handler(event, context):
         logger.exception("Personal account deletion failed")
         return error_response(500, "ACCOUNT_DELETION_FAILED", "Unable to delete the account right now")
 
-    logger.info("Deleted personal account for organization_id=%s", organization_id)
-    return success_response(200, {"deleted": True})
+    logger.info("Queued personal account deletion for organization_id=%s", organization_id)
+    return success_response(
+        200,
+        {
+            # Retained for existing native-client compatibility: the user's
+            # account access has been deleted even though clearing is deferred.
+            "deleted": True,
+            "delete_pending": True,
+            "deletion_requested_at": deletion["requested_at"].isoformat(),
+            "purge_after": deletion["purge_after"].isoformat(),
+        },
+    )

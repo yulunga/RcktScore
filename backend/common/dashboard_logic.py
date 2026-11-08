@@ -6,6 +6,7 @@ from psycopg.errors import UndefinedColumn, UndefinedTable
 from common.match_logic import list_matches
 from common.match_watch_logic import list_saved_watched_matches
 from common.plan_entitlements import PERSONAL_PLAN_ENTITLEMENTS, personal_plan_contract, personal_plan_entitlements
+from common.analytics_logic import get_match_setup_analytics
 
 
 PERSONAL_HISTORY_LIMITS = {
@@ -462,9 +463,17 @@ def build_club_usage_analytics(records, app_analytics, user_count):
     peak_hours = [hour for hour, _ in sorted(hour_totals.items(), key=lambda item: (-item[1], item[0]))[:3]]
     total = app_analytics.get("matches_scored") or 0
     peak_count = sum(hour_totals[hour] for hour in peak_hours)
+    setup_activity = app_analytics.get("setup_completion") or {}
+    active_setup_users = _integer(setup_activity.get("active_users"))
     return {
         "club_matches_scored": total,
-        "member_activity": {"tracked": False, "user_count": user_count, "reason": "Match actions are not yet attributed to individual member accounts."},
+        "member_activity": {
+            "tracked": bool(setup_activity.get("tracked")),
+            "user_count": user_count,
+            "active_users": active_setup_users,
+            "adoption_rate": _percentage(active_setup_users, user_count),
+            "reason": None if setup_activity.get("tracked") else "Match setup attribution is not deployed yet.",
+        },
         "club_usage_heatmap": app_analytics.get("hourly_activity_heatmap") or [],
         "peak_hours": peak_hours,
         "peak_time_concentration": _percentage(peak_count, total),
@@ -880,6 +889,11 @@ def get_dashboard_data(
     if include_extended_analytics:
         analytics_records = _fetch_analytics_records(connection, organization_id, analytics_period_days)
         app_analytics = build_extended_app_analytics(analytics_records, analytics_period_days)
+        app_analytics["setup_completion"] = get_match_setup_analytics(
+            connection,
+            organization_id,
+            analytics_period_days,
+        )
     else:
         app_analytics = build_app_analytics(connection, organization_id, analytics_period_days)
     player_analytics = None

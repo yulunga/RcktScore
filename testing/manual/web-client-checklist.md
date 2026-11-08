@@ -84,6 +84,7 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 |---|---|---|
 | PROF-01 | Open profile icon; check and update name, surname, telephone, location and country; refresh. | Own details persist; no other user’s details appear; labels and save feedback are usable. |
 | PROF-02 | On a disposable account, change email to an unused valid address and sign in again. | Prior sessions are revoked; login uses the new address; invalid/duplicate email is rejected clearly. |
+| PROF-03 | On a disposable Personal account, open Delete Personal Account, verify the exact typed confirmation gate, submit it, then inspect Root Admin Users and try signing in again. | The browser signs out immediately; valid credentials are rejected with deletion pending; Root Admin shows a highlighted Delete Pending user and the clearing date exactly 12 months after the request; Personal matches still exist before that date. In a non-production database, move `deletion_purge_after` into the past and invoke the clearing job once: Personal matches/scoring data and the identity disappear, while club-owned matches involving that person remain. |
 
 ### Squash
 
@@ -142,13 +143,16 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 
 | ID | Action | Expected result |
 |---|---|---|
-| ANA-01 | Open Analytics and inspect App/Player tabs; inspect Club as admin and regular member. | App and Player are available across tiers; Club is restricted to club admins; direct navigation cannot expose another club’s data. |
-| ANA-02 | On App, choose 30 days, 90 days, 12 months and All time using known dated matches. | Match volume, sport splits, completion/abandonment, durations and activity charts reconcile with fixtures in each selected period. |
-| ANA-03 | Check App heatmaps, rule/format usage, competitiveness, points and participant reuse. | Charts remain readable; totals/labels agree with seeded data; historically untracked attribution is labelled rather than invented. |
-| ANA-04 | Open Player using a profile whose full name appears in known matches; compare an unmatched profile. | Basic results, court time, sports and opponents reflect the profile-name match rule; no-data state is clear. |
-| ANA-05 | Compare Free and Plus Player reporting. | Both have basic player stats; Plus adds deeper results, game/point and serve percentages, streaks, close games/sets and progress; Free cannot access restricted detail. |
-| ANA-06 | As club admin, inspect Club courts, demand, simultaneous activity, scheduled demand, sport trends and digest where available. | Values agree with club fixtures and plan configuration; do not assume every Club Pro-labelled metric is available to Essentials. |
-| ANA-07 | Complete one known match, refresh Analytics, then repeat after choosing the other club. | Relevant figures update without double counting; account context and reporting periods remain correct. |
+| ANA-01 | Open Analytics as Personal Free, Personal Plus, and an approved club Admin, Scorer and Read only member. | The page has Personal and, in a club context, Club sections. Club aggregate reporting is available to every approved club role without exposing another club’s data. |
+| ANA-02 | In Personal, choose 7 days, 30 days, 90 days, 12 months and All time using known dated matches. | Match volume, sport splits, completion/abandonment, durations and activity figures reconcile with fixtures in each selected period. |
+| ANA-03 | Check Personal usage, heatmaps, rule/format usage, competitiveness, points and participant reuse. | Charts remain readable; totals and labels agree with seeded data; historically unavailable attribution is labelled rather than invented. |
+| ANA-04 | Open Personal using a profile whose full name appears in known matches; compare an unmatched profile. | Personal Plus results, court time, sports and opponents reflect the profile-name match rule; the no-data state is clear. |
+| ANA-05 | Compare Personal Free and Personal Plus. | Free has limited app-usage and match-setup reporting with no export. Plus adds game/player results, serve percentages, streaks, opponents and progress, and can prepare a CSV report. |
+| ANA-06 | In Club, inspect matches, setup activity, aggregate active setup users, courts, demand, simultaneous activity, scheduled demand, sport trends and digest. | Values agree with all club fixtures and approved-user totals for the selected period, regardless of club tier or member role. No member/player identity is displayed. |
+| ANA-07 | Complete one known match, refresh Analytics, then repeat after choosing another club. | Relevant figures update without double counting; account context and reporting periods remain correct. |
+| ANA-08 | Open match setup and close it without creating a match; then open setup and create a match. Repeat on web and iOS. | Personal and Club setup counts record one abandonment and one completion. A setup left open for less than two hours remains open; after two hours it is counted as abandoned. Analytics failure never blocks match creation. |
+| ANA-09 | As Personal Plus, export Personal; as Personal Free, attempt the export endpoint directly. | Plus downloads a CSV for the selected period. Free has no export action and the server rejects a direct export request. |
+| ANA-10 | Export Club as Admin, Scorer and Read only, then inspect the CSV text. | Each approved role can export aggregate club, court and match-use reporting. The file contains no player names, member names, usernames, email addresses or member directory data. |
 
 ### Club roles and member privacy
 

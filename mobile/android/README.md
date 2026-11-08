@@ -88,6 +88,25 @@ In place:
   opened in a browser, paste the link under Need Help? → "I already have a
   link". Website Help links without a token are handed back to the browser.
   See [Password Links](#password-links)
+- **local profile photograph** (as iOS): the Personal Settings page opens with
+  a round photo (or initials on the brand gradient), name and email; tap it to
+  choose a photo with the system photo picker (no storage permission) or
+  remove it. The photo is cropped to a 512 px square JPEG and kept only on
+  this phone, per user, in no-backup storage; it is never uploaded, and it is
+  deleted with the account
+- **referee "Me"** (as the web and iOS): club match setup offers a Me switch
+  under Referee (your name • email) that fills in the signed-in user; it is
+  unavailable while you are entered as a player, switches off with the web's
+  notice if you then add yourself as a player, and Create is blocked if you
+  would referee your own match
+- **Score Stream** (as iOS): the scorer opens **Share live score** (from the
+  Action sheet or Game Settings) to get the match's 8-character viewing code,
+  copy it or send it with the Android share sheet; club courts also show the
+  Spectator Display address and court code. **Personal Plus** members get
+  **Watch a Match** on Matches › Current: enter a code to follow the match
+  live (score, games/sets, point timeline; refreshed every 5 s while on screen,
+  stopping when the match ends) and **Add to Viewed Matches**, listed on every
+  device. Viewing is read-only; the server enforces Personal Plus
 - club roles `admin`, `scorer` and `read_only`: read-only members get no Start
   button and open matches in the read-only match view (B18)
 - ongoing "match in progress" notification, screen kept on, phones held in
@@ -98,12 +117,12 @@ In place:
   HTTPS-only, no cloud backup or device transfer of app data
 - unit tests (login decoding, session repository, API parsing, navigation,
   match clock, squash point rail, tennis/Padel rules, offline reducers and
-  queue, registration, password links and rules, set-password screen) and Compose sign-in and Want In smoke tests
+  queue, registration, password links and rules, set-password screen, profile photo store, referee selection, Score Stream viewer and share code) and Compose sign-in and Want In smoke tests
 - a GitHub Actions workflow template in `ci/`
 
-Not yet built: scorer Match Details (scoreboard URL and codes), Help &
-Feedback and Watch a Match (M6b), crash reporting and release hardening (M7),
-Google Play Billing and passkeys (v1.1).
+Not yet built: the rest of the scorer Match Details panel, Help & Feedback
+(M6b), crash reporting and release hardening (M7), Google Play Billing and
+passkeys (v1.1).
 
 Sign-in is tested manually until a staging backend exists, because the dev
 build talks to the production API. Use the agreed test accounts (personal,

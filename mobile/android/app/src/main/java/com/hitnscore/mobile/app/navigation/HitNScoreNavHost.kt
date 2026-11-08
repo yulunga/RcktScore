@@ -18,6 +18,8 @@ import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.feature.analytics.AnalyticsScreen
 import com.hitnscore.mobile.feature.newmatch.MatchSetupScreen
 import com.hitnscore.mobile.feature.newmatch.SetupArgs
+import com.hitnscore.mobile.feature.newmatch.SignedInPerson
+import com.hitnscore.mobile.feature.newmatch.signedInPersonName
 import com.hitnscore.mobile.feature.newmatch.SportPickerScreen
 import com.hitnscore.mobile.feature.newmatch.enabledSports
 import com.hitnscore.mobile.feature.scoring.ScoringScreen
@@ -32,6 +34,7 @@ import com.hitnscore.mobile.feature.settings.SettingsPageScreen
 import com.hitnscore.mobile.feature.settings.SettingsScreen
 import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellUiState
+import com.hitnscore.mobile.feature.watch.WatchMatchScreen
 
 object ShellRoutes {
     const val NEW_MATCH = "newmatch"
@@ -40,10 +43,12 @@ object ShellRoutes {
     const val MATCH = "match/{matchId}"
     const val NOTIFICATIONS = "notifications"
     const val SETTINGS_PAGE = "settings/{page}"
+    const val WATCH = "watch/{code}"
 
     fun match(matchId: String) = "match/${Uri.encode(matchId)}"
     fun setup(sport: String) = "newmatch/$sport"
     fun score(matchId: String) = "score/${Uri.encode(matchId)}"
+    fun watch(code: String) = "watch/${Uri.encode(code)}"
 
     /** Full-screen flows hide the bottom bar and the Start button. */
     fun isFullScreen(route: String?) = route?.startsWith(NEW_MATCH) == true || route?.startsWith("score/") == true
@@ -118,6 +123,7 @@ fun HitNScoreTabNavHost(
         composable(ShellRoutes.SETUP) { entry ->
             val sport = entry.arguments?.getString("sport").orEmpty()
             val session = currentSession
+            val membership = session.memberships.firstOrNull { it.id == session.activeContext.membershipId }
             val args = SetupArgs(
                 sport = sport,
                 organizationId = session.activeContext.organizationId,
@@ -125,6 +131,10 @@ fun HitNScoreTabNavHost(
                 isPersonalPlus = currentState.isPersonalPlus(session),
                 sessionSports = session.enabledSports(),
                 activeMatches = currentState.dashboard?.activeMatches.orEmpty(),
+                signedInUser = SignedInPerson(
+                    name = signedInPersonName(membership?.fullName, membership?.firstName, membership?.surname, session.username),
+                    email = membership?.email?.takeIf { it.isNotBlank() } ?: session.username.takeIf { '@' in it }.orEmpty(),
+                ),
             )
             MatchSetupScreen(
                 args = args,
@@ -162,6 +172,17 @@ fun HitNScoreTabNavHost(
         composable(ShellRoutes.MATCH) { entry ->
             val matchId = entry.arguments?.getString("matchId").orEmpty()
             MatchDetailScreen(matchId = matchId, isOnline = currentState.isOnline, onBack = { navController.popBackStack() })
+        }
+        composable(ShellRoutes.WATCH) { entry ->
+            val code = entry.arguments?.getString("code").orEmpty()
+            WatchMatchScreen(
+                code = code,
+                organizationId = currentSession.activeContext.organizationId,
+                isOnline = currentState.isOnline,
+                onBack = { navController.popBackStack() },
+                // Viewed Matches comes with the dashboard, so reload it.
+                onSaved = { currentActions.onRefresh() },
+            )
         }
         composable(ShellRoutes.NOTIFICATIONS) {
             NotificationsScreen(

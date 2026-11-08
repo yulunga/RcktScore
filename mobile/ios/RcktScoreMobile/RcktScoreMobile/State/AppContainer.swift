@@ -3,6 +3,7 @@ import Combine
 
 @MainActor
 final class AppContainer: ObservableObject {
+    @Published private(set) var pendingPasswordResetLink: PasswordResetLink?
     let apiClient: APIClient
     let sessionStore: SessionStore
     let networkMonitor: NetworkMonitor
@@ -111,6 +112,36 @@ final class AppContainer: ObservableObject {
         sessionStore.clear()
         Task {
             await apiClient.logout(sessionTokenOverride: sessionToken)
+        }
+    }
+
+    @discardableResult
+    func handleIncomingURL(_ url: URL) -> Bool {
+        guard let link = PasswordResetLink.parse(url: url) else {
+            return false
+        }
+        pendingPasswordResetLink = link
+        return true
+    }
+
+    @discardableResult
+    func openPasswordResetText(_ text: String) -> Bool {
+        guard let link = PasswordResetLink.parse(text: text) else {
+            return false
+        }
+        pendingPasswordResetLink = link
+        return true
+    }
+
+    func closePasswordReset() {
+        pendingPasswordResetLink = nil
+    }
+
+    func passwordResetCompleted(isAccountSetup: Bool) {
+        if !isAccountSetup {
+            // The backend revokes every session for this identity after a reset.
+            // Remove the device's normal and biometric copies immediately too.
+            sessionStore.clear()
         }
     }
 

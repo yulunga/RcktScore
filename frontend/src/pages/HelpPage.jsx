@@ -652,6 +652,7 @@ export default function HelpPage() {
                 <li>Accounts that remain inactive for 24 months will be deleted, along with all associated data.</li>
                 <li>Data will not be retained for more than 5 years, unless explicitly requested by the account holder.</li>
                 <li>You may request deletion of your data at any time.</li>
+                <li>A deletion request disables account access immediately. Personal match and scoring data is retained in delete-pending state for 12 months before scheduled clearing.</li>
               </ul>
               <p>We may retain limited data where required for legal or operational reasons.</p>
               <h3>8. Your Rights</h3>

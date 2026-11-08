@@ -252,6 +252,19 @@ export default function RootAdminUserProfilePage() {
                 <div><strong>Last Logged In</strong><span>{user.last_login_at ? formatDateTime(user.last_login_at) : "Never logged in"}</span></div>
                 <div><strong>Last Activity</strong><span>{formatDateTime(user.last_activity_at)}</span></div>
               </div>
+              {user.account_status === "delete_pending" ? (
+                <section className="root-admin-delete-pending-notice stack compact">
+                  <div className="root-admin-section-header">
+                    <h3>Account Status</h3>
+                    <span className="status-pill warning">Delete Pending</span>
+                  </div>
+                  <p className="helper-text">
+                    Deletion requested {formatDateTime(user.deletion_requested_at)}. Personal matches and scoring records
+                    are retained until the scheduled clearing job runs on or after {formatDateTime(user.deletion_purge_after)}.
+                    The user is signed out and cannot log in during this period.
+                  </p>
+                </section>
+              ) : null}
               <section className={`root-admin-email-verification${user.email_verified ? " verified" : " unverified"}`}>
                 <div className="stack root-admin-email-verification-copy">
                   <div className="root-admin-section-header">

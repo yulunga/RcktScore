@@ -58,6 +58,8 @@ class ProfileViewModel(
     private val sessionRepository: SessionRepository,
     private val api: HitNScoreApi,
     private val settingsApi: SettingsApi,
+    /** Forgets what the phone holds for a deleted account (its local profile photo). */
+    private val onAccountDeleted: suspend (username: String) -> Unit = {},
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(ProfileUiState())
@@ -165,7 +167,10 @@ class ProfileViewModel(
         mutableState.update { it.copy(isDeleting = true, errorMessage = null) }
         viewModelScope.launch {
             when (val result = settingsApi.deletePersonalAccount(personal.organizationId)) {
-                is ApiResult.Success -> sessionRepository.endSession(SignOutReason.AccountDeleted)
+                is ApiResult.Success -> {
+                    runCatching { onAccountDeleted(signedIn.username) }
+                    sessionRepository.endSession(SignOutReason.AccountDeleted)
+                }
                 is ApiResult.Failure -> mutableState.update { it.copy(isDeleting = false, errorMessage = result.error.message) }
             }
         }
@@ -175,7 +180,9 @@ class ProfileViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as HitNScoreApplication).container
-                ProfileViewModel(container.sessionRepository, container.api, container.settingsApi)
+                ProfileViewModel(container.sessionRepository, container.api, container.settingsApi) { username ->
+                    container.profilePhotos.remove(username)
+                }
             }
         }
     }

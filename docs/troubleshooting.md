@@ -126,13 +126,19 @@ Historic Match copy or a separate History/Matches action row. Completed-match ca
 
 For web Analytics discrepancies, call `GET /dashboard/{organization_id}` with
 the same `analytics_period_days` value selected in the UI. Check
-`app_analytics`, `player_analytics`, and (for a club-admin session only)
+`app_analytics`, `player_analytics`, and (for any authorised club membership)
 `club_analytics`. Player figures require the profile first name and surname to
 match a participant identity exactly. Historical match events using source
 `lambda` cannot be split into web versus iOS; the UI labels them unattributed.
 New events should carry `web_app` or `mobile_app` from the authenticated session.
-Setup-completion and member-adoption cards intentionally say **Not tracked**
-until setup-start and member-action/view attribution are persisted.
+If setup completion remains untracked, confirm migration `050_analytics_setup_and_exports.sql`
+and the two `/analytics/setup/...` routes are deployed. A setup explicitly closed
+by web/iOS is abandoned immediately; a setup left open by a crash or lost connection
+is counted as abandoned after two hours. Club active-user/adoption values are
+aggregate counts from setup sessions and must never return member identities.
+For export failures, confirm Personal uses Personal Plus and club callers have
+`analytics.read`; inspect the returned CSV to ensure club reports contain no
+names, usernames, email addresses or player-level rows.
 If `/performance` scrolls sideways on a tablet portrait viewport, inspect
 `.analytics-heatmap` and `.analytics-table-wrap`; their outer containers must
 remain at `max-width: 100%`, with wide rows and tables scrolling internally
@@ -459,7 +465,7 @@ What to check:
 
 - tenant plan and organisation type
 - the submitted `player1_shirt_color` and `player2_shirt_color` values, plus all four `team{1|2}_player{1|2}_shirt_color` values for tennis doubles (all personal and club plans may set them)
-- if the web referee `Me` switch is disabled or clears itself, compare the signed-in profile first name and surname with every entered participant; a player cannot referee the same match
+- if the web or iOS referee `Me` switch is disabled or clears itself, compare the signed-in profile first name and surname with every entered singles/doubles participant; a player cannot referee the same match
 - `matches.sport` and the tenant `enabled_sports` list
 - whether migration `037_court_sports.sql` is deployed and the selected `SkwshCourts.sport` is either null (legacy/all sports) or matches `matches.sport`
 - court conflict behavior
@@ -546,6 +552,8 @@ Common symptoms:
 - `SESSION_REQUIRED`, `SESSION_INVALID`, or `SESSION_EXPIRED` from a Club Essentials/Club Pro enquiry means the saved mobile session must be refreshed by signing in again
 - password reset link points to the wrong host
 - a setup/reset page that remains on “Checking your secure link” indicates `POST /password_reset/validate` is missing from the deployed backend; an invalid/expired response should offer a fresh reset request
+- an installed iOS app opening a reset link in Safari usually means the deployed `apple-app-site-association` file is missing, redirects, is not served as `application/json`, has the wrong app ID (`6GVCHR2885.rcktScore.RcktScoreMobile`) or has not yet been refreshed by iOS. Verify the app's Associated Domains capability, request `https://app.hitnscore.com/.well-known/apple-app-site-association` directly, reinstall the signed build after correcting it, and use the native paste-link field as a functional fallback while Apple refreshes the association
+- if iOS accepts a link but immediately reports it invalid, confirm the URL uses HTTPS, host `app.hitnscore.com`, path `/help`, mode `reset` or `confirm-email`, and a non-empty `token`; then check the backend token TTL and whether the link was already used
 - passwords must satisfy the same browser and backend policy (8+ characters, uppercase, number, symbol, and no configured common password term). A browser-only change is insufficient because the confirm and root-admin password APIs enforce it too
 - a normal reset updates every membership for the email and revokes all sessions without approving pending club invitations; only a first-account setup link approves its token-holding membership
 - organisation invite exists but user remains pending forever
@@ -695,6 +703,8 @@ What to check:
 - whether migration `023_system_notifications.sql` was applied and `GET /notifications/{organization_id}` returns the expected `all` or plan-specific audience
 - whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user session, including CSRF/Origin for web or bearer authorization for native
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
+- whether migration `049_personal_account_deletion_retention.sql` is applied; without its timestamp columns the deletion request cannot enter Delete Pending
+- whether `PurgePersonalAccountsFunction` has a healthy daily EventBridge schedule and Lambda logs; dedicated CloudWatch alarms report errors or two missing daily invocations. A pending account must remain visible before `deletion_purge_after`; the clearing query deliberately uses `FOR UPDATE SKIP LOCKED` and deletes only `matches.tenant_id` owned by the due Personal tenant, not club matches attributed to the same referee
 
 Important current truths:
 
@@ -704,7 +714,7 @@ Important current truths:
 - one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns
 - offline undo can remove actions still queued on that device; undoing an older server-synchronised action requires connectivity
 - the dashboard stays quiet when offline and replaces the bell with an offline icon; online, an unread persisted notification makes the bell yellow until the user explicitly marks it read
-- self-service deletion applies only to the authenticated owner of Personal and requires two client confirmations plus server-side ownership validation. Because Personal is the base identity, deletion also removes every club association and active session; club-owned match records remain with their clubs
+- self-service deletion applies only to the authenticated owner of Personal and requires typed or repeated client confirmation plus server-side ownership validation. Access and active sessions end immediately, but Root Admin retains the identity in Delete Pending until the 12-month clearing job removes its Personal workspace, Personal matches/scoring data and every club association; club-owned match records remain with their clubs
 - if a registered user is missing Personal, verify migration `047_personal_account_for_every_identity.sql` has run. New club membership writes call `ensure_personal_account_for_identity`, and the deferred `skwsh_org_users_require_personal_account` constraint rejects a transaction that leaves memberships without a Personal owner membership
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
 - native settings now push each section onto its own page, allow self-profile edits and association switching, expose an About page with the installed app version/build, can enable local Face ID / Touch ID session unlock, but profile-photo selection is still device-local only

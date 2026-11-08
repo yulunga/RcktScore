@@ -140,7 +140,7 @@ private fun ScoreRow(name: String, games: Int) {
 }
 
 @Composable
-private fun InformationCard(match: MatchDetail, tennis: Boolean) {
+internal fun InformationCard(match: MatchDetail, tennis: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Surface(
         shape = RoundedCornerShape(24.dp),
@@ -214,7 +214,7 @@ private fun TimeCard(timeline: MatchTimeline) {
 }
 
 @Composable
-private fun TimelineCard(match: MatchDetail, timeline: MatchTimeline) {
+internal fun TimelineCard(match: MatchDetail, timeline: MatchTimeline) {
     val player1 = MatchFormatting.fullName(match.player1Name, match.player1Surname)
     val player2 = MatchFormatting.fullName(match.player2Name, match.player2Surname)
     val doublesTeams = match.state?.tennisTeams.takeIf { match.state?.teamFormat.equals("doubles", ignoreCase = true) }

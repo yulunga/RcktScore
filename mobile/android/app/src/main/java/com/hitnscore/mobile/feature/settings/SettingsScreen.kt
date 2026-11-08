@@ -111,6 +111,17 @@ fun SettingsScreen(
                 onContextSelected = actions.onContextSelected,
             )
         }
+        if (session.isPersonal) {
+            // As iOS: the Personal settings page opens with the user's photo, name and email.
+            item(key = "photo-${session.username}") {
+                val membership = session.memberships.firstOrNull { it.id == session.activeContext.membershipId }
+                ProfilePhotoHeader(
+                    username = session.username,
+                    displayName = membership?.fullName?.takeIf { it.isNotBlank() } ?: session.displayName,
+                    email = membership?.email ?: session.username.takeIf { '@' in it },
+                )
+            }
+        }
         item { MenuSection(stringResource(R.string.settings_account), accountPages, onOpenPage) }
         if (clubPages.isNotEmpty()) item { MenuSection(stringResource(R.string.settings_club), clubPages, onOpenPage) }
         item {

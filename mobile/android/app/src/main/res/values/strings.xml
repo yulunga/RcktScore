@@ -204,6 +204,9 @@
     <string name="setup_no_courts">No %1$s court is set up for this club. A club admin can add one in Court Settings.</string>
     <string name="setup_referee">Referee</string>
     <string name="setup_referee_hint">Match official (optional)</string>
+    <string name="setup_referee_me">Me</string>
+    <string name="setup_referee_player_conflict">You are listed as a player, so you cannot referee this match.</string>
+    <string name="setup_referee_cannot_referee">You cannot referee a match that you are playing in.</string>
     <string name="setup_rules">Match Rules &amp; Options</string>
     <string name="setup_match_format">Match format</string>
     <string name="setup_game_format">Game format</string>
@@ -458,4 +461,50 @@
     <string name="password_reset_done_title">Password changed</string>
     <string name="password_reset_done_body">Sign in with your new password. Other devices have been signed out.</string>
     <string name="password_go_to_sign_in">Go to sign in</string>
+
+    <!-- Local profile photograph (Personal settings header) -->
+    <string name="profile_photo_add">Add profile photo</string>
+    <string name="profile_photo_change">Change profile photo</string>
+    <string name="profile_photo_choose">Choose a new photo</string>
+    <string name="profile_photo_remove">Remove photo</string>
+    <string name="profile_photo_failed">That photo couldn\'t be used. Try another one.</string>
+
+    <!-- Score Stream: share a live match / watch a match by code (Personal Plus) -->
+    <string name="share_live_title">Share live score</string>
+    <string name="share_live_body">Players with Personal Plus can follow this match live, point by point. Send them this code; they enter it in Matches › Watch a Match.</string>
+    <string name="share_live_code_label">Match viewing code</string>
+    <string name="share_live_code_spoken">Match viewing code %1$s</string>
+    <string name="share_live_copy">Copy code</string>
+    <string name="share_live_copied">Copied</string>
+    <string name="share_live_share">Share</string>
+    <string name="share_live_message">Follow %1$s live on HitnScore: open Matches › Watch a Match and enter code %2$s (Personal Plus).</string>
+    <string name="share_live_loading">Getting the viewing code…</string>
+    <string name="share_live_offline">Connect to the internet to get this match\'s viewing code.</string>
+    <string name="share_live_spectator">Spectator Display</string>
+    <string name="share_live_scoreboard_url">Scoreboard URL</string>
+    <string name="share_live_court_code">Court display code</string>
+    <string name="watch_card_title">Watch a Match</string>
+    <string name="watch_card_body">Enter the code shared by the scorer to follow a match live.</string>
+    <string name="watch_code_field">Match viewing code</string>
+    <string name="watch_button">Watch Match</string>
+    <string name="watch_needs_connection">Watching a match needs a connection.</string>
+    <string name="watch_viewed_matches">Viewed Matches</string>
+    <string name="watch_live_short">Live</string>
+    <string name="watch_finished_short">Finished</string>
+    <string name="watch_title_live">Live Match</string>
+    <string name="watch_title_finished">Match Finished</string>
+    <string name="watch_opening">Opening match…</string>
+    <string name="watch_offline">You\'re offline. Connect to follow this match.</string>
+    <string name="watch_offline_paused">You\'re offline. The score will update when you reconnect.</string>
+    <string name="watch_updating">Updating automatically</string>
+    <string name="watch_finished">This match has finished</string>
+    <string name="watch_code_label">Code %1$s</string>
+    <string name="watch_save">Add to Viewed Matches</string>
+    <string name="watch_saving">Adding…</string>
+    <string name="watch_saved">Added to Viewed Matches</string>
+    <string name="watch_sets_games">Sets %1$d · Games %2$d</string>
+    <plurals name="watch_games">
+        <item quantity="one">%d game</item>
+        <item quantity="other">%d games</item>
+    </plurals>
 </resources>

@@ -14,6 +14,7 @@ applications:
         baseDirectory: dist
         files:
           - "**/*"
+          - ".well-known/*"
       cache:
         paths:
           - node_modules/**/*

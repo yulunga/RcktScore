@@ -1,5 +1,6 @@
 import re
 import secrets
+from calendar import monthrange
 from datetime import datetime, timezone
 
 from psycopg.types.json import Jsonb
@@ -58,6 +59,13 @@ def normalize_association_competitions(value):
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _months_after(value, months):
+    month_index = value.year * 12 + value.month - 1 + int(months)
+    year, zero_based_month = divmod(month_index, 12)
+    month = zero_based_month + 1
+    return value.replace(year=year, month=month, day=min(value.day, monthrange(year, month)[1]))
 
 
 def _serialize_organization(row):
@@ -562,7 +570,7 @@ def update_personal_profile(connection, organization_id, username, payload):
 
 
 def delete_personal_account(connection, organization_id, username):
-    """Permanently delete a self-service personal tenant and its owned data."""
+    """Disable a Personal identity now and queue its owned data for 12-month purging."""
     org_id = int(organization_id)
     current_username = normalize_email_address(username)
     if not current_username:
@@ -571,7 +579,7 @@ def delete_personal_account(connection, organization_id, username):
     with connection.cursor() as cursor:
         cursor.execute(
             '''
-            SELECT id, interest_request_id
+            SELECT id, interest_request_id, deletion_requested_at, deletion_purge_after
             FROM "SkwshOrgSettings"
             WHERE id = %(organization_id)s
               AND org_type = 'personal'
@@ -587,69 +595,123 @@ def delete_personal_account(connection, organization_id, username):
         if not organization_row:
             raise ValueError("Only the owner of a personal account can delete it")
 
-        # Matches must be removed before their tenant/court records. Match events
-        # and offline action receipts cascade from the match record.
-        cursor.execute(
-            "DELETE FROM matches WHERE tenant_id = %(organization_id)s",
-            {"organization_id": org_id},
-        )
-        cursor.execute(
-            "DELETE FROM court_display_sessions WHERE tenant_id = %(organization_id)s",
-            {"organization_id": org_id},
-        )
+        requested_at = organization_row.get("deletion_requested_at") or _utcnow()
+        purge_after = organization_row.get("deletion_purge_after") or _months_after(requested_at, 12)
         cursor.execute(
             '''
-            DELETE FROM "SkwshCourts"
-            WHERE organization_name = %(organization_id)s
-            ''',
-            {"organization_id": org_id},
-        )
-        cursor.execute(
-            '''
-            DELETE FROM "SkwshOrgUsers"
-            WHERE organization_id = %(organization_id)s
-            ''',
-            {"organization_id": org_id},
-        )
-        cursor.execute(
-            '''
-            DELETE FROM "SkwshOrgSettings"
+            UPDATE "SkwshOrgSettings"
+            SET deletion_requested_at = %(requested_at)s,
+                deletion_purge_after = %(purge_after)s
             WHERE id = %(organization_id)s
             ''',
-            {"organization_id": org_id},
+            {
+                "organization_id": org_id,
+                "requested_at": requested_at,
+                "purge_after": purge_after,
+            },
         )
 
-        # Personal is the base account for every registered identity. Deleting
-        # it therefore removes the user's club associations as well, while club
-        # matches and other club-owned records remain with their organisations.
-        cursor.execute(
-            '''
-            DELETE FROM "SkwshOrgUsers"
-            WHERE LOWER(clubusername) = LOWER(%(username)s)
-            ''',
-            {"username": current_username},
-        )
-
-        interest_request_id = organization_row.get("interest_request_id")
-        if interest_request_id:
-            cursor.execute(
-                '''
-                DELETE FROM "HitnScoreInterestRequests"
-                WHERE id = %(interest_request_id)s
-                  AND use_type = 'personal'
-                ''',
-                {"interest_request_id": interest_request_id},
-            )
-
-        # Sessions are identity-wide, so revoke/remove every token for the deleted
-        # username even if the email also had a managed club membership.
-        cursor.execute(
-            "DELETE FROM org_user_sessions WHERE LOWER(username) = LOWER(%(username)s)",
-            {"username": current_username},
+        # Account deletion applies to the whole identity. Keep memberships and
+        # history for Root Admin visibility, but revoke every live device now.
+        from common.session_logic import revoke_active_sessions_for_username
+        revoke_active_sessions_for_username(
+            connection,
+            current_username,
+            reason="personal_account_delete_pending",
         )
 
     connection.commit()
-    return True
+    return {
+        "delete_pending": True,
+        "requested_at": requested_at,
+        "purge_after": purge_after,
+    }
+
+
+def purge_due_personal_accounts(connection, now=None):
+    """Permanently clear Personal accounts whose 12-month retention has elapsed."""
+    purge_time = now or _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            '''
+            SELECT id, owner_username, interest_request_id
+            FROM "SkwshOrgSettings"
+            WHERE org_type = 'personal'
+              AND deletion_requested_at IS NOT NULL
+              AND deletion_purge_after <= %(purge_time)s
+            ORDER BY deletion_purge_after ASC, id ASC
+            FOR UPDATE SKIP LOCKED
+            ''',
+            {"purge_time": purge_time},
+        )
+        due_accounts = cursor.fetchall()
+
+        deleted_match_count = 0
+        for account in due_accounts:
+            organization_id = account["id"]
+            username = normalize_email_address(account.get("owner_username"))
+
+            cursor.execute(
+                "DELETE FROM matches WHERE tenant_id = %(organization_id)s",
+                {"organization_id": organization_id},
+            )
+            deleted_match_count += max(cursor.rowcount, 0)
+            cursor.execute(
+                "DELETE FROM court_display_sessions WHERE tenant_id = %(organization_id)s",
+                {"organization_id": organization_id},
+            )
+            cursor.execute(
+                'DELETE FROM "SkwshCourts" WHERE organization_name = %(organization_id)s',
+                {"organization_id": organization_id},
+            )
+            if username:
+                cursor.execute(
+                    'DELETE FROM "SkwshOrgUsers" WHERE LOWER(clubusername) = LOWER(%(username)s)',
+                    {"username": username},
+                )
+            else:
+                cursor.execute(
+                    'DELETE FROM "SkwshOrgUsers" WHERE organization_id = %(organization_id)s',
+                    {"organization_id": organization_id},
+                )
+            cursor.execute(
+                'DELETE FROM "SkwshOrgSettings" WHERE id = %(organization_id)s',
+                {"organization_id": organization_id},
+            )
+
+            interest_request_id = account.get("interest_request_id")
+            if interest_request_id:
+                cursor.execute(
+                    '''
+                    DELETE FROM "HitnScoreInterestRequests"
+                    WHERE id = %(interest_request_id)s
+                      AND use_type = 'personal'
+                    ''',
+                    {"interest_request_id": interest_request_id},
+                )
+            if username:
+                cursor.execute(
+                    "DELETE FROM system_notification_reads WHERE LOWER(username) = LOWER(%(username)s)",
+                    {"username": username},
+                )
+                cursor.execute(
+                    "DELETE FROM tournament_role_assignments WHERE LOWER(username) = LOWER(%(username)s)",
+                    {"username": username},
+                )
+                cursor.execute(
+                    "DELETE FROM org_user_sessions WHERE LOWER(username) = LOWER(%(username)s)",
+                    {"username": username},
+                )
+                cursor.execute(
+                    'DELETE FROM "users" WHERE email_normalized = LOWER(BTRIM(%(username)s))',
+                    {"username": username},
+                )
+
+    connection.commit()
+    return {
+        "purged_account_count": len(due_accounts),
+        "deleted_personal_match_count": deleted_match_count,
+    }
 
 
 def ensure_personal_account_for_identity(

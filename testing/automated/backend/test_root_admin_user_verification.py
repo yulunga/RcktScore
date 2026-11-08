@@ -95,6 +95,20 @@ def test_never_logged_in_user_uses_registration_date_for_inactivity(monkeypatch)
     assert user["inactive_24_months"] is True
 
 
+def test_user_summary_exposes_delete_pending_dates():
+    requested_at = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    purge_after = datetime(2027, 11, 8, tzinfo=timezone.utc)
+
+    user = _serialize_root_admin_user_summary(
+        "pending-delete@example.com",
+        [membership_row(deletion_requested_at=requested_at, deletion_purge_after=purge_after)],
+    )
+
+    assert user["account_status"] == "delete_pending"
+    assert user["deletion_requested_at"] == requested_at.isoformat()
+    assert user["deletion_purge_after"] == purge_after.isoformat()
+
+
 class DirectoryCursor:
     def __init__(self, rows):
         self.rows = rows
@@ -147,6 +161,24 @@ def test_user_directory_counts_and_filters_inactive_users(monkeypatch):
     assert directory["summary"]["inactive_12_month_count"] == 1
     assert directory["summary"]["inactive_24_month_count"] == 1
     assert [user["username"] for user in directory["users"]] == ["old@example.com"]
+
+
+def test_user_directory_counts_and_filters_delete_pending_users():
+    pending_row = membership_row(
+        membership_id=3,
+        clubusername="pending-delete@example.com",
+        deletion_requested_at=datetime(2026, 11, 8, tzinfo=timezone.utc),
+        deletion_purge_after=datetime(2027, 11, 8, tzinfo=timezone.utc),
+    )
+    active_row = membership_row(membership_id=4, clubusername="active@example.com")
+
+    directory = root_admin_logic.get_root_admin_users(
+        DirectoryConnection([pending_row, active_row]),
+        account_type="delete_pending",
+    )
+
+    assert directory["summary"]["delete_pending_count"] == 1
+    assert [user["username"] for user in directory["users"]] == ["pending-delete@example.com"]
 
 
 class VerificationCursor:

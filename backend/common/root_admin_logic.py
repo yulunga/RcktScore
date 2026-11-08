@@ -1390,6 +1390,14 @@ def _serialize_root_admin_user_summary(username, membership_rows):
     personal_rows = [row for row in ordered_rows if (row.get("org_type") or "club") == "personal"]
     club_rows = [row for row in ordered_rows if (row.get("org_type") or "club") != "personal"]
     personal_plan = (personal_rows[0].get("plan") if personal_rows else None) or None
+    deletion_requested_at = next(
+        (row.get("deletion_requested_at") for row in personal_rows if row.get("deletion_requested_at")),
+        None,
+    )
+    deletion_purge_after = next(
+        (row.get("deletion_purge_after") for row in personal_rows if row.get("deletion_purge_after")),
+        None,
+    )
     registered_at = min((row["created_at"] for row in ordered_rows if row.get("created_at")), default=None)
     personal_registration_rows = [row for row in personal_rows if row.get("interest_request_id") is not None]
     memberships_approved = all(
@@ -1445,6 +1453,9 @@ def _serialize_root_admin_user_summary(username, membership_rows):
         "account_types": account_types,
         "email_verified": email_verified,
         "email_verified_at": email_verified_at.isoformat() if email_verified_at else None,
+        "account_status": "delete_pending" if deletion_requested_at else "active",
+        "deletion_requested_at": deletion_requested_at.isoformat() if deletion_requested_at else None,
+        "deletion_purge_after": deletion_purge_after.isoformat() if deletion_purge_after else None,
         "unverified_membership_count": sum(
             (row.get("approval_status") or "approved") != "approved"
             for row in ordered_rows
@@ -1465,6 +1476,8 @@ def get_root_admin_users(connection, account_type=None, query=None):
                 u.approval_status,
                 o.org_type,
                 o.plan,
+                o.deletion_requested_at,
+                o.deletion_purge_after,
                 o.interest_request_id,
                 i.email_validated,
                 sessions.last_login_at
@@ -1504,11 +1517,14 @@ def get_root_admin_users(connection, account_type=None, query=None):
         "unverified_user_count": sum(not user["email_verified"] for user in users),
         "inactive_12_month_count": sum(user["inactive_12_months"] for user in users),
         "inactive_24_month_count": sum(user["inactive_24_months"] for user in users),
+        "delete_pending_count": sum(user["account_status"] == "delete_pending" for user in users),
     }
 
     requested_account_type = (account_type or "").strip().lower()
     if requested_account_type == "unverified":
         users = [user for user in users if not user["email_verified"]]
+    elif requested_account_type == "delete_pending":
+        users = [user for user in users if user["account_status"] == "delete_pending"]
     elif requested_account_type == "inactive_12_months":
         users = [user for user in users if user["inactive_12_months"]]
     elif requested_account_type == "inactive_24_months":
@@ -1577,6 +1593,8 @@ def get_root_admin_user_profile(connection, user_id):
                 o.organization_name,
                 o.org_type,
                 o.plan,
+                o.deletion_requested_at,
+                o.deletion_purge_after,
                 o.enabled_sports,
                 u.enabled_sports_web,
                 u.enabled_sports_ios,
