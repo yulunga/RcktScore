@@ -902,6 +902,7 @@ export default function MatchScreen() {
       <ClubPageHeader
         className="club-page-header--match"
         forceCompact
+        showMobileMenu={false}
         title={session?.organization_name || currentMatch?.organization_name || "Live Match"}
       />
 

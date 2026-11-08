@@ -1,8 +1,12 @@
 package com.hitnscore.mobile.feature.shell
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -13,10 +17,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,8 +35,8 @@ import com.hitnscore.mobile.app.navigation.ShellRoutes
 import com.hitnscore.mobile.app.navigation.navigateToTab
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.SessionState
-import com.hitnscore.mobile.feature.settings.SettingsPage
 import com.hitnscore.mobile.data.model.ClubRoles
+import com.hitnscore.mobile.feature.settings.SettingsPage
 
 /**
  * Signed-in shell. One Scaffold and bottom bar for the whole session; only the
@@ -51,6 +58,7 @@ fun AppShellScreen(
     // Read-only club members can follow matches but not score them (B18, as iOS and web).
     val canManageMatches = ClubRoles.canManageMatches(session.activeContext.role)
     val canManageState = rememberUpdatedState(canManageMatches)
+    val currentOnSignOut by rememberUpdatedState(onSignOut)
 
     val actions = remember(navController, shellViewModel) {
         ShellActions(
@@ -70,29 +78,22 @@ fun AppShellScreen(
             onOpenSubscription = { navController.navigate(ShellRoutes.settingsPage(SettingsPage.Subscription)) },
             onContextSelected = onContextSelected,
             onWatchMatch = { code -> navController.navigate(ShellRoutes.watch(code)) },
+            onSignOut = { currentOnSignOut() },
         )
     }
 
     val fullScreen = ShellRoutes.isFullScreen(currentRoute)
-    val showStartButton = canManageMatches && (currentRoute == AppDestination.Home.route || currentRoute == AppDestination.Matches.route)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
-            // Approved UX change 1: a persistent Start button on Home and Matches.
-            if (showStartButton) {
-                ExtendedFloatingActionButton(
-                    onClick = { navController.navigate(ShellRoutes.NEW_MATCH) { launchSingleTop = true } },
-                    icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
-                    text = { Text(stringResource(R.string.start_new_match)) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
-        },
         bottomBar = {
             if (!fullScreen) NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 AppDestination.topLevel.forEach { destination ->
+                    // Play sits between Home and Matches and starts a new match (replaces the
+                    // floating Start button). Read-only club members can't start matches (B18).
+                    if (destination == AppDestination.Matches && canManageMatches) {
+                        PlayItem(onClick = { navController.navigate(ShellRoutes.NEW_MATCH) { launchSingleTop = true } })
+                    }
                     NavigationBarItem(
                         selected = currentRoute?.startsWith(destination.route) == true,
                         onClick = { navController.navigateToTab(destination) },
@@ -124,4 +125,37 @@ fun AppShellScreen(
                 .consumeWindowInsets(contentPadding),
         )
     }
+}
+
+/**
+ * The Play button in the bottom bar: a filled brand circle the same 24 dp as the tab icons,
+ * so its label lines up with the others.
+ */
+@Composable
+private fun RowScope.PlayItem(onClick: () -> Unit) {
+    NavigationBarItem(
+        selected = false,
+        onClick = onClick,
+        icon = {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_tab_play),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        },
+        label = { Text(stringResource(R.string.tab_play), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.testTag(ShellTags.PLAY),
+    )
+}
+
+object ShellTags {
+    const val PLAY = "shell_play"
 }

@@ -57,7 +57,6 @@
 
     <!-- Account context -->
     <string name="context_label">Context</string>
-    <string name="context_label_matches">Showing matches for</string>
     <string name="context_switch_description">Change account context, currently %1$s</string>
 
     <!-- Placeholder tab bodies -->
@@ -97,7 +96,6 @@
     <string name="locked_title">Unlock your full match history</string>
     <string name="locked_body">Older matches are kept with Personal Plus.</string>
     <string name="offline_history">Historic matches are only available when the app is online.</string>
-    <string name="history_subtitle">Search completed matches by player name, score or date.</string>
     <string name="history_search">Search player, score or date</string>
     <string name="history_clear_search">Clear search</string>
     <string name="history_all_sports">All sports</string>
@@ -105,11 +103,10 @@
     <string name="history_date_range">%1$s – %2$s</string>
     <string name="history_clear_dates">Clear dates</string>
     <string name="history_no_results">No completed matches match those filters.</string>
-    <string name="history_count">%1$d matches</string>
+    <string name="history_count_brackets">(%1$d matches)</string>
     <string name="ok">OK</string>
     <string name="history_show_filters">Show search and filters</string>
     <string name="history_hide_filters">Hide search and filters</string>
-    <string name="history_filters_active">Filters on</string>
     <string name="history_clear_all">Clear all</string>
 
     <!-- Historic match -->
@@ -187,7 +184,6 @@
     <string name="settings_admin_only">Only club admins can view this page.</string>
     <string name="help_placeholder">Feedback, help articles and privacy information arrive in a later build. Use the sign-in screen\'s Need Help link to reset your password.</string>
     <!-- New match (M3) -->
-    <string name="start_new_match">Start New Match</string>
     <string name="choose_sport">Choose Racket Sport</string>
     <string name="start_sport_match">Start a %1$s match</string>
     <string name="match_setup_title">Match Setup – %1$s</string>
@@ -399,10 +395,10 @@
     <string name="settings_postcode">Postcode</string>
     <string name="settings_save_changes">Save Changes</string>
     <string name="settings_sports_club_body">Choose which racket sports club members see when they start a match.</string>
-    <string name="settings_sports_personal_body">Choose which sports you see when scoring with your Personal account.</string>
+    <string name="settings_sports_personal_body">Choose which available sports you want to see when scoring through your Personal account.</string>
     <string name="settings_save_sports">Save Sport Access</string>
-    <string name="settings_timer_defaults">Timer defaults</string>
-    <string name="settings_timer_defaults_body">Choose which sports start new matches with the timed warm-up and breaks switched on. You can still change it for each match.</string>
+    <string name="settings_timer_defaults">Automatic Match Timing</string>
+    <string name="settings_timer_defaults_body">Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.</string>
     <string name="settings_timer_on">Timer default on</string>
     <string name="settings_timer_off">Timer default off</string>
     <string name="settings_save_timers">Save Timer Defaults</string>
@@ -507,4 +503,81 @@
         <item quantity="one">%d game</item>
         <item quantity="other">%d games</item>
     </plurals>
+
+    <!-- Header account menu (as the web) and the Play tab -->
+    <string name="app_logo">HitnScore</string>
+    <string name="context_current">Current</string>
+    <string name="context_personal">Personal</string>
+    <string name="context_personal_plus">Personal+</string>
+    <string name="context_switch">Switch</string>
+    <string name="context_role_admin">Club administrator</string>
+    <string name="context_role_scorer">Club scorer</string>
+    <string name="context_role_read_only">Club member (view only)</string>
+    <string name="logout">Logout</string>
+    <string name="logout_body">Sign out of HitnScore</string>
+    <string name="tab_play">Play</string>
+
+    <!-- Settings redesign (8 Nov): profile, sports, associations, club page, subscription -->
+    <string name="settings_profile_body">Update the account details used for sign-in and player identity. Changing the email address updates your username and signs you back out so you can validate the new login.</string>
+    <string name="settings_country_origin">Country of Origin</string>
+    <string name="settings_sport_live">Live in the current app</string>
+    <string name="settings_sport_ready">Ready</string>
+    <string name="settings_personal_sports">Personal Racket Sports</string>
+    <string name="settings_club_settings">Club Settings</string>
+    <string name="association_none">You aren\'t a member of any clubs yet.</string>
+    <string name="association_active">Active account</string>
+    <string name="club_profile">Club Profile</string>
+    <string name="club_your_role">Your role: %1$s</string>
+    <string name="club_sports">Racket sports</string>
+    <string name="club_manage">Manage club</string>
+    <string name="club_edit_profile">Edit Profile</string>
+    <string name="club_member_note">Club details are managed by the club\'s administrators.</string>
+    <string name="plan_preview_badge">Preview</string>
+    <string name="plan_preview_body">No payment will be taken. Plans and in-app billing are not connected yet.</string>
+    <string name="plan_current_kicker">Current subscription</string>
+    <string name="plan_current_body_personal">Your account currently has access through its assigned HitnScore plan.</string>
+    <string name="plan_current_body_club">Your club currently has access through its assigned HitnScore plan.</string>
+    <string name="plan_active">Active</string>
+    <string name="plan_billing_not_connected">Billing not connected</string>
+    <string name="plan_choose_kicker">Choose your plan</string>
+    <string name="plan_choose_title_personal">Plans for players and clubs</string>
+    <string name="plan_choose_title_club">Simple billing for your club</string>
+    <string name="plan_choose_body">Compare the plans before pricing and payments are enabled.</string>
+    <string name="plan_monthly">Monthly</string>
+    <string name="plan_annual">Annual</string>
+    <string name="plan_pricing_tbc">Pricing to be confirmed</string>
+    <string name="plan_billed_annually">billed annually</string>
+    <string name="plan_billed_monthly">billed monthly</string>
+    <string name="plan_current_chip">Current</string>
+    <string name="plan_preview_tier">Preview tier</string>
+    <string name="plan_personal">Personal</string>
+    <string name="plan_personal_free">Personal Free</string>
+    <string name="plan_personal_eyebrow">Free player</string>
+    <string name="plan_personal_body">Core scoring for your own matches.</string>
+    <string name="plan_personal_f1">Score squash, racketball, tennis and Padel</string>
+    <string name="plan_personal_f2">Your latest completed matches</string>
+    <string name="plan_personal_f3">Offline scoring</string>
+    <string name="plan_personal_plus">Personal+</string>
+    <string name="plan_personal_plus_eyebrow">Serious players</string>
+    <string name="plan_personal_plus_body">Full history and performance insights for players.</string>
+    <string name="plan_personal_plus_f1">Up to 100 completed matches</string>
+    <string name="plan_personal_plus_f2">Performance, opponent, serving, streak and progress insights</string>
+    <string name="plan_personal_plus_f3">Scheduled matches</string>
+    <string name="plan_personal_plus_f4">Watch other players\' matches live</string>
+    <string name="plan_club_essentials">Club Essentials</string>
+    <string name="plan_club_essentials_eyebrow">Club scoring</string>
+    <string name="plan_club_essentials_body">The core workspace for clubs running matches across members and courts.</string>
+    <string name="plan_club_essentials_f1">Multi-user club workspace</string>
+    <string name="plan_club_essentials_f2">Court and user administration</string>
+    <string name="plan_club_essentials_f3">Active and scheduled matches</string>
+    <string name="plan_club_essentials_f4">Club match history and display access</string>
+    <string name="plan_club_pro">Club Pro</string>
+    <string name="plan_club_pro_eyebrow">Growing clubs</string>
+    <string name="plan_club_pro_body">A preview of the higher club tier while its final package is being defined.</string>
+    <string name="plan_club_pro_f1">Everything in Club Essentials</string>
+    <string name="plan_club_pro_f2">Designed for expanded club operations</string>
+    <string name="plan_club_pro_f3">Additional limits and features to be confirmed</string>
+    <string name="plan_club_pro_f4">Priority onboarding options to be confirmed</string>
+    <string name="score_for_title">Score this match for</string>
+    <string name="score_for_body">Confirm the match account, then choose a racket sport.</string>
 </resources>

@@ -30,9 +30,9 @@ fun HelpScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                 session = session,
                 isOnline = state.isOnline,
                 hasUnreadNotifications = state.hasUnreadNotifications,
-                contextLabel = stringResource(R.string.context_label),
                 onOpenNotifications = actions.onOpenNotifications,
                 onContextSelected = actions.onContextSelected,
+                onSignOut = actions.onSignOut,
             )
         }
         item {

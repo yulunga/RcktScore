@@ -10,15 +10,14 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hitnscore.mobile.HitNScoreApplication
-import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
-import com.hitnscore.mobile.feature.scoring.offline.toSummary
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.core.designsystem.components.CardGrid
 import com.hitnscore.mobile.core.designsystem.components.EmptyState
 import com.hitnscore.mobile.core.designsystem.components.ErrorBanner
 import com.hitnscore.mobile.core.designsystem.components.OfflineState
@@ -31,6 +30,8 @@ import com.hitnscore.mobile.feature.matches.ActiveMatchCard
 import com.hitnscore.mobile.feature.matches.LockedHistoryCard
 import com.hitnscore.mobile.feature.matches.RecentMatchCard
 import com.hitnscore.mobile.feature.matches.ScheduledMatchCard
+import com.hitnscore.mobile.feature.scoring.offline.OfflineOwner
+import com.hitnscore.mobile.feature.scoring.offline.toSummary
 import com.hitnscore.mobile.feature.shell.MatchesCategory
 import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellHeader
@@ -68,9 +69,9 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                     session = session,
                     isOnline = state.isOnline,
                     hasUnreadNotifications = state.hasUnreadNotifications,
-                    contextLabel = stringResource(R.string.context_label),
                     onOpenNotifications = actions.onOpenNotifications,
                     onContextSelected = actions.onContextSelected,
+                    onSignOut = actions.onSignOut,
                 )
             }
             state.errorMessage?.let { message ->
@@ -153,8 +154,7 @@ fun MatchSection(
     when {
         isLoading && matches.isEmpty() -> SkeletonRows()
         matches.isEmpty() -> EmptyState(emptyText)
-        else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            matches.forEach { row(it) }
-        }
+        // Two cards per row on tablets.
+        else -> CardGrid(matches) { row(it) }
     }
 }

@@ -25,13 +25,21 @@ In place:
 - optional **quick unlock** (fingerprint, face or screen lock, Android 9+),
   turned on in Settings; re-locks after 5 minutes in the background, as iOS
 - account-context switching between the user's real memberships, persisted
-- one `Scaffold` and bottom bar for the signed-in session, with the five iOS
-  tabs and the iOS brand header (logo, wordmark, notifications bell or offline
-  indicator, account-context switcher)
+- one `Scaffold` and bottom bar for the signed-in session: Home, **Play**,
+  Matches, Analytics, Settings, Help; and the web client's header: logo only,
+  then the notifications bell (or offline indicator) and a pill with the
+  account name, which opens the account menu (each context with its plan or
+  club role, Current / Switch, then Logout)
 - **Home**: up to three active, scheduled (clubs) and recent matches, with
-  pull-to-refresh and loading placeholders
-- **Matches**: Current / Scheduled / History; History has search, sport filter
-  and date-range filter, and shows Personal Free locked-history cards
+  pull-to-refresh and loading placeholders; tablets (600 dp and wider) show
+  two match cards per row everywhere
+- **completed match card**: date block, a vertical sport strip in the
+  sport's ball colour, both players with games won (winner in pink) and each
+  game's (or set's) score
+- header pill shows the tier: Personal, Personal+ or the club's name
+- **Matches**: Current / Scheduled / History; History shows the match count
+  beside its heading, a search box with the filter button beside it (sport and
+  date range), and Personal Free locked-history cards
 - **match view** (read-only): result card, Match Information, Match Time with
   per-game durations, and the point timeline for squash/racketball and
   tennis/Padel
@@ -42,7 +50,8 @@ In place:
   sign out
 - switching account context clears every screen before loading the new
   organisation, so data from one account never appears under another
-- **Start New Match** button on Home and Matches, sport picker with the iOS
+- **Play** button in the bottom bar (between Home and Matches) starts a new
+  match (it replaced the floating Start button); sport picker with the iOS
   ball artwork for squash, racketball, tennis and Padel
 - **match setup** for squash and racketball: player and referee look-ups,
   court (busy court schedules the match), shirt colours, handicap bands and
@@ -107,6 +116,15 @@ In place:
   live (score, games/sets, point timeline; refreshed every 5 s while on screen,
   stopping when the match ends) and **Add to Viewed Matches**, listed on every
   device. Viewing is read-only; the server enforces Personal Plus
+- **Settings redesign (8 Nov)**: profile photo card at the top for every
+  account; Profile read only until **Edit** (iOS-style fields); Association
+  lists only your clubs with your role, and each club opens a club page (profile,
+  read only; admins also get Edit Profile, Courts, Users and Club Settings for
+  that club, as the web); Subscription as the web preview (current plan, plan
+  cards, Monthly/Annual, no purchase in the app yet); Game Settings / Club
+  Settings with iOS-style sport cards (switches save straight away) and
+  **Automatic Match Timing** (per-sport timer defaults that pre-select timed
+  warm-up and breaks in match setup)
 - club roles `admin`, `scorer` and `read_only`: read-only members get no Start
   button and open matches in the read-only match view (B18)
 - ongoing "match in progress" notification, screen kept on, phones held in

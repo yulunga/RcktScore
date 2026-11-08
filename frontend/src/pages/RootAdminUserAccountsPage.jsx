@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
@@ -33,6 +33,8 @@ export default function RootAdminUserAccountsPage() {
   const navigate = useNavigate();
   const [accountFilter, setAccountFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("recent");
+  const [limit, setLimit] = useState(25);
   const [directory, setDirectory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,7 +64,13 @@ export default function RootAdminUserAccountsPage() {
   }, [accountFilter, searchTerm]);
 
   const summary = directory?.summary || {};
-  const users = directory?.users || [];
+  const users = useMemo(() => [...(directory?.users || [])].sort((left, right) => {
+    const alphabetical = left.username.localeCompare(right.username, "en-GB", { sensitivity: "base" });
+    if (sortOrder === "alphabetical") return alphabetical;
+    const leftLogin = left.last_login_at ? Date.parse(left.last_login_at) : -Infinity;
+    const rightLogin = right.last_login_at ? Date.parse(right.last_login_at) : -Infinity;
+    return rightLogin - leftLogin || alphabetical;
+  }), [directory, sortOrder]);
 
   function selectFilter(nextFilter) {
     setAccountFilter((current) => (current === nextFilter ? "" : nextFilter));
@@ -71,17 +79,6 @@ export default function RootAdminUserAccountsPage() {
   return (
     <main className="page-shell stack">
       <RootAdminSessionBar />
-
-      <section className="hero-card stack compact">
-        <div className="root-admin-section-header">
-          <h1>Users</h1>
-          <div className="button-row root-admin-actions">
-            <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Control Panel
-            </button>
-          </div>
-        </div>
-      </section>
 
       {error ? <div className="notice error">{error}</div> : null}
 
@@ -105,7 +102,11 @@ export default function RootAdminUserAccountsPage() {
         <div className="root-admin-section-header root-admin-user-list-header">
           <h2>{accountFilter ? "Filtered Users" : "All Users"}</h2>
           <div className="root-admin-user-list-tools">
-            <span className="helper-text">{users.length} shown</span>
+            <span className="helper-text">{Math.min(limit, users.length)} of {users.length} shown</span>
+            <select aria-label="Sort users" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)}>
+              <option value="recent">Last logged in</option>
+              <option value="alphabetical">Username A–Z</option>
+            </select>
             <div className="root-admin-search root-admin-search-wide">
               <input
                 aria-label="Search users"
@@ -124,7 +125,7 @@ export default function RootAdminUserAccountsPage() {
         ) : null}
 
         <div className="dashboard-list">
-          {users.map((user) => (
+          {users.slice(0, limit).map((user) => (
             <article
               className={`dashboard-item root-admin-user-row ${userRowClass(user)}`}
               key={user.id}
@@ -156,13 +157,32 @@ export default function RootAdminUserAccountsPage() {
                 {user.email_verified === false ? (
                   <span className="root-admin-verification-warning">Email not verified</span>
                 ) : null}
-                <button type="button" onClick={() => navigate(`/rckscoreAdmin/users/${user.id}`)}>
-                  View Profile
+                {user.club_count > 0 ? (
+                  <span className="root-admin-club-count" role="img" aria-label={`Club associations: ${user.club_count}`} title={`Club associations: ${user.club_count}`}>
+                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13z" /></svg>
+                    {user.club_count}
+                  </span>
+                ) : null}
+                {user.account_types?.includes("personal_plus") ? (
+                  <span className="root-admin-plus-badge" role="img" aria-label="Personal Plus" title="Personal Plus">+</span>
+                ) : null}
+                <button className="root-admin-icon-button" type="button" aria-label={`View profile for ${user.username}`} title="View profile" onClick={() => navigate(`/rckscoreAdmin/users/${user.id}`)}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v2" /></svg>
                 </button>
               </div>
             </article>
           ))}
         </div>
+        {users.length > 25 ? (
+          <div className="root-admin-user-limit">
+            <label htmlFor="root-admin-user-limit">Users to show</label>
+            <select id="root-admin-user-limit" value={limit} onChange={(event) => setLimit(Number(event.target.value))}>
+              <option value={25}>25</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        ) : null}
       </section>
 
       <AppFooter />

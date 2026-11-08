@@ -1,6 +1,7 @@
 package com.hitnscore.mobile.feature.settings
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +23,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -40,7 +40,7 @@ import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.designsystem.components.ErrorBanner
 import com.hitnscore.mobile.core.designsystem.components.InfoRow
 import com.hitnscore.mobile.core.designsystem.components.InnerCard
-import com.hitnscore.mobile.core.designsystem.components.SectionCard
+import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.core.session.planDisplayName
@@ -55,11 +55,13 @@ enum class SettingsPage(val route: String, @StringRes val title: Int, val clubAd
     Subscription("subscription", R.string.settings_subscription),
     Association("association", R.string.settings_association),
     GameSettings("game-settings", R.string.settings_game_settings),
-    RacketSports("sports", R.string.settings_racket_sports, clubAdminOnly = true),
+    RacketSports("sports", R.string.settings_club_settings, clubAdminOnly = true),
     About("about", R.string.settings_about),
     Organisation("organisation", R.string.settings_organisation, clubAdminOnly = true),
     Users("users", R.string.settings_users, clubAdminOnly = true),
     Courts("courts", R.string.settings_courts, clubAdminOnly = true),
+    /** One club from Association (not in the menus); its title is the club's name. */
+    Club("club", R.string.settings_association),
     ;
 
     companion object {
@@ -106,15 +108,15 @@ fun SettingsScreen(
                 session = session,
                 isOnline = state.isOnline,
                 hasUnreadNotifications = state.hasUnreadNotifications,
-                contextLabel = stringResource(R.string.context_label),
                 onOpenNotifications = actions.onOpenNotifications,
                 onContextSelected = actions.onContextSelected,
+                onSignOut = actions.onSignOut,
             )
         }
-        if (session.isPersonal) {
-            // As iOS: the Personal settings page opens with the user's photo, name and email.
-            item(key = "photo-${session.username}") {
-                val membership = session.memberships.firstOrNull { it.id == session.activeContext.membershipId }
+        // As iOS: Settings opens with the player's photo, name and email (every account).
+        item(key = "photo-${session.username}") {
+            val membership = session.memberships.firstOrNull { it.id == session.activeContext.membershipId }
+            EditorCard {
                 ProfilePhotoHeader(
                     username = session.username,
                     displayName = membership?.fullName?.takeIf { it.isNotBlank() } ?: session.displayName,
@@ -172,12 +174,16 @@ fun SettingsPageScreen(
     state: ShellUiState,
     onContextSelected: (com.hitnscore.mobile.core.session.AccountContext) -> Unit,
     onBack: () -> Unit,
+    /** The club a page acts on, from Association; null = the active account. */
+    organizationId: Int? = null,
+    onOpenPage: (SettingsPage, Int?) -> Unit = { _, _ -> },
 ) {
+    val target = organizationId?.let { id -> session.availableContexts.firstOrNull { it.organizationId == id } } ?: session.activeContext
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(page.title)) },
+                title = { Text(if (page == SettingsPage.Club) target.name else stringResource(page.title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
@@ -199,79 +205,73 @@ fun SettingsPageScreen(
                     ProfileEditor(ui, viewModel)
                     Note(stringResource(R.string.settings_role_line, session.activeContext.name, roleName(session.activeContext.role)))
                 }
-                SettingsPage.Subscription -> {
-                    val organization = state.dashboard?.organization
+                SettingsPage.Subscription -> item(key = "subscription") {
                     val isPersonal = session.activeContext.type == AccountContextType.Personal
-                    val plan = organization?.plan?.let { planDisplayName(it, isPersonal) } ?: session.activeContext.plan
-                    item { InfoRow(stringResource(R.string.settings_plan), plan) }
-                    organization?.entitlements?.let { e ->
-                        item {
-                            InfoRow(
-                                stringResource(R.string.settings_history_limit),
-                                if (e.historyLimit <= 0 || e.historyLimit >= UNLIMITED_HISTORY) {
-                                    stringResource(R.string.settings_history_unlimited)
-                                } else {
-                                    stringResource(R.string.settings_history_n, e.historyLimit)
-                                },
-                            )
-                        }
-                        item {
-                            InfoRow(
-                                stringResource(R.string.settings_performance),
-                                stringResource(if (e.performanceEnabled) R.string.settings_included else R.string.settings_not_included),
-                            )
-                        }
-                    }
-                    item { Note(stringResource(R.string.settings_subscription_note)) }
+                    SubscriptionPage(planCode = state.planCode ?: planCodeFromName(session.activeContext.plan), isPersonal = isPersonal)
                 }
-                SettingsPage.Association -> items(session.availableContexts, key = { it.membershipId }) { context ->
-                    InnerCard(shape = RoundedCornerShape(16.dp)) {
-                        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(context.name, style = MaterialTheme.typography.titleMedium)
-                                Text(context.plan, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            if (context.membershipId == session.activeContext.membershipId) {
-                                Text(stringResource(R.string.settings_active), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-                            } else {
-                                TextButton(onClick = { onContextSelected(context) }) { Text(stringResource(R.string.settings_switch_to)) }
+                // Only the clubs you belong to, with your role; tap one for its club page.
+                SettingsPage.Association -> {
+                    val clubs = session.availableContexts.filter { it.type == AccountContextType.Club }
+                    if (clubs.isEmpty()) item { Note(stringResource(R.string.association_none)) }
+                    items(clubs, key = { it.membershipId }) { club ->
+                        InnerCard(onClick = { onOpenPage(SettingsPage.Club, club.organizationId) }, shape = RoundedCornerShape(18.dp)) {
+                            Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(club.name, style = MaterialTheme.typography.titleMedium)
+                                    if (club.membershipId == session.activeContext.membershipId) {
+                                        Text(stringResource(R.string.association_active), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                Text(
+                                    roleName(club.role),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(50))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                )
+                                Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
                 }
-                SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, session)
+                SettingsPage.Club -> item(key = "club-${target.organizationId}") {
+                    ClubPage(target, onOpenPage = { p, org -> onOpenPage(p, org) })
+                }
+                SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, target)
                 SettingsPage.About -> {
                     item { InfoRow(stringResource(R.string.settings_version), AppEnvironment.versionName) }
                     item { InfoRow(stringResource(R.string.settings_environment), AppEnvironment.environmentName) }
                 }
-                SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts -> clubPage(page, session)
+                SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts -> clubPage(page, target, session.username)
             }
         }
     }
 }
 
-private const val UNLIMITED_HISTORY = 100_000
 
 /**
  * Pages backed by the organisation's settings. Club admins can change everything; a
  * Personal owner changes their own sports and timer defaults; other club members only
  * see Game Settings, read-only, as on iOS.
  */
-private fun LazyListScope.clubPage(page: SettingsPage, session: SessionState.SignedIn) {
-    val readOnlyGameSettings = page == SettingsPage.GameSettings && !session.isClubAdmin && !session.isPersonal
-    if (page.clubAdminOnly && !session.isClubAdmin) {
+private fun LazyListScope.clubPage(page: SettingsPage, club: AccountContext, signedInUsername: String = "") {
+    val isAdmin = club.type == AccountContextType.Club && ClubRoles.normalize(club.role) == ClubRoles.ADMIN
+    val isPersonal = club.type == AccountContextType.Personal
+    val readOnlyGameSettings = page == SettingsPage.GameSettings && !isAdmin && !isPersonal
+    if (page.clubAdminOnly && !isAdmin) {
         item { Note(stringResource(R.string.settings_admin_only)) }
         return
     }
-    item(key = "club-${session.activeContext.organizationId}-${page.route}") {
-        val organizationId = session.activeContext.organizationId
+    item(key = "club-${club.organizationId}-${page.route}") {
+        val organizationId = club.organizationId
         val viewModel: OrganizationSettingsViewModel = viewModel(
             key = "org-settings-$organizationId",
             factory = OrganizationSettingsViewModel.factory(organizationId),
         )
         val ui by viewModel.uiState.collectAsStateWithLifecycle()
         val settings = ui.settings
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ui.errorMessage?.let { ErrorBanner(it, onRetry = viewModel::load) }
             if (ui.isLoading && settings == null) CircularProgressIndicator()
             if (settings != null) {
@@ -280,24 +280,41 @@ private fun LazyListScope.clubPage(page: SettingsPage, session: SessionState.Sig
                         OrganisationEditor(ui, viewModel)
                         InfoRow(stringResource(R.string.settings_plan), planDisplayName(settings.organization.plan, isPersonal = false))
                     }
+                    // Club Settings: racket sports and automatic match timing.
                     SettingsPage.RacketSports -> {
-                        SportsEditor(ui, viewModel, canEdit = true, body = stringResource(R.string.settings_sports_club_body))
                         StatusLine(ui.notice, ui.actionError)
+                        SportsEditor(ui, viewModel, canEdit = true, body = stringResource(R.string.settings_sports_club_body))
+                        TimerDefaultsEditor(ui, viewModel, canEdit = true)
                     }
                     SettingsPage.GameSettings -> {
-                        if (session.isPersonal) {
-                            SportsEditor(ui, viewModel, canEdit = true, body = stringResource(R.string.settings_sports_personal_body))
+                        StatusLine(ui.notice, ui.actionError)
+                        if (isPersonal) {
+                            SportsEditor(
+                                ui,
+                                viewModel,
+                                canEdit = true,
+                                body = stringResource(R.string.settings_sports_personal_body),
+                                title = stringResource(R.string.settings_personal_sports),
+                            )
                         }
                         TimerDefaultsEditor(ui, viewModel, canEdit = !readOnlyGameSettings)
-                        StatusLine(ui.notice, ui.actionError)
                     }
-                    SettingsPage.Users -> UsersEditor(ui, viewModel, session.username)
+                    SettingsPage.Users -> UsersEditor(ui, viewModel, signedInUsername)
                     SettingsPage.Courts -> CourtsEditor(ui, viewModel)
                     else -> Unit
                 }
             }
         }
     }
+}
+
+/** Plan code from the sign-in plan name, when the dashboard hasn't loaded. */
+private fun planCodeFromName(name: String): String? = when {
+    name.contains("plus", ignoreCase = true) -> "personal_plus"
+    name.contains("pro", ignoreCase = true) -> "club_pro"
+    name.contains("personal", ignoreCase = true) -> "personal_free"
+    name.isBlank() -> null
+    else -> "club_essentials"
 }
 
 @Composable

@@ -17,13 +17,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +37,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -42,13 +50,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.session.AccountContext
-import com.hitnscore.mobile.core.session.AccountContextSwitcher
+import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.core.session.SessionState
+import com.hitnscore.mobile.data.model.ClubRoles
 import com.hitnscore.mobile.data.model.MatchFormatting
+import com.hitnscore.mobile.feature.shell.contextSubtitle
+import com.hitnscore.mobile.feature.shell.contextTitle
 
 /** Sports offered on Android, matching iOS. */
 data class SportOption(val id: String, @param:DrawableRes val ball: Int)
@@ -98,13 +110,14 @@ fun SportPickerScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item(span = { GridItemSpan(2) }) {
-                AccountContextSwitcher(
-                    activeContext = session.activeContext,
-                    availableContexts = session.availableContexts,
-                    label = stringResource(R.string.context_label),
-                    onContextSelected = onContextSelected,
-                )
+            // As iOS: choose whether this match is scored for a club or for yourself.
+            val scorable = session.availableContexts.filter {
+                it.type == AccountContextType.Personal || ClubRoles.canManageMatches(it.role)
+            }
+            if (scorable.size > 1) {
+                item(span = { GridItemSpan(2) }) {
+                    ScoreForCard(scorable, session.activeContext, onContextSelected)
+                }
             }
             items(sports, key = { it.id }) { sport ->
                 SportCard(sport, onClick = { onChoose(sport.id) })
@@ -152,6 +165,68 @@ private fun SportCard(sport: SportOption, onClick: () -> Unit) {
                             maxLines = 1,
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Score this match for", as the web: a pill showing the chosen account that drops down
+ * the accounts you can score for (plan or club role, Current / Switch).
+ */
+@Composable
+private fun ScoreForCard(contexts: List<AccountContext>, active: AccountContext, onSelect: (AccountContext) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.score_for_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Box {
+            Surface(
+                onClick = { expanded = true },
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text(stringResource(R.string.score_for_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(8.dp))
+                    Text(contextTitle(active), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(6.dp))
+                    Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, shape = RoundedCornerShape(20.dp)) {
+                contexts.forEachIndexed { index, context ->
+                    if (index > 0) HorizontalDivider(Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    val current = context.membershipId == active.membershipId
+                    DropdownMenuItem(
+                        text = {
+                            Column(Modifier.widthIn(min = 220.dp)) {
+                                Text(contextTitle(context), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text(contextSubtitle(context), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                        trailingIcon = {
+                            Text(
+                                stringResource(if (current) R.string.context_current else R.string.context_switch),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            if (!current) onSelect(context)
+                        },
+                    )
                 }
             }
         }

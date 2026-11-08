@@ -91,14 +91,12 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   const navigate = useNavigate();
   const location = useLocation();
   const { session, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [tournamentManagerEnabled, setTournamentManagerEnabled] = useState(false);
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
   const organizationName = session?.organization_name || "";
   const organizationType = inferOrganizationType(session);
   const pageTitle = title && title !== organizationName ? title : "";
-  const isPersonalPlus = organizationType === "personal" && session?.plan === "personal_plus";
   const isNewMatchOverlay = location.pathname === "/dashboard" && location.hash === "#new-match";
   const isNewMatchRoute = location.pathname === "/match/new" || location.pathname.startsWith("/match/new/");
   const matchManagementEnabled = canManageMatches(session);
@@ -149,29 +147,18 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       isActive: location.pathname === "/ping" || location.pathname === "/help",
     },
   ];
-  const mobileMenuItems = [
+  const mobileNavigationItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
-    ...(matchManagementEnabled ? [{ label: "Start New Match", icon: "add", onClick: () => navigate("/dashboard#new-match"), isActive: isNewMatchOverlay || location.pathname.startsWith("/match/new"), accent: true }] : []),
     {
       label: "Matches",
       icon: "matches",
       onClick: () => navigate("/matches"),
-      isActive: location.pathname === "/matches" || (isPersonalPlus && location.pathname === "/history"),
+      isActive: location.pathname === "/matches" || location.pathname === "/history" || (location.pathname.startsWith("/match/") && !isNewMatchRoute),
     },
     { label: "Analytics", icon: "analytics", onClick: () => navigate("/performance"), isActive: location.pathname === "/performance" },
-    ...(tournamentManagerEnabled ? [{
-      label: "Tournament",
-      icon: "tournament",
-      onClick: () => navigate("/tournaments"),
-      isActive: location.pathname.startsWith("/tournaments"),
-    }] : []),
-    { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname === "/settings" },
-    { label: "Need Help?", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping", accent: true },
+    { label: "Settings", icon: "settings", onClick: () => navigate("/settings"), isActive: location.pathname.startsWith("/settings") },
+    { label: "Help", icon: "help", onClick: () => navigate("/ping"), isActive: location.pathname === "/ping" || location.pathname === "/help" },
   ];
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     function updateHeader() {
@@ -338,55 +325,24 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
         </section>
       ) : null}
 
-      {showMobileMenu && !mobileMenuOpen ? (
-        <button
-          className="mobile-fab-menu-button"
-          type="button"
-          aria-label="Open navigation menu"
-          aria-expanded="false"
-          onClick={() => setMobileMenuOpen(true)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      ) : null}
-
-      {showMobileMenu && mobileMenuOpen ? (
-        <div
-          className="mobile-fab-menu-overlay"
-          role="presentation"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <div
-            aria-hidden="true"
-            className="mobile-fab-menu-overlay__backdrop"
-          />
-          <div
-            className="mobile-fab-menu-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Quick navigation"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mobile-fab-menu-sheet__handle" aria-hidden="true" />
-            <div className="mobile-fab-menu-sheet__items">
-              {mobileMenuItems.map((item) => (
-                <button
-                  key={item.label}
-                  className={`mobile-fab-menu-sheet__item${item.isActive ? " mobile-fab-menu-sheet__item--active" : ""}${item.accent ? " mobile-fab-menu-sheet__item--accent" : ""}`}
-                  type="button"
-                  onClick={item.onClick}
-                >
-                  <span className="mobile-fab-menu-sheet__icon" aria-hidden="true">
-                    {item.icon === "add" ? <span className="club-page-header__plus-icon" /> : <MobileMenuIcon name={item.icon} />}
-                  </span>
-                  <span className="mobile-fab-menu-sheet__label">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+      {showMobileMenu ? (
+        <nav className="mobile-bottom-navigation" aria-label="Mobile navigation">
+          {mobileNavigationItems.map((item) => (
+            <button
+              aria-current={item.isActive ? "page" : undefined}
+              aria-label={item.label}
+              className={`mobile-bottom-navigation__item${item.isActive ? " mobile-bottom-navigation__item--active" : ""}`}
+              key={item.label}
+              type="button"
+              onClick={item.onClick}
+            >
+              <span className="mobile-bottom-navigation__icon" aria-hidden="true">
+                <MobileMenuIcon name={item.icon} />
+              </span>
+              <span className="mobile-bottom-navigation__label">{item.label}</span>
+            </button>
+          ))}
+        </nav>
       ) : null}
 
     </>

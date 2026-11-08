@@ -1,14 +1,21 @@
 package com.hitnscore.mobile.feature.settings
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,16 +23,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,21 +64,46 @@ internal val SETTINGS_SPORTS = listOf("squash", "racketball", "tennis", "padel")
 
 // Shared pieces ---------------------------------------------------------------
 
+/** A settings section as iOS: soft rounded card, bold heading with an optional icon and action. */
 @Composable
-internal fun EditorCard(title: String? = null, content: @Composable ColumnScope.() -> Unit) {
+internal fun EditorCard(
+    title: String? = null,
+    @DrawableRes iconRes: Int? = null,
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = HitNScoreTheme.colors.card,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (title != null || action != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (iconRes != null) {
+                        Icon(painterResource(iconRes), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Text(title.orEmpty(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    action?.invoke()
+                }
+            }
             content()
         }
     }
 }
 
+/** Grey explanation under a section heading. */
+@Composable
+internal fun EditorNote(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * A labelled field as iOS: grey label above a white rounded box with a light border.
+ * [readOnly] shows the value plainly (dark text, not greyed out) until the user taps Edit.
+ */
 @Composable
 internal fun EditorField(
     label: String,
@@ -78,22 +113,38 @@ internal fun EditorField(
     isError: Boolean = false,
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Words,
+    readOnly: Boolean = false,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        singleLine = true,
-        enabled = enabled,
-        isError = isError,
-        keyboardOptions = KeyboardOptions(
-            capitalization = if (keyboardType == KeyboardType.Email) KeyboardCapitalization.None else capitalization,
-            autoCorrectEnabled = keyboardType != KeyboardType.Email,
-            keyboardType = keyboardType,
-            imeAction = ImeAction.Next,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val border = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+            singleLine = true,
+            enabled = enabled,
+            readOnly = readOnly,
+            isError = isError && !readOnly,
+            shape = RoundedCornerShape(18.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedBorderColor = border,
+                disabledBorderColor = border,
+                focusedBorderColor = if (readOnly) border else MaterialTheme.colorScheme.primary,
+            ),
+            keyboardOptions = KeyboardOptions(
+                capitalization = if (keyboardType == KeyboardType.Email) KeyboardCapitalization.None else capitalization,
+                autoCorrectEnabled = keyboardType != KeyboardType.Email,
+                keyboardType = keyboardType,
+                imeAction = ImeAction.Next,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
@@ -162,21 +213,41 @@ internal fun ConfirmDialog(title: String, body: String, confirm: String, onConfi
 @Composable
 fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
     var confirmDelete by rememberSaveable { mutableStateOf(0) }
+    // Read only until Edit is tapped; a successful save returns to read only.
+    var editing by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.saved) { if (state.saved) editing = false }
     val form = state.form
     val busy = state.isSaving || state.isDeleting
+    val locked = !editing || busy
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        EditorCard {
-            EditorField(stringResource(R.string.setup_first_name), form.firstName, { v -> viewModel.update { it.copy(firstName = v) } }, enabled = !busy, isError = form.firstName.isBlank())
-            EditorField(stringResource(R.string.setup_surname), form.surname, { v -> viewModel.update { it.copy(surname = v) } }, enabled = !busy)
-            EditorField(stringResource(R.string.settings_email), form.email, { v -> viewModel.update { it.copy(email = v) } }, enabled = !busy, keyboardType = KeyboardType.Email)
+        EditorCard(
+            title = stringResource(R.string.settings_profile),
+            iconRes = R.drawable.ic_person,
+            action = {
+                if (editing) {
+                    TextButton(onClick = {
+                        viewModel.discardChanges()
+                        editing = false
+                    }, enabled = !busy) { Text(stringResource(R.string.cancel)) }
+                } else {
+                    FilledTonalButton(onClick = { editing = true }) { Text(stringResource(R.string.settings_edit)) }
+                }
+            },
+        ) {
+            EditorNote(stringResource(R.string.settings_profile_body))
+            EditorField(stringResource(R.string.setup_first_name), form.firstName, { v -> viewModel.update { it.copy(firstName = v) } }, readOnly = locked, isError = form.firstName.isBlank())
+            EditorField(stringResource(R.string.setup_surname), form.surname, { v -> viewModel.update { it.copy(surname = v) } }, readOnly = locked)
+            EditorField(stringResource(R.string.settings_email), form.email, { v -> viewModel.update { it.copy(email = v) } }, readOnly = locked, keyboardType = KeyboardType.Email)
             if (state.emailChanged) {
                 Text(stringResource(R.string.settings_email_change_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            EditorField(stringResource(R.string.settings_telephone), form.telephone, { v -> viewModel.update { it.copy(telephone = v) } }, enabled = !busy, keyboardType = KeyboardType.Phone)
-            EditorField(stringResource(R.string.settings_city), form.cityLocation, { v -> viewModel.update { it.copy(cityLocation = v) } }, enabled = !busy)
-            EditorField(stringResource(R.string.settings_country), form.country, { v -> viewModel.update { it.copy(country = v) } }, enabled = !busy)
+            EditorField(stringResource(R.string.settings_telephone), form.telephone, { v -> viewModel.update { it.copy(telephone = v) } }, readOnly = locked, keyboardType = KeyboardType.Phone)
+            EditorField(stringResource(R.string.settings_city), form.cityLocation, { v -> viewModel.update { it.copy(cityLocation = v) } }, readOnly = locked)
+            EditorField(stringResource(R.string.settings_country_origin), form.country, { v -> viewModel.update { it.copy(country = v) } }, readOnly = locked)
             StatusLine(if (state.saved) SettingsNotice.Saved else if (state.resetSent) SettingsNotice.ResetSent else null, state.errorMessage)
-            SaveButton(stringResource(R.string.settings_save_profile), enabled = state.canSave, busy = state.isSaving, onClick = viewModel::save)
+            if (editing) {
+                SaveButton(stringResource(R.string.settings_save_profile), enabled = state.canSave, busy = state.isSaving, onClick = viewModel::save)
+            }
         }
         EditorCard(stringResource(R.string.settings_password)) {
             Text(stringResource(R.string.settings_password_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -273,52 +344,115 @@ fun OrganisationEditor(state: OrganizationSettingsUiState, viewModel: Organizati
 
 // Racket sports and timer defaults ------------------------------------------------
 
-/** Which sports members see when starting a match (club admins; Personal owners for themselves). */
+/**
+ * Racket sports access, styled as iOS Game Settings: one white card per sport with its ball,
+ * "Ready" and a switch. A switch saves straight away (as iOS), keeping at least one sport.
+ */
 @Composable
-fun SportsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel, canEdit: Boolean, body: String) {
+fun SportsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel, canEdit: Boolean, body: String, title: String? = null) {
     val saved = state.settings?.organization?.enabledSports?.map { it.lowercase() }?.toSet() ?: return
-    var selected by remember(saved) { mutableStateOf(saved) }
-    EditorCard(stringResource(R.string.settings_racket_sports)) {
-        Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    EditorCard(title ?: stringResource(R.string.settings_racket_sports), iconRes = R.drawable.ic_tune) {
+        EditorNote(body)
         SETTINGS_SPORTS.forEach { sport ->
-            SwitchLine(MatchFormatting.sportName(sport), null, sport in selected, enabled = canEdit && !state.isSaving) { on ->
-                selected = if (on) selected + sport else selected - sport
+            val on = sport in saved
+            SportRow(
+                sport = sport,
+                checked = on,
+                enabled = canEdit && !state.isSaving && !(on && saved.size == 1),
+            ) { value ->
+                val next = if (value) saved + sport else saved - sport
+                if (next.isNotEmpty()) viewModel.saveSports(SETTINGS_SPORTS.filter { it in next })
             }
-        }
-        if (canEdit) {
-            SaveButton(
-                stringResource(R.string.settings_save_sports),
-                enabled = selected != saved && selected.isNotEmpty(),
-                busy = state.isSaving,
-            ) { viewModel.saveSports(SETTINGS_SPORTS.filter { it in selected }) }
         }
     }
 }
 
-/** Per sport: whether new matches start with timed warm-up and breaks switched on. */
+@Composable
+private fun SportRow(sport: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(14.dp)),
+            ) {
+                Image(painterResource(sportBall(sport)), contentDescription = null, modifier = Modifier.size(26.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(MatchFormatting.sportName(sport), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_sport_live), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                stringResource(R.string.settings_sport_ready),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
+        }
+    }
+}
+
+private fun sportBall(sport: String): Int = when (sport) {
+    "racketball" -> R.drawable.sport_ball_racketball
+    "tennis" -> R.drawable.sport_ball_tennis
+    "padel" -> R.drawable.sport_ball_padel
+    else -> R.drawable.sport_ball_squash
+}
+
+/**
+ * Automatic match timing, as iOS: per sport, whether a new match starts with the timed
+ * warm-up and breaks switched on. Match setup reads these (`timed_break_defaults`), and the
+ * timer can still be switched on or off for a single match.
+ */
 @Composable
 fun TimerDefaultsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel, canEdit: Boolean) {
     val organization = state.settings?.organization ?: return
     val saved = SETTINGS_SPORTS.associateWith { organization.timedBreakDefaults[it] ?: false }
     var draft by remember(organization.timedBreakDefaults) { mutableStateOf(saved) }
     val enabled = organization.enabledSports.map { it.lowercase() }
-    EditorCard(stringResource(R.string.settings_timer_defaults)) {
-        Text(stringResource(R.string.settings_timer_defaults_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    EditorCard(stringResource(R.string.settings_timer_defaults), iconRes = R.drawable.ic_timer) {
+        EditorNote(stringResource(R.string.settings_timer_defaults_body))
         SETTINGS_SPORTS.filter { it in enabled }.forEach { sport ->
             val on = draft[sport] == true
-            SwitchLine(
-                MatchFormatting.sportName(sport),
-                stringResource(if (on) R.string.settings_timer_on else R.string.settings_timer_off),
-                on,
-                enabled = canEdit && !state.isSaving,
-            ) { value -> draft = draft + (sport to value) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(MatchFormatting.sportName(sport), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(if (on) R.string.settings_timer_on else R.string.settings_timer_off),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = on, onCheckedChange = { value -> draft = draft + (sport to value) }, enabled = canEdit && !state.isSaving)
+            }
         }
         if (canEdit) {
-            SaveButton(stringResource(R.string.settings_save_timers), enabled = draft != saved, busy = state.isSaving) {
-                viewModel.saveTimerDefaults(draft)
+            Button(
+                onClick = { viewModel.saveTimerDefaults(draft) },
+                enabled = draft != saved && !state.isSaving,
+                shape = RoundedCornerShape(50),
+                contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp),
+            ) {
+                if (state.isSaving) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text(stringResource(R.string.settings_save_timers), style = MaterialTheme.typography.titleMedium)
+                }
             }
         } else {
-            Text(stringResource(R.string.settings_admin_only), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EditorNote(stringResource(R.string.settings_admin_only))
         }
     }
 }

@@ -158,8 +158,8 @@ forming three complete two-card desktop rows. Its heading opens Matches → Hist
 the Active Matches and Scheduled Matches headings open their corresponding tabs.
 On the standalone `/match/new` route, `ClubPageHeader` must receive
 `showMobileMenu={false}` because the page has its own Close action. If a sport
-card is covered at the bottom-right on a phone or portrait tablet, verify that
-the `mobile-fab-menu-button` is absent rather than merely repositioned. The sport
+card is covered at the bottom on a phone or portrait tablet, verify that the
+`mobile-bottom-navigation` is absent. The sport
 grid should remain two columns and grow vertically as more implemented sports
 are enabled; its ball images are served from `frontend/public/sports/balls/`.
 On native iOS, a scheduled card should show the court only once, omit the
@@ -367,7 +367,7 @@ Common symptoms:
 - dashboard loads but lists are empty
 - personal history seems unexpectedly short
 - settings load but some controls do not persist
-- selecting Settings from the Android/Chrome responsive menu returns to the dashboard
+- selecting Settings from the Android/Chrome bottom navigation returns to the dashboard
 
 What to check:
 
@@ -381,6 +381,8 @@ What to check:
 - current plan values such as `personal_free`, `personal_plus`, or `club_essentials`
 - for Personal Free, confirm the dashboard returns no more than 25 readable completed matches and only a redacted `locked: true` 26th preview; Home should retain that preview after its three readable recent cards
 - for Personal Plus statistics, verify the registered first name and surname exactly match player details stored on completed matches; otherwise those matches appear in `unclassified_match_count`
+- on phone or portrait-tablet web layouts, verify the fixed `Mobile navigation` contains Home, Matches, Analytics, Settings and Help, highlights the current route and leaves sufficient page-bottom padding; active scoring and `/match/new` intentionally omit it
+- on tablet widths from 600–1400 CSS pixels with at least 500 pixels of height, the signed-in page shell should leave about 16 pixels on each side. A narrow centred Settings column usually means the final tablet shell override was lost or an older phone `max-width: 560px` rule is winning in the cascade
 - for Personal Plus remote viewing, apply migration `038_personal_plus_match_watch.sql`, verify `GET /match_display_access/{match_id}` returns `viewer_code`, and confirm lookup sends the viewer's own `organization_id` with an eight-character code to `POST /match_watch/lookup`
 - `PERSONAL_PLUS_REQUIRED` means the authenticated membership is not a personal tenant currently on `personal_plus`; `WATCH_CODE_INVALID` means the normalized code is not eight characters, and `WATCH_MATCH_NOT_FOUND` means no non-archived match owns it
 - saved remote matches are returned in dashboard `viewed_matches`, not `recent_matches`; saving is idempotent and does not copy or transfer ownership of the match
@@ -844,7 +846,7 @@ the tournament header is sized from the full-width page shell rather than a
 standalone `100vw` breakout.
 
 The migration-created `demouser@democlub.com` account has no known initial
-password. Set one through Root Admin → User Accounts before using the demo login.
+password. Set one through Control Panel → Users before using the demo login. Use search or increase **Users to show** below the list if the account is outside the first 25 rows.
 The eight migration `033` Demo PlayOne–Demo PlayEight accounts follow the same
 password-disabled rule and do not become usable logins until an administrator
 sets their passwords.

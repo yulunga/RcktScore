@@ -217,27 +217,24 @@ export default function RootAdminUserProfilePage() {
     <main className="page-shell stack">
       <RootAdminSessionBar />
 
-      <section className="hero-card compact root-admin-profile-header">
-        <strong className="root-admin-profile-username">{user.username || "User account"}</strong>
-        <div className="button-row root-admin-actions">
-          <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/users")}>Back to User Accounts</button>
-        </div>
-      </section>
-
       {loading ? <div className="notice">Loading user profile...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
+      <nav className="panel root-admin-profile-tabs" aria-label="User profile sections">
+        <button className="root-admin-tab root-admin-icon-button" type="button" aria-label="Back to Users" title="Back to Users" onClick={() => navigate("/rckscoreAdmin/users")}>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 5-7 7 7 7M5 12h14" /></svg>
+        </button>
+        {profile && PROFILE_TABS.map((tab) => (
+          <button key={tab.id} className={`root-admin-tab${activeTab === tab.id ? " active" : ""}`} type="button" onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+          </button>
+        ))}
+        <strong className="root-admin-profile-username">{user.username}</strong>
+      </nav>
+
       {!loading && profile ? (
         <>
-          <nav className="panel root-admin-profile-tabs" aria-label="User profile sections">
-            {PROFILE_TABS.map((tab) => (
-              <button key={tab.id} className={`root-admin-tab${activeTab === tab.id ? " active" : ""}`} type="button" onClick={() => setActiveTab(tab.id)}>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
           {activeTab === "profile" ? (
             <section className="panel stack">
               <div className="panel-heading"><h2>Profile</h2></div>

@@ -66,9 +66,9 @@ fun AnalyticsScreen(session: SessionState.SignedIn, state: ShellUiState, isPerso
                     session = session,
                     isOnline = state.isOnline,
                     hasUnreadNotifications = state.hasUnreadNotifications,
-                    contextLabel = stringResource(R.string.context_label),
                     onOpenNotifications = actions.onOpenNotifications,
                     onContextSelected = actions.onContextSelected,
+                    onSignOut = actions.onSignOut,
                 )
             }
             if (isPersonalPlus) {

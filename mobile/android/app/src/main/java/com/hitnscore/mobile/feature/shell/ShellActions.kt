@@ -14,4 +14,6 @@ data class ShellActions(
     val onContextSelected: (AccountContext) -> Unit,
     /** Score Stream: follow a match by its viewing code (Personal Plus). */
     val onWatchMatch: (String) -> Unit = {},
+    /** Logout from the header's account menu (as the web). */
+    val onSignOut: () -> Unit = {},
 )

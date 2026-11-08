@@ -107,6 +107,9 @@ class ProfileViewModel(
         }
     }
 
+    /** Cancel editing: back to the saved details. */
+    fun discardChanges() = mutableState.update { it.copy(form = it.original, errorMessage = null) }
+
     fun update(transform: (ProfileForm) -> ProfileForm) =
         mutableState.update { it.copy(form = transform(it.form), saved = false, errorMessage = null, resetSent = false) }
 

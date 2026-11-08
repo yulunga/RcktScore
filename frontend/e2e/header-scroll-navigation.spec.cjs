@@ -105,6 +105,19 @@ test.beforeEach(async ({ page }) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
     window.localStorage.setItem("hitnscore.analytics-consent", "denied");
   }, session);
+  await page.route("**/session/status", async (route) => {
+    const restoredSession = {
+      ...session,
+      csrf_token: "playwright-header-csrf",
+      enabled_sports: ["squash", "racketball", "tennis", "padel"],
+      available_memberships: session.available_memberships.map((membership) => (
+        Number(membership.organization_id) === 42
+          ? { ...membership, enabled_sports: ["squash", "racketball", "tennis", "padel"] }
+          : membership
+      )),
+    };
+    await route.fulfill({ json: envelope({ session: restoredSession }) });
+  });
   await page.route("**/notifications/42*", async (route) => {
     await route.fulfill({ json: envelope({ notifications: [] }) });
   });
@@ -375,13 +388,12 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
   } else {
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.getByRole("button", { name: "Open navigation menu" }).click();
-    const quickNavigation = page.getByRole("dialog", { name: "Quick navigation" });
-    const menuItems = quickNavigation.locator(".mobile-fab-menu-sheet__item");
-    await expect(menuItems).toHaveCount(6);
+    const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
+    const menuItems = mobileNavigation.locator(".mobile-bottom-navigation__item");
+    await expect(menuItems).toHaveCount(5);
     const menuBoxes = await menuItems.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
     expect(Math.max(...menuBoxes) - Math.min(...menuBoxes)).toBeLessThanOrEqual(1);
-    await quickNavigation.getByRole("button", { name: "Settings", exact: true }).click();
+    await mobileNavigation.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page).toHaveURL(/\/settings$/);
   }
 
@@ -396,8 +408,16 @@ test("switches identity context from the header and exposes it on Matches and ma
       await page.getByRole("button", { name, exact: true }).click();
       return;
     }
-    await page.getByRole("button", { name: "Open navigation menu" }).click();
-    await page.getByRole("dialog", { name: "Quick navigation" }).getByRole("button", { name, exact: true }).click();
+    if (name === "Start New Match") {
+      await page.getByRole("navigation", { name: "Mobile navigation" })
+        .getByRole("button", { name: "Home", exact: true })
+        .click();
+      await page.locator(".dashboard-start-hero").click();
+      return;
+    }
+    await page.getByRole("navigation", { name: "Mobile navigation" })
+      .getByRole("button", { name, exact: true })
+      .click();
   }
 
   const headerContext = page.locator(".account-context-switcher--header");
@@ -647,7 +667,7 @@ test("returns to login with the new address after a profile email change @header
   await expect(page.getByText(`Email updated. Sign in again using ${nextEmail}.`)).toBeVisible();
 });
 
-test("opens the shared sport chooser from the responsive new-match menu action @header", async ({ page }) => {
+test("opens the shared sport chooser from the responsive start-match action @header", async ({ page }) => {
   await page.goto("/dashboard");
 
   if (page.viewportSize().width > 840) {
@@ -655,15 +675,58 @@ test("opens the shared sport chooser from the responsive new-match menu action @
       .getByRole("button", { name: "Start New Match" })
       .click();
   } else {
-    await page.getByRole("button", { name: "Open navigation menu" }).click();
-    await page.getByRole("dialog", { name: "Quick navigation" })
-      .getByRole("button", { name: "Start New Match" })
-      .click();
+    await page.locator(".dashboard-start-hero").click();
   }
 
   await expect(page).toHaveURL(/\/dashboard#new-match$/);
   await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
 });
+
+test("uses a native-style five-item bottom navigation on iPhone portrait @header", async ({ page }) => {
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.goto("/dashboard");
+
+  const navigation = page.getByRole("navigation", { name: "Mobile navigation" });
+  await expect(navigation).toBeVisible();
+  await expect(navigation.locator(".mobile-bottom-navigation__item")).toHaveCount(5);
+  await expect(navigation.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "Open navigation menu" })).toHaveCount(0);
+
+  const navigationBox = await navigation.boundingBox();
+  expect(navigationBox.x).toBeGreaterThanOrEqual(0);
+  expect(navigationBox.x + navigationBox.width).toBeLessThanOrEqual(403);
+  expect(navigationBox.y + navigationBox.height).toBeLessThanOrEqual(875);
+
+  await navigation.getByRole("button", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })
+    .getByRole("button", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+});
+
+for (const viewport of [
+  { name: "iPad Pro 11 portrait", width: 834, height: 1194 },
+  { name: "iPad Pro 11 landscape", width: 1194, height: 834 },
+  { name: "Android tablet portrait", width: 800, height: 1280 },
+]) {
+  test(`uses the available tablet width on ${viewport.name} @header`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/settings");
+
+    const shell = page.locator("main.settings-hub-page");
+    const settingsMenu = page.getByRole("region", { name: "Settings sections" });
+    await expect(settingsMenu).toBeVisible();
+
+    const [shellBox, menuBox] = await Promise.all([shell.boundingBox(), settingsMenu.boundingBox()]);
+    expect(shellBox.x).toBeLessThanOrEqual(17);
+    expect(viewport.width - (shellBox.x + shellBox.width)).toBeLessThanOrEqual(17);
+    expect(shellBox.width).toBeGreaterThanOrEqual(viewport.width - 34);
+    expect(menuBox.width).toBeGreaterThanOrEqual(shellBox.width - 2);
+
+    if (viewport.height > viewport.width && viewport.width <= 1024) {
+      await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
+    }
+  });
+}
 
 test("fits the match account and sport chooser inside an iPhone 16 Pro viewport @header", async ({ page }) => {
   await page.addInitScript(() => {
@@ -709,7 +772,7 @@ for (const viewportSize of [
   { name: "iPhone 16 Pro landscape", width: 852, height: 393 },
   { name: "iPhone Pro Max landscape", width: 932, height: 430 },
 ]) {
-  test(`standalone sport chooser has no floating-menu collision on ${viewportSize.name} @header`, async ({ page }) => {
+  test(`standalone sport chooser has no bottom-navigation collision on ${viewportSize.name} @header`, async ({ page }) => {
     await page.addInitScript(() => {
       const auth = JSON.parse(window.sessionStorage.getItem("rcktscore.auth"));
       auth.session.enabled_sports = ["squash", "racketball", "tennis", "padel"];
@@ -719,7 +782,7 @@ for (const viewportSize of [
     await page.goto("/match/new");
 
     await expect(page.getByRole("heading", { name: "Choose Racket Sport" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Open navigation menu" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toHaveCount(0);
     await expect(page.locator(".match-sport-artwork__ball-image")).toHaveCount(4);
 
     const options = page.locator(".match-sport-selection-card .match-sport-overlay__option");
@@ -834,7 +897,7 @@ for (const viewportSize of [
     await expect(navigation.getByRole("button", { name: "Analytics" })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Help" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Open navigation menu" })).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeHidden();
     await expect(page.locator(".dashboard-start-hero")).toBeVisible();
 
     const [brandBox, navBox, messagesBox, contextBox] = await Promise.all([

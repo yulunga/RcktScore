@@ -50,6 +50,8 @@ fun SectionCard(
     @DrawableRes iconRes: Int? = null,
     subtitle: String? = null,
     onTitleClick: (() -> Unit)? = null,
+    /** Shown at the right of the heading, aligned with its top (e.g. a count). */
+    trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
@@ -77,6 +79,9 @@ fun SectionCard(
                     Spacer(Modifier.width(10.dp))
                 }
                 Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                if (trailing != null) {
+                    Box(Modifier.align(Alignment.Top).padding(top = 2.dp)) { trailing() }
+                }
                 if (onTitleClick != null) {
                     Icon(
                         painterResource(R.drawable.ic_chevron_right),

@@ -10,28 +10,30 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.hitnscore.mobile.core.session.AccountContext
-import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.core.session.AccountContextType
+import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.feature.analytics.AnalyticsScreen
-import com.hitnscore.mobile.feature.newmatch.MatchSetupScreen
-import com.hitnscore.mobile.feature.newmatch.SetupArgs
-import com.hitnscore.mobile.feature.newmatch.SignedInPerson
-import com.hitnscore.mobile.feature.newmatch.signedInPersonName
-import com.hitnscore.mobile.feature.newmatch.SportPickerScreen
-import com.hitnscore.mobile.feature.newmatch.enabledSports
-import com.hitnscore.mobile.feature.scoring.ScoringScreen
-import com.hitnscore.mobile.feature.shell.MatchesCategory
 import com.hitnscore.mobile.feature.help.HelpScreen
 import com.hitnscore.mobile.feature.home.HomeScreen
 import com.hitnscore.mobile.feature.matches.MatchDetailScreen
 import com.hitnscore.mobile.feature.matches.MatchesScreen
+import com.hitnscore.mobile.feature.newmatch.MatchSetupScreen
+import com.hitnscore.mobile.feature.newmatch.SetupArgs
+import com.hitnscore.mobile.feature.newmatch.SignedInPerson
+import com.hitnscore.mobile.feature.newmatch.SportPickerScreen
+import com.hitnscore.mobile.feature.newmatch.enabledSports
+import com.hitnscore.mobile.feature.newmatch.signedInPersonName
 import com.hitnscore.mobile.feature.notifications.NotificationsScreen
+import com.hitnscore.mobile.feature.scoring.ScoringScreen
 import com.hitnscore.mobile.feature.settings.SettingsPage
 import com.hitnscore.mobile.feature.settings.SettingsPageScreen
 import com.hitnscore.mobile.feature.settings.SettingsScreen
+import com.hitnscore.mobile.feature.shell.MatchesCategory
 import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellUiState
 import com.hitnscore.mobile.feature.watch.WatchMatchScreen
@@ -42,7 +44,7 @@ object ShellRoutes {
     const val SCORE = "score/{matchId}"
     const val MATCH = "match/{matchId}"
     const val NOTIFICATIONS = "notifications"
-    const val SETTINGS_PAGE = "settings/{page}"
+    const val SETTINGS_PAGE = "settings/{page}?org={org}"
     const val WATCH = "watch/{code}"
 
     fun match(matchId: String) = "match/${Uri.encode(matchId)}"
@@ -52,7 +54,9 @@ object ShellRoutes {
 
     /** Full-screen flows hide the bottom bar and the Start button. */
     fun isFullScreen(route: String?) = route?.startsWith(NEW_MATCH) == true || route?.startsWith("score/") == true
-    fun settingsPage(page: SettingsPage) = "settings/${page.route}"
+    /** A settings page; [organizationId] picks a club from Association (else the active account). */
+    fun settingsPage(page: SettingsPage, organizationId: Int? = null) =
+        "settings/${page.route}" + (organizationId?.let { "?org=$it" } ?: "")
 }
 
 /** Content of the signed-in shell. Only this area changes when switching tabs. */
@@ -191,7 +195,10 @@ fun HitNScoreTabNavHost(
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(ShellRoutes.SETTINGS_PAGE) { entry ->
+        composable(
+            ShellRoutes.SETTINGS_PAGE,
+            arguments = listOf(navArgument("org") { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { entry ->
             val page = SettingsPage.fromRoute(entry.arguments?.getString("page")) ?: SettingsPage.About
             SettingsPageScreen(
                 page = page,
@@ -200,6 +207,8 @@ fun HitNScoreTabNavHost(
                 state = currentState,
                 onContextSelected = { currentOnContextSelected(it) },
                 onBack = { navController.popBackStack() },
+                organizationId = entry.arguments?.getString("org")?.toIntOrNull(),
+                onOpenPage = { target, org -> navController.navigate(ShellRoutes.settingsPage(target, org)) },
             )
         }
     }

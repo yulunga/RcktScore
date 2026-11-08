@@ -41,12 +41,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
-import com.hitnscore.mobile.feature.watch.WatchMatchCard
+import com.hitnscore.mobile.core.designsystem.components.CardRow
 import com.hitnscore.mobile.core.designsystem.components.EmptyState
 import com.hitnscore.mobile.core.designsystem.components.ErrorBanner
 import com.hitnscore.mobile.core.designsystem.components.OfflineState
 import com.hitnscore.mobile.core.designsystem.components.SectionCard
 import com.hitnscore.mobile.core.designsystem.components.SkeletonRows
+import com.hitnscore.mobile.core.designsystem.components.matchCardColumns
 import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.data.model.MatchFormatting
@@ -56,6 +57,7 @@ import com.hitnscore.mobile.feature.shell.MatchesCategory
 import com.hitnscore.mobile.feature.shell.ShellActions
 import com.hitnscore.mobile.feature.shell.ShellHeader
 import com.hitnscore.mobile.feature.shell.ShellUiState
+import com.hitnscore.mobile.feature.watch.WatchMatchCard
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -80,6 +82,17 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
     val filtered = remember(recent, search, sportFilter, startDateMillis, endDateMillis) {
         filterHistory(recent, search, sportFilter, startDateMillis?.toUtcDate(), endDateMillis?.toUtcDate())
     }
+    val columns = matchCardColumns()
+    val showCount = state.isOnline && !(state.isLoading && recent.isEmpty())
+    val historyCount: (@Composable () -> Unit)? = if (!showCount) null else {
+        {
+            Text(
+                stringResource(R.string.history_count_brackets, filtered.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (filtersActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -93,9 +106,9 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                     session = session,
                     isOnline = state.isOnline,
                     hasUnreadNotifications = state.hasUnreadNotifications,
-                    contextLabel = stringResource(R.string.context_label_matches),
                     onOpenNotifications = actions.onOpenNotifications,
                     onContextSelected = actions.onContextSelected,
+                    onSignOut = actions.onSignOut,
                 )
             }
             item(key = "category") {
@@ -133,6 +146,7 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                   item(key = "current") {
                     SectionCard(
                         title = stringResource(R.string.section_current_matches),
+                        iconRes = R.drawable.ic_live_stream,
                         subtitle = stringResource(if (isPersonal) R.string.current_matches_personal else R.string.current_matches_club),
                     ) {
                         MatchSection(dashboard?.activeMatches.orEmpty(), state.isLoading, stringResource(R.string.empty_active)) {
@@ -163,31 +177,30 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                         SectionCard(
                             title = stringResource(R.string.section_recent_matches),
                             iconRes = R.drawable.ic_date_range,
-                            subtitle = stringResource(R.string.history_subtitle),
+                            // The match count sits top right, level with the heading.
+                            trailing = historyCount,
                         ) {
                             if (!state.isOnline) {
                                 OfflineState(stringResource(R.string.offline_history))
                             } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        when {
-                                            state.isLoading && recent.isEmpty() -> ""
-                                            filtersActive -> stringResource(R.string.history_filters_active) + " · " +
-                                                stringResource(R.string.history_count, filtered.size)
-                                            else -> stringResource(R.string.history_count, filtered.size)
-                                        },
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (filtersActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                // Search box with the filter button beside it.
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = search,
+                                        onValueChange = { search = it },
                                         modifier = Modifier.weight(1f),
+                                        placeholder = { Text(stringResource(R.string.history_search)) },
+                                        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
+                                        trailingIcon = {
+                                            if (search.isNotEmpty()) {
+                                                IconButton(onClick = { search = "" }) {
+                                                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.history_clear_search))
+                                                }
+                                            }
+                                        },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(14.dp),
                                     )
-                                    if (filtersActive) {
-                                        TextButton(onClick = {
-                                            search = ""
-                                            sportFilter = null
-                                            startDateMillis = null
-                                            endDateMillis = null
-                                        }) { Text(stringResource(R.string.history_clear_all)) }
-                                    }
                                     FilledTonalIconToggleButton(
                                         checked = filtersExpanded || filtersActive,
                                         onCheckedChange = { filtersExpanded = !filtersExpanded },
@@ -200,10 +213,16 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                                         )
                                     }
                                 }
+                                if (filtersActive) {
+                                    TextButton(onClick = {
+                                        search = ""
+                                        sportFilter = null
+                                        startDateMillis = null
+                                        endDateMillis = null
+                                    }) { Text(stringResource(R.string.history_clear_all)) }
+                                }
                                 AnimatedVisibility(visible = filtersExpanded) {
                                 HistoryFilters(
-                                    search = search,
-                                    onSearchChange = { search = it },
                                     sports = sports,
                                     sportFilter = sportFilter,
                                     onSportFilter = { sportFilter = it },
@@ -226,14 +245,18 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                         }
                     }
                     if (state.isOnline) {
+                        // One card per row on phones, two on tablets.
+                        val rows = filtered.chunked(columns)
                         itemsIndexed(
-                            items = filtered,
-                            key = { index, match -> if (match.locked) "locked-$index" else "match-${match.matchId}" },
-                        ) { _, match ->
-                            if (match.locked) {
-                                LockedHistoryCard(onViewPlan = actions.onOpenSubscription)
-                            } else {
-                                RecentMatchCard(match) { actions.onOpenMatch(match) }
+                            items = rows,
+                            key = { index, row -> row.joinToString("|") { match -> if (match.locked) "locked-$index" else "match-${match.matchId}" } },
+                        ) { _, row ->
+                            CardRow(row, columns) { match ->
+                                if (match.locked) {
+                                    LockedHistoryCard(onViewPlan = actions.onOpenSubscription)
+                                } else {
+                                    RecentMatchCard(match) { actions.onOpenMatch(match) }
+                                }
                             }
                         }
                     }
@@ -267,8 +290,6 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
 
 @Composable
 private fun HistoryFilters(
-    search: String,
-    onSearchChange: (String) -> Unit,
     sports: List<String>,
     sportFilter: String?,
     onSportFilter: (String?) -> Unit,
@@ -278,22 +299,6 @@ private fun HistoryFilters(
     onClearDates: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-            value = search,
-            onValueChange = onSearchChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.history_search)) },
-            leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
-            trailingIcon = {
-                if (search.isNotEmpty()) {
-                    IconButton(onClick = { onSearchChange("") }) {
-                        Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.history_clear_search))
-                    }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(14.dp),
-        )
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

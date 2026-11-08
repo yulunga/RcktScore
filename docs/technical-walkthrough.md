@@ -224,7 +224,7 @@ The native login `Ping Us` form posts name, email, category, message, app versio
    - derives Personal Plus performance statistics from completed match state and event actions
 5. The API returns `data.dashboard`.
 6. The page renders screen-mode-specific views for dashboard, matches, history, or Analytics. Dashboard Recent Matches retains at most 24 client-side preview records and paginates six cards at a time, giving three complete two-card rows on wide screens. The Active Matches, Scheduled Matches and Recent Matches heading text opens the corresponding Current, Scheduled or History tab on the Matches screen. Those tabs use the same white, blue and light-blue visual language as organisation Settings. For feature-enabled clubs, the dashboard then reads the existing tournament list and shows only `draw_published` events in an icon-labelled Live Tournaments panel below Recent Matches. Matches History paginates 20 cards at a time, giving exactly ten two-card rows on wide screens; the alternate mobile list is hidden there so it cannot duplicate those cards as full-width rows. While History is selected, its page root keeps the shared header in normal flow so header actions cannot cover the search, filter or match-card actions during phone/tablet scrolling. Matches provides Current, Scheduled and History tabs for every tier, with a Personal Free scheduling upgrade gate. Personal Plus Current Matches also accepts a match viewing code and lists its saved Viewed Matches. Web and iOS Analytics expose Personal and, while a club context is active, Club sections. Personal Free receives basic app usage and setup-abandonment reporting; Personal Plus adds player/game analytics and CSV export. Club reporting is available to every club tier and authorised role, covers aggregate match/setup adoption, court demand, peak/off-peak and simultaneous use, schedules, sport trends and a digest, and exports aggregate CSV without user or player personal details. Wide heatmaps and tables scroll inside their panels rather than widening the tablet portrait page.
-7. Both the dashboard Start New Match action and the signed-in header `+` route through the same dashboard sport-selection overlay; selecting a sport continues to `/match/new/setup?sport=...`. The standalone `/match/new` route presents the same enabled-sport set in an iOS-style centred two-column grid, reusing the native transparent ball images and court diagrams. Further implemented sports naturally add new grid rows. This route suppresses `ClubPageHeader`'s fixed mobile navigation button and provides its own Close action, preventing the floating control from covering the final sport card.
+7. Both the dashboard Start New Match action and the signed-in header `+` route through the same dashboard sport-selection overlay; selecting a sport continues to `/match/new/setup?sport=...`. The standalone `/match/new` route presents the same enabled-sport set in an iOS-style centred two-column grid, reusing the native transparent ball images and court diagrams. Further implemented sports naturally add new grid rows. This route suppresses `ClubPageHeader`'s native-style bottom navigation and provides its own Close action, preventing navigation from covering the final sport card.
 8. `GET /get_score/{match_id}` rejects completed Personal Free matches outside the latest-25 window, preventing direct URL access from bypassing the entitlement.
 
 ### Troubleshooting cues
@@ -536,6 +536,15 @@ document scrolling. Expanding Want In deliberately restores the normal
 scrollable registration layout because that longer form cannot fit safely into
 the landscape viewport.
 
+Phone and portrait-tablet signed-in pages use a persistent five-item bottom
+navigation for Home, Matches, Analytics, Settings and Help instead of a floating
+hamburger and modal sheet. The active item uses the same blue/pink visual
+language as the native clients. Active scoring and the standalone sport chooser
+omit the bar. At tablet dimensions from 600–1400 CSS pixels wide and at least
+500 pixels high, ordinary signed-in page shells use the viewport with 16-pixel
+side margins, allowing Settings and other panels to fill iPad and Android tablet
+portrait or landscape screens.
+
 Tablet landscape viewports from 720–1400 pixels wide and 500–1024 pixels high retain
 the compact navigation header. Both use a fixed dynamic-viewport shell instead
 of document scrolling: the score controls and timer remain visible, the
@@ -677,6 +686,8 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 ### Current path
 
 1. The root-admin UI loads dashboard, club, club-enquiry, and unified user-account data from root-admin routes.
+The Control Panel Users directory sorts the full filtered response by latest login or username before displaying 25, 100 or 200 rows. Profile tabs share a navigation strip with the username and a back arrow to Users.
+
 2. Every root-admin route validates the separate cookie session against `root_admin_sessions`; mutations additionally require Root Admin CSRF validation.
 3. Club-detail calls to shared organisation endpoints accept root access only after the same session validation succeeds.
 4. The platform dashboard now also links to a root-admin match directory that calls `GET /root_admin/matches` and can archive or delete matches across the system.
