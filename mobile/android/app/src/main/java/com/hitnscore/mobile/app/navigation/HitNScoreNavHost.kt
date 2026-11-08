@@ -110,6 +110,7 @@ fun HitNScoreTabNavHost(
                 biometricUnlockEnabled = currentBiometric,
                 onBiometricUnlockChange = { currentOnBiometricChange(it) },
                 onOpenPage = { navController.navigate(ShellRoutes.settingsPage(it)) },
+                onOpenClubPage = { page, org -> navController.navigate(ShellRoutes.settingsPage(page, org)) },
                 onSignOut = { currentOnSignOut() },
             )
         }

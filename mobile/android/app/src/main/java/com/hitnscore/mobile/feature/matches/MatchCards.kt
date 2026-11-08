@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,9 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -32,7 +35,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hitnscore.mobile.R
@@ -149,7 +151,8 @@ fun RecentMatchCard(match: MatchSummary, onClick: () -> Unit) {
         if (scores.isEmpty()) "" else ", ${scores.joinToString(", ")}"
 
     InnerCard(onClick = onClick, modifier = Modifier.clearAndSetSemantics { contentDescription = description }) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
+        // At least tall enough for the longest sport name (RACKETBALL) in the strip.
+        Row(Modifier.heightIn(min = 88.dp).height(IntrinsicSize.Min)) {
             // Date block: stays as before.
             Column(
                 modifier = Modifier
@@ -169,7 +172,8 @@ fun RecentMatchCard(match: MatchSummary, onClick: () -> Unit) {
                 modifier = Modifier
                     .width(24.dp)
                     .fillMaxHeight()
-                    .background(SportColors.forSport(match.sport)),
+                    .background(SportColors.forSport(match.sport))
+                    .clipToBounds(),
                 contentAlignment = Alignment.Center,
             ) {
                 VerticalText(sportName.uppercase(), color = Color.White)
@@ -226,7 +230,11 @@ private fun PlayerLine(name: String, games: Int, color: Color) {
     }
 }
 
-/** Text turned 90° anticlockwise, sized to its rotated bounds. */
+/**
+ * The sport name turned 90° anticlockwise inside the narrow strip. Drawn rotated only: it
+ * takes no height of its own, so the card stays as tall as its player rows (a custom
+ * layout here made the cards' intrinsic height blow up on the tablet).
+ */
 @Composable
 private fun VerticalText(text: String, color: Color) {
     Text(
@@ -238,15 +246,8 @@ private fun VerticalText(text: String, color: Color) {
         maxLines = 1,
         softWrap = false,
         modifier = Modifier
-            .layout { measurable, _ ->
-                val placeable = measurable.measure(Constraints())
-                layout(placeable.height, placeable.width) {
-                    placeable.placeWithLayer(
-                        x = -(placeable.width - placeable.height) / 2,
-                        y = (placeable.width - placeable.height) / 2,
-                    ) { rotationZ = -90f }
-                }
-            },
+            .wrapContentSize(unbounded = true)
+            .rotate(-90f),
     )
 }
 

@@ -104,6 +104,8 @@ data class OrganizationDetailsRequest(
     @SerialName("org_webaddress") val webAddress: String? = null,
     @SerialName("enabled_sports") val enabledSports: List<String>? = null,
     @SerialName("timed_break_defaults") val timedBreakDefaults: Map<String, Boolean>? = null,
+    /** Facebook, Instagram, X and YouTube links; "" for a profile that is switched off. */
+    @SerialName("social_profiles") val socialProfiles: Map<String, String>? = null,
 )
 
 /** `DELETE /personal_account/{organization_id}`. */

@@ -23,9 +23,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -44,13 +47,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.core.designsystem.components.CardGrid
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.data.model.ClubRoles
 import com.hitnscore.mobile.data.model.CourtSummary
@@ -307,8 +313,14 @@ fun OrganisationEditor(state: OrganizationSettingsUiState, viewModel: Organizati
     var website by rememberSaveable(organization) { mutableStateOf(organization.webAddress) }
     var address by rememberSaveable(organization) { mutableStateOf(organization.address) }
     var postcode by rememberSaveable(organization) { mutableStateOf(organization.postcode) }
+    // Social profiles: each has a switch, and its link can only be entered while it is on.
+    val savedSocial = SOCIAL_NETWORKS.associateWith { organization.socialProfiles[it].orEmpty() }
+    var socialOn by remember(organization) { mutableStateOf(savedSocial.mapValues { it.value.isNotBlank() }) }
+    var social by remember(organization) { mutableStateOf(savedSocial) }
+    val socialToSave = SOCIAL_NETWORKS.associateWith { if (socialOn[it] == true) social[it].orEmpty().trim() else "" }
     val changed = name != organization.organizationName || contact != organization.contact || email != organization.email ||
-        telephone != organization.telephone || website != organization.webAddress || address != organization.address || postcode != organization.postcode
+        telephone != organization.telephone || website != organization.webAddress || address != organization.address || postcode != organization.postcode ||
+        socialToSave != savedSocial
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         EditorCard(stringResource(R.string.settings_org_profile)) {
             EditorField(stringResource(R.string.settings_name), name, { name = it }, enabled = !state.isSaving, isError = name.isBlank())
@@ -320,6 +332,25 @@ fun OrganisationEditor(state: OrganizationSettingsUiState, viewModel: Organizati
         EditorCard(stringResource(R.string.settings_org_location)) {
             EditorField(stringResource(R.string.settings_address), address, { address = it }, enabled = !state.isSaving)
             EditorField(stringResource(R.string.settings_postcode), postcode, { postcode = it }, enabled = !state.isSaving, capitalization = KeyboardCapitalization.Characters)
+        }
+        EditorCard(stringResource(R.string.social_profiles)) {
+            EditorNote(stringResource(R.string.social_profiles_body))
+            SOCIAL_NETWORKS.forEach { network ->
+                val on = socialOn[network] == true
+                SwitchLine(stringResource(socialLabel(network)), null, on, enabled = !state.isSaving) { value ->
+                    socialOn = socialOn + (network to value)
+                }
+                if (on) {
+                    EditorField(
+                        stringResource(R.string.social_link_label, stringResource(socialLabel(network))),
+                        social[network].orEmpty(),
+                        { value -> social = social + (network to value) },
+                        enabled = !state.isSaving,
+                        keyboardType = KeyboardType.Uri,
+                        capitalization = KeyboardCapitalization.None,
+                    )
+                }
+            }
         }
         StatusLine(state.notice, state.actionError)
         SaveButton(
@@ -336,10 +367,55 @@ fun OrganisationEditor(state: OrganizationSettingsUiState, viewModel: Organizati
                     telephone = telephone.trim(),
                     email = email.trim(),
                     webAddress = website.trim(),
+                    socialProfiles = socialToSave,
                 ),
             )
         }
     }
+}
+
+/** "+" (add) and a filter drop-down with a count: the top row of Courts and Users. */
+@Composable
+internal fun <T> AddAndFilterRow(
+    addLabel: String,
+    onAdd: () -> Unit,
+    enabled: Boolean,
+    options: List<T>,
+    selected: T,
+    optionLabel: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    count: String,
+) {
+    var open by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FilledIconButton(onClick = onAdd, enabled = enabled) {
+            Icon(painterResource(R.drawable.ic_add), contentDescription = addLabel)
+        }
+        if (options.size > 1) {
+            Box {
+                OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(50)) {
+                    Text(optionLabel(selected))
+                    Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null, modifier = Modifier.padding(start = 6.dp).size(18.dp))
+                }
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    options.forEach { option ->
+                        DropdownMenuItem(text = { Text(optionLabel(option)) }, onClick = { onSelect(option); open = false })
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Text(count, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+internal val SOCIAL_NETWORKS = listOf("facebook", "instagram", "x", "youtube")
+
+private fun socialLabel(network: String): Int = when (network) {
+    "instagram" -> R.string.social_instagram
+    "x" -> R.string.social_x
+    "youtube" -> R.string.social_youtube
+    else -> R.string.social_facebook
 }
 
 // Racket sports and timer defaults ------------------------------------------------
@@ -389,16 +465,6 @@ private fun SportRow(sport: String, checked: Boolean, enabled: Boolean, onChange
                 Text(MatchFormatting.sportName(sport), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.settings_sport_live), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(
-                stringResource(R.string.settings_sport_ready),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(50))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-            Spacer(Modifier.width(10.dp))
             Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
         }
     }
@@ -464,27 +530,52 @@ fun UsersEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSetti
     val users = state.settings?.users ?: return
     var editing by remember { mutableStateOf<OrganizationUser?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
+    // Role filter, as Courts: null = everyone.
+    var roleFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    val shown = users
+        .filter { roleFilter == null || ClubRoles.normalize(it.role) == roleFilter }
+        .sortedWith(compareBy({ it.firstName.ifBlank { it.username }.lowercase() }, { it.surname.lowercase() }))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusLine(state.notice, state.actionError)
-        Button(onClick = { adding = true }, enabled = !state.isSaving, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(stringResource(R.string.settings_add_user), modifier = Modifier.padding(start = 8.dp))
-        }
-        EditorCard {
-            users.sortedWith(compareBy({ it.firstName.ifBlank { it.username }.lowercase() }, { it.surname.lowercase() })).forEachIndexed { index, user ->
-                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Surface(onClick = { editing = user }, color = HitNScoreTheme.colors.card) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(MatchFormatting.fullName(user.firstName.ifBlank { user.username }, user.surname), style = MaterialTheme.typography.bodyLarge)
-                            Text(user.username, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(roleLabel(user.role), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                            if (user.status.equals("pending", ignoreCase = true)) {
-                                Text(stringResource(R.string.settings_user_pending), style = MaterialTheme.typography.labelSmall, color = HitNScoreTheme.colors.brandPink)
-                            }
-                        }
+        AddAndFilterRow(
+            addLabel = stringResource(R.string.settings_add_user),
+            onAdd = { adding = true },
+            enabled = !state.isSaving,
+            options = listOf(null) + ClubRoles.all,
+            selected = roleFilter,
+            optionLabel = { role -> if (role == null) stringResource(R.string.settings_all_members) else roleLabelPlural(role) },
+            onSelect = { roleFilter = it },
+            count = pluralStringResource(R.plurals.settings_member_count, shown.size, shown.size),
+        )
+        if (shown.isEmpty()) EditorNote(stringResource(R.string.settings_members_empty))
+        CardGrid(shown) { user ->
+            EditorCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            MatchFormatting.fullName(user.firstName.ifBlank { user.username }, user.surname),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(user.username, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(onClick = { editing = user }, enabled = !state.isSaving) {
+                        Icon(painterResource(R.drawable.ic_edit), contentDescription = stringResource(R.string.settings_edit_user), tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        roleLabel(user.role),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                    )
+                    if (user.status.equals("pending", ignoreCase = true)) {
+                        Text(stringResource(R.string.settings_user_pending), style = MaterialTheme.typography.labelMedium, color = HitNScoreTheme.colors.brandPink)
                     }
                 }
             }
@@ -517,6 +608,15 @@ fun UsersEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSetti
         )
     }
 }
+
+@Composable
+private fun roleLabelPlural(role: String): String = stringResource(
+    when (ClubRoles.normalize(role)) {
+        ClubRoles.ADMIN -> R.string.role_admins
+        ClubRoles.READ_ONLY -> R.string.role_viewers
+        else -> R.string.role_scorers
+    },
+)
 
 @Composable
 private fun roleLabel(role: String): String = stringResource(
@@ -605,49 +705,59 @@ private fun UserDialog(
 @Composable
 fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel) {
     val courts = state.settings?.courts ?: return
+    val enabledSports = state.settings?.organization?.enabledSports.orEmpty().map { it.lowercase() }
     var editing by remember { mutableStateOf<CourtSummary?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
-    var confirmCode by remember { mutableStateOf<CourtSummary?>(null) }
+    // Filter: only court types the club has courts for and plays (squash covers racketball).
+    var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    val types = CourtTypes.available(enabledSports).filter { type -> courts.any { CourtTypes.of(it.sport) == type } }
+    if (typeFilter != null && typeFilter !in types) typeFilter = null
+    val shown = courts.filter { typeFilter == null || it.sport.isNullOrBlank() || CourtTypes.of(it.sport) == typeFilter }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusLine(state.notice, state.actionError)
-        Button(onClick = { adding = true }, enabled = !state.isSaving, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(stringResource(R.string.settings_add_court), modifier = Modifier.padding(start = 8.dp))
+        AddAndFilterRow(
+            addLabel = stringResource(R.string.settings_add_court),
+            onAdd = { adding = true },
+            enabled = !state.isSaving,
+            options = listOf<String?>(null) + types,
+            selected = typeFilter,
+            optionLabel = { type -> if (type == null) stringResource(R.string.settings_all_racket_sports) else CourtTypes.label(type) },
+            onSelect = { typeFilter = it },
+            count = pluralStringResource(R.plurals.settings_court_count, shown.size, shown.size),
+        )
+        if (shown.isEmpty()) {
+            EditorNote(stringResource(R.string.settings_courts_empty))
         }
-        if (courts.isEmpty()) {
-            Text(stringResource(R.string.settings_courts_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        courts.forEach { court ->
+        CardGrid(shown) { court ->
             EditorCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(court.courtName.ifBlank { court.courtAlias }, style = MaterialTheme.typography.titleMedium)
+                        Text(court.courtName.ifBlank { court.courtAlias }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(
                             listOfNotNull(
                                 court.courtAlias.takeIf { it.isNotBlank() && it != court.courtName },
-                                court.sport?.let(MatchFormatting::sportName) ?: stringResource(R.string.settings_any_sport),
+                                court.sport?.takeIf { it.isNotBlank() }?.let { CourtTypes.label(CourtTypes.of(it)) } ?: stringResource(R.string.settings_any_sport),
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    TextButton(onClick = { editing = court }, enabled = !state.isSaving) { Text(stringResource(R.string.settings_edit)) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_display_code), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            court.displayCode?.takeIf { it.isNotBlank() } ?: stringResource(R.string.settings_display_code_none),
-                            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                        )
+                    IconButton(onClick = { editing = court }, enabled = !state.isSaving) {
+                        Icon(painterResource(R.drawable.ic_edit), contentDescription = stringResource(R.string.settings_edit_court), tint = MaterialTheme.colorScheme.primary)
                     }
-                    OutlinedButton(onClick = { confirmCode = court }, enabled = !state.isSaving) { Text(stringResource(R.string.settings_new_display_code)) }
+                }
+                Column {
+                    Text(stringResource(R.string.settings_display_code), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        court.displayCode?.takeIf { it.isNotBlank() } ?: stringResource(R.string.settings_display_code_none),
+                        style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                    )
                 }
             }
         }
     }
     if (adding) {
-        CourtDialog(court = null, busy = state.isSaving, onDismiss = { adding = false }, onSave = { name, alias, sport ->
+        CourtDialog(court = null, types = CourtTypes.available(enabledSports), busy = state.isSaving, onDismiss = { adding = false }, onSave = { name, alias, sport ->
             adding = false
             viewModel.saveCourt(null, name, alias, sport)
         })
@@ -655,6 +765,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
     editing?.let { court ->
         CourtDialog(
             court = court,
+            types = CourtTypes.available(enabledSports),
             busy = state.isSaving,
             onDismiss = { editing = null },
             onSave = { name, alias, sport ->
@@ -665,18 +776,11 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                 editing = null
                 viewModel.removeCourt(court.id)
             },
-        )
-    }
-    confirmCode?.let { court ->
-        ConfirmDialog(
-            title = stringResource(R.string.settings_new_display_code),
-            body = stringResource(R.string.settings_new_display_code_body, court.courtName),
-            confirm = stringResource(R.string.settings_new_display_code_confirm),
-            onConfirm = {
-                confirmCode = null
+            // The scoreboard code changes only from here, after a confirmation.
+            onRefreshCode = {
+                editing = null
                 viewModel.newDisplayCode(court.id)
             },
-            onDismiss = { confirmCode = null },
         )
     }
 }
@@ -684,17 +788,19 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
 @Composable
 private fun CourtDialog(
     court: CourtSummary?,
+    types: List<String>,
     busy: Boolean,
     onDismiss: () -> Unit,
     onSave: (String, String, String?) -> Unit,
     onRemove: () -> Unit = {},
+    onRefreshCode: () -> Unit = {},
 ) {
     var name by rememberSaveable { mutableStateOf(court?.courtName.orEmpty()) }
     var alias by rememberSaveable { mutableStateOf(court?.courtAlias.orEmpty()) }
-    // Index 0 is "Any sport"; the others follow SETTINGS_SPORTS.
-    var sportIndex by rememberSaveable { mutableStateOf(court?.sport?.lowercase()?.let { SETTINGS_SPORTS.indexOf(it) + 1 }?.coerceAtLeast(0) ?: 0) }
+    // The court type is chosen once, when the court is added; it can't change afterwards.
+    var type by rememberSaveable { mutableStateOf(types.firstOrNull()) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
-    val anySport = stringResource(R.string.settings_any_sport)
+    var confirmCode by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (court == null) R.string.settings_add_court else R.string.settings_edit_court)) },
@@ -702,25 +808,42 @@ private fun CourtDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 EditorField(stringResource(R.string.settings_court_name), name, { name = it }, enabled = !busy)
                 EditorField(stringResource(R.string.settings_court_alias), alias, { alias = it }, enabled = !busy)
-                Text(stringResource(R.string.settings_court_sport), style = MaterialTheme.typography.labelLarge)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (0..SETTINGS_SPORTS.size).forEach { index ->
-                        val label = if (index == 0) anySport else MatchFormatting.sportName(SETTINGS_SPORTS[index - 1])
-                        Surface(
-                            onClick = { sportIndex = index },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (sportIndex == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                label,
-                                color = if (sportIndex == index) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            )
+                Text(stringResource(R.string.settings_court_type), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (court == null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        types.forEach { option ->
+                            Surface(
+                                onClick = { type = option },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (type == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    CourtTypes.label(option),
+                                    color = if (type == option) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                )
+                            }
                         }
                     }
+                    EditorNote(stringResource(R.string.settings_court_type_note))
+                } else {
+                    Text(
+                        court.sport?.takeIf { it.isNotBlank() }?.let { CourtTypes.label(CourtTypes.of(it)) } ?: stringResource(R.string.settings_any_sport),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                 }
                 if (court != null) {
+                    // Scoreboard code: shown here and refreshed only from the edit dialog.
+                    Text(stringResource(R.string.settings_display_code), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            court.displayCode?.takeIf { it.isNotBlank() } ?: stringResource(R.string.settings_display_code_none),
+                            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedButton(onClick = { confirmCode = true }, enabled = !busy) { Text(stringResource(R.string.settings_refresh_code)) }
+                    }
                     TextButton(onClick = { confirmRemove = true }, enabled = !busy) {
                         Text(stringResource(R.string.settings_remove_court), color = HitNScoreTheme.colors.completedStatus)
                     }
@@ -729,12 +852,25 @@ private fun CourtDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name, alias, if (sportIndex == 0) null else SETTINGS_SPORTS[sportIndex - 1]) },
-                enabled = name.isNotBlank() && !busy,
+                // An existing court keeps its sport as saved.
+                onClick = { onSave(name, alias, if (court != null) court.sport else type) },
+                enabled = name.isNotBlank() && !busy && (court != null || type != null),
             ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+    if (confirmCode && court != null) {
+        ConfirmDialog(
+            title = stringResource(R.string.settings_refresh_code),
+            body = stringResource(R.string.settings_new_display_code_body, court.courtName),
+            confirm = stringResource(R.string.settings_new_display_code_confirm),
+            onConfirm = {
+                confirmCode = false
+                onRefreshCode()
+            },
+            onDismiss = { confirmCode = false },
+        )
+    }
     if (confirmRemove && court != null) {
         ConfirmDialog(
             title = stringResource(R.string.settings_remove_court_title),
@@ -750,3 +886,34 @@ private fun CourtDialog(
 }
 
 private val EMAIL_REGEX = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
+/**
+ * Court types. Squash and racketball share the same courts, so both are a "Squash court";
+ * tennis and Padel have their own. Stored as the backend's sport code.
+ */
+internal object CourtTypes {
+    const val SQUASH = "squash"
+    const val TENNIS = "tennis"
+    const val PADEL = "padel"
+
+    fun of(sport: String?): String = when (sport?.lowercase()) {
+        "racketball", "racquetball", SQUASH -> SQUASH
+        TENNIS -> TENNIS
+        PADEL -> PADEL
+        else -> SQUASH
+    }
+
+    /** Court types for the sports the club has switched on. */
+    fun available(enabledSports: List<String>): List<String> = listOf(SQUASH, TENNIS, PADEL).filter { type ->
+        enabledSports.any { of(it) == type }
+    }
+
+    @Composable
+    fun label(type: String): String = stringResource(
+        when (type) {
+            TENNIS -> R.string.court_type_tennis
+            PADEL -> R.string.court_type_padel
+            else -> R.string.court_type_squash
+        },
+    )
+}

@@ -166,6 +166,11 @@ On native iOS, a scheduled card should show the court only once, omit the
 creation timestamp and readiness label, and expose circular pencil and play
 controls with accessible Edit/Start labels.
 
+Native Android and iOS should show Play immediately after Home in the bottom
+navigation for administrators and scorers. It opens the existing Start New
+Match flow; the Home page should not also show a Start New Match banner. A
+view-only club member should continue to see neither scoring entry point.
+
 Web Settings should open on Profile, not directly on club administration. Profile
 fields remain read-only until Edit is selected. Association cards depend on
 `available_memberships` retained by a fresh login; older browser sessions created

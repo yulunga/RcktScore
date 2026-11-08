@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -84,7 +85,7 @@ fun rememberProfilePhoto(store: ProfilePhotoStore, username: String): ImageBitma
  * needs no storage permission. The photo stays on this phone.
  */
 @Composable
-fun ProfilePhotoHeader(username: String, displayName: String, email: String?) {
+fun ProfilePhotoHeader(username: String, displayName: String, email: String?, tier: String? = null) {
     val context = LocalContext.current
     val store = remember(context) { (context.applicationContext as HitNScoreApplication).container.profilePhotos }
     val photo = rememberProfilePhoto(store, username)
@@ -142,8 +143,20 @@ fun ProfilePhotoHeader(username: String, displayName: String, email: String?) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
-        if (!email.isNullOrBlank()) {
+        // The sign-in name only when it isn't already the heading.
+        if (!email.isNullOrBlank() && !email.equals(displayName.ifBlank { username }, ignoreCase = true)) {
             Text(email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+        if (!tier.isNullOrBlank()) {
+            Text(
+                tier,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+            )
         }
         if (failed) {
             Text(stringResource(R.string.profile_photo_failed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

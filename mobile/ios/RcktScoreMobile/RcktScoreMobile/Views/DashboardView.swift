@@ -284,10 +284,6 @@ struct DashboardView: View {
                 VStack(spacing: selectedTab == .settings ? 12 : 22) {
                     headerSection
 
-                    if selectedTab == .home && canManageMatches {
-                        startNewMatchHero
-                    }
-
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
@@ -457,57 +453,6 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
-    }
-
-    private var startNewMatchHero: some View {
-        Button {
-            activeSheet = .newMatch
-        } label: {
-            HStack(spacing: 12) {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.white)
-                    .frame(width: 34, height: 34)
-                    .overlay(
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .regular))
-                            .foregroundStyle(Color.dashboardBrand)
-                    )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Start New Match")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.dashboardBrand,
-                        Color.dashboardBrandDeep
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(
-                color: colorScheme == .dark ? .clear : Color.black.opacity(0.12),
-                radius: 12,
-                x: 0,
-                y: 8
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("dashboard.startNewMatchButton")
     }
 
     @ViewBuilder
@@ -2773,6 +2718,38 @@ struct DashboardView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("dashboard.tab.\(tab.rawValue)")
+
+                if tab == .home && canManageMatches {
+                    Button {
+                        activeSheet = .newMatch
+                    } label: {
+                        VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.dashboardBrand)
+                                    .frame(width: bottomNavigationIconSize, height: bottomNavigationIconSize)
+
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: usesCompactBottomNavigation ? 9 : 11, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .offset(x: 1)
+                            }
+
+                            Text("Play")
+                                .font(bottomNavigationFont.weight(.medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.65)
+                                .dynamicTypeSize(.xSmall ... .large)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(Color.dashboardTabMuted)
+                        .padding(.top, usesCompactBottomNavigation ? 8 : 10)
+                        .padding(.bottom, usesCompactBottomNavigation ? 6 : 8)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Start New Match")
+                    .accessibilityIdentifier("dashboard.startNewMatchButton")
+                }
             }
         }
         .padding(.horizontal, usesCompactBottomNavigation ? 8 : 12)

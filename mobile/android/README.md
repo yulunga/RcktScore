@@ -120,8 +120,9 @@ In place:
   account; Profile read only until **Edit** (iOS-style fields); Association
   lists only your clubs with your role, and each club opens a club page (profile,
   read only; admins also get Edit Profile, Courts, Users and Club Settings for
-  that club, as the web); Subscription as the web preview (current plan, plan
-  cards, Monthly/Annual, no purchase in the app yet); Game Settings / Club
+  that club, as the web); Subscription as iOS (Personal and Club subscriptions with the active tiers
+  highlighted, Personal+ upgrade panel awaiting Google Play Billing, club
+  plan enquiry form; annual billing only); Game Settings / Club
   Settings with iOS-style sport cards (switches save straight away) and
   **Automatic Match Timing** (per-sport timer defaults that pre-select timed
   warm-up and breaks in match setup)

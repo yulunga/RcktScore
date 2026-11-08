@@ -164,7 +164,8 @@ class MatchSetupViewModel(
             when (val result = api.organizationSettings(args.organizationId)) {
                 is ApiResult.Success -> {
                     val organization = result.value.organization
-                    val courts = result.value.courts.filter { it.sport.isNullOrBlank() || it.sport.equals(args.sport, ignoreCase = true) }
+                    // Squash and racketball share squash courts (a court saved as either suits both).
+                    val courts = result.value.courts.filter { it.sport.isNullOrBlank() || courtSportKey(it.sport) == courtSportKey(args.sport) }
                     val sessionSports = args.sessionSports.map { it.lowercase() }.toSet()
                     val enabled = organization.enabledSports.map { it.lowercase() }.filter { it in sessionSports }
                     mutableState.update { state ->
@@ -490,3 +491,9 @@ internal fun signedInPersonName(fullName: String?, firstName: String?, surname: 
     fullName?.trim().orEmpty()
         .ifBlank { listOfNotNull(firstName, surname).map(String::trim).filter(String::isNotEmpty).joinToString(" ") }
         .ifBlank { username.substringBefore("@").trim() }
+
+/** Squash and racketball are played on the same courts. */
+internal fun courtSportKey(sport: String?): String = when (sport?.lowercase()) {
+    "racketball", "racquetball" -> "squash"
+    else -> sport?.lowercase().orEmpty()
+}

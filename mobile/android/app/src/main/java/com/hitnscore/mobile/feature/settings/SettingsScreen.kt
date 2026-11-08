@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.feature.shell.contextTitle
 import com.hitnscore.mobile.core.auth.UserMembership
 import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.designsystem.components.ErrorBanner
@@ -84,6 +85,8 @@ fun SettingsScreen(
     onBiometricUnlockChange: (Boolean) -> Unit,
     onOpenPage: (SettingsPage) -> Unit,
     onSignOut: () -> Unit,
+    /** A club page for a given club (as from Association). */
+    onOpenClubPage: (SettingsPage, Int) -> Unit = { page, _ -> onOpenPage(page) },
 ) {
     val accountPages = listOfNotNull(
         SettingsPage.About,
@@ -92,8 +95,10 @@ fun SettingsScreen(
         SettingsPage.Association.takeIf { session.availableContexts.size > 1 },
         SettingsPage.GameSettings,
     )
+    // Club admins: the same pages as Association › club, for the active club. Organisation
+    // opens that club page (profile, map, socials and the manage tiles).
     val clubPages = if (session.isClubAdmin) {
-        listOf(SettingsPage.Organisation, SettingsPage.RacketSports, SettingsPage.Users, SettingsPage.Courts)
+        listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.RacketSports)
     } else {
         emptyList()
     }
@@ -115,17 +120,24 @@ fun SettingsScreen(
         }
         // As iOS: Settings opens with the player's photo, name and email (every account).
         item(key = "photo-${session.username}") {
-            val membership = session.memberships.firstOrNull { it.id == session.activeContext.membershipId }
             EditorCard {
                 ProfilePhotoHeader(
                     username = session.username,
-                    displayName = membership?.fullName?.takeIf { it.isNotBlank() } ?: session.displayName,
-                    email = membership?.email ?: session.username.takeIf { '@' in it },
+                    displayName = personName(session),
+                    email = session.username,
+                    // Under the name: the Personal tier (Personal / Personal+), when they have one.
+                    tier = session.availableContexts.firstOrNull { it.type == AccountContextType.Personal }?.let { contextTitle(it) },
                 )
             }
         }
         item { MenuSection(stringResource(R.string.settings_account), accountPages, onOpenPage) }
-        if (clubPages.isNotEmpty()) item { MenuSection(stringResource(R.string.settings_club), clubPages, onOpenPage) }
+        if (clubPages.isNotEmpty()) {
+            item {
+                MenuSection(stringResource(R.string.settings_club), clubPages) { page ->
+                    onOpenClubPage(if (page == SettingsPage.Organisation) SettingsPage.Club else page, session.activeContext.organizationId)
+                }
+            }
+        }
         item {
             QuickUnlockSetting(enabled = biometricUnlockEnabled, onEnabledChange = onBiometricUnlockChange)
         }
@@ -206,8 +218,9 @@ fun SettingsPageScreen(
                     Note(stringResource(R.string.settings_role_line, session.activeContext.name, roleName(session.activeContext.role)))
                 }
                 SettingsPage.Subscription -> item(key = "subscription") {
-                    val isPersonal = session.activeContext.type == AccountContextType.Personal
-                    SubscriptionPage(planCode = state.planCode ?: planCodeFromName(session.activeContext.plan), isPersonal = isPersonal)
+                    // The dashboard's plan is the freshest for the active Personal account.
+                    val activePersonal = session.activeContext.type == AccountContextType.Personal
+                    SubscriptionPage(session, personalPlusOverride = state.planCode?.takeIf { activePersonal }?.let { it == "personal_plus" })
                 }
                 // Only the clubs you belong to, with your role; tap one for its club page.
                 SettingsPage.Association -> {
@@ -308,14 +321,6 @@ private fun LazyListScope.clubPage(page: SettingsPage, club: AccountContext, sig
     }
 }
 
-/** Plan code from the sign-in plan name, when the dashboard hasn't loaded. */
-private fun planCodeFromName(name: String): String? = when {
-    name.contains("plus", ignoreCase = true) -> "personal_plus"
-    name.contains("pro", ignoreCase = true) -> "club_pro"
-    name.contains("personal", ignoreCase = true) -> "personal_free"
-    name.isBlank() -> null
-    else -> "club_essentials"
-}
 
 @Composable
 private fun roleName(role: String): String = stringResource(
@@ -329,4 +334,13 @@ private fun roleName(role: String): String = stringResource(
 @Composable
 private fun Note(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+}
+
+/** The player's name from any membership (full name, else first + surname), else the username. */
+internal fun personName(session: SessionState.SignedIn): String {
+    val named = session.memberships.firstNotNullOfOrNull { m ->
+        m.fullName?.trim()?.takeIf { it.isNotEmpty() }
+            ?: listOfNotNull(m.firstName, m.surname).map(String::trim).filter(String::isNotEmpty).joinToString(" ").takeIf { it.isNotEmpty() }
+    }
+    return named ?: session.displayName.takeIf { it.isNotBlank() && !it.contains('@') } ?: session.username
 }

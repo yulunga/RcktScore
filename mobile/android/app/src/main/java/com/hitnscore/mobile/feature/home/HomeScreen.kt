@@ -59,7 +59,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
         modifier = Modifier.fillMaxSize(),
     ) {
         LazyColumn(
-            // Bottom space so the Start button never covers the last card.
+            // Bottom breathing room above the persistent navigation bar.
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             modifier = Modifier.fillMaxSize(),
