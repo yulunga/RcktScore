@@ -574,6 +574,7 @@ const GUIDES = {
         title: "Personal profile",
         paragraphs: [
           "Settings opens on a read-only Personal Profile. Enter Edit mode to update email, name, surname, telephone, location and country. Changing the email updates the sign-in identity and revokes existing sessions so the new address can be used securely.",
+          "Your profile photograph is shared across web, iOS and Android. Choose a JPEG, PNG or WebP image up to 5 MB; HitnScore crops and compresses it to a private 512-pixel JPEG and removes camera/location metadata before saving it.",
         ],
       },
       {

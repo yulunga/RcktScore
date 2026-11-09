@@ -16,6 +16,20 @@ import com.hitnscore.mobile.data.model.OrganizationUser
 import com.hitnscore.mobile.data.model.OrganizationUserResponseData
 import com.hitnscore.mobile.data.model.PersonalProfileRequest
 import com.hitnscore.mobile.data.model.UpdateOrganizationUserRequest
+import com.hitnscore.mobile.data.model.CompleteProfileImageRequest
+import com.hitnscore.mobile.data.model.EmptyRequest
+import com.hitnscore.mobile.data.model.ProfileImagePayload
+import com.hitnscore.mobile.data.model.ProfileImageResponseData
+import com.hitnscore.mobile.data.model.ProfileImageUploadPayload
+import com.hitnscore.mobile.data.model.ProfileImageUploadResponseData
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Settings changes (M6), the same routes iOS and the web use. Every route is authorised
@@ -33,9 +47,18 @@ interface SettingsApi {
     suspend fun updateCourt(courtId: Int, request: CourtRequest): ApiResult<CourtSummary>
     suspend fun deleteCourt(courtId: Int, organizationId: Int): ApiResult<Boolean>
     suspend fun newDisplayCode(courtId: Int, organizationId: Int): ApiResult<CourtSummary>
+    suspend fun getProfileImage(organizationId: Int): ApiResult<ProfileImagePayload>
+    suspend fun beginProfileImageUpload(organizationId: Int): ApiResult<ProfileImageUploadPayload>
+    suspend fun uploadProfileImage(upload: ProfileImageUploadPayload, jpeg: ByteArray): ApiResult<Unit>
+    suspend fun completeProfileImageUpload(organizationId: Int, objectKey: String): ApiResult<ProfileImagePayload>
+    suspend fun deleteProfileImage(organizationId: Int): ApiResult<Boolean>
+    suspend fun downloadProfileImage(url: String): ApiResult<ByteArray>
 }
 
-class RemoteSettingsApi(private val client: ApiClient) : SettingsApi {
+class RemoteSettingsApi(
+    private val client: ApiClient,
+    private val externalHttpClient: OkHttpClient,
+) : SettingsApi {
     override suspend fun updateProfile(organizationId: Int, request: PersonalProfileRequest) =
         client.put("personal_profile/$organizationId", request, PersonalProfileRequest.serializer(), OrganizationSettingsResponseData.serializer())
             .map { it.organizationSettings }
@@ -81,4 +104,53 @@ class RemoteSettingsApi(private val client: ApiClient) : SettingsApi {
             OrganizationIdRequest.serializer(),
             CourtResponseData.serializer(),
         ).map { it.court }
+
+    override suspend fun getProfileImage(organizationId: Int) =
+        client.get("profile_image/$organizationId", ProfileImageResponseData.serializer()).map { it.profileImage }
+
+    override suspend fun beginProfileImageUpload(organizationId: Int) =
+        client.post(
+            "profile_image/$organizationId/upload",
+            EmptyRequest,
+            EmptyRequest.serializer(),
+            ProfileImageUploadResponseData.serializer(),
+        ).map { it.upload }
+
+    override suspend fun uploadProfileImage(upload: ProfileImageUploadPayload, jpeg: ByteArray): ApiResult<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = MultipartBody.Builder().setType(MultipartBody.FORM).apply {
+                    upload.fields.toSortedMap().forEach { (name, value) -> addFormDataPart(name, value) }
+                    addFormDataPart("file", "profile.jpg", jpeg.toRequestBody("image/jpeg".toMediaType()))
+                }.build()
+                externalHttpClient.newCall(Request.Builder().url(upload.url).post(body).build()).execute().use { response ->
+                    if (response.isSuccessful) ApiResult.Success(Unit)
+                    else ApiResult.Failure(com.hitnscore.mobile.core.network.ApiError.Server(response.code, "PROFILE_IMAGE_UPLOAD_FAILED", "The compressed image could not be uploaded."))
+                }
+            } catch (error: IOException) {
+                ApiResult.Failure(com.hitnscore.mobile.core.network.ApiError.Network(error))
+            }
+        }
+
+    override suspend fun completeProfileImageUpload(organizationId: Int, objectKey: String) =
+        client.post(
+            "profile_image/$organizationId/complete",
+            CompleteProfileImageRequest(objectKey),
+            CompleteProfileImageRequest.serializer(),
+            ProfileImageResponseData.serializer(),
+        ).map { it.profileImage }
+
+    override suspend fun deleteProfileImage(organizationId: Int) =
+        client.delete("profile_image/$organizationId", DeletedResponseData.serializer()).map { it.deleted }
+
+    override suspend fun downloadProfileImage(url: String): ApiResult<ByteArray> = withContext(Dispatchers.IO) {
+        try {
+            externalHttpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
+                if (response.isSuccessful) ApiResult.Success(response.body.bytes())
+                else ApiResult.Failure(com.hitnscore.mobile.core.network.ApiError.Server(response.code, "PROFILE_IMAGE_DOWNLOAD_FAILED", "The profile image could not be downloaded."))
+            }
+        } catch (error: IOException) {
+            ApiResult.Failure(com.hitnscore.mobile.core.network.ApiError.Network(error))
+        }
+    }
 }

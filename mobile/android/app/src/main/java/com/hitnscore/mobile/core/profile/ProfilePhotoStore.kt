@@ -11,12 +11,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 
 /**
- * The user's profile photograph, kept only on this phone (as iOS: "a selected profile
- * photograph currently remains local to the device"). Nothing is uploaded.
+ * Offline display cache for the user's centrally stored profile photograph.
  *
- * One small JPEG per user, named by a hash of the username so the file name does not reveal
- * the email address, in a no-backup folder so it never leaves the phone. Another account
- * signing in on the same phone sees its own photo, not this one.
+ * One compressed JPEG per user is named by a hash of the username so the file name does not
+ * reveal the email address. It remains in the app's no-backup folder; the private S3 object is
+ * the canonical copy shared with web and iOS. Another account on this phone gets its own cache.
  */
 class ProfilePhotoStore(
     private val directory: File,

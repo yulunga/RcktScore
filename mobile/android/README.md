@@ -97,12 +97,13 @@ In place:
   opened in a browser, paste the link under Need Help? → "I already have a
   link". Website Help links without a token are handed back to the browser.
   See [Password Links](#password-links)
-- **local profile photograph** (as iOS): the Personal Settings page opens with
+- **central profile photograph** (as web and iOS): the Personal Settings page opens with
   a round photo (or initials on the brand gradient), name and email; tap it to
   choose a photo with the system photo picker (no storage permission) or
-  remove it. The photo is cropped to a 512 px square JPEG and kept only on
-  this phone, per user, in no-backup storage; it is never uploaded, and it is
-  deleted with the account
+  remove it. Source files are limited to 5 MB; the photo is cropped and compressed
+  to a metadata-free 512 px JPEG, uploaded to the identity's private central profile,
+  and cached in no-backup storage for offline display. Replacing or deleting it
+  updates every client
 - **referee "Me"** (as the web and iOS): club match setup offers a Me switch
   under Referee (your name • email) that fills in the signed-in user; it is
   unavailable while you are entered as a player, switches off with the web's

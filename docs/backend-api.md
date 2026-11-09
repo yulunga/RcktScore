@@ -76,6 +76,9 @@ Current runtime path:
 - [common/analytics_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/analytics_logic.py)
   - privacy-minimised web/iOS match-setup completion and abandonment telemetry
   - Personal Plus and aggregate Club CSV report generation
+- [common/profile_image_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/profile_image_logic.py)
+  - identity-level private S3 profile-image upload and signed-read access
+  - JPEG ownership, size, dimension and metadata validation plus replacement/deletion cleanup
 - [common/plan_entitlements.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/plan_entitlements.py)
   - authoritative Personal Free/Personal Plus history and performance contract
 - [common/match_watch_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/match_watch_logic.py)
@@ -439,6 +442,17 @@ Analytics-specific routes:
 - `POST /analytics/setup/{organization_id}` starts a web/iOS setup journey for an authorised match-capable membership
 - `PUT /analytics/setup/{organization_id}/{setup_id}` records `completed` with the created match ID or `abandoned`; repeated completion is idempotent
 - `GET /analytics/export/{organization_id}?period_days=30` requires `analytics.read`; Personal export is server-gated to Personal Plus, while every club tier may export
+
+### Profile image routes
+
+All profile-image routes require the authenticated identity's Personal organisation. Migration `053_central_profile_images.sql` stores the current private object key and immutable version on the canonical `users` identity.
+
+- `GET /profile_image/{organization_id}` returns an unavailable state or a one-hour presigned read URL
+- `POST /profile_image/{organization_id}/upload` returns a five-minute presigned S3 POST restricted to a server-generated identity prefix, JPEG content and 5 MB maximum
+- `POST /profile_image/{organization_id}/complete` validates the uploaded JPEG before making it current and removing the previous version
+- `DELETE /profile_image/{organization_id}` removes the central image and clears the canonical identity reference
+
+Clients accept JPEG, PNG or WebP source images up to 5 MB, but upload only a centre-cropped, metadata-free square JPEG between 256 and 512 pixels. The standard client output is 512×512 at approximately 85% JPEG quality. The private bucket blocks public access, encrypts objects with SSE-S3 and expires uploads still tagged `pending=true` after one day.
 - Personal Plus CSV includes that user's enhanced performance summary. Club CSV is aggregate-only and deliberately omits player/member names, usernames, emails and player-level rows
 
 New `match_started`, scoring and end events use the authenticated session's

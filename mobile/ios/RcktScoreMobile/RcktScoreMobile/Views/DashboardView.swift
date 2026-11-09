@@ -62,6 +62,8 @@ struct DashboardView: View {
     @State private var resetMessage: String?
     @State private var selectedProfilePhotoItem: PhotosPickerItem?
     @State private var selectedProfilePhotoData: Data?
+    @State private var profileImageURL: URL?
+    @State private var profileImageBusy = false
     @State private var isUpdatingBiometricUnlock = false
     @State private var accountDeletionPrompt: AccountDeletionPrompt?
     @State private var isDeletingAccount = false
@@ -94,6 +96,9 @@ struct DashboardView: View {
             return personalMembership.plan?.lowercased() == "personal_plus"
         }
         return isPersonalAccount && isPersonalPlus
+    }
+    private var personalProfileOrganizationID: Int? {
+        personalMembership?.organizationID ?? (isPersonalAccount ? session?.organizationID : nil)
     }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var canManageMatches: Bool { session?.canManageMatches ?? false }
@@ -367,6 +372,7 @@ struct DashboardView: View {
                 seedHelpDefaults()
                 await loadDashboard()
                 await loadNotifications()
+                await loadCentralProfileImage()
             }
             .task(id: selectedProfilePhotoItem) {
                 await loadSelectedProfilePhoto()
@@ -1063,6 +1069,17 @@ struct DashboardView: View {
                 }
             }
             .buttonStyle(.plain)
+            .disabled(profileImageBusy)
+
+            if profileImageBusy {
+                ProgressView("Compressing and uploading…")
+                    .font(.caption)
+            } else if profileImageURL != nil || selectedProfilePhotoData != nil {
+                Button("Remove photo", role: .destructive) {
+                    Task { await removeCentralProfileImage() }
+                }
+                .font(.caption.weight(.semibold))
+            }
 
             Text(currentUserDisplayName)
                 .font(.title3.weight(.bold))
@@ -2592,7 +2609,7 @@ struct DashboardView: View {
                 )
                 privacySection(
                     title: "Information stored on this device",
-                    text: "An unexpired login session may be stored in the iOS Keychain when biometric login is enabled. One active match and its queued scoring actions may be stored temporarily on the device for offline use. A selected profile photograph currently remains local to the device. Face ID and Touch ID templates are managed by Apple and are never received or stored by Hit n Score."
+                    text: "An unexpired login session may be stored in the iOS Keychain when biometric login is enabled. One active match and its queued scoring actions may be stored temporarily on the device for offline use. A selected profile photograph is cropped, compressed and stored in HitnScore's private cloud storage so it can be shared across your clients. Face ID and Touch ID templates are managed by Apple and are never received or stored by Hit n Score."
                 )
                 privacySection(
                     title: "Retention and deletion",
@@ -4877,21 +4894,98 @@ struct DashboardView: View {
     }
 
     private func loadSelectedProfilePhoto() async {
-        guard let selectedProfilePhotoItem else {
+        guard let photoItem = selectedProfilePhotoItem else {
             return
         }
 
         do {
-            if let data = try await selectedProfilePhotoItem.loadTransferable(type: Data.self) {
-                await MainActor.run {
-                    selectedProfilePhotoData = data
-                }
+            guard let source = try await photoItem.loadTransferable(type: Data.self) else { return }
+            guard source.count <= 5 * 1024 * 1024 else {
+                throw ProfileImagePreparationError.message("Choose an image no larger than 5 MB.")
+            }
+            guard let jpeg = preparedProfileJPEG(source) else {
+                throw ProfileImagePreparationError.message("Choose an image that is at least 256 × 256 pixels.")
+            }
+            guard let organizationID = personalProfileOrganizationID else { return }
+            await MainActor.run {
+                profileImageBusy = true
+                selectedProfilePhotoData = jpeg
+            }
+            let upload = try await container.apiClient.beginProfileImageUpload(organizationID: organizationID)
+            try await container.apiClient.uploadProfileImageJPEG(jpeg, using: upload)
+            let image = try await container.apiClient.completeProfileImageUpload(
+                organizationID: organizationID,
+                objectKey: upload.objectKey
+            )
+            await MainActor.run {
+                profileImageURL = image.url
+                profileImageBusy = false
+                selectedProfilePhotoItem = nil
+                dashboardNotice = "Your profile photo is now shared across HitnScore clients."
             }
         } catch {
             await MainActor.run {
-                dashboardNotice = "Unable to load that profile photo."
+                profileImageBusy = false
+                selectedProfilePhotoItem = nil
+                dashboardNotice = (error as? ProfileImagePreparationError)?.message ?? (error as? APIErrorResponse)?.message ?? "Unable to update that profile photo."
             }
         }
+    }
+
+    private func loadCentralProfileImage() async {
+        guard let organizationID = personalProfileOrganizationID, isOnline else { return }
+        if let image = try? await container.apiClient.getProfileImage(organizationID: organizationID) {
+            await MainActor.run { profileImageURL = image.url }
+        }
+    }
+
+    private func removeCentralProfileImage() async {
+        guard let organizationID = personalProfileOrganizationID else { return }
+        await MainActor.run { profileImageBusy = true }
+        do {
+            try await container.apiClient.deleteProfileImage(organizationID: organizationID)
+            await MainActor.run {
+                selectedProfilePhotoData = nil
+                profileImageURL = nil
+                profileImageBusy = false
+                dashboardNotice = "Your profile photo has been removed from every HitnScore client."
+            }
+        } catch {
+            await MainActor.run {
+                profileImageBusy = false
+                dashboardNotice = (error as? APIErrorResponse)?.message ?? "Unable to remove your profile photo."
+            }
+        }
+    }
+
+    private func preparedProfileJPEG(_ source: Data) -> Data? {
+        guard let image = UIImage(data: source) else { return nil }
+        let width = image.size.width * image.scale
+        let height = image.size.height * image.scale
+        guard min(width, height) >= 256 else { return nil }
+        let side = min(image.size.width, image.size.height)
+        let crop = CGRect(
+            x: (image.size.width - side) / 2,
+            y: (image.size.height - side) / 2,
+            width: side,
+            height: side
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let rendered = UIGraphicsImageRenderer(size: CGSize(width: 512, height: 512), format: format).image { context in
+            UIColor.white.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 512, height: 512))
+            image.draw(
+                in: CGRect(
+                    x: -crop.minX * (512 / side),
+                    y: -crop.minY * (512 / side),
+                    width: image.size.width * (512 / side),
+                    height: image.size.height * (512 / side)
+                )
+            )
+        }
+        return rendered.jpegData(compressionQuality: 0.85)
     }
 
     private func profileAvatarView(size: CGFloat) -> some View {
@@ -4912,6 +5006,16 @@ struct DashboardView: View {
                 selectedProfileImage
                     .resizable()
                     .scaledToFill()
+            } else if let profileImageURL {
+                AsyncImage(url: profileImageURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().scaledToFill()
+                    } else {
+                        Text(currentUserInitials)
+                            .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                }
             } else {
                 Text(currentUserInitials)
                     .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
@@ -5191,6 +5295,16 @@ private enum AnalyticsCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var title: String { self == .personal ? "Personal" : "Club" }
+}
+
+private enum ProfileImagePreparationError: Error {
+    case message(String)
+
+    var message: String {
+        switch self {
+        case .message(let value): value
+        }
+    }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {

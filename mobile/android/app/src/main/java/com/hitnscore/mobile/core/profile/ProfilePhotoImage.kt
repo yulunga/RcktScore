@@ -15,18 +15,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Turns a photo picked from the gallery into the small square JPEG that is kept on the phone:
- * upright, centre-cropped and at most [SIZE_PX] pixels across, so a 12 MP camera photo
- * becomes about 40 KB.
+ * Turns a gallery image into the small square JPEG used for the central upload and offline cache:
+ * upright, centre-cropped and [SIZE_PX] pixels across, so a 12 MP camera photo becomes about
+ * 40 KB and does not consume unnecessary S3 space.
  */
 object ProfilePhotoImage {
     const val SIZE_PX = 512
+    const val MAX_SOURCE_BYTES = 5 * 1024 * 1024
     private const val JPEG_QUALITY = 85
 
     /** The prepared JPEG, or null when the picked file is not a readable image. */
     suspend fun prepare(resolver: ContentResolver, uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
+            val sourceLength = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1
+            if (sourceLength > MAX_SOURCE_BYTES) return@runCatching null
             val decoded = decode(resolver, uri) ?: return@runCatching null
+            if (min(decoded.width, decoded.height) < 256) return@runCatching null
             val square = centreSquare(decoded)
             ByteArrayOutputStream().use { out ->
                 square.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
@@ -81,6 +85,6 @@ object ProfilePhotoImage {
     private fun centreSquare(source: Bitmap): Bitmap {
         val side = min(source.width, source.height)
         val cropped = Bitmap.createBitmap(source, (source.width - side) / 2, (source.height - side) / 2, side, side)
-        return if (side > SIZE_PX) Bitmap.createScaledBitmap(cropped, SIZE_PX, SIZE_PX, true) else cropped
+        return if (side == SIZE_PX) cropped else Bitmap.createScaledBitmap(cropped, SIZE_PX, SIZE_PX, true)
     }
 }

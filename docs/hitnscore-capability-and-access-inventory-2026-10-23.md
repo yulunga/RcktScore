@@ -41,7 +41,7 @@ For commercial workshops, add columns alongside each row: **Proposed Free; Propo
 | CAP-012 | Unlock saved session with biometrics | Yes | Yes | Yes | Yes | iOS | Device-local opt-in; saved session must remain unexpired. |
 | CAP-013 | Sign out | Yes | Yes | Yes | Yes | Web/iOS | Session-backed sign-out. |
 | CAP-014 | Delete own personal account | Yes | Yes | — | — | iOS/API | Personal owner only; native flow has two destructive confirmations. |
-| CAP-015 | Profile photo | Local | Local | Local | Local | iOS | Device-local only, not a central shared profile image. |
+| CAP-015 | Profile photo | Enabled | Enabled | Enabled | Enabled | Web/iOS/Android | Identity-level private S3 image, compressed to a metadata-free 512 px JPEG and shared across clients. |
 
 ## Dashboard, match discovery and history
 

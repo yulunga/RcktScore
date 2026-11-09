@@ -105,8 +105,10 @@ isolated service:
   in-app notification inbox recovers with Postgres.
 - Stripe checkout is not implemented and is not a recovery dependency.
 - Android/Compose is a foundation rather than a released product client.
-- Browser-local profile images, device Keychain sessions, local timers, and
-  unsynchronised offline actions are not contained in server backups.
+- Identity-level profile images are held in the retained, encrypted private
+  `ProfileImagesBucket`; Postgres stores their current object key and version.
+  Device Keychain sessions, local timers, and unsynchronised offline actions
+  are not contained in server backups.
 - Google Analytics is telemetry, not a source from which application records
   may be reconstructed.
 

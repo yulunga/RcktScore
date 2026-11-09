@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -56,6 +57,7 @@ import com.hitnscore.mobile.core.designsystem.theme.BrandBlue
 import com.hitnscore.mobile.core.designsystem.theme.BrandPink
 import com.hitnscore.mobile.core.profile.ProfilePhotoImage
 import com.hitnscore.mobile.core.profile.ProfilePhotoStore
+import com.hitnscore.mobile.core.network.ApiResult
 import kotlinx.coroutines.launch
 
 object ProfilePhotoTags {
@@ -82,17 +84,40 @@ fun rememberProfilePhoto(store: ProfilePhotoStore, username: String): ImageBitma
 /**
  * The Personal settings header from iOS: a round photo (or initials) with an edit badge,
  * then the name and email. Tapping it picks a photo with the system photo picker, which
- * needs no storage permission. The photo stays on this phone.
+ * needs no storage permission. The selected photo is compressed before central upload;
+ * this phone keeps only an offline display cache.
  */
 @Composable
-fun ProfilePhotoHeader(username: String, displayName: String, email: String?, tier: String? = null) {
+fun ProfilePhotoHeader(
+    username: String,
+    personalOrganizationId: Int?,
+    displayName: String,
+    email: String?,
+    tier: String? = null,
+) {
     val context = LocalContext.current
-    val store = remember(context) { (context.applicationContext as HitNScoreApplication).container.profilePhotos }
+    val container = remember(context) { (context.applicationContext as HitNScoreApplication).container }
+    val store = container.profilePhotos
+    val settingsApi = container.settingsApi
     val photo = rememberProfilePhoto(store, username)
     val scope = rememberCoroutineScope()
     var menuOpen by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
     var failed by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(username, personalOrganizationId) {
+        val organizationId = personalOrganizationId ?: return@LaunchedEffect
+        val state = settingsApi.getProfileImage(organizationId)
+        if (state is ApiResult.Success) {
+            val url = state.value.url
+            if (!state.value.available || url.isNullOrBlank()) {
+                store.remove(username)
+            } else {
+                val downloaded = settingsApi.downloadProfileImage(url)
+                if (downloaded is ApiResult.Success) store.save(username, downloaded.value)
+            }
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -100,7 +125,19 @@ fun ProfilePhotoHeader(username: String, displayName: String, email: String?, ti
         failed = false
         scope.launch {
             val jpeg = ProfilePhotoImage.prepare(context.contentResolver, uri)
-            failed = jpeg == null || runCatching { store.save(username, jpeg) }.isFailure
+            val organizationId = personalOrganizationId
+            if (jpeg == null || organizationId == null) {
+                failed = true
+                isSaving = false
+                return@launch
+            }
+            val begin = settingsApi.beginProfileImageUpload(organizationId)
+            val upload = (begin as? ApiResult.Success)?.value
+            val uploaded = upload?.let { settingsApi.uploadProfileImage(it, jpeg) }
+            val completed = if (upload != null && uploaded is ApiResult.Success) {
+                settingsApi.completeProfileImageUpload(organizationId, upload.objectKey)
+            } else null
+            failed = completed !is ApiResult.Success || runCatching { store.save(username, jpeg) }.isFailure
             isSaving = false
         }
     }
@@ -132,7 +169,18 @@ fun ProfilePhotoHeader(username: String, displayName: String, email: String?, ti
                     text = { Text(stringResource(R.string.profile_photo_remove)) },
                     onClick = {
                         menuOpen = false
-                        scope.launch { store.remove(username) }
+                        scope.launch {
+                            val organizationId = personalOrganizationId
+                            if (organizationId == null) {
+                                failed = true
+                                return@launch
+                            }
+                            isSaving = true
+                            val removed = settingsApi.deleteProfileImage(organizationId)
+                            failed = removed !is ApiResult.Success
+                            if (!failed) store.remove(username)
+                            isSaving = false
+                        }
                     },
                 )
             }

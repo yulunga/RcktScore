@@ -91,7 +91,16 @@ class AppContainer(context: Context) {
 
     val api: HitNScoreApi by lazy { RemoteHitNScoreApi(apiClient) }
 
-    val settingsApi: SettingsApi by lazy { RemoteSettingsApi(apiClient) }
+    private val externalUploadClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(45, TimeUnit.SECONDS)
+            .build()
+    }
+
+    val settingsApi: SettingsApi by lazy { RemoteSettingsApi(apiClient, externalUploadClient) }
 
     /** Score Stream: share a live match's viewing code, and watch one by code (Personal Plus). */
     val matchWatchApi: MatchWatchApi by lazy { RemoteMatchWatchApi(apiClient) }
@@ -109,7 +118,7 @@ class AppContainer(context: Context) {
         OfflineMatchStore(SharedPreferencesSnapshotStorage(appContext.getSharedPreferences("hitnscore_offline_matches", Context.MODE_PRIVATE)))
     }
 
-    /** Profile photographs, kept only on this phone (no backup, never uploaded), as iOS. */
+    /** Local cache of the centrally stored, compressed profile photograph for offline display. */
     val profilePhotos: ProfilePhotoStore by lazy { ProfilePhotoStore(File(appContext.noBackupFilesDir, "profile_photos")) }
 
     /** The signed-in user and account that offline data belongs to. */

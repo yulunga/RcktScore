@@ -207,6 +207,28 @@ export function exportAnalytics(organizationId, periodDays = 30) {
   return apiRequest(`/analytics/export/${organizationId}?period_days=${encodeURIComponent(periodDays)}`);
 }
 
+export function getProfileImage(organizationId) {
+  return apiRequest(`/profile_image/${organizationId}`);
+}
+
+export function beginProfileImageUpload(organizationId) {
+  return apiRequest(`/profile_image/${organizationId}/upload`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function completeProfileImageUpload(organizationId, objectKey) {
+  return apiRequest(`/profile_image/${organizationId}/complete`, {
+    method: "POST",
+    body: JSON.stringify({ object_key: objectKey }),
+  });
+}
+
+export function deleteProfileImage(organizationId) {
+  return apiRequest(`/profile_image/${organizationId}`, { method: "DELETE" });
+}
+
 export function getNotifications(organizationId) {
   return apiRequest(`/notifications/${organizationId}`);
 }

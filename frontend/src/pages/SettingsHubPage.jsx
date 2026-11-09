@@ -8,7 +8,11 @@ import { clubRoleLabel } from "../utils/accessControl";
 import { COUNTRIES } from "../constants/countries";
 import { useAuth } from "../hooks/useAuth";
 import {
+  beginProfileImageUpload,
+  completeProfileImageUpload,
   deletePersonalAccount,
+  deleteProfileImage,
+  getProfileImage,
   getOrganizationSettings,
   requestPasswordReset,
   updatePersonalProfile,
@@ -64,6 +68,42 @@ function initials(profile) {
     .join("") || "HS";
 }
 
+const PROFILE_IMAGE_MAX_SOURCE_BYTES = 5 * 1024 * 1024;
+const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+async function compressedProfileImage(file) {
+  if (!PROFILE_IMAGE_TYPES.has(file.type) || file.size > PROFILE_IMAGE_MAX_SOURCE_BYTES) {
+    throw new Error("Choose a JPEG, PNG or WebP image no larger than 5 MB.");
+  }
+  const bitmap = await createImageBitmap(file);
+  if (Math.min(bitmap.width, bitmap.height) < 256) {
+    bitmap.close();
+    throw new Error("Choose an image that is at least 256 × 256 pixels.");
+  }
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext("2d", { alpha: false });
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, 512, 512);
+  context.drawImage(
+    bitmap,
+    (bitmap.width - side) / 2,
+    (bitmap.height - side) / 2,
+    side,
+    side,
+    0,
+    0,
+    512,
+    512,
+  );
+  bitmap.close();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  if (!blob) throw new Error("Unable to prepare that image.");
+  return blob;
+}
+
 export default function SettingsHubPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -76,6 +116,7 @@ export default function SettingsHubPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileImageBusy, setProfileImageBusy] = useState(false);
   const [deletePanelOpen, setDeletePanelOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -115,9 +156,17 @@ export default function SettingsHubPage() {
   }, [loadProfile]);
 
   useEffect(() => {
-    const imageKey = `rcktscore.profile-image.${String(session?.username || "").toLowerCase()}`;
-    setProfileImage(window.localStorage.getItem(imageKey) || "");
-  }, [session?.username]);
+    if (!organizationId) return undefined;
+    let active = true;
+    getProfileImage(organizationId)
+      .then((response) => {
+        if (active) setProfileImage(response?.profile_image?.url || "");
+      })
+      .catch(() => {
+        if (active) setProfileImage("");
+      });
+    return () => { active = false; };
+  }, [organizationId]);
 
   const updateSettingsMenuScroll = useCallback(() => {
     const menu = settingsMenuRef.current;
@@ -214,22 +263,45 @@ export default function SettingsHubPage() {
     }
   }
 
-  function chooseProfileImage(event) {
+  async function chooseProfileImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) {
-      setError("Choose an image smaller than 2 MB.");
-      return;
+    setProfileImageBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const jpeg = await compressedProfileImage(file);
+      const response = await beginProfileImageUpload(organizationId);
+      const upload = response?.upload;
+      const form = new FormData();
+      Object.entries(upload?.fields || {}).forEach(([key, value]) => form.append(key, value));
+      form.append("file", jpeg, "profile.jpg");
+      const uploaded = await fetch(upload.url, { method: "POST", body: form });
+      if (!uploaded.ok) throw new Error("The compressed image could not be uploaded.");
+      const completed = await completeProfileImageUpload(organizationId, upload.object_key);
+      setProfileImage(completed?.profile_image?.url || "");
+      setMessage("Your profile image is now shared across HitnScore clients.");
+    } catch (uploadError) {
+      setError(uploadError.message || "Unable to update your profile image.");
+    } finally {
+      setProfileImageBusy(false);
+      event.target.value = "";
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result || "");
-      const imageKey = `rcktscore.profile-image.${String(session?.username || "").toLowerCase()}`;
-      window.localStorage.setItem(imageKey, value);
-      setProfileImage(value);
-      setMessage("Profile image updated on this browser.");
-    };
-    reader.readAsDataURL(file);
+  }
+
+  async function removeProfileImage() {
+    setProfileImageBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await deleteProfileImage(organizationId);
+      setProfileImage("");
+      setMessage("Your profile image has been removed from every HitnScore client.");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to remove your profile image.");
+    } finally {
+      setProfileImageBusy(false);
+    }
   }
 
   async function requestAccountDeletion() {
@@ -239,8 +311,6 @@ export default function SettingsHubPage() {
     setError("");
     try {
       await deletePersonalAccount(organizationId);
-      const imageKey = `rcktscore.profile-image.${String(session?.username || "").toLowerCase()}`;
-      window.localStorage.removeItem(imageKey);
       window.sessionStorage.setItem(
         "rcktscore.session-message",
         "Your account is now pending deletion. Access has been disabled and your Personal match data is scheduled for clearing after 12 months.",
@@ -309,12 +379,13 @@ export default function SettingsHubPage() {
               </div>
               <div><h2>Profile</h2><p className="helper-text">Your personal HitnScore account details.</p></div>
               <div className="button-row">
-                <button className="secondary" type="button" onClick={() => fileInputRef.current?.click()}>Change Image</button>
+                <button className="secondary" disabled={profileImageBusy} type="button" onClick={() => fileInputRef.current?.click()}>{profileImageBusy ? "Uploading..." : "Change Image"}</button>
+                {profileImage ? <button className="secondary" disabled={profileImageBusy} type="button" onClick={removeProfileImage}>Remove Image</button> : null}
                 <button type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Cancel" : "Edit"}</button>
               </div>
-              <input accept="image/*" className="settings-profile-file" ref={fileInputRef} type="file" onChange={chooseProfileImage} />
+              <input accept="image/jpeg,image/png,image/webp" className="settings-profile-file" ref={fileInputRef} type="file" onChange={chooseProfileImage} />
             </div>
-            <p className="field-hint">Profile images are currently stored only in this browser and are not shared across devices.</p>
+            <p className="field-hint">JPEG, PNG or WebP up to 5 MB. Images are cropped, compressed and shared securely across your HitnScore clients.</p>
             <form className="stack" onSubmit={saveProfile}>
               <div className="field-grid settings-profile-grid">
                 {[

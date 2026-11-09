@@ -186,6 +186,46 @@ struct AnalyticsExportPayload: Decodable {
     }
 }
 
+struct ProfileImagePayload: Decodable {
+    let available: Bool
+    let url: URL?
+    let version: String?
+    let updatedAt: String?
+    let expiresAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case available, url, version
+        case updatedAt = "updated_at"
+        case expiresAt = "expires_at"
+    }
+}
+
+struct ProfileImageUploadPayload: Decodable {
+    let url: URL
+    let fields: [String: String]
+    let objectKey: String
+    let contentType: String
+    let maxBytes: Int
+
+    enum CodingKeys: String, CodingKey {
+        case url, fields
+        case objectKey = "object_key"
+        case contentType = "content_type"
+        case maxBytes = "max_bytes"
+    }
+}
+
+private struct ProfileImageResponseData: Decodable { let profileImage: ProfileImagePayload
+    enum CodingKeys: String, CodingKey { case profileImage = "profile_image" }
+}
+private struct ProfileImageUploadResponseData: Decodable { let upload: ProfileImageUploadPayload }
+private struct ProfileImageCompleteRequest: Encodable {
+    let objectKey: String
+    enum CodingKeys: String, CodingKey { case objectKey = "object_key" }
+}
+private struct ProfileImageDeleteResponseData: Decodable { let deleted: Bool }
+private struct EmptyRequest: Encodable {}
+
 private struct AnalyticsExportResponseData: Decodable { let export: AnalyticsExportPayload }
 private struct MatchSetupAnalyticsRequest: Encodable { let sport: String }
 private struct MatchSetupAnalyticsFinishRequest: Encodable {
@@ -1011,6 +1051,66 @@ final class APIClient {
             throw APIErrorResponse(code: "empty_response", message: "No analytics export returned.", details: nil)
         }
         return report
+    }
+
+    func getProfileImage(organizationID: Int) async throws -> ProfileImagePayload {
+        let request = try makeRequest(path: "/profile_image/\(organizationID)", method: "GET")
+        let envelope: APIEnvelope<ProfileImageResponseData> = try await send(request)
+        guard let image = envelope.data?.profileImage else {
+            throw APIErrorResponse(code: "empty_response", message: "No profile image state returned.", details: nil)
+        }
+        return image
+    }
+
+    func beginProfileImageUpload(organizationID: Int) async throws -> ProfileImageUploadPayload {
+        let request = try makeRequest(
+            path: "/profile_image/\(organizationID)/upload",
+            method: "POST",
+            body: EmptyRequest()
+        )
+        let envelope: APIEnvelope<ProfileImageUploadResponseData> = try await send(request)
+        guard let upload = envelope.data?.upload else {
+            throw APIErrorResponse(code: "empty_response", message: "No profile image upload returned.", details: nil)
+        }
+        return upload
+    }
+
+    func uploadProfileImageJPEG(_ data: Data, using upload: ProfileImageUploadPayload) async throws {
+        let boundary = "HitnScore-\(UUID().uuidString)"
+        var body = Data()
+        for key in upload.fields.keys.sorted() {
+            guard let value = upload.fields[key] else { continue }
+            body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n\r\n\(value)\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"profile.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var request = URLRequest(url: upload.url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        let (_, response) = try await session.upload(for: request, from: body)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw APIErrorResponse(code: "profile_image_upload_failed", message: "The compressed profile image could not be uploaded.", details: nil)
+        }
+    }
+
+    func completeProfileImageUpload(organizationID: Int, objectKey: String) async throws -> ProfileImagePayload {
+        let request = try makeRequest(
+            path: "/profile_image/\(organizationID)/complete",
+            method: "POST",
+            body: ProfileImageCompleteRequest(objectKey: objectKey)
+        )
+        let envelope: APIEnvelope<ProfileImageResponseData> = try await send(request)
+        guard let image = envelope.data?.profileImage else {
+            throw APIErrorResponse(code: "empty_response", message: "No profile image state returned.", details: nil)
+        }
+        return image
+    }
+
+    func deleteProfileImage(organizationID: Int) async throws {
+        let request = try makeRequest(path: "/profile_image/\(organizationID)", method: "DELETE")
+        let _: APIEnvelope<ProfileImageDeleteResponseData> = try await send(request)
     }
 
     func getWatchedMatch(organizationID: Int, code: String) async throws -> MatchWatchPayload {

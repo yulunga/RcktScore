@@ -11,6 +11,15 @@ Use this checklist after UI changes and before releases.
 - Confirm sign-in error messages are understandable
 - Confirm help and reset-password paths are easy to find
 
+## Central profile image
+
+- Upload JPEG, PNG and WebP source images from web, iOS and Android; each must be no larger than 5 MB and at least 256 × 256 pixels
+- Confirm the saved photograph is square, correctly oriented and visibly compressed without looking blurred
+- Sign in on the other two clients and confirm the same image appears from the central profile
+- Attempt an oversized, undersized and unsupported file and confirm the existing image remains unchanged
+- Replace the image and confirm the previous version disappears across clients; then remove it and confirm initials return everywhere
+- Inspect the Club and public surfaces and confirm the photograph is not exposed where the user has not explicitly been told it will appear
+
 ## Navigation
 
 - Open `/dashboard`, `/matches`, `/history`, `/settings`, and `/display`

@@ -133,6 +133,43 @@ Conditions:
   HasAppleServerApiSecret: !Not [!Equals [!Ref AppleServerApiSecretArn, ""]]
 
 Resources:
+  ProfileImagesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - POST
+            AllowedOrigins:
+              - !Ref WebAppOrigin
+            ExposedHeaders:
+              - ETag
+            MaxAge: 300
+      LifecycleConfiguration:
+        Rules:
+          - Id: RemoveUnfinishedProfileImageUploads
+            Status: Enabled
+            ExpirationInDays: 1
+            TagFilters:
+              - Key: pending
+                Value: "true"
+
   ConfigureLogRetentionFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -853,6 +890,44 @@ Resources:
             Path: /analytics/export/{organization_id}
             Method: GET
 
+  ProfileImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/profile_image/handler.lambda_handler
+      Timeout: 20
+      MemorySize: 512
+      Environment:
+        Variables:
+          PROFILE_IMAGE_BUCKET: !Ref ProfileImagesBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ProfileImagesBucket
+      Events:
+        GetProfileImage:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /profile_image/{organization_id}
+            Method: GET
+        BeginProfileImageUpload:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /profile_image/{organization_id}/upload
+            Method: POST
+        CompleteProfileImageUpload:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /profile_image/{organization_id}/complete
+            Method: POST
+        DeleteProfileImage:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /profile_image/{organization_id}
+            Method: DELETE
+
   GetAppleSubscriptionContextFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1032,6 +1107,12 @@ Resources:
     Properties:
       Handler: functions/purge_personal_accounts/handler.lambda_handler
       Timeout: 60
+      Environment:
+        Variables:
+          PROFILE_IMAGE_BUCKET: !Ref ProfileImagesBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ProfileImagesBucket
       Events:
         DailyPersonalAccountClearing:
           Type: ScheduleV2
@@ -1660,6 +1741,7 @@ Resources:
         - !Ref GetDashboardFunction
         - !Ref MatchSetupAnalyticsFunction
         - !Ref ExportAnalyticsFunction
+        - !Ref ProfileImageFunction
         - !Ref GetAppleSubscriptionContextFunction
         - !Ref VerifyAppleSubscriptionFunction
         - !Ref AppleSubscriptionNotificationsFunction
@@ -1713,3 +1795,6 @@ Outputs:
   ProductionAlarmTopicArn:
     Description: SNS topic used by production CloudWatch alarms
     Value: !Ref ProductionAlarmTopic
+  ProfileImagesBucketName:
+    Description: Private S3 bucket holding compressed identity-level profile images
+    Value: !Ref ProfileImagesBucket

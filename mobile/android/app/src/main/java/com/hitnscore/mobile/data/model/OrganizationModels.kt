@@ -164,3 +164,31 @@ data class CourtResponseData(
 
 @Serializable
 data class DeletedResponseData(val deleted: Boolean = false)
+
+@Serializable
+data class ProfileImagePayload(
+    val available: Boolean = false,
+    val url: String? = null,
+    val version: String? = null,
+)
+
+@Serializable
+data class ProfileImageResponseData(@SerialName("profile_image") val profileImage: ProfileImagePayload)
+
+@Serializable
+data class ProfileImageUploadPayload(
+    val url: String,
+    val fields: Map<String, String>,
+    @SerialName("object_key") val objectKey: String,
+    @SerialName("content_type") val contentType: String,
+    @SerialName("max_bytes") val maxBytes: Int,
+)
+
+@Serializable
+data class ProfileImageUploadResponseData(val upload: ProfileImageUploadPayload)
+
+@Serializable
+data class CompleteProfileImageRequest(@SerialName("object_key") val objectKey: String)
+
+@Serializable
+data object EmptyRequest

@@ -123,6 +123,7 @@ fun SettingsScreen(
             EditorCard {
                 ProfilePhotoHeader(
                     username = session.username,
+                    personalOrganizationId = session.availableContexts.firstOrNull { it.type == AccountContextType.Personal }?.organizationId,
                     displayName = personName(session),
                     email = session.username,
                     // Under the name: the Personal tier (Personal / Personal+), when they have one.
