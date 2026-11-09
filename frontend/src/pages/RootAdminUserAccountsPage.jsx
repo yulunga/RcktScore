@@ -94,7 +94,6 @@ export default function RootAdminUserAccountsPage() {
             >
               <strong>{filter.label}</strong>
               <div>{summary[filter.countKey] ?? 0}</div>
-              <span>{accountFilter === filter.value ? "Selected" : "Select to filter"}</span>
             </button>
           ))}
         </div>

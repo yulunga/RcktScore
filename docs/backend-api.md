@@ -929,3 +929,5 @@ When routes, auth behavior, security assumptions, or troubleshooting paths chang
 - update this file
 - update [technical-walkthrough.md](/Users/glennrowe/Development/Projects/RcktScore/docs/technical-walkthrough.md)
 - update [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)
+
+The root-admin dashboard summary includes `unverified_user_count` and `subscription_count` (all stored Apple subscription records). The root-admin notifications list returns `recipient_count` (eligible unique identities at publication, or null for older notifications) and `read_count` (distinct recorded readers).

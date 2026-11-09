@@ -68,8 +68,20 @@ def create_notification(connection, title, message, audience, created_by):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO system_notifications (title, message, audience, created_by)
-            VALUES (%(title)s, %(message)s, %(audience)s, %(created_by)s)
+            INSERT INTO system_notifications (title, message, audience, created_by, recipient_count)
+            SELECT %(title)s, %(message)s, %(audience)s, %(created_by)s,
+                   COUNT(DISTINCT LOWER(BTRIM(member.clubusername)))
+            FROM "SkwshOrgUsers" AS member
+            JOIN "SkwshOrgSettings" AS org ON org.id = member.organization_id
+            WHERE COALESCE(member.approval_status, 'approved') = 'approved'
+              AND NULLIF(BTRIM(member.clubusername), '') IS NOT NULL
+              AND (%(audience)s = 'all' OR org.plan = %(audience)s)
+              AND NOT EXISTS (
+                  SELECT 1 FROM "SkwshOrgSettings" AS personal
+                  WHERE personal.org_type = 'personal'
+                    AND LOWER(BTRIM(personal.owner_username)) = LOWER(BTRIM(member.clubusername))
+                    AND personal.deletion_requested_at IS NOT NULL
+              )
             RETURNING id, title, message, audience, created_at, NULL::timestamptz AS read_at
             """,
             {"title": title, "message": message, "audience": audience, "created_by": created_by},
@@ -84,7 +96,8 @@ def list_admin_notifications(connection):
         cursor.execute(
             """
             SELECT n.id, n.title, n.message, n.audience, n.created_at,
-                   COUNT(r.notification_id) AS read_count,
+                   COUNT(DISTINCT LOWER(BTRIM(r.username))) AS read_count,
+                   n.recipient_count,
                    NULL::timestamptz AS read_at
             FROM system_notifications AS n
             LEFT JOIN system_notification_reads AS r ON r.notification_id = n.id
@@ -94,7 +107,7 @@ def list_admin_notifications(connection):
             """
         )
         rows = cursor.fetchall()
-    return [{**_serialize(row), "read_count": int(row.get("read_count") or 0)} for row in rows]
+    return [{**_serialize(row), "read_count": int(row.get("read_count") or 0), "recipient_count": row["recipient_count"]} for row in rows]
 
 
 def _serialize(row):

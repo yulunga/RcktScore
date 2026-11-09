@@ -158,7 +158,7 @@ export default function RootAdminDashboardPage() {
             >
               {summary.total_user_count ?? 0}
             </button>
-            <span className="root-admin-summary-note">Personal and club users</span>
+            <span className="root-admin-summary-note">{summary.unverified_user_count ?? 0} unverified</span>
           </div>
           <div className="meta-item">
             <strong>Club Enquiries</strong>
@@ -172,14 +172,6 @@ export default function RootAdminDashboardPage() {
             <span className="root-admin-summary-note">
               Pending {summary.pending_interest_count ?? 0}
             </span>
-          </div>
-          <div className="meta-item">
-            <strong>Club Memberships</strong>
-            <div>{summary.user_count ?? 0}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Club Admin Memberships</strong>
-            <div>{summary.admin_count ?? 0}</div>
           </div>
           <div className="meta-item">
             <strong>Match Scores</strong>
@@ -200,7 +192,8 @@ export default function RootAdminDashboardPage() {
           </button>
           <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/subscriptions") }>
             <strong>Subscriptions</strong>
-            <span>Apple lifecycle and entitlement audit</span>
+            <div>{summary.subscription_count ?? 0}</div>
+            <span>Apple subscription records</span>
           </button>
           <button
             className="meta-item root-admin-settings-card"

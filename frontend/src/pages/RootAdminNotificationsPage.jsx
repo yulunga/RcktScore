@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
@@ -14,7 +13,6 @@ const audiences = [
 ];
 
 export default function RootAdminNotificationsPage() {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ title: "", message: "", audience: "all" });
   const [saving, setSaving] = useState(false);
@@ -48,10 +46,6 @@ export default function RootAdminNotificationsPage() {
   return (
     <main className="page-shell stack">
       <RootAdminSessionBar />
-      <section className="hero-card compact panel-heading panel-heading--with-action">
-        <div><h1>Notifications</h1><p>Publish in-app messages to everyone or a subscription group.</p></div>
-        <button type="button" onClick={() => navigate("/rckscoreAdmin/dashboard")}>Back to Dashboard</button>
-      </section>
       {error ? <div className="notice error">{error}</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       <section className="panel stack">
@@ -63,7 +57,7 @@ export default function RootAdminNotificationsPage() {
           <div className="button-row"><button disabled={saving} type="submit">{saving ? "Publishing..." : "Publish Notification"}</button></div>
         </form>
       </section>
-      <section className="panel stack"><h2>Published Notifications</h2>{items.length ? items.map((item) => <article className="dashboard-item" key={item.id}><div className="dashboard-item-head"><strong>{item.title}</strong><span className="status-pill">{audiences.find(([value]) => value === item.audience)?.[1] || item.audience}</span></div><p>{item.message}</p><span className="helper-text">Read by {item.read_count || 0} users</span></article>) : <div className="dashboard-empty">No notifications published.</div>}</section>
+      <section className="panel stack"><h2>Published Notifications</h2>{items.length ? items.map((item) => <article className="dashboard-item" key={item.id}><div className="dashboard-item-head"><strong>{item.title}</strong><span className="status-pill">{audiences.find(([value]) => value === item.audience)?.[1] || item.audience}</span></div><p>{item.message}</p><span className="helper-text">{item.recipient_count == null ? "Recipients at publish: unavailable" : `Recipients at publish: ${item.recipient_count}`} · Read by {item.read_count ?? 0} users</span></article>) : <div className="dashboard-empty">No notifications published.</div>}</section>
       <AppFooter />
     </main>
   );

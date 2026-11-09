@@ -962,3 +962,5 @@ Standard layout keeps the court name at the same 0.8rem size as the game details
 ### Control Panel match lookup
 
 The Match Directory excludes archived matches. Clear the sport, organisation and date fields when looking for a missing match. The date filter uses UK time and matches the completion date where available, otherwise the creation date. Open Match Details to see the court. For permanent deletion from Match Details, enter uppercase `DELETE`.
+
+Older Control Panel notifications have no publish-time recipient snapshot. Their recipient count is unavailable, while stored read receipts still contribute to the read count. Apply migration `051_notification_recipient_count.sql` before deploying the updated notification Lambda.

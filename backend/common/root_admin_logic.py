@@ -201,13 +201,8 @@ def get_root_admin_dashboard(connection):
         )
         competition_rows = cursor.fetchall()
 
-        cursor.execute(
-            """
-            SELECT COUNT(DISTINCT LOWER(clubusername)) AS total_user_count
-            FROM "SkwshOrgUsers"
-            """
-        )
-        total_user_count = (cursor.fetchone() or {}).get("total_user_count") or 0
+        cursor.execute("SELECT COUNT(*) AS subscription_count FROM app_store_subscriptions")
+        subscription_count = cursor.fetchone()["subscription_count"]
 
         try:
             cursor.execute(
@@ -260,6 +255,7 @@ def get_root_admin_dashboard(connection):
             organization["users"].append(serialized_user)
 
     total_admins = sum(1 for user in users if user["role"] == "admin")
+    user_summary = get_root_admin_users(connection)["summary"]
 
     return {
         "summary": {
@@ -269,7 +265,9 @@ def get_root_admin_dashboard(connection):
             "interest_count": interest_count,
             "pending_interest_count": pending_interest_count,
             "personal_account_count": personal_account_count,
-            "total_user_count": total_user_count,
+            "total_user_count": user_summary["total_user_count"],
+            "unverified_user_count": user_summary["unverified_user_count"],
+            "subscription_count": subscription_count,
             "match_count": match_count,
             "completed_match_count": completed_match_count,
         },
