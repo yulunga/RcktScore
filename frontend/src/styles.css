@@ -12900,3 +12900,41 @@ textarea {
   margin-right: 12px;
   color: #486581;
 }
+
+.root-admin-match-main,
+.root-admin-match-context {
+  justify-items: start;
+  overflow-wrap: anywhere;
+}
+
+.root-admin-match-context {
+  display: grid;
+  gap: 6px;
+  color: #486581;
+}
+
+.root-admin-match-player-one {
+  color: var(--brand-blue, #1769aa);
+}
+
+.root-admin-match-player-two {
+  color: #a62958;
+}
+
+.root-admin-match-complete {
+  color: #14723f;
+}
+
+.root-admin-match-incomplete {
+  color: #b42336;
+}
+
+.status-pill.root-admin-match-club {
+  background: #d9f1ed;
+  color: #155d53;
+}
+
+.status-pill.root-admin-match-personal {
+  background: #f9e3ee;
+  color: #8d234d;
+}

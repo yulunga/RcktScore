@@ -107,13 +107,26 @@ function MatchDirectory() {
             {matches.map((match) => (
               <article key={match.id} className="root-admin-match-row">
                 <div className="root-admin-match-main">
-                  <h3>{participants(match)}</h3>
-                  <p>{match.organization_name} · {match.court_alias || match.court_name || "No court set"}</p>
-                </div>
-                <div className="root-admin-match-details">
+                  <h3 className="root-admin-match-heading">
+                    <span className="root-admin-match-player-one">{match.player1_display_name}</span>
+                    <span>vs</span>
+                    <span className="root-admin-match-player-two">{match.player2_display_name}</span>
+                    <span
+                      className={match.status === "completed" ? "root-admin-match-complete" : "root-admin-match-incomplete"}
+                      role="img"
+                      aria-label={match.status}
+                      title={match.status}
+                    >
+                      {match.status === "completed" ? "✓" : "✕"}
+                    </span>
+                  </h3>
                   <span className="status-pill">{match.sport_label}</span>
-                  <span>{dateTime.format(new Date(matchDate(match)))}</span>
-                  <span>{match.status}</span>
+                </div>
+                <div className="root-admin-match-context">
+                  <span className={`status-pill root-admin-match-${match.organization_type === "personal" ? "personal" : "club"}`}>
+                    {match.organization_type === "personal" ? "Personal" : match.organization_name}
+                  </span>
+                  <time dateTime={matchDate(match)}>{dateTime.format(new Date(matchDate(match)))}</time>
                 </div>
                 <div className="button-row root-admin-match-actions">
                   <button type="button" className="root-admin-icon-button" aria-label={`View match: ${participants(match)}`} title="View match" onClick={() => navigate(`${DIRECTORY}/${match.id}`)}>

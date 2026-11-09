@@ -79,6 +79,7 @@ def _serialize_root_admin_match(row):
         "id": str(row["id"]),
         "tenant_id": row["tenant_id"],
         "organization_id": row["tenant_id"],
+        "organization_type": row.get("organization_type") or "club",
         "organization_name": row.get("organization_name") or f"Organisation {row['tenant_id']}",
         "court_id": row.get("court_id"),
         "court_name": row.get("court_name") or "",
@@ -488,6 +489,7 @@ def get_root_admin_matches(connection, sport=None, organization_id=None):
             f"""
             SELECT
                 matches.*,
+                org.org_type AS organization_type,
                 org.organization_name,
                 (
                     SELECT event.payload -> 'tennis_teams'
@@ -564,6 +566,7 @@ def _get_root_admin_match_row(connection, match_id, *, include_archived=False, l
             f"""
             SELECT
                 matches.*,
+                org.org_type AS organization_type,
                 org.organization_name
             FROM matches
             LEFT JOIN "SkwshOrgSettings" AS org

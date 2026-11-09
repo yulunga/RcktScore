@@ -275,7 +275,7 @@ Current root-admin user-account behavior:
 
 Current root-admin match-management behavior:
 
-- `GET /root_admin/matches` supports optional `sport` and `organization_id` query filters
+- `GET /root_admin/matches` supports optional `sport` and `organization_id` query filters and returns `organization_type` to distinguish Personal workspaces from clubs
 - archived matches are excluded from standard club/user match views and from the root-admin match directory by default
 - `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
 - `GET /root_admin/matches/{match_id}` returns a read-only scoring snapshot and effective event timeline, including for archived matches. It requires a Root Admin session.
