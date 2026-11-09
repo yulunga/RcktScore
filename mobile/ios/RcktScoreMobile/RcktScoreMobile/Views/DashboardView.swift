@@ -100,6 +100,31 @@ struct DashboardView: View {
     private var personalProfileOrganizationID: Int? {
         personalMembership?.organizationID ?? (isPersonalAccount ? session?.organizationID : nil)
     }
+    private var personalIdentityUsername: String {
+        let candidates = [
+            personalMembership?.email,
+            personalMembership?.username,
+            session?.email,
+            session?.username
+        ]
+        return candidates
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? "HitnScore user"
+    }
+    private var personalIdentityInitials: String {
+        let fullName = personalMembership?.fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let names = fullName.isEmpty
+            ? [personalMembership?.firstName, personalMembership?.surname]
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            : fullName.split(separator: " ").map(String.init)
+        let initials = names.prefix(2).compactMap { $0.first.map { String($0).uppercased() } }.joined()
+        return initials.isEmpty ? currentUserInitials : initials
+    }
+    private var personalIdentityPlanName: String {
+        let plan = personalMembership?.plan ?? (isPersonalAccount ? session?.plan : nil)
+        return plan?.lowercased() == "personal_plus" ? "Personal Plus" : "Personal"
+    }
     private var isAdmin: Bool { session?.role.lowercased() == "admin" }
     private var canManageMatches: Bool { session?.canManageMatches ?? false }
     private var hasUnreadNotifications: Bool { notifications.contains { !$0.isRead } }
@@ -242,21 +267,26 @@ struct DashboardView: View {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        [.about, .profile, .subscription, .association, .gameSettings, .reporting, .helpFeedback]
+        var items: [SettingsMenuItem] = [.about, .profile, .subscription]
+        if availableMemberships.count > 1 {
+            items.append(.association)
+        }
+        items.append(.gameSettings)
+        return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        [.about, .profile, .subscription, .association, .gameSettings, .reporting, .helpFeedback]
+        personalSettingsItems
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         if isPersonalAccount {
             return [
-                SettingsMenuSectionDescriptor(title: nil, items: personalSettingsItems)
+                SettingsMenuSectionDescriptor(title: "Account", items: personalSettingsItems)
             ]
         }
 
         var sections = [SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems)]
         if isAdmin {
-            sections.append(SettingsMenuSectionDescriptor(title: "Club Admin", items: [.organisation, .orgSettings, .racketSports, .users, .courts]))
+            sections.append(SettingsMenuSectionDescriptor(title: "Club", items: [.organisation, .users, .courts, .racketSports]))
         }
         return sections
     }
@@ -403,53 +433,38 @@ struct DashboardView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 Image("BrandLogo")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 82, height: 82)
-                    .offset(y: -9)
+                    .frame(width: 58, height: 58)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    (
-                        Text("Hit")
-                            .foregroundStyle(Color.dashboardBrand)
-                        + Text("n")
-                            .foregroundStyle(Color.dashboardAccentPink)
-                        + Text("Score")
-                            .foregroundStyle(Color.dashboardBrand)
-                    )
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.top, 2)
+                Spacer(minLength: 12)
 
-                VStack(alignment: .trailing, spacing: 12) {
-                    Button {
-                        guard isOnline else { return }
-                        showsNotifications = true
-                    } label: {
-                        Image(systemName: isOnline ? (hasUnreadNotifications ? "bell.fill" : "bell") : "wifi.slash")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(
-                                isOnline
-                                    ? (hasUnreadNotifications ? Color.yellow : Color.white)
-                                    : Color.orange
-                            )
-                            .shadow(
-                                color: isOnline && hasUnreadNotifications ? Color.yellow.opacity(0.9) : .clear,
-                                radius: 8
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(isOnline ? "Notifications" : "Offline")
-                    .accessibilityIdentifier(isOnline ? "dashboard.notificationButton" : "dashboard.offlineIndicator")
-                    .disabled(!isOnline)
+                Button {
+                    guard isOnline else { return }
+                    showsNotifications = true
+                } label: {
+                    Image(systemName: isOnline ? (hasUnreadNotifications ? "bell.fill" : "bell") : "wifi.slash")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(
+                            isOnline
+                                ? (hasUnreadNotifications ? Color.yellow : Color.dashboardBrand)
+                                : Color.orange
+                        )
+                        .frame(width: 38, height: 38)
+                        .shadow(
+                            color: isOnline && hasUnreadNotifications ? Color.yellow.opacity(0.9) : .clear,
+                            radius: 8
+                        )
                 }
-                .padding(.top, 8)
+                .buttonStyle(.plain)
+                .accessibilityLabel(isOnline ? "Messages" : "Offline")
+                .accessibilityIdentifier(isOnline ? "dashboard.notificationButton" : "dashboard.offlineIndicator")
+                .disabled(!isOnline)
+
+                accountContextSwitcher(label: nil, compact: true)
             }
-
-            accountContextSwitcher(label: "Context")
 
             if let dashboardNotice {
                 Text(dashboardNotice)
@@ -1035,7 +1050,7 @@ struct DashboardView: View {
 
     private var clubSettingsContent: some View {
         VStack(spacing: 6) {
-            settingsSummaryCard
+            personalSettingsHeader
 
             if !isAdmin {
                 Text("You are in view-only mode. Only organisation admins can save changes.")
@@ -1081,17 +1096,18 @@ struct DashboardView: View {
                 .font(.caption.weight(.semibold))
             }
 
-            Text(currentUserDisplayName)
+            Text(personalIdentityUsername)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
 
-            if let email = session?.email, !email.isEmpty {
-                Text(email)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
+            Text(personalIdentityPlanName)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.dashboardBrand)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.dashboardBrand.opacity(0.12))
+                .clipShape(Capsule())
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -1109,6 +1125,12 @@ struct DashboardView: View {
             ForEach(settingsMenuSections) { section in
                 settingsMenuSection(section)
             }
+
+            Text("Signed in as \(personalIdentityUsername)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 6)
 
             signOutMenuSection
         }
@@ -1144,18 +1166,16 @@ struct DashboardView: View {
             selectedSettingsSection = item.section
             settingsNavigationItem = item
         } label: {
-            HStack(spacing: 14) {
-                settingsMenuIconView(for: item)
-
+            HStack(spacing: 12) {
                 Text(item.title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body)
                     .foregroundStyle(isUnavailable ? Color.secondary : Color.primary)
 
                 Spacer(minLength: 12)
 
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -1164,7 +1184,7 @@ struct DashboardView: View {
                     Rectangle()
                         .fill(Color.dashboardBorder.opacity(0.9))
                         .frame(height: 1)
-                        .padding(.leading, 54)
+                        .padding(.leading, 16)
                 }
             }
         }
@@ -1218,7 +1238,10 @@ struct DashboardView: View {
             if isPersonalAccount {
                 readOnlySportAccessCard
             } else {
-                sportSetupCard
+                VStack(spacing: 12) {
+                    sportSetupCard
+                    gameSettingsCard
+                }
             }
         case .gameSettings:
             gameSettingsCard
@@ -3264,27 +3287,6 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
     }
 
-    private var settingsSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(settingsOrganizationName)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.primary)
-
-            Text(settingsPlanLine)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.dashboardBrand)
-
-            HStack(spacing: 12) {
-                settingsMetric(title: "Courts", value: String(organizationSummary?.courtCount ?? organizationSettings?.courts.count ?? 0))
-                settingsMetric(title: "Users", value: String(organizationSummary?.userCount ?? organizationSettings?.users.count ?? 0))
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dashboardInnerCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
     private func personalPlusSubscriptionOptionCard(
         subtitle: String,
         isCurrent: Bool
@@ -3610,52 +3612,6 @@ struct DashboardView: View {
             .clipShape(Capsule())
     }
 
-    private func settingsMetric(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private func settingsMenuIconView(for item: SettingsMenuItem) -> some View {
-        if item == .racketSports {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.dashboardBrand.opacity(0.12))
-                    .frame(width: 24, height: 24)
-
-                settingsRacketGlyph
-            }
-            .frame(width: 24, height: 24)
-        } else {
-            Image(systemName: item.icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color.secondary)
-                .frame(width: 24)
-        }
-    }
-
-    private var settingsRacketGlyph: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.dashboardBrand, lineWidth: 1.8)
-                .frame(width: 11, height: 13)
-                .offset(x: -1.5, y: -2.5)
-
-            RoundedRectangle(cornerRadius: 1.4, style: .continuous)
-                .fill(Color.dashboardBrand)
-                .frame(width: 2.4, height: 8.5)
-                .rotationEffect(.degrees(-32))
-                .offset(x: 4.5, y: 4.6)
-        }
-    }
-
     private func settingsSportBadgeRow(for sport: MatchSport) -> some View {
         HStack(spacing: 12) {
             ZStack {
@@ -3722,7 +3678,7 @@ struct DashboardView: View {
         .accessibilityIdentifier("settings.association.\(membership.organizationID)")
     }
 
-    private func accountContextSwitcher(label: String) -> some View {
+    private func accountContextSwitcher(label: String?, compact: Bool = false) -> some View {
         let memberships = availableMemberships.isEmpty ? session.map { current in
             [UserMembership(
                 id: current.id,
@@ -3757,25 +3713,25 @@ struct DashboardView: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let label, !label.isEmpty {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text(session?.isPersonalAccount == true ? "Personal" : (session?.organizationName ?? "Account"))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                if memberships.count > 1 {
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.dashboardBrand)
-                }
+                Image(systemName: compact ? "line.3.horizontal" : "chevron.up.chevron.down")
+                    .font(compact ? .subheadline.weight(.semibold) : .caption2.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .frame(maxWidth: compact ? nil : .infinity)
+            .padding(.horizontal, compact ? 12 : 14)
+            .padding(.vertical, compact ? 9 : 10)
             .background(Color.dashboardCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: compact ? 22 : 16, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: compact ? 22 : 16, style: .continuous)
                     .stroke(Color.dashboardBorder, lineWidth: 1)
             )
         }
@@ -5011,13 +4967,13 @@ struct DashboardView: View {
                     if case .success(let image) = phase {
                         image.resizable().scaledToFill()
                     } else {
-                        Text(currentUserInitials)
+                        Text(personalIdentityInitials)
                             .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
                     }
                 }
             } else {
-                Text(currentUserInitials)
+                Text(personalIdentityInitials)
                     .font(.system(size: size * 0.34, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
             }
@@ -5356,7 +5312,7 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
         case .association:
             return "Association"
         case .racketSports:
-            return "Racket Sports"
+            return "Club Settings"
         case .gameSettings:
             return "Game Settings"
         case .about:
