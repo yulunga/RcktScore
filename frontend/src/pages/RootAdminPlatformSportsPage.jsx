@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import RootAdminSettingsNav from "../components/RootAdminSettingsNav";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
@@ -19,7 +19,6 @@ function sportList(values) {
 }
 
 export default function RootAdminPlatformSportsPage() {
-  const navigate = useNavigate();
   const { session } = useRootAdmin();
   const [webSports, setWebSports] = useState(() => normalizeEnabledSports());
   const [iosSports, setIosSports] = useState(() => normalizeEnabledSports());
@@ -119,21 +118,7 @@ export default function RootAdminPlatformSportsPage() {
     <main className="page-shell stack">
       <RootAdminSessionBar />
 
-      <section className="hero-card stack compact">
-        <div className="root-admin-section-header">
-          <div>
-            <h1>RacketSports</h1>
-            <p className="helper-text">
-              Control which racket sports are globally available to all users and clubs for scoring.
-            </p>
-          </div>
-          <div className="button-row root-admin-actions">
-            <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Control Panel
-            </button>
-          </div>
-        </div>
-      </section>
+      <RootAdminSettingsNav />
 
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}

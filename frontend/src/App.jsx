@@ -22,6 +22,7 @@ const PingUsPage = lazy(() => import("./pages/PingUsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RootAdminClubPage = lazy(() => import("./pages/RootAdminClubPage"));
 const RootAdminOnlineUsersPage = lazy(() => import("./pages/RootAdminOnlineUsersPage"));
+const RootAdminTournamentsPage = lazy(() => import("./pages/RootAdminTournamentsPage"));
 const RootAdminDashboardPage = lazy(() => import("./pages/RootAdminDashboardPage"));
 const RootAdminInterestRequestsPage = lazy(() => import("./pages/RootAdminInterestRequestsPage"));
 const RootAdminLoginPage = lazy(() => import("./pages/RootAdminLoginPage"));
@@ -91,6 +92,10 @@ export default function App() {
       <Route
         path="/rckscoreAdmin/subscriptions"
         element={(<RootAdminProtectedRoute><RootAdminSubscriptionsPage /></RootAdminProtectedRoute>)}
+      />
+      <Route
+        path="/rckscoreAdmin/tournaments"
+        element={<RootAdminProtectedRoute><RootAdminTournamentsPage /></RootAdminProtectedRoute>}
       />
       <Route
         path="/rckscoreAdmin/racket-sports"

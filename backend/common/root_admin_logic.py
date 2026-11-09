@@ -165,10 +165,12 @@ def get_root_admin_dashboard(connection):
                 o.org_telephone,
                 o.org_email,
                 o.org_webaddress,
+                COALESCE(tf.web_enabled, false) AS tournament_enabled,
                 COUNT(DISTINCT u.id) AS user_count,
                 COUNT(DISTINCT c.id) AS court_count,
                 COUNT(DISTINCT CASE WHEN u.role = 'admin' THEN u.id END) AS admin_count
             FROM "SkwshOrgSettings" AS o
+            LEFT JOIN tournament_organization_features AS tf ON tf.organization_id = o.id
             LEFT JOIN "SkwshOrgUsers" AS u
                 ON u.organization_id = o.id
             LEFT JOIN "SkwshCourts" AS c
@@ -182,7 +184,8 @@ def get_root_admin_dashboard(connection):
                 o.org_contact,
                 o.org_telephone,
                 o.org_email,
-                o.org_webaddress
+                o.org_webaddress,
+                tf.web_enabled
             ORDER BY o.organization_name ASC, o.id ASC
             """
         )
@@ -281,6 +284,7 @@ def get_root_admin_dashboard(connection):
         serialized["user_count"] = row.get("user_count") or 0
         serialized["court_count"] = row.get("court_count") or 0
         serialized["admin_count"] = row.get("admin_count") or 0
+        serialized["tournament_enabled"] = row["tournament_enabled"]
         serialized["users"] = []
         organizations.append(serialized)
         organizations_by_id[serialized["id"]] = serialized
@@ -299,6 +303,7 @@ def get_root_admin_dashboard(connection):
     return {
         "summary": {
             "organization_count": len(organizations),
+            "tournament_enabled_count": sum(org["tournament_enabled"] for org in organizations),
             "user_count": len(users),
             "admin_count": total_admins,
             "interest_count": interest_count,

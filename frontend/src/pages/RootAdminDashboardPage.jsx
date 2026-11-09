@@ -129,7 +129,9 @@ export default function RootAdminDashboardPage() {
     [dashboard?.organizations],
   );
   const summary = dashboard?.summary || {};
-  const visibleClubs = searchTerm.trim() ? searchResults : organizations;
+  const visibleClubs = searchTerm.trim()
+    ? searchResults.map((result) => ({ ...organizations.find((club) => club.id === result.id), ...result }))
+    : organizations;
 
   async function removeCompetition(name) {
     await runMutation(
@@ -196,6 +198,11 @@ export default function RootAdminDashboardPage() {
             <div>{summary.online_now ?? "—"}</div>
             <span>Last 5 minutes</span>
           </button>
+          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/tournaments")}>
+            <strong>Tournament Manager</strong>
+            <div>{summary.tournament_enabled_count ?? "—"}</div>
+            <span>Clubs enabled</span>
+          </button>
           <button
             className="meta-item root-admin-settings-card"
             type="button"
@@ -206,7 +213,7 @@ export default function RootAdminDashboardPage() {
               <circle cx="12" cy="12" r="3" />
             </svg>
             <strong>Settings</strong>
-            <span>RacketSports</span>
+
           </button>
         </div>
       </section>
@@ -280,6 +287,11 @@ export default function RootAdminDashboardPage() {
                   <span>Users {organization.user_count ?? 0}</span>
                   <span>Courts {organization.court_count ?? 0}</span>
                   <span>Admins {organization.admin_count ?? 0}</span>
+                  {organization.tournament_enabled ? (
+                    <span className="root-admin-tournament-icon" role="img" aria-label="Tournament Manager enabled" title="Tournament Manager enabled">
+                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 3h8v6a4 4 0 0 1-8 0V3zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v5m-4 3h8m-7-3h6" /></svg>
+                    </span>
+                  ) : null}
                 </div>
               </button>
             ))

@@ -183,7 +183,7 @@ Current behavior:
 - reused organisation-management routes validate either a qualifying org-user session or a valid root-admin session
 - reused organisation routes inspect `X-HitnScore-Session: root_admin` only to choose the separate Root Admin cookie when both browser cookies exist; the selector is not authorization and the database-backed Root Admin session is still fully validated
 - `POST /root_admin/logout` revokes the presented root-admin session
-- `GET /root_admin/session/status` restores non-secret Root Admin browser state without exposing the cookie credential. The Control Panel waits for this check before rendering login or protected content
+- `GET /root_admin/session/status` restores non-secret Root Admin browser state without exposing the cookie credential. The Ground Control waits for this check before rendering login or protected content
 - the former `x-root-admin-request` bypass is no longer accepted
 
 ## Current Route Inventory
@@ -252,7 +252,7 @@ The public login logo and wordmark also link to the public landing homepage. Thi
 - `GET /root_admin/personal_accounts`
 - `PUT /root_admin/personal_accounts/{request_id}`
 - `GET /root_admin/users?account_type=...&q=...`
-  The web Control Panel sorts and limits the filtered directory response locally. Its row limit does not change the API response.
+  The web Ground Control sorts and limits the filtered directory response locally. Its row limit does not change the API response.
 - `GET /root_admin/users/{user_id}`
 - `POST /root_admin/users/{user_id}/memberships`
 - `DELETE /root_admin/users/{user_id}/memberships/{membership_id}`
@@ -947,3 +947,5 @@ When routes, auth behavior, security assumptions, or troubleshooting paths chang
 The root-admin dashboard summary includes `unverified_user_count` and `subscription_count` (all stored Apple subscription records). The root-admin notifications list returns `recipient_count` (eligible unique identities at publication, or null for older notifications) and `read_count` (distinct recorded readers).
 
 `GET /root_admin/online_users` requires the Root Admin cookie and returns aggregate activity for all sessions and by client. Online now and active today count distinct normalized usernames by `last_seen_at`. Signed in counts non-revoked, unexpired sessions. Sign-ins today counts new sessions since UK midnight. The dashboard summary also exposes `online_now`. Native `POST /login` accepts optional `client_platform` of `ios` or `android` alongside `client_type: mobile_app`.
+
+The Root Admin dashboard includes `summary.tournament_enabled_count` and `organizations[].tournament_enabled`. Ground Control uses the existing per-organisation tournament-feature update endpoint for access changes.

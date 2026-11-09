@@ -12961,3 +12961,18 @@ textarea {
 .root-admin-activity-table th:first-child {
   text-align: left;
 }
+
+.root-admin-profile-tabs > a.root-admin-tab {
+  flex-shrink: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.root-admin-tournament-icon svg {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+}

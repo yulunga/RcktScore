@@ -120,7 +120,7 @@ export default function RootAdminInterestRequestsPage() {
           </div>
           <div className="button-row root-admin-actions">
             <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Control Panel
+              Back to Ground Control
             </button>
           </div>
         </div>

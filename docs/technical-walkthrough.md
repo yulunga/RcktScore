@@ -128,7 +128,7 @@ The SAM deployment runs `configure_log_retention` as a CloudFormation custom res
 3. [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py) verifies credentials against `SkRootAdmin`.
 4. The backend revokes older sessions for the same root-admin account and creates an eight-hour session in `root_admin_sessions`.
 5. The API sets the separate `__Host-hitnscore_root_admin` HttpOnly cookie and returns identity, expiry and a non-authenticating CSRF value; only the opaque cookie token's SHA-256 hash is stored.
-6. The frontend keeps CSRF in memory and restores identity through `GET /root_admin/session/status`; it stores no Root Admin authentication token. The Control Panel keeps the current URL and shows the branded session loader until restoration finishes.
+6. The frontend keeps CSRF in memory and restores identity through `GET /root_admin/session/status`; it stores no Root Admin authentication token. The Ground Control keeps the current URL and shows the branded session loader until restoration finishes.
 7. Each root-admin handler validates the cookie, expiry, revocation state and current `SkRootAdmin` identity; mutations additionally validate exact Origin and `X-CSRF-Token`.
 8. Logout calls `POST /root_admin/logout`, revokes the database session and expires the cookie.
 
@@ -690,7 +690,7 @@ WebSocket client code exists, but subscriber registration/persistence infrastruc
 ### Current path
 
 1. The root-admin UI loads dashboard, club, club-enquiry, and unified user-account data from root-admin routes.
-The Control Panel Users directory sorts the full filtered response by latest login or username before displaying 25, 100 or 200 rows. Profile tabs share a navigation strip with the username and a back arrow to Users.
+The Ground Control Users directory sorts the full filtered response by latest login or username before displaying 25, 100 or 200 rows. Profile tabs share a navigation strip with the username and a back arrow to Users.
 
 2. Every root-admin route validates the separate cookie session against `root_admin_sessions`; mutations additionally require Root Admin CSRF validation.
 3. Club-detail calls to shared organisation endpoints accept root access only after the same session validation succeeds.
@@ -810,10 +810,12 @@ profile; matching-email registration links the existing reusable player while
 leaving its host-club affiliation as `guest`.
 
 
-### Control Panel Match Directory
+### Ground Control Match Directory
 
 The directory filters non-archived matches locally by organisation name, sport and UK calendar date. The date is the completion date when available, otherwise the creation date. Match rows show club or Personal context, and the court is displayed in Match Details. The sport totals count completed matches for the organisation and date scope across all sports. The detail route fetches the sport engine's read-only snapshot and effective scoring events. Archive hides the match from standard views. The detail page requires typed confirmation before permanently deleting the match and its scoring records.
 
-The Control Panel counts a user with multiple club memberships once under Users → Club Accounts. Published notification cards report the eligible audience size captured at publication and the distinct identities with an inbox read receipt. The inbox audience remains plan-based when users open it.
+The Ground Control counts a user with multiple club memberships once under Users → Club Accounts. Published notification cards report the eligible audience size captured at publication and the distinct identities with an inbox read receipt. The inbox audience remains plan-based when users open it.
 
-The Control Panel Online Users report refreshes every 30 seconds while open. Activity reflects authenticated requests recorded in `org_user_sessions.last_seen_at`. Web attribution uses the existing login source. Native attribution is recorded at login from the client platform. Distinct-user totals deduplicate across platforms.
+The Ground Control Online Users report refreshes every 30 seconds while open. Activity reflects authenticated requests recorded in `org_user_sessions.last_seen_at`. Web attribution uses the existing login source. Native attribution is recorded at login from the client platform. Distinct-user totals deduplicate across platforms.
+
+Ground Control Settings links Tournament Manager and Sports Controls. The Tournament Manager card opens the same per-club configuration page, and the dashboard directory marks enabled clubs with a trophy.

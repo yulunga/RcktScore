@@ -786,7 +786,7 @@ These are current product limitations, not accidental breakage:
 - scheduled reconciliation prioritises elapsed subscriptions and asks Apple for current status before removing access. The local expiry fallback waits 15 minutes so a delayed renewal notification does not cause a temporary Plus-to-Free-to-Plus transition or false audit pair. The fallback still runs without Apple credentials; full missed-notification repair requires `APPLE_SERVER_API_SECRET_ARN` to reference a Secrets Manager JSON value containing `private_key`, `key_id`, and `issuer_id`. Inspect `reconciliation_error`, retry count and next reconciliation time in root admin if the Apple status lookup fails
 - cancellation is not immediate expiry: `auto_renew_enabled=false` retains Plus until `expires_at`. Refund/revoke removes Plus immediately; billing retry removes it unless Apple reports an active grace period
 - production CORS allows only `https://app.hitnscore.com`, enables credentials, permits `X-CSRF-Token`, and emits `Vary: Origin`. If web requests fail after deployment, confirm Amplify uses `VITE_API_BASE_URL=https://api.hitnscore.com`, the API Gateway custom-domain mapping targets `rcktscore-backend` stage `prod`, and the request Origin is exact. Preview/local environments need their own same-site hostnames or an explicit development proxy; do not weaken production CORS
-- if the Control Panel stays on the session-restoration screen or redirects to sign-in after refresh, check the response from `GET /root_admin/session/status` in the browser Network tab
+- if the Ground Control stays on the session-restoration screen or redirects to sign-in after refresh, check the response from `GET /root_admin/session/status` in the browser Network tab
 - migration `048_browser_cookie_csrf_sessions.sql` must be applied before the cookie-enabled Lambdas. It adds CSRF state and deliberately revokes old web and Root Admin sessions, so those users must sign in once after cutover; native bearer sessions remain intact
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
@@ -854,7 +854,7 @@ the tournament header is sized from the full-width page shell rather than a
 standalone `100vw` breakout.
 
 The migration-created `demouser@democlub.com` account has no known initial
-password. Set one through Control Panel → Users before using the demo login. Use search or increase **Users to show** below the list if the account is outside the first 25 rows.
+password. Set one through Ground Control → Users before using the demo login. Use search or increase **Users to show** below the list if the account is outside the first 25 rows.
 The eight migration `033` Demo PlayOne–Demo PlayEight accounts follow the same
 password-disabled rule and do not become usable logins until an administrator
 sets their passwords.
@@ -960,10 +960,12 @@ Non-admin tournament responses must not contain entrant email,
 
 Standard layout keeps the court name at the same 0.8rem size as the game details. Content-sized header/history rows leave more space for larger scores higher in the display. Point scores scale with viewport width and height up to 24rem. Refresh frontend assets if the oversized court heading or smaller score numbers remain.
 
-### Control Panel match lookup
+### Ground Control match lookup
 
 The Match Directory excludes archived matches. Clear the sport, organisation and date fields when looking for a missing match. The date filter uses UK time and matches the completion date where available, otherwise the creation date. Open Match Details to see the court. For permanent deletion from Match Details, enter uppercase `DELETE`.
 
-Older Control Panel notifications have no publish-time recipient snapshot. Their recipient count is unavailable, while stored read receipts still contribute to the read count. Apply migration `051_notification_recipient_count.sql` before deploying the updated notification Lambda.
+Older Ground Control notifications have no publish-time recipient snapshot. Their recipient count is unavailable, while stored read receipts still contribute to the read count. Apply migration `051_notification_recipient_count.sql` before deploying the updated notification Lambda.
 
-Apply migration `052_session_client_platform.sql` before deploying the updated login and Control Panel Lambdas. Existing native sessions and new sessions from older native builds appear as Unattributed. A new login from an updated native build records iOS or Android. A valid session may outlast its last recorded activity by up to the configured session lifetime.
+Apply migration `052_session_client_platform.sql` before deploying the updated login and Ground Control Lambdas. Existing native sessions and new sessions from older native builds appear as Unattributed. A new login from an updated native build records iOS or Android. A valid session may outlast its last recorded activity by up to the configured session lifetime.
+
+If a club cannot open Tournament Manager, check its Enabled status in Ground Control → Settings → Tournament Manager. The dashboard trophy reflects that same club-level setting.

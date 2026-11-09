@@ -20,7 +20,7 @@ export default function RootAdminSessionBar() {
       <div className="root-admin-session-brand">
         <img src="/branding/logo/brand-logo.png" alt="HitnScore" width="44" height="44" />
         <div>
-          <strong><span>HitnScore</span> Control Panel</strong>
+          <strong><span>HitnScore</span> Ground Control</strong>
           <span>
             {(session?.username || "Root Admin")}
           </span>
@@ -37,7 +37,7 @@ export default function RootAdminSessionBar() {
         >
           Log Out
         </button>
-        <nav className="root-admin-session-nav" aria-label="Control Panel">
+        <nav className="root-admin-session-nav" aria-label="Ground Control">
           {CONTROL_PANEL_LINKS.map(({ route, label, icon }) => (
             <NavLink
               key={route}
