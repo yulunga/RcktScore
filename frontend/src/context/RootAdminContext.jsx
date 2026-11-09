@@ -22,7 +22,8 @@ function clearLegacyStorage() {
 
 export function RootAdminProvider({ children }) {
   const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [restoringSession, setRestoringSession] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     clearLegacyStorage();
@@ -37,7 +38,7 @@ export function RootAdminProvider({ children }) {
         setSession(null);
       }
     }).finally(() => {
-      if (!cancelled) setLoading(false);
+      if (!cancelled) setRestoringSession(false);
     });
     return () => { cancelled = true; };
   }, []);
@@ -79,8 +80,8 @@ export function RootAdminProvider({ children }) {
   }, []);
 
   const contextValue = useMemo(() => ({
-    isAuthenticated: Boolean(session), session, loading, setSession, login, logout,
-  }), [loading, login, logout, session]);
+    isAuthenticated: Boolean(session), session, restoringSession, loading, setSession, login, logout,
+  }), [loading, login, logout, restoringSession, session]);
 
   return <RootAdminContext.Provider value={contextValue}>{children}</RootAdminContext.Provider>;
 }

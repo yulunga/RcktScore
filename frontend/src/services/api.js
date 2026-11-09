@@ -275,9 +275,14 @@ export function archiveRootAdminMatch(matchId) {
   });
 }
 
-export function deleteRootAdminMatch(matchId) {
+export function getRootAdminMatch(matchId) {
+  return apiRequest(`/root_admin/matches/${matchId}`);
+}
+
+export function deleteRootAdminMatch(matchId, confirmation) {
   return apiRequest(`/root_admin/matches/${matchId}`, {
     method: "DELETE",
+    body: JSON.stringify({ confirmation }),
   });
 }
 

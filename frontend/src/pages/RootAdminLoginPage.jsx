@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
+import SessionLoadingScreen from "../components/SessionLoadingScreen";
 import { useRootAdmin } from "../hooks/useRootAdmin";
 
 function createCaptchaChallenge() {
@@ -21,10 +22,14 @@ export default function RootAdminLoginPage() {
   const [captchaAnswer, setCaptchaAnswer] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [error, setError] = useState("");
-  const { isAuthenticated, loading, login } = useRootAdmin();
+  const { isAuthenticated, restoringSession, loading, login } = useRootAdmin();
   const location = useLocation();
   const navigate = useNavigate();
   const redirectTo = location.state?.from?.pathname || "/rckscoreAdmin/dashboard";
+
+  if (restoringSession) {
+    return <SessionLoadingScreen />;
+  }
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />;

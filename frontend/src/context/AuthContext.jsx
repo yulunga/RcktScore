@@ -51,6 +51,7 @@ function consumeSessionPayload(payload, preferredOrganizationId = null) {
 export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState({ session: null, pendingSelection: null });
   const [loading, setLoading] = useState(true);
+  const [restoringSession, setRestoringSession] = useState(true);
   const session = authState.session;
   const pendingSelection = authState.pendingSelection;
 
@@ -69,7 +70,10 @@ export function AuthProvider({ children }) {
       writeStoredAuthState({ session: null, pendingSelection: null });
       setAuthState({ session: null, pendingSelection: null });
     }).finally(() => {
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+        setRestoringSession(false);
+      }
     });
     return () => { cancelled = true; };
   }, []);
@@ -172,10 +176,10 @@ export function AuthProvider({ children }) {
 
   const contextValue = useMemo(() => ({
     isAuthenticated: Boolean(session), session, pendingSelection,
-    requiresOrganizationSelection: Boolean(pendingSelection), loading,
+    requiresOrganizationSelection: Boolean(pendingSelection), loading, restoringSession,
     setSession: (nextSession) => setAuthState({ session: withoutSecrets(nextSession), pendingSelection: null }),
     login, selectOrganization, switchOrganization, cancelOrganizationSelection, logout,
-  }), [loading, login, logout, pendingSelection, selectOrganization, switchOrganization, cancelOrganizationSelection, session]);
+  }), [loading, login, logout, pendingSelection, restoringSession, selectOrganization, switchOrganization, cancelOrganizationSelection, session]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }

@@ -72,6 +72,14 @@ export default function App() {
         )}
       />
       <Route
+        path="/rckscoreAdmin/matches/:matchId"
+        element={(
+          <RootAdminProtectedRoute>
+            <RootAdminMatchesPage />
+          </RootAdminProtectedRoute>
+        )}
+      />
+      <Route
         path="/rckscoreAdmin/notifications"
         element={(<RootAdminProtectedRoute><RootAdminNotificationsPage /></RootAdminProtectedRoute>)}
       />

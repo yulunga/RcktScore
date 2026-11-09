@@ -92,7 +92,10 @@ Error:
    - `ACTIVE_SESSION_EXISTS`
    Successful session and organisation-selection responses also include `session_expires_at`.
 9. The frontend stores no authentication credential. It restores non-secret
-   membership state and the in-memory CSRF value through `/session/status`;
+   membership state and the in-memory CSRF value through `/session/status`.
+   Until that initial request resolves, protected routes and the public login
+   route render a neutral branded restoration screen rather than treating the
+   user as signed out, which keeps a browser refresh on its requested URL;
    its context switcher changes only the active membership. Context changes reload Dashboard and
    Matches data. Web and iOS render every retained membership as a visible
    `Score this match for` choice before racket-sport selection, labelling the
@@ -106,6 +109,7 @@ Error:
 - `403 PENDING_APPROVAL` means the email invitation exists but has not been accepted.
 - `409 ACTIVE_SESSION_EXISTS` means the same identity is already signed in on web or mobile. Continuing revokes that previous device session.
 - web and iOS call `GET /session/status` while active and on foreground/focus; `SESSION_REPLACED` clears local state and returns the displaced client to login. Network failures do not clear an offline session.
+- if refresh briefly shows the login form, confirm `ProtectedRoute` is waiting for `restoringSession` rather than redirecting while the initial status request is pending
 - authentication logs use masked identifiers such as `p***@example.com`; raw login emails must not be written to CloudWatch
 
 The SAM deployment runs `configure_log_retention` as a CloudFormation custom resource after resolving every Lambda function name. It ensures each `/aws/lambda/<function-name>` group exists and applies the configured 60-day retention policy. A daily scheduled run reapplies the policy to stack-prefixed Lambda groups so later-created or manually altered groups do not remain indefinitely.
@@ -124,7 +128,7 @@ The SAM deployment runs `configure_log_retention` as a CloudFormation custom res
 3. [backend/functions/root_admin_login/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/root_admin_login/handler.py) verifies credentials against `SkRootAdmin`.
 4. The backend revokes older sessions for the same root-admin account and creates an eight-hour session in `root_admin_sessions`.
 5. The API sets the separate `__Host-hitnscore_root_admin` HttpOnly cookie and returns identity, expiry and a non-authenticating CSRF value; only the opaque cookie token's SHA-256 hash is stored.
-6. The frontend keeps CSRF in memory and restores identity through `GET /root_admin/session/status`; it stores no Root Admin authentication token.
+6. The frontend keeps CSRF in memory and restores identity through `GET /root_admin/session/status`; it stores no Root Admin authentication token. The Control Panel keeps the current URL and shows the branded session loader until restoration finishes.
 7. Each root-admin handler validates the cookie, expiry, revocation state and current `SkRootAdmin` identity; mutations additionally validate exact Origin and `X-CSRF-Token`.
 8. Logout calls `POST /root_admin/logout`, revokes the database session and expires the cookie.
 
@@ -805,3 +809,7 @@ the Personal or Personal Plus registration route shown on an unlinked guest
 profile; matching-email registration links the existing reusable player while
 leaving its host-club affiliation as `guest`.
 
+
+### Control Panel Match Directory
+
+The directory filters non-archived matches locally by organisation name, sport and UK calendar date. The date is the completion date when available, otherwise the creation date. The sport totals count completed matches for the organisation and date scope across all sports. The detail route fetches the sport engine's read-only snapshot and effective scoring events. Archive hides the match from standard views. The detail page requires typed confirmation before permanently deleting the match and its scoring records.

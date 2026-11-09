@@ -695,6 +695,7 @@ What to check:
 - whether `POST /login` returned the default identity-first `data.session` or the legacy `data.organizationSelection`, and whether `available_memberships` contains every approved account/club
 - whether the account hit `ACTIVE_SESSION_EXISTS` because the identity already has a web or mobile session
 - whether the deployed API includes `GET /session/status`; web and iOS poll it every 30 seconds while active, and a refocused browser validates immediately
+- if a web refresh flashes the login form, whether `AuthContext` still reports `restoringSession` and `ProtectedRoute` is rendering the branded restoration screen until the initial `/session/status` request finishes
 - whether `GET /match_display_access/{match_id}` is succeeding; it supplies the court display code where applicable and the match-specific Personal Plus viewing code for every live match
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
 - whether `NetworkMonitor.swift` has marked the device offline
@@ -784,6 +785,7 @@ These are current product limitations, not accidental breakage:
 - scheduled reconciliation prioritises elapsed subscriptions and asks Apple for current status before removing access. The local expiry fallback waits 15 minutes so a delayed renewal notification does not cause a temporary Plus-to-Free-to-Plus transition or false audit pair. The fallback still runs without Apple credentials; full missed-notification repair requires `APPLE_SERVER_API_SECRET_ARN` to reference a Secrets Manager JSON value containing `private_key`, `key_id`, and `issuer_id`. Inspect `reconciliation_error`, retry count and next reconciliation time in root admin if the Apple status lookup fails
 - cancellation is not immediate expiry: `auto_renew_enabled=false` retains Plus until `expires_at`. Refund/revoke removes Plus immediately; billing retry removes it unless Apple reports an active grace period
 - production CORS allows only `https://app.hitnscore.com`, enables credentials, permits `X-CSRF-Token`, and emits `Vary: Origin`. If web requests fail after deployment, confirm Amplify uses `VITE_API_BASE_URL=https://api.hitnscore.com`, the API Gateway custom-domain mapping targets `rcktscore-backend` stage `prod`, and the request Origin is exact. Preview/local environments need their own same-site hostnames or an explicit development proxy; do not weaken production CORS
+- if the Control Panel stays on the session-restoration screen or redirects to sign-in after refresh, check the response from `GET /root_admin/session/status` in the browser Network tab
 - migration `048_browser_cookie_csrf_sessions.sql` must be applied before the cookie-enabled Lambdas. It adds CSRF state and deliberately revokes old web and Root Admin sessions, so those users must sign in once after cutover; native bearer sessions remain intact
 - backend pytest logic tests, Playwright public-route smoke tests, and native
   iOS UI smoke scaffolding are checked in, but their coverage is still limited
@@ -956,3 +958,7 @@ Non-admin tournament responses must not contain entrant email,
 ### Standard spectator display spacing
 
 Standard layout keeps the court name at the same 0.8rem size as the game details. Content-sized header/history rows leave more space for larger scores higher in the display. Point scores scale with viewport width and height up to 24rem. Refresh frontend assets if the oversized court heading or smaller score numbers remain.
+
+### Control Panel match lookup
+
+The Match Directory excludes archived matches. Clear the sport, organisation and date fields when looking for a missing match. The date filter uses UK time and matches the completion date where available, otherwise the creation date. For permanent deletion from Match Details, enter uppercase `DELETE`.

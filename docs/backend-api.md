@@ -153,7 +153,7 @@ Duplicate login behavior:
 - if an active session already exists for the username, `POST /login` returns `ACTIVE_SESSION_EXISTS` with the active client label
 - the frontend may retry with `force_logout_other`
 - a forced retry revokes every prior web/mobile token for that identity; rejected tokens return `SESSION_REPLACED`
-- `GET /session/status` is the authenticated heartbeat used by web and iOS to discover replacement; for web it also rebuilds non-secret membership state and returns the in-memory CSRF value
+- `GET /session/status` is the authenticated heartbeat used by web and iOS to discover replacement; for web it also rebuilds non-secret membership state and returns the in-memory CSRF value. On initial browser load, protected routes remain behind a client-only session-restoration screen until this request resolves, so no API change is required to prevent a login-page flash during refresh
 - when identity-first login is disabled, `POST /login` can return
   `data.organizationSelection` for users with multiple approved memberships;
   web and iOS deliberately continue to handle both response shapes
@@ -180,7 +180,7 @@ Current behavior:
 - reused organisation-management routes validate either a qualifying org-user session or a valid root-admin session
 - reused organisation routes inspect `X-HitnScore-Session: root_admin` only to choose the separate Root Admin cookie when both browser cookies exist; the selector is not authorization and the database-backed Root Admin session is still fully validated
 - `POST /root_admin/logout` revokes the presented root-admin session
-- `GET /root_admin/session/status` restores non-secret Root Admin browser state without exposing the cookie credential
+- `GET /root_admin/session/status` restores non-secret Root Admin browser state without exposing the cookie credential. The Control Panel waits for this check before rendering login or protected content
 - the former `x-root-admin-request` bypass is no longer accepted
 
 ## Current Route Inventory
@@ -236,6 +236,7 @@ The public login logo and wordmark also link to the public landing homepage. Thi
 - `DELETE /root_admin/users/{user_id}`
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access`
 - `GET /root_admin/matches`
+- `GET /root_admin/matches/{match_id}`
 - `PUT /root_admin/matches/{match_id}/archive`
 - `DELETE /root_admin/matches/{match_id}`
 - `POST /root_admin/organizations`
@@ -277,7 +278,8 @@ Current root-admin match-management behavior:
 - `GET /root_admin/matches` supports optional `sport` and `organization_id` query filters
 - archived matches are excluded from standard club/user match views and from the root-admin match directory by default
 - `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
-- `DELETE /root_admin/matches/{match_id}` permanently removes the match row and cascades `match_events`
+- `GET /root_admin/matches/{match_id}` returns a read-only scoring snapshot and effective event timeline, including for archived matches. It requires a Root Admin session.
+- `DELETE /root_admin/matches/{match_id}` requires the exact JSON confirmation `{"confirmation":"DELETE"}` and Root Admin session/CSRF validation. It removes linked setup analytics and deletes the match, cascading to scoring events, undo links, action receipts and saved views. Separate tournament bracket results are retained and their scoring link is cleared.
 
 Current root-admin Tournament Manager behavior:
 

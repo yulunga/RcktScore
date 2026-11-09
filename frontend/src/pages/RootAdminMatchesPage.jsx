@@ -1,266 +1,234 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
-import {
-  archiveRootAdminMatch,
-  deleteRootAdminMatch,
-  getRootAdminMatches,
-} from "../services/api";
+import { archiveRootAdminMatch, deleteRootAdminMatch, getRootAdminMatch, getRootAdminMatches } from "../services/api";
 
-function formatDateTime(value) {
-  if (!value) {
-    return "Not set";
-  }
+const DIRECTORY = "/rckscoreAdmin/matches";
+const dateKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" });
+const dateTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", dateStyle: "medium", timeStyle: "short" });
+const matchDate = (match) => match.completed_at || match.created_at;
+const participants = (match) => `${match.player1_display_name} vs ${match.player2_display_name}`;
 
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+function MatchIcon({ path }) {
+  return <svg aria-hidden="true" viewBox="0 0 24 24"><path d={path} /></svg>;
 }
 
-function matchScoreSummary(match) {
-  const gamesSummary = `${match.player1_games_won ?? 0}-${match.player2_games_won ?? 0}`;
-  if ((match.status || "") === "completed") {
-    return `Completed • Games ${gamesSummary}`;
-  }
-  if ((match.status || "") === "scheduled") {
-    return `Scheduled • Games ${gamesSummary}`;
-  }
-  return `Live • Game ${match.current_game_number ?? 1} • Games ${gamesSummary}`;
-}
-
-export default function RootAdminMatchesPage() {
+function MatchDirectory() {
   const navigate = useNavigate();
-  const [sportFilter, setSportFilter] = useState("");
-  const [organizationFilter, setOrganizationFilter] = useState("");
-  const [matchDirectory, setMatchDirectory] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState("");
-  const [message, setMessage] = useState("");
+  const [directory, setDirectory] = useState(null);
+  const [sport, setSport] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [archiving, setArchiving] = useState(null);
   const [error, setError] = useState("");
 
-  async function loadMatches(nextFilters = {}) {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await getRootAdminMatches({
-        sport: nextFilters.sport ?? sportFilter,
-        organizationId: nextFilters.organizationId ?? organizationFilter,
-      });
-      setMatchDirectory(response.rootAdminMatches || null);
-    } catch (requestError) {
-      setError(requestError.message || "Failed to load root-admin matches.");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    let current = true;
+    getRootAdminMatches().then(
+      (response) => { if (current) setDirectory(response.rootAdminMatches); },
+      (failure) => { if (current) setError(failure.message); },
+    );
+    return () => { current = false; };
+  }, []);
+
+  const invalidRange = from && to && from > to;
+  const scopedMatches = (directory?.matches || []).filter((match) => {
+    const day = dateKey.format(new Date(matchDate(match)));
+    return !invalidRange
+      && match.organization_name.toLowerCase().includes(organization.trim().toLowerCase())
+      && (!from || day >= from)
+      && (!(to || from) || day <= (to || from));
+  });
+  const matches = scopedMatches.filter((match) => !sport || match.sport === sport);
+  const completedBySport = new Map();
+  for (const match of scopedMatches) {
+    if (match.status === "completed") {
+      completedBySport.set(match.sport, (completedBySport.get(match.sport) || 0) + 1);
     }
   }
 
-  useEffect(() => {
-    loadMatches();
-  }, [sportFilter, organizationFilter]);
-
-  const matches = matchDirectory?.matches || [];
-  const organizations = matchDirectory?.organizations || [];
-  const sports = matchDirectory?.sports || [];
-  const summary = matchDirectory?.summary || {};
-
-  const organizationOptions = useMemo(
-    () => [
-      { id: "", organization_name: "All Organisations" },
-      ...organizations,
-    ],
-    [organizations],
-  );
-
-  const sportOptions = useMemo(
-    () => [
-      { value: "", label: "All Sports" },
-      ...sports,
-    ],
-    [sports],
-  );
-
-  async function handleArchive(match) {
-    const confirmed = window.confirm(
-      `Archive ${match.player1_display_name} vs ${match.player2_display_name}? Archived matches disappear from standard views.`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    const actionKey = `archive-${match.id}`;
-    setSavingKey(actionKey);
-    setMessage("");
+  async function archive(match) {
+    if (!window.confirm(`Archive ${participants(match)}? It will disappear from standard views.`)) return;
+    setArchiving(match.id);
     setError("");
     try {
       await archiveRootAdminMatch(match.id);
-      await loadMatches();
-      setMessage("Match archived.");
-    } catch (requestError) {
-      setError(requestError.message || "Failed to archive match.");
+      setDirectory((current) => ({ ...current, matches: current.matches.filter((row) => row.id !== match.id) }));
+    } catch (failure) {
+      setError(failure.message);
     } finally {
-      setSavingKey("");
-    }
-  }
-
-  async function handleDelete(match) {
-    const confirmed = window.confirm(
-      `Delete ${match.player1_display_name} vs ${match.player2_display_name}? This permanently removes the match and related event history.`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    const actionKey = `delete-${match.id}`;
-    setSavingKey(actionKey);
-    setMessage("");
-    setError("");
-    try {
-      await deleteRootAdminMatch(match.id);
-      await loadMatches();
-      setMessage("Match deleted.");
-    } catch (requestError) {
-      setError(requestError.message || "Failed to delete match.");
-    } finally {
-      setSavingKey("");
+      setArchiving(null);
     }
   }
 
   return (
-    <main className="page-shell stack">
-      <RootAdminSessionBar />
-
-      <section className="hero-card stack compact">
-        <div className="root-admin-section-header">
-          <div>
-            <h1>System Match Scores</h1>
-            <p className="helper-text">
-              Review every non-archived match across the platform, then archive or permanently delete as needed.
-            </p>
-          </div>
-          <div className="button-row root-admin-actions">
-            <button type="button" className="secondary" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Control Panel
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {message ? <div className="notice settings-success">{message}</div> : null}
+    <section className="panel stack">
+      <h1>Match Directory</h1>
+      <div className="root-admin-match-filters">
+        <label className="field">Racket Sport
+          <select value={sport} onChange={(event) => setSport(event.target.value)}>
+            <option value="">All Sports</option>
+            {directory?.sports.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="field">Organisation
+          <input type="search" list="root-admin-match-organisations" placeholder="Search by club or account name" value={organization} onChange={(event) => setOrganization(event.target.value)} />
+          <datalist id="root-admin-match-organisations">
+            {directory?.organizations.map((org) => <option key={org.id} value={org.organization_name} />)}
+          </datalist>
+        </label>
+        <label className="field">Match date / From
+          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+        </label>
+        <label className="field">To (optional)
+          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+        </label>
+      </div>
+      <p className="helper-text">Enter a From date for a single day, or both dates for an inclusive range. Dates use UK time.</p>
+      {invalidRange ? <div className="notice error">The To date must be on or after the From date.</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
-
-      <section className="panel stack">
-        <div className="root-admin-section-header">
-          <h2>Match Directory</h2>
-          <div className="root-admin-toolbar">
-            <div className="field">
-              <label htmlFor="root-admin-match-sport">Racket Sport</label>
-              <select
-                id="root-admin-match-sport"
-                value={sportFilter}
-                onChange={(event) => setSportFilter(event.target.value)}
-              >
-                {sportOptions.map((sport) => (
-                  <option key={sport.value || "all"} value={sport.value}>
-                    {sport.label}
-                  </option>
-                ))}
-              </select>
+      {!directory && !error ? <div className="notice">Loading matches…</div> : null}
+      {directory ? (
+        <>
+          <section className="dashboard-item stack compact">
+            <h2>Completed matches by racket sport</h2>
+            <div className="root-admin-match-details">
+              {directory.sports.map(({ value, label }) => (
+                <span key={value}>{label} <strong>{completedBySport.get(value) || 0}</strong></span>
+              ))}
             </div>
-            <div className="field">
-              <label htmlFor="root-admin-match-organization">Organisation</label>
-              <select
-                id="root-admin-match-organization"
-                value={organizationFilter}
-                onChange={(event) => setOrganizationFilter(event.target.value)}
-              >
-                {organizationOptions.map((organization) => (
-                  <option key={organization.id || "all"} value={organization.id}>
-                    {organization.organization_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="meta-grid root-admin-interest-summary">
-          <div className="meta-item">
-            <strong>Matches In View</strong>
-            <div>{summary.match_count ?? 0}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Active</strong>
-            <div>{summary.active_count ?? 0}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Scheduled</strong>
-            <div>{summary.scheduled_count ?? 0}</div>
-          </div>
-          <div className="meta-item">
-            <strong>Completed</strong>
-            <div>{summary.completed_count ?? 0}</div>
-          </div>
-        </div>
-
-        {loading ? <div className="notice">Loading platform match directory...</div> : null}
-
-        {!loading && matches.length === 0 ? (
-          <div className="dashboard-empty">No matches match the current filters.</div>
-        ) : null}
-
-        <div className="root-admin-match-list">
-          {matches.map((match) => {
-            const archiveKey = `archive-${match.id}`;
-            const deleteKey = `delete-${match.id}`;
-            return (
+          </section>
+          <p className="helper-text" aria-live="polite">{matches.length} matches shown</p>
+          {!matches.length && !invalidRange ? <div className="dashboard-empty">No matches match the current filters.</div> : null}
+          <div className="root-admin-match-list">
+            {matches.map((match) => (
               <article key={match.id} className="root-admin-match-row">
                 <div className="root-admin-match-main">
-                  <div className="root-admin-match-heading">
-                    <span className="status-pill">{match.sport_label}</span>
-                    <span className={`status-pill root-admin-interest-status root-admin-interest-status--${match.status}`}>
-                      {match.status}
-                    </span>
-                  </div>
-                  <h3>{match.player1_display_name} vs {match.player2_display_name}</h3>
-                  <p>{match.organization_name} • {match.court_alias || match.court_name || "No court set"}</p>
+                  <h3>{participants(match)}</h3>
+                  <p>{match.organization_name} · {match.court_alias || match.court_name || "No court set"}</p>
                 </div>
-
                 <div className="root-admin-match-details">
-                  <span>{matchScoreSummary(match)}</span>
-                  <span>Score to {match.score_type} • Best of {match.best_of}</span>
-                  <span>Winner: {match.winner_name || "Not decided"}</span>
-                  <span>Created: {formatDateTime(match.created_at)}</span>
-                  <span>Updated: {formatDateTime(match.updated_at)}</span>
-                  <span>Completed: {formatDateTime(match.completed_at)}</span>
+                  <span className="status-pill">{match.sport_label}</span>
+                  <span>{dateTime.format(new Date(matchDate(match)))}</span>
+                  <span>{match.status}</span>
                 </div>
-
                 <div className="button-row root-admin-match-actions">
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={savingKey === archiveKey || savingKey === deleteKey}
-                    onClick={() => handleArchive(match)}
-                  >
-                    {savingKey === archiveKey ? "Archiving..." : "Archive"}
+                  <button type="button" className="root-admin-icon-button" aria-label={`View match: ${participants(match)}`} title="View match" onClick={() => navigate(`${DIRECTORY}/${match.id}`)}>
+                    <MatchIcon path="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12zm13 0a3 3 0 1 0-6 0 3 3 0 0 0 6 0z" />
                   </button>
-                  <button
-                    type="button"
-                    className="danger"
-                    disabled={savingKey === archiveKey || savingKey === deleteKey}
-                    onClick={() => handleDelete(match)}
-                  >
-                    {savingKey === deleteKey ? "Deleting..." : "Delete"}
+                  <button type="button" className="secondary root-admin-icon-button" aria-label={`Archive match: ${participants(match)}`} title="Archive match" disabled={Boolean(archiving)} onClick={() => archive(match)}>
+                    <MatchIcon path="M3 4h18v5H3zM5 9v11h14V9m-10 4h6" />
                   </button>
                 </div>
               </article>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
 
+function detailLabel(key) {
+  return key.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
+}
+
+function detailValue(key, value) {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (key.endsWith("_at")) return dateTime.format(new Date(value));
+  return String(value);
+}
+
+function MatchDetail({ matchId }) {
+  const navigate = useNavigate();
+  const [match, setMatch] = useState(null);
+  const [confirmation, setConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let current = true;
+    getRootAdminMatch(matchId).then(
+      (response) => { if (current) setMatch(response.match); },
+      (failure) => { if (current) setError(failure.message); },
+    );
+    return () => { current = false; };
+  }, [matchId]);
+
+  async function remove(event) {
+    event.preventDefault();
+    if (confirmation !== "DELETE" || deleting) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteRootAdminMatch(matchId, confirmation);
+      navigate(DIRECTORY, { replace: true });
+    } catch (failure) {
+      setError(failure.message);
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <section className="panel stack">
+      <div className="root-admin-section-header">
+        <h1>{match ? participants(match) : "Match Details"}</h1>
+        <button type="button" className="secondary" onClick={() => navigate(DIRECTORY)}>Back to Matches</button>
+      </div>
+      {error ? <div className="notice error" role="alert">{error}</div> : null}
+      {!match && !error ? <div className="notice">Loading match…</div> : null}
+      {match ? (
+        <>
+          <dl className="root-admin-profile-detail-grid">
+            {Object.entries(match).filter(([key, value]) => key !== "state" && key !== "court_display_code" && typeof value !== "object").map(([key, value]) => (
+              <div key={key}><dt>{detailLabel(key)}</dt><dd>{detailValue(key, value)}</dd></div>
+            ))}
+          </dl>
+          <h2>Score and match activity</h2>
+          <dl className="root-admin-profile-detail-grid">
+            {Object.entries(match.state).filter(([, value]) => value !== null && typeof value !== "object").map(([key, value]) => (
+              <div key={key}><dt>{detailLabel(key)}</dt><dd>{detailValue(key, value)}</dd></div>
+            ))}
+          </dl>
+          <h2>Scoring timeline</h2>
+          {match.state.events?.length ? (
+            <ol className="root-admin-match-timeline">
+              {match.state.events.map((event) => (
+                <li key={event.id}>
+                  <time dateTime={event.created_at}>{detailValue("created_at", event.created_at)}</time>
+                  <span>{event.summary || detailLabel(event.event_type)}</span>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="helper-text">No scoring events recorded.</p>}
+          <details>
+            <summary>Full scoring data, lineups and game or set history</summary>
+            <pre className="root-admin-match-state">{JSON.stringify(match.state, null, 2)}</pre>
+          </details>
+          <form className="stack compact" onSubmit={remove}>
+            <h2>Delete match</h2>
+            <p>Permanently delete this match and its scoring records. Any separate tournament bracket result is retained.</p>
+            <label className="field">Type DELETE to confirm
+              <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" />
+            </label>
+            <div><button type="submit" className="danger" disabled={confirmation !== "DELETE" || deleting}>{deleting ? "Deleting…" : "Delete match"}</button></div>
+          </form>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+export default function RootAdminMatchesPage() {
+  const { matchId } = useParams();
+  return (
+    <main className="page-shell stack">
+      <RootAdminSessionBar />
+      {matchId ? <MatchDetail key={matchId} matchId={matchId} /> : <MatchDirectory />}
       <AppFooter />
     </main>
   );

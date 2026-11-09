@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { registerInterest } from "../services/api";
 import { clubRoleLabel } from "../utils/accessControl";
+import SessionLoadingScreen from "../components/SessionLoadingScreen";
 
 function createCaptchaChallenge() {
   const left = Math.floor(Math.random() * 8) + 2;
@@ -37,6 +38,7 @@ export default function LoginPage() {
   const {
     isAuthenticated,
     loading,
+    restoringSession,
     login,
     pendingSelection,
     requiresOrganizationSelection,
@@ -120,6 +122,10 @@ export default function LoginPage() {
 
     return () => window.clearTimeout(timeoutId);
   }, [hasInterestDraft, showInterestForm, shouldOpenInterestFormFromUrl]);
+
+  if (restoringSession) {
+    return <SessionLoadingScreen />;
+  }
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />;

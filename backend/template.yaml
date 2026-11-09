@@ -417,6 +417,12 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/matches
             Method: GET
+        GetRootAdminMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/matches/{match_id}
+            Method: GET
 
   ArchiveRootAdminMatchFunction:
     Type: AWS::Serverless::Function

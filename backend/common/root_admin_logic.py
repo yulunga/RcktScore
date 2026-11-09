@@ -1,6 +1,7 @@
 import secrets
 from calendar import monthrange
 
+from common.match_logic import _serialize_match_row
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.sport_config import SPORT_LABELS
@@ -69,6 +70,10 @@ def _serialize_root_admin_match(row):
     player2_name = " ".join(
         value for value in [row.get("player2_name") or "", row.get("player2_surname") or ""] if value
     ).strip()
+
+    teams = row.get("tennis_teams") or {}
+    player1_name = " & ".join(player["display_name"] for player in teams.get("player1", []) if player.get("display_name")) or player1_name
+    player2_name = " & ".join(player["display_name"] for player in teams.get("player2", []) if player.get("display_name")) or player2_name
 
     return {
         "id": str(row["id"]),
@@ -483,7 +488,15 @@ def get_root_admin_matches(connection, sport=None, organization_id=None):
             f"""
             SELECT
                 matches.*,
-                org.organization_name
+                org.organization_name,
+                (
+                    SELECT event.payload -> 'tennis_teams'
+                    FROM match_events AS event
+                    WHERE event.match_id = matches.id
+                      AND event.event_type = 'match_started' AND event.payload ? 'tennis_teams'
+                    ORDER BY event.created_at, event.id
+                    LIMIT 1
+                ) AS tennis_teams
             FROM matches
             LEFT JOIN "SkwshOrgSettings" AS org
                 ON org.id = matches.tenant_id
@@ -543,7 +556,8 @@ def get_root_admin_matches(connection, sport=None, organization_id=None):
     }
 
 
-def _get_root_admin_match_row(connection, match_id, *, include_archived=False):
+def _get_root_admin_match_row(connection, match_id, *, include_archived=False, lock=False):
+    lock_clause = "FOR UPDATE OF matches" if lock else ""
     archive_clause = "" if include_archived else "AND COALESCE(matches.is_archived, false) = false"
     with connection.cursor() as cursor:
         cursor.execute(
@@ -557,10 +571,24 @@ def _get_root_admin_match_row(connection, match_id, *, include_archived=False):
             WHERE matches.id = %(match_id)s
               {archive_clause}
             LIMIT 1
+            {lock_clause}
             """,
             {"match_id": match_id},
         )
         return cursor.fetchone()
+
+
+def get_root_admin_match(connection, match_id):
+    row = _get_root_admin_match_row(connection, match_id, include_archived=True)
+    if not row:
+        raise LookupError("Match not found")
+
+    match = _serialize_match_row(connection, row)
+    row["tennis_teams"] = match["state"].get("tennis_teams")
+    return {
+        **match,
+        **_serialize_root_admin_match(row),
+    }
 
 
 def archive_root_admin_match(connection, match_id):
@@ -591,11 +619,18 @@ def archive_root_admin_match(connection, match_id):
 
 
 def delete_root_admin_match(connection, match_id):
-    match_row = _get_root_admin_match_row(connection, match_id, include_archived=True)
+    match_row = _get_root_admin_match_row(connection, match_id, include_archived=True, lock=True)
     if not match_row:
         raise LookupError("Match not found")
 
     with connection.cursor() as cursor:
+        # Older installations may not yet have match-setup analytics.
+        cursor.execute("SELECT to_regclass('match_setup_sessions') AS setup_table")
+        if cursor.fetchone()["setup_table"]:
+            cursor.execute(
+                "DELETE FROM match_setup_sessions WHERE match_id = %(match_id)s",
+                {"match_id": match_id},
+            )
         cursor.execute(
             """
             DELETE FROM matches
