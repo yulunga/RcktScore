@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 
+import RootAdminSwitch from "../components/RootAdminSwitch";
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import RootAdminSettingsNav from "../components/RootAdminSettingsNav";
@@ -48,16 +49,14 @@ export default function RootAdminTournamentsPage() {
         {clubs?.map((club) => (
           <article className="dashboard-item root-admin-section-header" key={club.id}>
             <strong>{club.organization_name}</strong>
-            <span className="helper-text">{club.tournament_enabled ? "Enabled" : "Disabled"}</span>
-            <button
-              className={club.tournament_enabled ? "secondary" : ""}
-              type="button"
+            <RootAdminSwitch
+              label={`Tournament Manager for ${club.organization_name}`}
+              checked={Boolean(club.tournament_enabled)}
               disabled={saving !== null}
-              onClick={() => toggleAccess(club)}
-              aria-label={`${club.tournament_enabled ? "Disable" : "Enable"} Tournament Manager for ${club.organization_name}`}
+              onChange={() => toggleAccess(club)}
             >
-              {saving === club.id ? "Saving…" : club.tournament_enabled ? "Disable" : "Enable"}
-            </button>
+              {saving === club.id ? "Saving…" : club.tournament_enabled ? "Enabled" : "Disabled"}
+            </RootAdminSwitch>
           </article>
         ))}
       </section>

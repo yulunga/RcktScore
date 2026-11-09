@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import RootAdminSettingsNav from "../components/RootAdminSettingsNav";
 
+import RootAdminSwitch from "../components/RootAdminSwitch";
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import { MATCH_SPORT_OPTIONS, normalizeEnabledSports } from "../constants/matchSports";
@@ -170,12 +171,12 @@ export default function RootAdminPlatformSportsPage() {
                 <span>{enabled ? "Available on at least one client" : "Disabled everywhere"}</span>
                 <p>{sport.note}</p>
                 <div className="button-row">
-                  <button type="button" className={webEnabled ? "secondary" : ""} disabled={loading || saving} onClick={() => toggleSport("web", sport.value)}>
-                    Web: {webEnabled ? "On" : "Off"}
-                  </button>
-                  <button type="button" className={iosEnabled ? "secondary" : ""} disabled={loading || saving} onClick={() => toggleSport("ios", sport.value)}>
-                    iOS: {iosEnabled ? "On" : "Off"}
-                  </button>
+                  <RootAdminSwitch label={`${sport.label} on web`} checked={webEnabled} disabled={loading || saving} onChange={() => toggleSport("web", sport.value)}>
+                    Web
+                  </RootAdminSwitch>
+                  <RootAdminSwitch label={`${sport.label} on iOS`} checked={iosEnabled} disabled={loading || saving} onChange={() => toggleSport("ios", sport.value)}>
+                    iOS
+                  </RootAdminSwitch>
                 </div>
               </article>
             );
