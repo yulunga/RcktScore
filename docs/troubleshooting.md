@@ -964,3 +964,5 @@ Standard layout keeps the court name at the same 0.8rem size as the game details
 The Match Directory excludes archived matches. Clear the sport, organisation and date fields when looking for a missing match. The date filter uses UK time and matches the completion date where available, otherwise the creation date. Open Match Details to see the court. For permanent deletion from Match Details, enter uppercase `DELETE`.
 
 Older Control Panel notifications have no publish-time recipient snapshot. Their recipient count is unavailable, while stored read receipts still contribute to the read count. Apply migration `051_notification_recipient_count.sql` before deploying the updated notification Lambda.
+
+Apply migration `052_session_client_platform.sql` before deploying the updated login and Control Panel Lambdas. Existing native sessions and new sessions from older native builds appear as Unattributed. A new login from an updated native build records iOS or Android. A valid session may outlast its last recorded activity by up to the configured session lifetime.

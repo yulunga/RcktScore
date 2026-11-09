@@ -119,7 +119,9 @@ def lambda_handler(event, context):
                 },
             )
 
-        created_session = create_org_user_session(connection, username, login_source=client_type)
+        created_session = create_org_user_session(
+            connection, username, login_source=client_type, client_platform=payload.get("client_platform"),
+        )
 
     if len(memberships) == 1 or identity_first_login_enabled():
         selected_membership = default_identity_membership(memberships)

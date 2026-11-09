@@ -4,12 +4,14 @@ struct LoginRequest: Encodable {
     let username: String
     let password: String
     let clientType: String
+    let clientPlatform = "ios"
     let forceLogoutOther: Bool
 
     enum CodingKeys: String, CodingKey {
         case username
         case password
         case clientType = "client_type"
+        case clientPlatform = "client_platform"
         case forceLogoutOther = "force_logout_other"
     }
 }

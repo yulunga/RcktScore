@@ -12945,3 +12945,19 @@ textarea {
   background: #f9e3ee;
   color: #8d234d;
 }
+
+.root-admin-activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+}
+
+.root-admin-activity-table th,
+.root-admin-activity-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #d9e2ec;
+}
+
+.root-admin-activity-table th:first-child {
+  text-align: left;
+}

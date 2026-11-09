@@ -1,5 +1,7 @@
 package com.hitnscore.mobile.core.auth
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -10,6 +12,9 @@ data class LoginRequest(
     val password: String,
     @SerialName("client_type") val clientType: String,
     @SerialName("force_logout_other") val forceLogoutOther: Boolean,
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault
+    @SerialName("client_platform") val clientPlatform: String = "android",
 ) {
     companion object {
         const val MOBILE_CLIENT_TYPE = "mobile_app"

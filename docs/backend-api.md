@@ -931,3 +931,5 @@ When routes, auth behavior, security assumptions, or troubleshooting paths chang
 - update [troubleshooting.md](/Users/glennrowe/Development/Projects/RcktScore/docs/troubleshooting.md)
 
 The root-admin dashboard summary includes `unverified_user_count` and `subscription_count` (all stored Apple subscription records). The root-admin notifications list returns `recipient_count` (eligible unique identities at publication, or null for older notifications) and `read_count` (distinct recorded readers).
+
+`GET /root_admin/online_users` requires the Root Admin cookie and returns aggregate activity for all sessions and by client. Online now and active today count distinct normalized usernames by `last_seen_at`. Signed in counts non-revoked, unexpired sessions. Sign-ins today counts new sessions since UK midnight. The dashboard summary also exposes `online_now`. Native `POST /login` accepts optional `client_platform` of `ios` or `android` alongside `client_type: mobile_app`.

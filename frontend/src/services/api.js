@@ -218,6 +218,10 @@ export function markNotificationRead(notificationId, organizationId) {
   });
 }
 
+export function getRootAdminOnlineUsers() {
+  return apiRequest("/root_admin/online_users");
+}
+
 export function getRootAdminDashboard() {
   return apiRequest("/root_admin/dashboard");
 }

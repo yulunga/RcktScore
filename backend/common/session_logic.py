@@ -180,7 +180,7 @@ def revoke_active_sessions_for_username(connection, username, reason="replaced_b
         )
 
 
-def create_org_user_session(connection, username, login_source="login"):
+def create_org_user_session(connection, username, login_source="login", client_platform=None):
     normalized_username = normalize_email_address(username)
     if not normalized_username:
         raise ValueError("username is required")
@@ -206,7 +206,8 @@ def create_org_user_session(connection, username, login_source="login"):
                 created_at,
                 last_seen_at,
                 expires_at,
-                csrf_token
+                csrf_token,
+                client_platform
             )
             VALUES (
                 %(username)s,
@@ -215,7 +216,8 @@ def create_org_user_session(connection, username, login_source="login"):
                 %(created_at)s,
                 %(last_seen_at)s,
                 %(expires_at)s,
-                %(csrf_token)s
+                %(csrf_token)s,
+                %(client_platform)s
             )
             """,
             {
@@ -226,6 +228,9 @@ def create_org_user_session(connection, username, login_source="login"):
                 "last_seen_at": now,
                 "expires_at": expires_at,
                 "csrf_token": csrf_token,
+                "client_platform": (
+                    client_platform if normalized_source == "mobile_app" and client_platform in ("ios", "android") else None
+                ),
             },
         )
 

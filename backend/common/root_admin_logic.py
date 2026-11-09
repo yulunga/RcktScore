@@ -112,6 +112,45 @@ def _serialize_root_admin_match(row):
     }
 
 
+def get_root_admin_online_users(connection):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            WITH activity AS (
+                SELECT LOWER(BTRIM(username)) AS identity,
+                       CASE WHEN login_source = 'web_app' THEN 'web'
+                            ELSE COALESCE(client_platform, 'unknown') END AS platform,
+                       last_seen_at, created_at,
+                       revoked_at IS NULL AND expires_at > NOW() AS valid
+                FROM org_user_sessions
+                WHERE last_seen_at >= NOW() - INTERVAL '24 hours'
+                   OR (revoked_at IS NULL AND expires_at > NOW())
+                   OR created_at >= (
+                       date_trunc('day', NOW() AT TIME ZONE 'Europe/London')
+                       AT TIME ZONE 'Europe/London'
+                   )
+            )
+            SELECT COALESCE(platform, 'total') AS platform,
+                   COUNT(DISTINCT identity) FILTER (
+                       WHERE last_seen_at >= NOW() - INTERVAL '5 minutes'
+                   ) AS online_now,
+                   COUNT(DISTINCT identity) FILTER (
+                       WHERE last_seen_at >= NOW() - INTERVAL '24 hours'
+                   ) AS active_today,
+                   COUNT(*) FILTER (WHERE valid) AS signed_in,
+                   COUNT(*) FILTER (
+                       WHERE created_at >= (
+                           date_trunc('day', NOW() AT TIME ZONE 'Europe/London')
+                           AT TIME ZONE 'Europe/London'
+                       )
+                   ) AS sign_ins_today
+            FROM activity
+            GROUP BY GROUPING SETS ((), (platform))
+            """
+        )
+        return {row["platform"]: row for row in cursor.fetchall()}
+
+
 def get_root_admin_dashboard(connection):
     platform_enabled_sports = fetch_platform_enabled_sports(connection)
     with connection.cursor() as cursor:
@@ -268,6 +307,7 @@ def get_root_admin_dashboard(connection):
             "total_user_count": user_summary["total_user_count"],
             "unverified_user_count": user_summary["unverified_user_count"],
             "subscription_count": subscription_count,
+            "online_now": get_root_admin_online_users(connection)["total"]["online_now"],
             "match_count": match_count,
             "completed_match_count": completed_match_count,
         },

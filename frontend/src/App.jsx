@@ -21,6 +21,7 @@ const PerformancePage = lazy(() => import("./pages/PerformancePage"));
 const PingUsPage = lazy(() => import("./pages/PingUsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RootAdminClubPage = lazy(() => import("./pages/RootAdminClubPage"));
+const RootAdminOnlineUsersPage = lazy(() => import("./pages/RootAdminOnlineUsersPage"));
 const RootAdminDashboardPage = lazy(() => import("./pages/RootAdminDashboardPage"));
 const RootAdminInterestRequestsPage = lazy(() => import("./pages/RootAdminInterestRequestsPage"));
 const RootAdminLoginPage = lazy(() => import("./pages/RootAdminLoginPage"));
@@ -78,6 +79,10 @@ export default function App() {
             <RootAdminMatchesPage />
           </RootAdminProtectedRoute>
         )}
+      />
+      <Route
+        path="/rckscoreAdmin/online-users"
+        element={<RootAdminProtectedRoute><RootAdminOnlineUsersPage /></RootAdminProtectedRoute>}
       />
       <Route
         path="/rckscoreAdmin/notifications"

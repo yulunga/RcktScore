@@ -369,6 +369,12 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/dashboard
             Method: GET
+        GetRootAdminOnlineUsers:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/online_users
+            Method: GET
 
   GetRootAdminPlatformSportsFunction:
     Type: AWS::Serverless::Function

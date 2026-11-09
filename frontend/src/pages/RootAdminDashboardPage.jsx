@@ -160,6 +160,11 @@ export default function RootAdminDashboardPage() {
             </button>
             <span className="root-admin-summary-note">{summary.unverified_user_count ?? 0} unverified</span>
           </div>
+          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/subscriptions") }>
+            <strong>Subscriptions</strong>
+            <div>{summary.subscription_count ?? 0}</div>
+            <span>Apple subscription records</span>
+          </button>
           <div className="meta-item">
             <strong>Club Enquiries</strong>
             <button
@@ -186,14 +191,10 @@ export default function RootAdminDashboardPage() {
               Completed {summary.completed_match_count ?? 0}
             </span>
           </div>
-          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/notifications") }>
-            <strong>Notifications</strong>
-            <span>Send targeted messages</span>
-          </button>
-          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/subscriptions") }>
-            <strong>Subscriptions</strong>
-            <div>{summary.subscription_count ?? 0}</div>
-            <span>Apple subscription records</span>
+          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/online-users")}>
+            <strong>Online Users</strong>
+            <div>{summary.online_now ?? "—"}</div>
+            <span>Last 5 minutes</span>
           </button>
           <button
             className="meta-item root-admin-settings-card"
