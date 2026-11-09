@@ -33,6 +33,9 @@
     ],
     "_timeRate" : 0
   },
+  "subscriptionBundleGroups" : [
+
+  ],
   "subscriptionGroups" : [
     {
       "id" : "22369681",
@@ -63,7 +66,7 @@
           ],
           "displayPrice" : "1.99",
           "familyShareable" : false,
-          "groupNumber" : 3,
+          "groupNumber" : 1,
           "internalID" : "6809933955",
           "introductoryOffers" : [
 
@@ -102,7 +105,7 @@
           ],
           "displayPrice" : "19.99",
           "familyShareable" : false,
-          "groupNumber" : 4,
+          "groupNumber" : 2,
           "internalID" : "6809934134",
           "introductoryOffers" : [
 
@@ -126,8 +129,11 @@
       ]
     }
   ],
+  "subscriptionSuiteGroups" : [
+
+  ],
   "version" : {
-    "major" : 5,
-    "minor" : 0
+    "major" : 6,
+    "minor" : 3
   }
 }

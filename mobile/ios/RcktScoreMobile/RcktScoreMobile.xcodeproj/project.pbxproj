@@ -27,6 +27,16 @@
 		347D28323050A9C10007FAC9 /* HitnScore.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = HitnScore.storekit; path = RcktScoreMobile/HitnScore.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		3424A39830A25E2E00C02E73 /* Exceptions for "RcktScoreMobile" folder in "RcktScoreMobile" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 347077DB2F756CF40099CAFA /* RcktScoreMobile */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -35,6 +45,9 @@
 		};
 		347077DE2F756CF40099CAFA /* RcktScoreMobile */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				3424A39830A25E2E00C02E73 /* Exceptions for "RcktScoreMobile" folder in "RcktScoreMobile" target */,
+			);
 			path = RcktScoreMobile;
 			sourceTree = "<group>";
 		};
@@ -382,13 +395,15 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = RcktScoreMobile/RcktScoreMobile.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = 6GVCHR2885;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RcktScoreMobile/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hit n Score";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to securely unlock your saved Hit n Score session.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -424,13 +439,15 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = RcktScoreMobile/RcktScoreMobile.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = 6GVCHR2885;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RcktScoreMobile/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Hit n Score";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to securely unlock your saved Hit n Score session.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

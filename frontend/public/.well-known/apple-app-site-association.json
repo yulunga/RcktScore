@@ -1,0 +1,29 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "6GVCHR2885.rcktScore.RcktScoreMobile"
+        ],
+        "components": [
+          {
+            "/": "/help",
+            "?": {
+              "mode": "reset",
+              "token": "?*"
+            },
+            "comment": "Open password-reset completion links in the iOS app when installed."
+          },
+          {
+            "/": "/help",
+            "?": {
+              "mode": "confirm-email",
+              "token": "?*"
+            },
+            "comment": "Open first-account password setup links in the iOS app when installed."
+          }
+        ]
+      }
+    ]
+  }
+}
