@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
@@ -76,7 +76,6 @@ function formatDate(value) {
 }
 
 export default function RootAdminClubPage() {
-  const navigate = useNavigate();
   const { organizationId } = useParams();
   const [settings, setSettings] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
@@ -339,27 +338,12 @@ export default function RootAdminClubPage() {
     <main className="page-shell stack">
       <RootAdminSessionBar />
 
-      <section className="hero-card stack compact">
-        <div className="settings-header-row">
-          <div className="stack compact">
-            <h1>{organizationForm.organization_name || "Club Administration"}</h1>
-            <p className="helper-text">
-              Manage all club attributes, users, courts, and launch settings as root admin.
-            </p>
-          </div>
-          <div className="button-row">
-            <button className="secondary" type="button" onClick={() => navigate("/rckscoreAdmin/dashboard")}>
-              Back to Root Admin
-            </button>
-          </div>
-        </div>
-      </section>
-
       {loading ? <div className="notice">Loading club administration page...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
-      <section className="root-admin-tab-row" aria-label="Club administration sections">
+      <nav className="panel root-admin-profile-tabs" aria-label="Club administration sections">
+        <h1 className="root-admin-club-tab-title">{settings?.organization?.organization_name || "Club Administration"}</h1>
         {adminTabs.map((tab) => (
           <button
             key={tab.id}
@@ -370,7 +354,7 @@ export default function RootAdminClubPage() {
             {tab.label}
           </button>
         ))}
-      </section>
+      </nav>
 
       {activeTab === "club-details" ? (
         <section className="club-admin-overview-grid">

@@ -6233,6 +6233,13 @@ textarea {
   padding: 12px;
 }
 
+.root-admin-club-tab-title {
+  flex: none;
+  margin: 0 8px 0 0;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
 .root-admin-profile-tabs > button {
   flex-shrink: 0;
   white-space: nowrap;
