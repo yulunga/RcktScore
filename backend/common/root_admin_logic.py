@@ -193,6 +193,32 @@ def get_root_admin_dashboard(connection):
 
         cursor.execute(
             """
+            SELECT organization_id,
+                   COUNT(*) FILTER (WHERE status = 'completed') AS completed_count,
+                   COALESCE(
+                       jsonb_agg(
+                           jsonb_build_object('id', id, 'name', name, 'sport', sport,
+                                              'status', status, 'starts_on', starts_on, 'ends_on', ends_on)
+                           ORDER BY starts_on NULLS LAST, name, id
+                       ) FILTER (WHERE status IN ('registration', 'draw_published', 'in_progress')),
+                       '[]'::jsonb
+                   ) AS current_events
+            FROM tournament_events
+            WHERE status IN ('registration', 'draw_published', 'in_progress', 'completed')
+            GROUP BY organization_id
+            """
+        )
+        tournament_activity = {
+            row["organization_id"]: {
+                "completed_count": row["completed_count"],
+                "current_events": row["current_events"],
+            }
+            for row in cursor.fetchall()
+        }
+
+
+        cursor.execute(
+            """
             SELECT
                 u.id,
                 u.clubusername,
@@ -285,6 +311,7 @@ def get_root_admin_dashboard(connection):
         serialized["court_count"] = row.get("court_count") or 0
         serialized["admin_count"] = row.get("admin_count") or 0
         serialized["tournament_enabled"] = row["tournament_enabled"]
+        serialized["tournament_activity"] = tournament_activity.get(row["id"], {"completed_count": 0, "current_events": []})
         serialized["users"] = []
         organizations.append(serialized)
         organizations_by_id[serialized["id"]] = serialized

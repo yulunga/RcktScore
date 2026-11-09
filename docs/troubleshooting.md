@@ -83,6 +83,12 @@ and account context should share one row no more than 48 CSS pixels high. If the
 old tall portrait header appears, inspect the CSS viewport rather than the
 simulator window size and confirm the landscape media query is active.
 
+At phone portrait and phone-landscape sizes, only the mascot icon should remain;
+the HitnScore wordmark must be hidden while Messages and the context trigger stay
+visible. The trigger must show Personal or the active club name without an
+`Account` prefix at every viewport. If either text remains, inspect the phone
+brand-stack rules and the empty header label passed by `ClubPageHeader.jsx`.
+
 The same three phone landscape sizes open the Start New Match chooser and
 assert that the context control and every sport card remain inside the overlay
 in one row without internal scrolling. If lower sports are clipped, confirm the
@@ -170,6 +176,11 @@ Native Android and iOS should show Play immediately after Home in the bottom
 navigation for administrators and scorers. It opens the existing Start New
 Match flow; the Home page should not also show a Start New Match banner. A
 view-only club member should continue to see neither scoring entry point.
+
+The web phone and portrait-tablet bottom navigation follows the same ordering.
+On an iPad portrait dashboard, Play should be the second item and the large
+Start New Match banner should be hidden. If it is duplicated, verify the
+portrait bottom-navigation media query is active and the account can score.
 
 Web Settings should open on Profile, not directly on club administration. Profile
 fields remain read-only until Edit is selected. Association cards depend on
@@ -969,3 +980,5 @@ Older Ground Control notifications have no publish-time recipient snapshot. Thei
 Apply migration `052_session_client_platform.sql` before deploying the updated login and Ground Control Lambdas. Existing native sessions and new sessions from older native builds appear as Unattributed. A new login from an updated native build records iOS or Android. A valid session may outlast its last recorded activity by up to the configured session lifetime.
 
 If a club cannot open Tournament Manager, check its Enabled status in Ground Control → Settings → Tournament Manager. The dashboard trophy reflects that same club-level setting.
+
+Club tournament activity in Ground Control uses recorded event status. Draft and cancelled events are excluded from the current list and completed count.

@@ -126,7 +126,7 @@ export default function AccountContextSwitcher({ className = "", label = "Contex
         type="button"
         onClick={toggleMenu}
       >
-        <span className="account-context-switcher__label">{label}</span>
+        {label ? <span className="account-context-switcher__label">{label}</span> : null}
         <strong>{contextName(session)}</strong>
         {hasMenu ? (
           menuIcon === "hamburger" ? (

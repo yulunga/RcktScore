@@ -94,6 +94,8 @@ test.beforeEach(async ({ page }) => {
 
 test("non-admin club user opens Settings from the native-style Android navigation @mobile-settings", async ({ page }) => {
   await page.goto("/dashboard");
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })
+    .getByRole("button", { name: "Start New Match" })).toHaveCount(0);
   await page.getByRole("navigation", { name: "Mobile navigation" })
     .getByRole("button", { name: "Settings", exact: true })
     .click();
@@ -112,6 +114,6 @@ test("non-admin club user opens Settings from the native-style Android navigatio
   await expect(page.getByRole("button", { name: /Courts/ })).toHaveCount(0);
 
   await page.goto("/settings?club=1&organizationId=42&tab=courts");
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/club=1.*organizationId=42.*tab=organisation/);
   await expect(page.getByRole("button", { name: /Courts/ })).toHaveCount(0);
 });

@@ -252,14 +252,21 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect(page.getByText("Manage live scoring, keep an eye on active courts, and review recent matches.")).toHaveCount(0);
   await expect(page.getByText(session.username, { exact: true })).toHaveCount(0);
   await expect(header.locator(".account-context-switcher__trigger")).toContainText(session.organization_name);
+  await expect(header.locator(".account-context-switcher__label")).toHaveCount(0);
   await expect(header.locator(".account-context-switcher__expand-icon span")).toHaveCount(3);
   await expect(page.getByText(/RcktScore v\d/)).toHaveCount(0);
   await expect(page.getByText(/build \d+/)).toHaveCount(0);
-  await expect(startMatch).toBeVisible();
-  await expect(startMatch).toHaveCSS("color", "rgb(255, 255, 255)");
-  await expect(startMatch.locator("strong")).toHaveCSS("font-weight", "700");
-
   const viewport = page.viewportSize();
+  const usesMobileBottomNavigation = viewport.width <= 480
+    || (viewport.width <= 1024 && viewport.height > viewport.width);
+  if (usesMobileBottomNavigation) {
+    await expect(startMatch).toBeHidden();
+  } else {
+    await expect(startMatch).toBeVisible();
+    await expect(startMatch).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(startMatch.locator("strong")).toHaveCSS("font-weight", "700");
+  }
+
   let initialHomeBox = null;
   if (viewport.width <= 600) {
     const contextBox = await header.locator(".account-context-switcher__trigger").boundingBox();
@@ -390,7 +397,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await page.evaluate(() => window.scrollTo(0, 0));
     const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });
     const menuItems = mobileNavigation.locator(".mobile-bottom-navigation__item");
-    await expect(menuItems).toHaveCount(5);
+    await expect(menuItems).toHaveCount(6);
     const menuBoxes = await menuItems.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
     expect(Math.max(...menuBoxes) - Math.min(...menuBoxes)).toBeLessThanOrEqual(1);
     await mobileNavigation.getByRole("button", { name: "Settings", exact: true }).click();
@@ -410,9 +417,8 @@ test("switches identity context from the header and exposes it on Matches and ma
     }
     if (name === "Start New Match") {
       await page.getByRole("navigation", { name: "Mobile navigation" })
-        .getByRole("button", { name: "Home", exact: true })
+        .getByRole("button", { name: "Start New Match", exact: true })
         .click();
-      await page.locator(".dashboard-start-hero").click();
       return;
     }
     await page.getByRole("navigation", { name: "Mobile navigation" })
@@ -675,21 +681,27 @@ test("opens the shared sport chooser from the responsive start-match action @hea
       .getByRole("button", { name: "Start New Match" })
       .click();
   } else {
-    await page.locator(".dashboard-start-hero").click();
+    await page.getByRole("navigation", { name: "Mobile navigation" })
+      .getByRole("button", { name: "Start New Match", exact: true })
+      .click();
   }
 
   await expect(page).toHaveURL(/\/dashboard#new-match$/);
   await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
 });
 
-test("uses a native-style five-item bottom navigation on iPhone portrait @header", async ({ page }) => {
+test("uses a native-style bottom navigation with Play after Home on iPhone portrait @header", async ({ page }) => {
   await page.setViewportSize({ width: 402, height: 874 });
   await page.goto("/dashboard");
 
   const navigation = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(navigation).toBeVisible();
-  await expect(navigation.locator(".mobile-bottom-navigation__item")).toHaveCount(5);
+  const navigationItems = navigation.locator(".mobile-bottom-navigation__item");
+  await expect(navigationItems).toHaveCount(6);
+  await expect(navigationItems.nth(0)).toHaveAccessibleName("Home");
+  await expect(navigationItems.nth(1)).toHaveAccessibleName("Start New Match");
   await expect(navigation.getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".dashboard-start-hero")).toBeHidden();
   await expect(page.getByRole("button", { name: "Open navigation menu" })).toHaveCount(0);
 
   const navigationBox = await navigation.boundingBox();
@@ -701,6 +713,24 @@ test("uses a native-style five-item bottom navigation on iPhone portrait @header
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("navigation", { name: "Mobile navigation" })
     .getByRole("button", { name: "Settings" })).toHaveAttribute("aria-current", "page");
+});
+
+test("places Start New Match in the iPad portrait navigation @header", async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await page.goto("/dashboard");
+
+  const navigation = page.getByRole("navigation", { name: "Mobile navigation" });
+  const navigationItems = navigation.locator(".mobile-bottom-navigation__item");
+  await expect(navigation).toBeVisible();
+  await expect(navigationItems).toHaveCount(6);
+  await expect(navigationItems.nth(0)).toHaveAccessibleName("Home");
+  await expect(navigationItems.nth(1)).toHaveAccessibleName("Start New Match");
+  await expect(navigationItems.nth(1).locator(".mobile-bottom-navigation__label")).toHaveText("Play");
+  await expect(page.locator(".dashboard-start-hero")).toBeHidden();
+
+  await navigation.getByRole("button", { name: "Start New Match" }).click();
+  await expect(page).toHaveURL(/\/dashboard#new-match$/);
+  await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
 });
 
 for (const viewport of [
@@ -736,7 +766,9 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
   });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto("/dashboard");
-  await page.locator(".dashboard-start-hero").click();
+  await page.getByRole("navigation", { name: "Mobile navigation" })
+    .getByRole("button", { name: "Start New Match" })
+    .click();
 
   const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
   await expect(chooser).toBeVisible();
@@ -891,6 +923,11 @@ for (const viewportSize of [
     expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(viewportSize.width + 1);
 
     await expect(navigation).toBeVisible();
+    await expect(header.locator(".club-page-header__logo")).toBeVisible();
+    await expect(header.locator(".club-page-header__brand-stack")).toBeHidden();
+    await expect(header.getByRole("button", { name: "Messages" })).toBeVisible();
+    await expect(header.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
+    await expect(header.locator(".account-context-switcher__label")).toHaveCount(0);
     await expect(navigation.getByRole("button", { name: "Home" })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Start New Match" })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Matches" })).toBeVisible();
@@ -908,6 +945,39 @@ for (const viewportSize of [
     ]);
     const centres = [brandBox, navBox, messagesBox, contextBox].map((box) => box.y + (box.height / 2));
     expect(Math.max(...centres) - Math.min(...centres)).toBeLessThanOrEqual(3);
+  });
+}
+
+for (const viewportSize of [
+  { name: "iPhone 16 Pro", width: 402, height: 874 },
+  { name: "iPhone 16 Pro Max", width: 440, height: 956 },
+]) {
+  test(`uses icon-only branding with messages and context on ${viewportSize.name} portrait @header`, async ({ page }) => {
+    await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
+    await page.goto("/dashboard");
+
+    const header = page.locator(".club-page-header");
+    const logo = header.locator(".club-page-header__logo");
+    const messages = header.getByRole("button", { name: "Messages" });
+    const context = header.locator(".account-context-switcher__trigger");
+
+    await expect(logo).toBeVisible();
+    await expect(header.locator(".club-page-header__brand-stack")).toBeHidden();
+    await expect(messages).toBeVisible();
+    await expect(context).toBeVisible();
+    await expect(context).toContainText("Header Test Club");
+    await expect(context).not.toContainText("Account");
+
+    const [headerBox, logoBox, messagesBox, contextBox] = await Promise.all([
+      header.boundingBox(),
+      logo.boundingBox(),
+      messages.boundingBox(),
+      context.boundingBox(),
+    ]);
+    expect(logoBox.x).toBeGreaterThanOrEqual(headerBox.x);
+    expect(messagesBox.x).toBeGreaterThan(logoBox.x + logoBox.width);
+    expect(contextBox.x).toBeGreaterThan(messagesBox.x + messagesBox.width - 1);
+    expect(contextBox.x + contextBox.width).toBeLessThanOrEqual(headerBox.x + headerBox.width + 1);
   });
 }
 

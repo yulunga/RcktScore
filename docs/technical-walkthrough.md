@@ -517,12 +517,15 @@ serves lost for Personal Plus from the point-time server event stream.
 plumbing and starts a 90-second break only after an odd completed game, or a
 120-second break after a completed set, when `tennis_timed_breaks` is enabled.
 It forces the shared signed-in header into its compact form throughout active
-scoring. Signed-in phone-landscape pages from 480–956 CSS pixels wide and
-280–499 pixels high, covering iPhone SE through iPhone Pro Max, first use a
-single shallow header row containing the brand, icon-only navigation, Messages
-and the context control, with compact dashboard actions/cards and no floating
+scoring. The signed-in web context trigger shows only Personal or the active
+club name, with no generic Account prefix. Phone portrait hides the HitnScore
+wordmark while retaining the mascot icon, Messages and that context trigger.
+Signed-in phone-landscape pages from 480–956 CSS pixels wide and 280–499 pixels
+high, covering iPhone SE through iPhone Pro Max, use the same icon-only branding
+in a single shallow header row with icon-only navigation, Messages and the
+context control, with compact dashboard actions/cards and no floating
 mobile navigation control. Active scoring then hides the navigation icons to
-give the board maximum height while retaining the compact brand.
+give the board maximum height while retaining the mascot icon.
 The shared Start New Match chooser also switches to a landscape grid: its title
 and context selector share the top row and all four implemented sports use one
 compact row beneath it. The overlay and standalone selector therefore fit
@@ -540,11 +543,13 @@ document scrolling. Expanding Want In deliberately restores the normal
 scrollable registration layout because that longer form cannot fit safely into
 the landscape viewport.
 
-Phone and portrait-tablet signed-in pages use a persistent five-item bottom
-navigation for Home, Matches, Analytics, Settings and Help instead of a floating
-hamburger and modal sheet. The active item uses the same blue/pink visual
-language as the native clients. Active scoring and the standalone sport chooser
-omit the bar. At tablet dimensions from 600–1400 CSS pixels wide and at least
+Phone and portrait-tablet signed-in pages use a persistent bottom navigation for
+Home, Play, Matches, Analytics, Settings and Help instead of a floating hamburger
+and modal sheet. Play sits immediately after Home, opens the existing match
+selector and replaces the large dashboard Start New Match banner at these sizes;
+view-only members omit it. The active item uses the same blue/pink visual language
+as the native clients. Active scoring and the standalone sport chooser omit the
+bar. At tablet dimensions from 600–1400 CSS pixels wide and at least
 500 pixels high, ordinary signed-in page shells use the viewport with 16-pixel
 side margins, allowing Settings and other panels to fill iPad and Android tablet
 portrait or landscape screens.
@@ -819,3 +824,5 @@ The Ground Control counts a user with multiple club memberships once under Users
 The Ground Control Online Users report refreshes every 30 seconds while open. Activity reflects authenticated requests recorded in `org_user_sessions.last_seen_at`. Web attribution uses the existing login source. Native attribution is recorded at login from the client platform. Distinct-user totals deduplicate across platforms.
 
 Ground Control Settings links Tournament Manager and Sports Controls. The Tournament Manager card opens the same per-club configuration page, and the dashboard directory marks enabled clubs with a trophy.
+
+Selecting a club name in Ground Control Tournament Manager shows events in registration, draw published or in progress, and counts completed events separately.

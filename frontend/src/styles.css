@@ -10896,8 +10896,7 @@ textarea {
   }
 
   .club-page-header__brand-stack {
-    min-width: 0;
-    padding-top: 0;
+    display: none;
   }
 
   .club-page-header__logo {
@@ -11643,7 +11642,7 @@ textarea {
 
   .club-page-header .club-page-header__brand-stack,
   .club-page-header.club-page-header--compact .club-page-header__brand-stack {
-    padding-top: 0;
+    display: none;
   }
 
   .club-page-header .club-page-header__top h1,
@@ -12794,7 +12793,7 @@ textarea {
     left: max(8px, env(safe-area-inset-left));
     z-index: 10000;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--mobile-navigation-items, 6), minmax(0, 1fr));
     align-items: stretch;
     gap: 2px;
     min-height: 62px;
@@ -12845,6 +12844,14 @@ textarea {
     background: #ec5ea8;
   }
 
+  .mobile-bottom-navigation__item--play .mobile-bottom-navigation__icon {
+    color: #1474c9;
+  }
+
+  .mobile-bottom-navigation__item--play.mobile-bottom-navigation__item--active .mobile-bottom-navigation__icon {
+    color: #0b5fb3;
+  }
+
   .mobile-bottom-navigation__icon {
     width: 21px;
     height: 21px;
@@ -12866,6 +12873,10 @@ textarea {
     line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .dashboard-start-hero {
+    display: none;
   }
 }
 
@@ -13006,4 +13017,23 @@ textarea {
 
 .root-admin-switch input:disabled {
   cursor: not-allowed;
+}
+
+.root-admin-club-tournament-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.root-admin-club-tournament-row summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 44px;
+  align-content: center;
+  overflow-wrap: anywhere;
+}
+
+.root-admin-club-tournament-row h2 {
+  font-size: 1rem;
 }

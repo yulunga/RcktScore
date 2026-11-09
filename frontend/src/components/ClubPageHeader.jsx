@@ -15,6 +15,15 @@ function inferOrganizationType(session) {
 }
 
 function MobileMenuIcon({ name }) {
+  if (name === "play") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
+        <path d="M10 8.75L16 12L10 15.25V8.75Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
   if (name === "home") {
     return (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -149,6 +158,14 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
   ];
   const mobileNavigationItems = [
     { label: "Home", icon: "home", onClick: () => navigate("/dashboard"), isActive: location.pathname === "/dashboard" && !location.hash },
+    ...(matchManagementEnabled ? [{
+      label: "Start New Match",
+      shortLabel: "Play",
+      icon: "play",
+      onClick: () => navigate("/dashboard#new-match"),
+      isActive: isNewMatchOverlay || isNewMatchRoute,
+      isPlay: true,
+    }] : []),
     {
       label: "Matches",
       icon: "matches",
@@ -271,7 +288,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               </button>
               <AccountContextSwitcher
                 className="account-context-switcher--header"
-                label="Account"
+                label=""
                 menuIcon="hamburger"
                 onContextChange={() => {
                   if (location.pathname.startsWith("/match/")) navigate("/dashboard", { replace: true });
@@ -326,12 +343,16 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
       ) : null}
 
       {showMobileMenu ? (
-        <nav className="mobile-bottom-navigation" aria-label="Mobile navigation">
+        <nav
+          className="mobile-bottom-navigation"
+          aria-label="Mobile navigation"
+          style={{ "--mobile-navigation-items": mobileNavigationItems.length }}
+        >
           {mobileNavigationItems.map((item) => (
             <button
               aria-current={item.isActive ? "page" : undefined}
               aria-label={item.label}
-              className={`mobile-bottom-navigation__item${item.isActive ? " mobile-bottom-navigation__item--active" : ""}`}
+              className={`mobile-bottom-navigation__item${item.isActive ? " mobile-bottom-navigation__item--active" : ""}${item.isPlay ? " mobile-bottom-navigation__item--play" : ""}`}
               key={item.label}
               type="button"
               onClick={item.onClick}
@@ -339,7 +360,7 @@ export default function ClubPageHeader({ title, subtitle, actions = [], classNam
               <span className="mobile-bottom-navigation__icon" aria-hidden="true">
                 <MobileMenuIcon name={item.icon} />
               </span>
-              <span className="mobile-bottom-navigation__label">{item.label}</span>
+              <span className="mobile-bottom-navigation__label">{item.shortLabel || item.label}</span>
             </button>
           ))}
         </nav>
