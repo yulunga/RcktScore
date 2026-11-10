@@ -641,21 +641,6 @@ struct MatchScoringView: View {
                 }
 
                 if let match {
-                    if !isOnline || container.offlineMatchStore.pendingActionCount > 0 {
-                        HStack(spacing: 8) {
-                            Image(systemName: isOnline ? "arrow.triangle.2.circlepath" : "wifi.slash")
-                            Text(
-                                isOnline
-                                    ? "Synchronising \(container.offlineMatchStore.pendingActionCount) saved action(s)…"
-                                    : "Offline — scoring is saved on this device and will sync automatically."
-                            )
-                        }
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(isOnline ? Color.rcktBlue : Color.orange)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("scoring.offlineStatus")
-                    }
-
                     if isTabletLandscape {
                         landscapeScoringLayout(match)
                     } else if isMatchComplete {
@@ -988,11 +973,11 @@ struct MatchScoringView: View {
                         landscapeTablet: landscapeTablet
                     )
 
-                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 4 : 12))
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 0 : 8))
 
                     pointRail(compact: compact, landscapeTablet: landscapeTablet)
 
-                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 4 : 12))
+                    Spacer(minLength: landscapeTablet ? 16 : (compact ? 0 : 8))
 
                     playerCard(
                         side: "player2",
@@ -1004,8 +989,8 @@ struct MatchScoringView: View {
                         landscapeTablet: landscapeTablet
                     )
                     }
-                    .padding(.horizontal, landscapeTablet ? 12 : (compact ? 4 : 8))
-                    .padding(.top, landscapeTablet ? 16 : (compact ? 10 : 12))
+                    .padding(.horizontal, landscapeTablet ? 12 : (compact ? 2 : 8))
+                    .padding(.top, landscapeTablet ? 16 : (compact ? 6 : 12))
                     .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
                 }
             }
@@ -1039,6 +1024,22 @@ struct MatchScoringView: View {
     @ViewBuilder
     private func bottomScoringDock(compactLayout: Bool, isTabletLandscape: Bool) -> some View {
         VStack(spacing: 6) {
+            if !isOnline || container.offlineMatchStore.pendingActionCount > 0 {
+                HStack(spacing: 7) {
+                    Image(systemName: isOnline ? "arrow.triangle.2.circlepath" : "wifi.slash")
+                    Text(isOnline
+                         ? "Synchronising \(container.offlineMatchStore.pendingActionCount) saved action(s)…"
+                         : "Offline — actions will sync automatically.")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isOnline ? Color.rcktBlue : Color.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .accessibilityIdentifier("scoring.offlineStatus")
+            }
+
             bottomTimerActionBar(compactLayout: compactLayout, isTabletLandscape: isTabletLandscape)
 
             if let timerSkipLabel {
@@ -1588,21 +1589,22 @@ struct MatchScoringView: View {
     @ViewBuilder
     private var matchHistoryStrip: some View {
         if let gameHistory = live?.gameHistory, !gameHistory.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(gameHistory) { game in
-                        VStack(spacing: 4) {
-                            Text("\(game.player1Score) - \(game.player2Score)")
-                                .font(.subheadline.weight(.semibold))
-                            Text(initials(for: game.winnerName))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 92)
-                        .padding(.vertical, 10)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            HStack(spacing: 6) {
+                ForEach(gameHistory) { game in
+                    VStack(spacing: 3) {
+                        Text("\(game.player1Score)-\(game.player2Score)")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                        Text(initials(for: game.winnerName))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -1794,7 +1796,7 @@ struct MatchScoringView: View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
         let usesDarkForeground = isLightShirtColor(shirtColorValue)
         let displayedScore = scoreLabel.isEmpty ? String(score) : scoreLabel
-        let scoreFontSize: CGFloat = landscapeTablet ? 112 : (compact ? 80 : 92)
+        let scoreFontSize: CGFloat = landscapeTablet ? 112 : (compact ? 88 : 96)
 
         VStack(spacing: compact ? 8 : 10) {
             playerScoreDisplay(
@@ -1811,8 +1813,8 @@ struct MatchScoringView: View {
         }
         .padding(.horizontal, landscapeTablet ? 14 : (compact ? 6 : 12))
         .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
-        .frame(width: landscapeTablet ? 182 : (compact ? 88 : 128))
-        .frame(minHeight: landscapeTablet ? 232 : (compact ? 148 : 164), alignment: .top)
+        .frame(width: landscapeTablet ? 182 : (compact ? 94 : 128))
+        .frame(minHeight: landscapeTablet ? 232 : (compact ? 158 : 170), alignment: .top)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(foreground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -2381,7 +2383,7 @@ struct MatchScoringView: View {
             return
         }
 
-        if isFreshMatch(match), isTennisMatch {
+        if isFreshMatch(match) {
             timerPhase = .firstServer
             timerSeconds = 0
             matchDurationSeconds = 0

@@ -1282,7 +1282,9 @@ final class APIClient {
         email: String,
         country: String,
         telephone: String,
-        cityLocation: String
+        cityLocation: String,
+        birthMonth: Int?,
+        birthYear: Int?
     ) async throws -> OrganizationSettings {
         let request = try makeRequest(
             path: "/personal_profile/\(organizationID)",
@@ -1293,7 +1295,9 @@ final class APIClient {
                 email: email,
                 country: country,
                 telephone: telephone,
-                cityLocation: cityLocation
+                cityLocation: cityLocation,
+                birthMonth: birthMonth,
+                birthYear: birthYear
             )
         )
         return try await unwrapOrganizationSettingsResponse(request)

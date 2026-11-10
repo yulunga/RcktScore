@@ -98,6 +98,61 @@ private struct ShirtColorOption: Identifiable {
     let foreground: Color
 }
 
+private struct ShirtColorGridPicker: View {
+    @Binding var selection: String
+    let options: [ShirtColorOption]
+    @State private var isPresented = false
+
+    private var selectedOption: ShirtColorOption {
+        options.first(where: { $0.id == selection }) ?? options[0]
+    }
+
+    var body: some View {
+        Button {
+            isPresented = true
+        } label: {
+            Circle()
+                .fill(selectedOption.swatch)
+                .frame(width: 26, height: 26)
+                .overlay(Circle().stroke(selectedOption.border, lineWidth: 1.5))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(38), spacing: 8), count: 5), spacing: 10) {
+                ForEach(options) { option in
+                    Button {
+                        selection = option.id
+                        isPresented = false
+                    } label: {
+                        Circle()
+                            .fill(option.swatch)
+                            .frame(width: 30, height: 30)
+                            .overlay(Circle().stroke(option.border, lineWidth: 1.5))
+                            .overlay {
+                                if option.id == selection {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.heavy))
+                                        .foregroundStyle(option.id == "white" || option.id == "yellow" ? Color.black : Color.white)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.label)
+                    .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
+                }
+            }
+            .padding(14)
+            .presentationCompactAdaptation(.popover)
+        }
+        .accessibilityLabel("Shirt")
+        .accessibilityValue(selectedOption.label)
+        .accessibilityIdentifier("startMatch.shirtColorPicker")
+        .frame(width: 44, alignment: .trailing)
+    }
+}
+
 private struct MatchSetupFormState {
     var courtID = ""
     var courtName = ""
@@ -316,60 +371,55 @@ struct StartNewMatchFlowView: View {
     private var matchContextSwitcher: some View {
         let session = container.sessionStore.session
         let memberships = resolvedMatchMemberships
+        let selectedMembership = memberships.first { $0.organizationID == session?.organizationID }
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
             Text("Score this match for")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.secondary)
 
-            ForEach(memberships) { membership in
-                Button {
-                    onContextChanged(membership)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: membership.organizationType == "personal" ? "person.crop.circle" : "building.2")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.dashboardBrand)
-                            .frame(width: 24)
-
-                        VStack(alignment: .leading, spacing: 2) {
+            Menu {
+                ForEach(memberships) { membership in
+                    Button {
+                        onContextChanged(membership)
+                    } label: {
+                        Label {
                             Text(matchContextTitle(for: membership))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
-                            Text(membership.organizationType == "personal" ? "Personal scoring" : "Club scoring")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer(minLength: 8)
-
-                        if membership.organizationID == session?.organizationID {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.dashboardBrand)
-                        } else {
-                            Image(systemName: "circle")
-                                .foregroundStyle(Color.dashboardBorder)
+                        } icon: {
+                            Image(systemName: membership.organizationID == session?.organizationID ? "checkmark" : (membership.organizationType == "personal" ? "person.fill" : "building.2.fill"))
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(
-                        membership.organizationID == session?.organizationID
-                            ? Color.dashboardBrand.opacity(0.10)
-                            : Color.dashboardInnerCardBackground
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .disabled(membership.organizationID == session?.organizationID)
                 }
-                .disabled(membership.organizationID == session?.organizationID)
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("startMatch.context.\(membership.organizationID)")
-            }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: selectedMembership?.organizationType == "personal" ? "person.crop.circle.fill" : "building.2.fill")
+                        .font(.headline)
+                        .foregroundStyle(Color.dashboardBrand)
+                        .frame(width: 28)
 
-            if !memberships.contains(where: { $0.organizationType == "personal" }) {
-                Text("Personal scoring appears here when this login has an approved Personal account.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(selectedMembership.map(matchContextTitle(for:)) ?? session?.organizationName ?? "Personal")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(selectedMembership?.organizationType == "personal" ? "Personal scoring" : "Club scoring")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "line.3.horizontal")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.dashboardInnerCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("startMatch.contextMenu")
         }
         .padding(14)
         .background(Color.dashboardCardBackground)
@@ -384,7 +434,12 @@ struct StartNewMatchFlowView: View {
     private var resolvedMatchMemberships: [UserMembership] {
         if let memberships = container.sessionStore.session?.availableMemberships,
            !memberships.isEmpty {
-            return memberships
+            return memberships.sorted {
+                let lhsPersonal = $0.organizationType?.lowercased() == "personal"
+                let rhsPersonal = $1.organizationType?.lowercased() == "personal"
+                if lhsPersonal != rhsPersonal { return lhsPersonal }
+                return $0.organizationName.localizedCaseInsensitiveCompare($1.organizationName) == .orderedAscending
+            }
         }
 
         guard let session = container.sessionStore.session else { return [] }
@@ -1318,14 +1373,16 @@ struct StartNewMatchView: View {
                     }
                 }
 
-                HStack(alignment: .top, spacing: 12) {
-                    if showsHandedness {
-                        handednessToggle(isLeftHanded: isLeftHanded)
+                if showsCountry || showsHandedness {
+                    HStack(alignment: .top, spacing: 12) {
+                        if showsCountry {
+                            countryField(text: country, focus: countryFocus)
+                        }
+                        if showsHandedness {
+                            handednessToggle(isLeftHanded: isLeftHanded)
+                                .frame(width: 118)
+                        }
                     }
-                }
-
-                if showsCountry {
-                    countryField(text: country, focus: countryFocus)
                 }
 
             }
@@ -1523,31 +1580,7 @@ struct StartNewMatchView: View {
     }
 
     private func shirtColorPicker(selection: Binding<String>) -> some View {
-        Menu {
-            ForEach(shirtColorOptions) { option in
-                Button {
-                    selection.wrappedValue = option.id
-                } label: {
-                    shirtColorMenuIcon(for: option)
-                }
-                .accessibilityIdentifier("startMatch.shirtColor.\(option.id)")
-            }
-        } label: {
-            HStack(spacing: 0) {
-                let selectedOption = shirtColorOptions.first(where: { $0.id == selection.wrappedValue }) ?? shirtColorOptions[0]
-
-                Circle()
-                    .fill(selectedOption.swatch)
-                    .frame(width: 24, height: 24)
-                    .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
-            }
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
-        }
-        .accessibilityLabel("Shirt")
-        .accessibilityValue(shirtColorOptions.first(where: { $0.id == selection.wrappedValue })?.label ?? "Navy")
-        .accessibilityIdentifier("startMatch.shirtColorPicker")
-        .frame(width: 44, alignment: .trailing)
+        ShirtColorGridPicker(selection: selection, options: shirtColorOptions)
     }
 
     private func shirtColorMenuIcon(for option: ShirtColorOption) -> Image {

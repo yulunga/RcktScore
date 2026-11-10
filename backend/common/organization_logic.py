@@ -118,6 +118,8 @@ def _serialize_user(row):
         "country": row.get("country") or "",
         "telephone": row.get("telephone") or "",
         "city_location": row.get("city_location") or "",
+        "birth_month": row.get("birth_month"),
+        "birth_year": row.get("birth_year"),
         "created_at": created_at.isoformat() if created_at else None,
         "approved_at": approved_at.isoformat() if approved_at else None,
         "invitation_sent_at": invitation_sent_at.isoformat() if invitation_sent_at else None,
@@ -244,6 +246,8 @@ def _get_organization_user_row(connection, organization_id, user_id):
                 u.country,
                 u.telephone,
                 u.city_location,
+                u.birth_month,
+                u.birth_year,
                 u.created_at,
                 u.invitation_sent_at,
                 u.approved_at,
@@ -403,6 +407,8 @@ def get_organization_settings(
                     country,
                     telephone,
                     city_location,
+                    birth_month,
+                    birth_year,
                     created_at,
                     invitation_sent_at,
                     approved_at,
@@ -519,6 +525,19 @@ def update_personal_profile(connection, organization_id, username, payload):
         if field in payload:
             value = payload.get(field)
             updates[field] = value.strip() if isinstance(value, str) else value
+
+    if "birth_month" in payload:
+        birth_month = payload.get("birth_month")
+        if birth_month is not None and (not isinstance(birth_month, int) or not 1 <= birth_month <= 12):
+            raise ValueError("Birth month must be between 1 and 12")
+        updates["birth_month"] = birth_month
+
+    if "birth_year" in payload:
+        birth_year = payload.get("birth_year")
+        current_year = _utcnow().year
+        if birth_year is not None and (not isinstance(birth_year, int) or not 1900 <= birth_year <= current_year):
+            raise ValueError("Birth year must be between 1900 and the current year")
+        updates["birth_year"] = birth_year
 
     updates["clubusername"] = target_username
 
@@ -1166,6 +1185,8 @@ def approve_organization_user_by_id(connection, organization_id, user_id):
                 u.country,
                 u.telephone,
                 u.city_location,
+                u.birth_month,
+                u.birth_year,
                 u.created_at,
                 u.invitation_sent_at,
                 u.approved_at,
@@ -1208,6 +1229,8 @@ def approve_organization_user_by_id(connection, organization_id, user_id):
                 country,
                 telephone,
                 city_location,
+                birth_month,
+                birth_year,
                 created_at,
                 invitation_sent_at,
                 approved_at,

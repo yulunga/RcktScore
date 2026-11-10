@@ -49,6 +49,7 @@ struct DashboardView: View {
     @State private var newCourtDraft = CourtDraft()
     @State private var courtDrafts: [Int: CourtDraft] = [:]
     @State private var personalProfileDraft = PersonalProfileDraft()
+    @State private var isEditingPersonalProfile = false
     @State private var enabledSportsDraft: [String] = []
     @State private var timedBreakDefaultsDraft: [String: Bool] = [:]
     @State private var savingSettingsKey: String?
@@ -311,6 +312,7 @@ struct DashboardView: View {
             items.append(.association)
         }
         items.append(.gameSettings)
+        items.append(.helpFeedback)
         return items
     }
     private var clubSettingsPrimaryItems: [SettingsMenuItem] {
@@ -376,7 +378,7 @@ struct DashboardView: View {
                     tabContent
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 12)
+                .padding(.top, 0)
                 .padding(.bottom, 20)
             }
             .background(
@@ -547,7 +549,7 @@ struct DashboardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
+        .padding(.top, 0)
     }
 
     @ViewBuilder
@@ -597,7 +599,14 @@ struct DashboardView: View {
 
     private var matchesContent: some View {
         VStack(spacing: 18) {
-            accountContextSwitcher(label: "Showing matches for")
+            HStack(spacing: 8) {
+                Image(systemName: isPersonalAccount ? "person.fill" : "building.2.fill")
+                Text(isPersonalAccount ? "Personal matches" : "\(session?.organizationName ?? "Club") matches")
+                    .lineLimit(1)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color.dashboardBrand)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Picker("Match category", selection: $selectedMatchesCategory) {
                 ForEach(MatchesCategory.allCases) { category in
@@ -1392,7 +1401,9 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Manage club")
                         .font(.title3.weight(.bold))
-                    Text("Profile, people, courts and match defaults for \(membership.organizationName).")
+                    Text(membership.role.lowercased() == "admin"
+                         ? "Profile, people, courts and match defaults for \(membership.organizationName)."
+                         : "View the club profile and courts for \(membership.organizationName).")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -1402,9 +1413,13 @@ struct DashboardView: View {
                     GridItem(.flexible(), spacing: 12)
                 ], spacing: 12) {
                     clubManagementLink(title: "Profile", icon: "building.2", item: .orgSettings)
-                    clubManagementLink(title: "Users", icon: "person.2.fill", item: .users)
+                    if membership.role.lowercased() == "admin" {
+                        clubManagementLink(title: "Users", icon: "person.2.fill", item: .users)
+                    }
                     clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
-                    clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
+                    if membership.role.lowercased() == "admin" {
+                        clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
+                    }
                 }
 
                 if isLoadingSettings && organizationSettings == nil {
@@ -1502,17 +1517,12 @@ struct DashboardView: View {
         let plusHistoryLimit = organizationSummary?.availablePlanEntitlements["personal_plus"]?.historyLimit
             ?? organizationSettings?.organization.availablePlanEntitlements["personal_plus"]?.historyLimit
             ?? 100
-        let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = isPersonalAccount
-            ? [
-                ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", !isPersonalPlus, nil),
-                ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", isPersonalPlus, nil),
-                ("Club Essentials", "Club management with courts, users, and match operations.", false, .essentials),
-                ("Club Pro", "Expanded club package with higher-tier operational tooling.", false, .pro)
-            ]
-            : [
-                ("Club Essentials", "Core club package for match operations and member management.", (session?.plan ?? "").lowercased() == "club_essentials", .essentials),
-                ("Club Pro", "Higher-tier club package for advanced reporting and expansion.", (session?.plan ?? "").lowercased() == "club_pro", .pro)
-            ]
+        let personalPlan = (personalMembership?.plan ?? (isPersonalAccount ? session?.plan : nil) ?? "personal_free").lowercased()
+        let personalIsPlus = personalPlan == "personal_plus"
+        let planCards: [(title: String, subtitle: String, isCurrent: Bool, enquiryPlan: ClubSubscriptionPlan?)] = [
+            ("Personal", "Core scoring with your latest \(freeHistoryLimit) completed matches.", !personalIsPlus, nil),
+            ("Personal Plus", "\(plusHistoryLimit) completed matches plus performance, opponent, serving, streak and progress insights.", personalIsPlus, nil)
+        ]
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Subscription")
@@ -1549,7 +1559,6 @@ struct DashboardView: View {
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task {
-            guard isPersonalAccount else { return }
             await container.purchaseService.loadProducts(force: true)
             await container.purchaseService.refreshCurrentEntitlements()
         }
@@ -1836,12 +1845,53 @@ struct DashboardView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-            dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName, accessibilityIdentifier: "settings.profile.firstNameField")
-            dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname, accessibilityIdentifier: "settings.profile.surnameField")
-            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress, accessibilityIdentifier: "settings.profile.emailField")
-            dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad, accessibilityIdentifier: "settings.profile.telephoneField")
-            dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country, accessibilityIdentifier: "settings.profile.countryField")
-            if !countrySuggestions.isEmpty {
+            VStack(spacing: 12) {
+                dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName, accessibilityIdentifier: "settings.profile.firstNameField")
+                dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname, accessibilityIdentifier: "settings.profile.surnameField")
+                dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress, accessibilityIdentifier: "settings.profile.emailField")
+                dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad, accessibilityIdentifier: "settings.profile.telephoneField")
+                dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country, accessibilityIdentifier: "settings.profile.countryField")
+
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Birth Month (optional)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Birth Month", selection: $personalProfileDraft.birthMonth) {
+                            Text("Not set").tag(Int?.none)
+                            ForEach(1...12, id: \.self) { month in
+                                Text(DateFormatter().monthSymbols[month - 1]).tag(Int?.some(month))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .background(Color.dashboardInputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Birth Year (optional)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("Birth Year", selection: $personalProfileDraft.birthYear) {
+                            Text("Not set").tag(Int?.none)
+                            ForEach(Array((1900...Calendar.current.component(.year, from: Date())).reversed()), id: \.self) { year in
+                                Text(String(year)).tag(Int?.some(year))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .background(Color.dashboardInputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+            }
+            .disabled(!isEditingPersonalProfile)
+            .opacity(isEditingPersonalProfile ? 1 : 0.78)
+
+            if isEditingPersonalProfile && !countrySuggestions.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(countrySuggestions, id: \.self) { country in
                         Button {
@@ -1865,8 +1915,12 @@ struct DashboardView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
             }
 
-            Button(currentSettingsButtonTitle(for: "profile-save", defaultTitle: "Save Profile")) {
-                savePersonalProfile()
+            Button(currentSettingsButtonTitle(for: "profile-save", defaultTitle: isEditingPersonalProfile ? "Save" : "Edit")) {
+                if isEditingPersonalProfile {
+                    savePersonalProfile()
+                } else {
+                    isEditingPersonalProfile = true
+                }
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 18)
@@ -2032,35 +2086,33 @@ struct DashboardView: View {
             Text("Game Settings")
                 .font(.headline.weight(.semibold))
 
-            if isPersonalAccount {
-                Text("Personal Racket Sports")
-                    .font(.subheadline.weight(.bold))
+            Text("Personal Racket Sports")
+                .font(.subheadline.weight(.bold))
 
-                Text("Choose which available sports you want to see when scoring through your Personal account.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            Text("Choose which available sports you want to see when scoring through your Personal account.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
-                ForEach(availableSportOptions) { sport in
-                    sportAccessRow(for: sport)
-                }
-
-                Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
-                    saveOrganizationEnabledSports()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(Color.dashboardBrand)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(savingSettingsKey != nil)
-                .opacity(savingSettingsKey != nil ? 0.7 : 1)
-                .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
-
-                Divider()
-                    .padding(.vertical, 4)
+            ForEach(availableSportOptions) { sport in
+                sportAccessRow(for: sport)
             }
+
+            Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
+                saveOrganizationEnabledSports()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(savingSettingsKey != nil)
+            .opacity(savingSettingsKey != nil ? 0.7 : 1)
+            .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
+
+            Divider()
+                .padding(.vertical, 4)
 
             Text("Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.")
                 .font(.subheadline)
@@ -2077,7 +2129,7 @@ struct DashboardView: View {
                     }
                 }
                 .tint(Color.dashboardBrand)
-                .disabled((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil)
+                .disabled(savingSettingsKey != nil)
                 .accessibilityIdentifier("settings.gameSettings.\(sport.rawValue).timerDefault")
             }
 
@@ -2091,14 +2143,28 @@ struct DashboardView: View {
             .foregroundStyle(.white)
             .clipShape(Capsule())
             .buttonStyle(.plain)
-            .disabled((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil)
-            .opacity(((!isPersonalAccount && !isAdmin) || savingSettingsKey != nil) ? 0.7 : 1)
+            .disabled(savingSettingsKey != nil)
+            .opacity(savingSettingsKey != nil ? 0.7 : 1)
             .accessibilityIdentifier("settings.gameSettings.saveTimerDefaults")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .task(id: personalProfileOrganizationID) {
+            guard let organizationID = personalProfileOrganizationID else { return }
+            do {
+                let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
+                await MainActor.run {
+                    enabledSportsDraft = settings.organization.enabledSports
+                    timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
+                }
+            } catch {
+                await MainActor.run {
+                    settingsErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to load Personal game settings."
+                }
+            }
+        }
     }
 
     private func timedBreakDefaultBinding(for sport: MatchSport) -> Binding<Bool> {
@@ -3394,12 +3460,18 @@ struct DashboardView: View {
                 )
             )
 
+            Text(sportDisplayName(match.sport).uppercased())
+                .font(.system(size: 9, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+                .rotationEffect(.degrees(-90))
+                .frame(width: 30)
+                .frame(maxHeight: .infinity)
+                .background(recentMatchSportColor(match.sport))
+
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(sportDisplayName(match.sport))
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.secondary)
-
                     Text([player1.firstName, player1.surname].filter { !$0.isEmpty }.joined(separator: " "))
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(winnerSide == 1 ? Color.dashboardAccentPink : Color.dashboardBrand)
@@ -3413,6 +3485,12 @@ struct DashboardView: View {
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(winnerSide == 2 ? Color.dashboardAccentPink : Color.dashboardBrand)
                         .lineLimit(1)
+
+                    Text((match.state?.gameHistory ?? []).map { "\($0.player1Score)-\($0.player2Score)" }.joined(separator: " | "))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
                 }
 
                 Spacer(minLength: 4)
@@ -3440,6 +3518,15 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func recentMatchSportColor(_ sport: String?) -> Color {
+        switch (sport ?? "squash").lowercased() {
+        case "racketball": return Color(red: 34 / 255, green: 111 / 255, blue: 205 / 255)
+        case "tennis": return Color(red: 83 / 255, green: 158 / 255, blue: 74 / 255)
+        case "padel": return Color(red: 196 / 255, green: 137 / 255, blue: 15 / 255)
+        default: return Color(red: 24 / 255, green: 47 / 255, blue: 70 / 255)
+        }
     }
 
     private func playerColumn(firstName: String, surname: String, alignment: HorizontalAlignment) -> some View {
@@ -3928,7 +4015,7 @@ struct DashboardView: View {
 
                     Spacer(minLength: 8)
                 }
-                .foregroundStyle(Color.red)
+                .foregroundStyle(Color.dashboardAccentPink)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .contentShape(Rectangle())
@@ -4344,7 +4431,7 @@ struct DashboardView: View {
     }
 
     private func savePersonalProfile() {
-        guard let organizationID = session?.organizationID else {
+        guard let organizationID = personalProfileOrganizationID else {
             return
         }
 
@@ -4370,11 +4457,15 @@ struct DashboardView: View {
                     email: trimmedEmail,
                     country: personalProfileDraft.country.trimmingCharacters(in: .whitespacesAndNewlines),
                     telephone: personalProfileDraft.telephone.trimmingCharacters(in: .whitespacesAndNewlines),
-                    cityLocation: ""
+                    cityLocation: "",
+                    birthMonth: personalProfileDraft.birthMonth,
+                    birthYear: personalProfileDraft.birthYear
                 )
                 await MainActor.run {
-                    organizationSettings = settings
-                    syncSettingsDrafts(from: settings)
+                    if isPersonalAccount {
+                        organizationSettings = settings
+                        syncSettingsDrafts(from: settings)
+                    }
                     persistSessionProfile(
                         firstName: personalProfileDraft.firstName.trimmingCharacters(in: .whitespacesAndNewlines),
                         surname: personalProfileDraft.surname.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -4385,6 +4476,7 @@ struct DashboardView: View {
                     settingsSuccessMessage = emailChanged
                         ? "Profile updated. Please sign in again with your new email."
                         : "Profile updated."
+                    isEditingPersonalProfile = false
                     savingSettingsKey = nil
                 }
 
@@ -4472,7 +4564,7 @@ struct DashboardView: View {
     }
 
     private func saveOrganizationEnabledSports() {
-        guard let organizationID = session?.organizationID else {
+        guard let organizationID = personalProfileOrganizationID else {
             return
         }
 
@@ -4487,9 +4579,9 @@ struct DashboardView: View {
                     enabledSports: normalizedEnabledSportsDraft()
                 )
                 await MainActor.run {
-                    organizationSettings = settings
-                    syncSettingsDrafts(from: settings)
-                    persistSessionEnabledSports(settings.organization.enabledSports)
+                    enabledSportsDraft = settings.organization.enabledSports
+                    timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
+                    if isPersonalAccount { persistSessionEnabledSports(settings.organization.enabledSports) }
                     settingsSuccessMessage = "Sport access updated."
                     savingSettingsKey = nil
                 }
@@ -4503,7 +4595,7 @@ struct DashboardView: View {
     }
 
     private func saveTimedBreakDefaults() {
-        guard let organizationID = session?.organizationID else {
+        guard let organizationID = personalProfileOrganizationID else {
             return
         }
 
@@ -4518,8 +4610,8 @@ struct DashboardView: View {
                     timedBreakDefaults: timedBreakDefaultsDraft
                 )
                 await MainActor.run {
-                    organizationSettings = settings
-                    syncSettingsDrafts(from: settings)
+                    enabledSportsDraft = settings.organization.enabledSports
+                    timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
                     settingsSuccessMessage = "Per-sport timer defaults updated."
                     savingSettingsKey = nil
                 }

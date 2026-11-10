@@ -93,6 +93,8 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
     let country: String
     let telephone: String
     let cityLocation: String
+    let birthMonth: Int?
+    let birthYear: Int?
     let createdAt: String?
     let approvedAt: String?
     let invitationSentAt: String?
@@ -108,6 +110,8 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         case country
         case telephone
         case cityLocation = "city_location"
+        case birthMonth = "birth_month"
+        case birthYear = "birth_year"
         case createdAt = "created_at"
         case approvedAt = "approved_at"
         case invitationSentAt = "invitation_sent_at"
@@ -126,6 +130,8 @@ struct OrganizationUser: Decodable, Identifiable, Hashable {
         country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
         telephone = try container.decodeIfPresent(String.self, forKey: .telephone) ?? ""
         cityLocation = try container.decodeIfPresent(String.self, forKey: .cityLocation) ?? ""
+        birthMonth = try container.decodeIfPresent(Int.self, forKey: .birthMonth)
+        birthYear = try container.decodeIfPresent(Int.self, forKey: .birthYear)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         approvedAt = try container.decodeIfPresent(String.self, forKey: .approvedAt)
         invitationSentAt = try container.decodeIfPresent(String.self, forKey: .invitationSentAt)
@@ -306,6 +312,8 @@ struct UpdatePersonalProfileRequest: Encodable {
     let country: String
     let telephone: String
     let cityLocation: String
+    let birthMonth: Int?
+    let birthYear: Int?
 
     enum CodingKeys: String, CodingKey {
         case firstName = "first_name"
@@ -314,6 +322,8 @@ struct UpdatePersonalProfileRequest: Encodable {
         case country
         case telephone
         case cityLocation = "city_location"
+        case birthMonth = "birth_month"
+        case birthYear = "birth_year"
     }
 }
 
@@ -413,6 +423,8 @@ struct PersonalProfileDraft {
     var email: String = ""
     var telephone: String = ""
     var country: String = ""
+    var birthMonth: Int?
+    var birthYear: Int?
 
     init() {}
 
@@ -422,6 +434,8 @@ struct PersonalProfileDraft {
         email = user?.username ?? fallbackSession?.email ?? fallbackSession?.username ?? ""
         telephone = user?.telephone ?? fallbackSession?.telephone ?? ""
         country = user?.country ?? fallbackSession?.country ?? ""
+        birthMonth = user?.birthMonth
+        birthYear = user?.birthYear
     }
 }
 
