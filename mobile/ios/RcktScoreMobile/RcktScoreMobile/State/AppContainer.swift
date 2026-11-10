@@ -51,7 +51,15 @@ final class AppContainer: ObservableObject {
             .sink { [weak self] session in
                 self?.apiClient.setSessionToken(session?.sessionToken)
                 self?.purchaseService.accountDidChange()
-                self?.restartSessionValidation(for: session)
+
+            }
+            .store(in: &cancellables)
+
+        self.sessionStore.$session
+            .map { $0?.sessionToken }
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.restartSessionValidation()
             }
             .store(in: &cancellables)
 
@@ -145,9 +153,9 @@ final class AppContainer: ObservableObject {
         }
     }
 
-    private func restartSessionValidation(for session: UserSession?) {
+    private func restartSessionValidation() {
         sessionValidationTask?.cancel()
-        guard session != nil, !uiTestLaunchOptions.isEnabled else {
+        guard !uiTestLaunchOptions.isEnabled else {
             sessionValidationTask = nil
             return
         }
@@ -155,8 +163,16 @@ final class AppContainer: ObservableObject {
         sessionValidationTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                if self.networkMonitor.isOnline {
-                    try? await self.apiClient.validateSession()
+                guard let token = self.sessionStore.session?.sessionToken else { return }
+                if self.networkMonitor.isOnline,
+                   let snapshot = try? await self.apiClient.validateSession(),
+                   !Task.isCancelled,
+                   let current = self.sessionStore.session,
+                   current.sessionToken == token,
+                   let memberships = snapshot.availableMemberships,
+                   let selected = memberships.first(where: { $0.organizationID == current.organizationID }) ?? memberships.first {
+                    let updated = current.switchingMembership(to: selected, refreshedMemberships: memberships)
+                    if updated != current { self.sessionStore.save(updated) }
                 }
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }

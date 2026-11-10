@@ -1006,3 +1006,5 @@ Apply migration `052_session_client_platform.sql` before deploying the updated l
 If a club cannot open Tournament Manager, check its Enabled status in Ground Control → Settings → Tournament Manager. The dashboard trophy reflects that same club-level setting.
 
 Club tournament activity in Ground Control uses recorded event status. Draft and cancelled events are excluded from the current list and completed count.
+
+After a club role change, allow up to the next successful session refresh (normally within 30 seconds with the app open). Check the exact club membership on the account if admin controls remain unavailable.

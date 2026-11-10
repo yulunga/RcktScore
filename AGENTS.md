@@ -280,3 +280,5 @@ testing/automated/mobile/run-live-racket-match-ui-test.sh
 cd frontend && npm run test:e2e:racket
 cd frontend && npm run test:e2e:scheduling
 ```
+
+Web, iOS and Android refresh signed-in membership roles and sport access from session status on a 30-second interval while in use. iOS Personal and club sport editors keep separate drafts and save to their own workspaces.

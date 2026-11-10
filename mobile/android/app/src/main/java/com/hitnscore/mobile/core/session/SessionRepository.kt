@@ -37,6 +37,8 @@ interface SessionRepository {
     fun selectContext(context: AccountContext)
     fun signOut()
     fun onSessionInvalidated(code: String)
+    suspend fun refreshMemberships() {}
+
     fun validateExpiry()
 
     fun setBiometricUnlockEnabled(enabled: Boolean)
@@ -220,6 +222,23 @@ class AuthSessionRepository(
                 else -> SignOutReason.Ended
             },
         )
+    }
+
+    override suspend fun refreshMemberships() {
+        val token = session?.token ?: return
+        if (mutableState.value !is SessionState.SignedIn) return
+        val result = authService.sessionStatus() as? ApiResult.Success ?: return
+        val snapshot = result.value.session ?: return
+        val memberships = snapshot.availableMemberships.orEmpty()
+        val current = session ?: return
+        if (current.token != token || mutableState.value !is SessionState.SignedIn) return
+        val active = memberships.firstOrNull { it.organizationId == current.activeMembership.organizationId }
+            ?: memberships.firstOrNull() ?: return
+        val updated = current.copy(activeMembership = active, memberships = memberships)
+        if (updated == current) return
+        session = updated
+        sessionStore.save(updated)
+        mutableState.value = updated.toSignedIn()
     }
 
     override fun validateExpiry() {

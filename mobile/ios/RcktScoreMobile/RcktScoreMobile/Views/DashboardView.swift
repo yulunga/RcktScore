@@ -51,6 +51,8 @@ struct DashboardView: View {
     @State private var personalProfileDraft = PersonalProfileDraft()
     @State private var isEditingPersonalProfile = false
     @State private var enabledSportsDraft: [String] = []
+    @State private var personalSportsDraft: [String] = []
+    @State private var loadedPersonalSportsOrganizationID: Int?
     @State private var timedBreakDefaultsDraft: [String: Bool] = [:]
     @State private var savingSettingsKey: String?
     @State private var historySearch = ""
@@ -1402,7 +1404,8 @@ struct DashboardView: View {
     }
 
     private func associationClubManagementPage(for membership: UserMembership) -> some View {
-        ScrollView {
+        let membership = availableMemberships.first { $0.organizationID == membership.organizationID } ?? membership
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Manage club")
@@ -1457,7 +1460,7 @@ struct DashboardView: View {
         )
         .navigationTitle(membership.organizationName)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: membership.organizationID) {
+        .task(id: membership) {
             await loadOrganizationSettingsIfNeeded(force: true)
         }
     }
@@ -2100,11 +2103,11 @@ struct DashboardView: View {
                 .foregroundStyle(.secondary)
 
             ForEach(availableSportOptions) { sport in
-                sportAccessRow(for: sport)
+                sportAccessRow(for: sport, personal: true)
             }
 
             Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
-                saveOrganizationEnabledSports()
+                saveOrganizationEnabledSports(personal: true)
             }
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 18)
@@ -2113,7 +2116,7 @@ struct DashboardView: View {
             .foregroundStyle(.white)
             .clipShape(Capsule())
             .buttonStyle(.plain)
-            .disabled(savingSettingsKey != nil)
+            .disabled(savingSettingsKey != nil || loadedPersonalSportsOrganizationID == nil)
             .opacity(savingSettingsKey != nil ? 0.7 : 1)
             .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
 
@@ -2124,7 +2127,7 @@ struct DashboardView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            ForEach(availableSportOptions.filter { $0.isImplementedToday && enabledSportIDs.contains($0.rawValue) }) { sport in
+            ForEach(availableSportOptions.filter { $0.isImplementedToday && personalSportsDraft.contains($0.rawValue) }) { sport in
                 Toggle(isOn: timedBreakDefaultBinding(for: sport)) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(sport.displayName)
@@ -2176,11 +2179,14 @@ struct DashboardView: View {
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task(id: personalProfileOrganizationID) {
+            loadedPersonalSportsOrganizationID = nil
             guard let organizationID = personalProfileOrganizationID else { return }
             do {
                 let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
                 await MainActor.run {
-                    enabledSportsDraft = settings.organization.enabledSports
+                    guard !Task.isCancelled, personalProfileOrganizationID == organizationID else { return }
+                    loadedPersonalSportsOrganizationID = organizationID
+                    personalSportsDraft = settings.organization.enabledSports
                     timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
                 }
             } catch {
@@ -2514,8 +2520,15 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private func sportAccessRow(for sport: MatchSport) -> some View {
-        Toggle(isOn: sportEnabledBinding(for: sport)) {
+    private func sportAccessRow(for sport: MatchSport, personal: Bool = false) -> some View {
+        let binding = personal ? Binding(
+            get: { personalSportsDraft.contains(sport.rawValue) },
+            set: { enabled in
+                personalSportsDraft.removeAll { $0 == sport.rawValue }
+                if enabled { personalSportsDraft.append(sport.rawValue) }
+            }
+        ) : sportEnabledBinding(for: sport)
+        return Toggle(isOn: binding) {
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -2550,7 +2563,7 @@ struct DashboardView: View {
             }
         }
         .toggleStyle(SwitchToggleStyle(tint: Color.dashboardBrand))
-        .disabled((!isPersonalAccount && !isAdmin) || !sport.isImplementedToday || savingSettingsKey != nil)
+        .disabled((!personal && !isAdmin) || (personal && (loadedPersonalSportsOrganizationID == nil || loadedPersonalSportsOrganizationID != personalProfileOrganizationID)) || !sport.isImplementedToday || savingSettingsKey != nil)
         .opacity(sport.isImplementedToday ? 1 : 0.72)
         .accessibilityIdentifier("settings.sports.toggle.\(sport.rawValue)")
         .padding(.horizontal, 14)
@@ -4207,7 +4220,6 @@ struct DashboardView: View {
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
         enabledSportsDraft = settings.organization.enabledSports
-        timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
         personalProfileDraft = PersonalProfileDraft(user: profileUser, fallbackSession: session)
         normalizeSelectedSettingsMenuItem()
     }
@@ -4604,8 +4616,8 @@ struct DashboardView: View {
         }
     }
 
-    private func saveOrganizationEnabledSports() {
-        guard let organizationID = personalProfileOrganizationID else {
+    private func saveOrganizationEnabledSports(personal: Bool = false) {
+        guard let organizationID = personal ? personalProfileOrganizationID : session?.organizationID else {
             return
         }
 
@@ -4617,12 +4629,16 @@ struct DashboardView: View {
             do {
                 let settings = try await container.apiClient.updateOrganizationEnabledSports(
                     organizationID: organizationID,
-                    enabledSports: normalizedEnabledSportsDraft()
+                    enabledSports: personal ? personalSportsDraft : normalizedEnabledSportsDraft()
                 )
                 await MainActor.run {
-                    enabledSportsDraft = settings.organization.enabledSports
-                    timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
-                    if isPersonalAccount { persistSessionEnabledSports(settings.organization.enabledSports) }
+                    if personal {
+                        personalSportsDraft = settings.organization.enabledSports
+                    } else {
+                        organizationSettings = settings
+                        syncSettingsDrafts(from: settings)
+                    }
+                    if session?.organizationID == organizationID { persistSessionEnabledSports(settings.organization.enabledSports) }
                     settingsSuccessMessage = "Sport access updated."
                     savingSettingsKey = nil
                 }
@@ -4651,7 +4667,6 @@ struct DashboardView: View {
                     timedBreakDefaults: timedBreakDefaultsDraft
                 )
                 await MainActor.run {
-                    enabledSportsDraft = settings.organization.enabledSports
                     timedBreakDefaultsDraft = settings.organization.timedBreakDefaults
                     settingsSuccessMessage = "Per-sport timer defaults updated."
                     savingSettingsKey = nil

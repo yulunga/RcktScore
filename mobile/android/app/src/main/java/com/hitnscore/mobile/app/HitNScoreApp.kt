@@ -12,7 +12,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.feature.auth.LockScreen
 import com.hitnscore.mobile.feature.auth.LoginScreen
@@ -24,6 +29,18 @@ fun HitNScoreApp(viewModel: AppViewModel) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val biometricUnlockEnabled by viewModel.biometricUnlockEnabled.collectAsStateWithLifecycle()
     val passwordLink by viewModel.passwordLink.collectAsStateWithLifecycle()
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val signedIn = sessionState is SessionState.SignedIn
+    LaunchedEffect(lifecycle, viewModel, signedIn) {
+        if (!signedIn) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                viewModel.refreshMemberships()
+                delay(30_000)
+            }
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         // Auth gate, like iOS ContentView: sign-in is never left on the back stack.

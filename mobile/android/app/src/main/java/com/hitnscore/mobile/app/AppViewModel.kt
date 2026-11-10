@@ -34,6 +34,8 @@ class AppViewModel(
         viewModelScope.launch { sessionRepository.restore() }
     }
 
+    suspend fun refreshMemberships() = sessionRepository.refreshMemberships()
+
     fun selectContext(context: AccountContext) = sessionRepository.selectContext(context)
 
     fun signOut() = sessionRepository.signOut()

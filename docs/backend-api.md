@@ -956,3 +956,5 @@ The root-admin dashboard summary includes `unverified_user_count` and `subscript
 The Root Admin dashboard includes `summary.tournament_enabled_count` and `organizations[].tournament_enabled`. Ground Control uses the existing per-organisation tournament-feature update endpoint for access changes.
 
 The Ground Control dashboard exposes `organizations[].tournament_activity` with `completed_count` and `current_events` containing event ID, name, sport, status and dates.
+
+Web, iOS and Android consume the approved membership list from `GET /session/status` to refresh active role and sport access while keeping the current organisation if it is still approved.

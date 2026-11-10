@@ -34,7 +34,7 @@ struct UserMembership: Codable, Identifiable, Hashable {
     }
 }
 
-struct UserSession: Codable {
+struct UserSession: Codable, Equatable {
     let id: Int
     let username: String
     let role: String
@@ -120,7 +120,7 @@ extension UserSession {
         isPersonalAccount || ["admin", "scorer"].contains(normalizedClubRole)
     }
 
-    func switchingMembership(to membership: UserMembership) -> UserSession {
+    func switchingMembership(to membership: UserMembership, refreshedMemberships: [UserMembership]? = nil) -> UserSession {
         UserSession(
             id: membership.id,
             username: membership.username,
@@ -138,7 +138,7 @@ extension UserSession {
             email: membership.email,
             country: membership.country,
             telephone: membership.telephone,
-            availableMemberships: availableMemberships
+            availableMemberships: refreshedMemberships ?? availableMemberships
         )
     }
 

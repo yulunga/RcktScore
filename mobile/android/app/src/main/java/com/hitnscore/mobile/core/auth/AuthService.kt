@@ -3,12 +3,17 @@ package com.hitnscore.mobile.core.auth
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.network.ApiResult
 
+@kotlinx.serialization.Serializable
+data class SessionStatusData(val active: Boolean, val session: LoginSessionPayload? = null)
+
 /** Backend calls used by sign-in. An interface so the session logic can be unit-tested. */
 interface AuthService {
     suspend fun login(username: String, password: String, forceLogoutOther: Boolean): ApiResult<LoginResponseData>
 
     /** Ends the backend session for [sessionToken]. Best effort: callers ignore failures. */
     suspend fun logout(sessionToken: String): ApiResult<AcceptedResponse>
+
+    suspend fun sessionStatus(): ApiResult<SessionStatusData>? = null
 
     suspend fun requestPasswordReset(email: String): ApiResult<AcceptedResponse>
 }
@@ -30,6 +35,8 @@ class RemoteAuthService(private val apiClient: ApiClient) : AuthService {
             deserializer = AcceptedResponse.serializer(),
             bearerToken = sessionToken,
         )
+
+    override suspend fun sessionStatus() = apiClient.get("session/status", SessionStatusData.serializer())
 
     override suspend fun requestPasswordReset(email: String) =
         apiClient.post(

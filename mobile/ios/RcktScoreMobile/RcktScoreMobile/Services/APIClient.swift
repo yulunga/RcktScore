@@ -762,6 +762,7 @@ private struct AcceptedResponseData: Decodable {
 
 private struct SessionStatusResponseData: Decodable {
     let active: Bool
+    let session: UserSession?
 }
 
 private struct DeletedAccountResponseData: Decodable {
@@ -898,12 +899,13 @@ final class APIClient {
         }
     }
 
-    func validateSession() async throws {
+    func validateSession() async throws -> UserSession? {
         let request = try makeRequest(path: "/session/status", method: "GET")
         let envelope: APIEnvelope<SessionStatusResponseData> = try await send(request)
         guard envelope.data?.active == true else {
             throw APIErrorResponse(code: "SESSION_INVALID", message: "Your session is no longer valid.", details: nil)
         }
+        return envelope.data?.session
     }
 
     func registerInterest(

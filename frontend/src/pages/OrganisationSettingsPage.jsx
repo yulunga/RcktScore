@@ -298,7 +298,7 @@ export default function OrganisationSettingsPage() {
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+  }, [loadSettings, isAdmin]);
 
   useEffect(() => {
     if (!settings) {

@@ -41,7 +41,6 @@ function writeStoredAuthState(nextState) {
 }
 
 function consumeSessionPayload(payload, preferredOrganizationId = null) {
-  setWebCsrfToken(payload?.csrf_token || "");
   const cleanPayload = withoutSecrets(payload);
   const memberships = cleanPayload?.available_memberships || cleanPayload?.memberships || (cleanPayload ? [cleanPayload] : []);
   const selected = memberships.find((item) => Number(item?.organization_id) === Number(preferredOrganizationId)) || cleanPayload;
@@ -60,6 +59,7 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     getSessionStatus().then((response) => {
       if (cancelled) return;
+      setWebCsrfToken(response?.session?.csrf_token || "");
       const restored = consumeSessionPayload(response?.session, stored.session?.organization_id);
       const nextState = { session: restored, pendingSelection: null };
       writeStoredAuthState(nextState);
@@ -93,14 +93,22 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("rcktscore:session-invalidated", handleSessionInvalidated);
   }, []);
 
+  const signedInUsername = session?.username;
   useEffect(() => {
-    if (!session || typeof window === "undefined") return undefined;
+    if (!signedInUsername || typeof window === "undefined") return undefined;
     let cancelled = false;
     async function validateSession() {
       if (cancelled || document.visibilityState === "hidden") return;
       try {
         const response = await getSessionStatus();
-        if (response?.session?.csrf_token) setWebCsrfToken(response.session.csrf_token);
+        if (cancelled || !response?.session) return;
+        if (response.session.csrf_token) setWebCsrfToken(response.session.csrf_token);
+        setAuthState((current) => {
+          if (current.session?.username !== signedInUsername) return current;
+          const next = consumeSessionPayload(response.session, current.session.organization_id);
+          if (current.session.loggedInAt) next.loggedInAt = current.session.loggedInAt;
+          return JSON.stringify(next) === JSON.stringify(current.session) ? current : { ...current, session: next };
+        });
       } catch {
         // Rejected sessions emit the shared invalidation event. Network errors
         // leave the non-secret interface state available for offline recovery.
@@ -117,7 +125,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener("focus", validateOnFocus);
       document.removeEventListener("visibilitychange", validateOnVisibility);
     };
-  }, [session]);
+  }, [signedInUsername]);
 
   const login = useCallback(async (username, password, options = {}) => {
     const trimmedUsername = username.trim();
@@ -127,6 +135,7 @@ export function AuthProvider({ children }) {
     try {
       const response = await loginRequest({ username: trimmedUsername, password: trimmedPassword, client_type: "web_app", force_logout_other: Boolean(options.forceLogoutOther) });
       if (response.session) {
+        setWebCsrfToken(response.session.csrf_token || "");
         const nextSession = { ...consumeSessionPayload(response.session), loggedInAt: new Date().toISOString() };
         setAuthState({ session: nextSession, pendingSelection: null });
         return { ok: true, session: nextSession };

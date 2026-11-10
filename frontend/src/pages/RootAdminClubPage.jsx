@@ -525,7 +525,7 @@ export default function RootAdminClubPage() {
                       <span>{formatDate(user.created_at)}</span>
                     </div>
                   </div>
-                  <div className="settings-inline-actions">
+                  <div className="settings-inline-actions button-row">
                     <select
                       value={userRoleDrafts[user.id] || user.role || "scorer"}
                       onChange={(event) =>
@@ -740,14 +740,11 @@ export default function RootAdminClubPage() {
                 <strong>{sport.label}</strong>
                 <span>{enabled ? "Enabled" : "Disabled"}</span>
                 <p>{sport.note}</p>
-                <button
-                  type="button"
-                  className={enabled ? "secondary" : ""}
-                  disabled={savingSection === "enabled-sports"}
-                  onClick={() => toggleEnabledSport(sport.value)}
-                >
-                  {enabled ? "Disable" : "Enable"}
-                </button>
+                <div className="button-row">
+                  <button type="button" className={enabled ? "secondary" : ""} disabled={savingSection === "enabled-sports"} onClick={() => toggleEnabledSport(sport.value)}>
+                    {enabled ? "Disable" : "Enable"}
+                  </button>
+                </div>
               </article>
               );
             })}
