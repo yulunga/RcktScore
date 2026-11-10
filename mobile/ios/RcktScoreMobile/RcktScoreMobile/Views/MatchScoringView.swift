@@ -17,6 +17,69 @@ private struct ShirtColorOption: Identifiable {
     let border: Color
 }
 
+private struct StrokeLetHexagon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.25))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.75))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.75))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.25))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct ScoringShirtColorGridPicker: View {
+    @Binding var selection: String
+    let options: [ShirtColorOption]
+    @State private var isPresented = false
+
+    private var selected: ShirtColorOption {
+        options.first(where: { $0.value == selection }) ?? options[0]
+    }
+
+    var body: some View {
+        Button { isPresented = true } label: {
+            Circle()
+                .fill(selected.fill)
+                .frame(width: 26, height: 26)
+                .overlay(Circle().stroke(selected.border, lineWidth: 1.5))
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(38), spacing: 8), count: 5), spacing: 10) {
+                ForEach(options) { option in
+                    Button {
+                        selection = option.value
+                        isPresented = false
+                    } label: {
+                        Circle()
+                            .fill(option.fill)
+                            .frame(width: 30, height: 30)
+                            .overlay(Circle().stroke(option.border, lineWidth: 1.5))
+                            .overlay {
+                                if option.value == selection {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.heavy))
+                                        .foregroundStyle(["white", "yellow", "pink"].contains(option.value) ? .black : .white)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.label)
+                }
+            }
+            .padding(14)
+            .presentationCompactAdaptation(.popover)
+        }
+        .accessibilityLabel("Shirt colour")
+        .accessibilityValue(selected.label)
+    }
+}
+
 private struct MatchGameSettingsForm {
     var scoreType: Int = 15
     var bestOf: Int = 5
@@ -84,6 +147,9 @@ struct MatchScoringView: View {
     @State private var showActionMenu = false
     @State private var pendingActionSelection: MatchActionSelection?
     @State private var showEndMatchConfirmation = false
+    @State private var showEventTimeline = false
+    @State private var showStrokeLetHelp = false
+    @AppStorage("hitnscore.strokeLetHelpEnabled") private var strokeLetHelpEnabled = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -129,6 +195,16 @@ struct MatchScoringView: View {
         "\(live?.gameHistory.count ?? 0)|\(latestTennisGameCompletionSignature ?? "none")"
     }
     private var isPersonalAccount: Bool { container.sessionStore.session?.isPersonalAccount ?? false }
+    private var isPersonalPlus: Bool {
+        let session = container.sessionStore.session
+        if (session?.plan ?? "").lowercased() == "personal_plus" { return true }
+        return session?.availableMemberships?.contains {
+            ($0.plan ?? "").lowercased() == "personal_plus"
+        } ?? false
+    }
+    private var canUseRemoteMatchViewing: Bool {
+        isPersonalAccount && isPersonalPlus
+    }
     private var canChoosePlayerShirtColors: Bool {
         container.sessionStore.session?.canChooseShirtColors ?? false
     }
@@ -309,9 +385,19 @@ struct MatchScoringView: View {
     private var pointRailEntries: [RacketPointRailEntry] {
         guard let match else { return [] }
         let currentGameNumber = live?.currentGameNumber ?? 1
-        let historyEntries = (live?.events ?? []).reduce(into: [RacketPointRailEntry]()) { entries, event in
-            if ["score_point", "stroke"].contains(event.eventType),
-               event.payload?.gameNumber == currentGameNumber {
+        var historyEntries: [RacketPointRailEntry] = []
+        var lastPlayer1Score = match.player1Offset
+        var lastPlayer2Score = match.player2Offset
+        var lastServerSide = "player1"
+        var lastServiceSide = match.player2Handedness?.lowercased() == "left" ? "Left" : "Right"
+
+        for event in live?.events ?? [] {
+            if event.eventType == "match_started" {
+                lastPlayer1Score = event.payload?.player1Score ?? lastPlayer1Score
+                lastPlayer2Score = event.payload?.player2Score ?? lastPlayer2Score
+                lastServerSide = event.payload?.currentServerSide ?? lastServerSide
+                lastServiceSide = event.payload?.serviceSide ?? lastServiceSide
+            } else if ["score_point", "stroke"].contains(event.eventType) {
                 let winnerSide = event.payload?.scorer ?? event.payload?.playerSide
                 let serverSide = event.payload?.currentServerSide ?? winnerSide
                 let serviceSideLabel = String(event.payload?.serviceSide?.prefix(1) ?? "").uppercased()
@@ -323,23 +409,80 @@ struct MatchScoringView: View {
                     winnerScore = String(event.payload?.gameResult?.player2Score ?? event.payload?.player2Score ?? 0)
                 }
 
-                entries.append(
-                    RacketPointRailEntry(
-                        id: event.id,
-                        serverSide: serverSide,
-                        displaySide: winnerSide ?? serverSide ?? "player1",
-                        displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
-                        displayScore: winnerScore,
-                        isCurrentServe: false
+                if event.payload?.gameNumber == currentGameNumber {
+                    if event.eventType == "stroke" {
+                        historyEntries.append(
+                            RacketPointRailEntry(
+                                id: "\(event.id)-decision",
+                                serverSide: serverSide,
+                                displaySide: winnerSide ?? serverSide ?? "player1",
+                                displaySideLabel: "",
+                                displayScore: "",
+                                isCurrentServe: false,
+                                actionLabel: "Stroke"
+                            )
+                        )
+                    }
+                    historyEntries.append(
+                        RacketPointRailEntry(
+                            id: event.id,
+                            serverSide: serverSide,
+                            displaySide: winnerSide ?? serverSide ?? "player1",
+                            displaySideLabel: serviceSideLabel.isEmpty ? "-" : serviceSideLabel,
+                            displayScore: winnerScore,
+                            isCurrentServe: false,
+                            actionLabel: nil
+                        )
                     )
-                )
+                }
+
+                lastPlayer1Score = event.payload?.player1Score ?? lastPlayer1Score
+                lastPlayer2Score = event.payload?.player2Score ?? lastPlayer2Score
+                lastServerSide = serverSide ?? lastServerSide
+                lastServiceSide = event.payload?.serviceSide ?? lastServiceSide
+            } else if event.eventType == "let" {
+                let requestingSide = event.payload?.playerSide ?? lastServerSide
+                let serverSide = event.payload?.currentServerSide ?? lastServerSide
+                let serviceSide = event.payload?.serviceSide ?? lastServiceSide
+                let player1Score = event.payload?.player1Score ?? lastPlayer1Score
+                let player2Score = event.payload?.player2Score ?? lastPlayer2Score
+                let gameNumber = event.payload?.gameNumber ?? currentGameNumber
+
+                if gameNumber == currentGameNumber {
+                    historyEntries.append(
+                        RacketPointRailEntry(
+                            id: "\(event.id)-decision",
+                            serverSide: serverSide,
+                            displaySide: requestingSide,
+                            displaySideLabel: "",
+                            displayScore: "",
+                            isCurrentServe: false,
+                            actionLabel: "Let"
+                        )
+                    )
+                    historyEntries.append(
+                        RacketPointRailEntry(
+                            id: "\(event.id)-resume",
+                            serverSide: serverSide,
+                            displaySide: serverSide,
+                            displaySideLabel: String(serviceSide.prefix(1)).uppercased(),
+                            displayScore: serverSide == "player1" ? String(player1Score) : String(player2Score),
+                            isCurrentServe: false,
+                            actionLabel: nil
+                        )
+                    )
+                }
             } else if event.eventType == "serve_side" {
                 let side = event.payload?.side ?? event.payload?.serviceSide ?? "Right"
-                entries = RacketPointRailReducer.replacingLatestServiceSide(
-                    in: entries,
+                historyEntries = RacketPointRailReducer.replacingLatestServiceSide(
+                    in: historyEntries,
                     sideLabel: String(side.prefix(1)).uppercased(),
                     eventID: event.id
                 )
+                lastServiceSide = side
+            } else if event.eventType == "server" {
+                lastServerSide = event.payload?.currentServerSide ?? lastServerSide
+                lastServiceSide = event.payload?.serviceSide ?? lastServiceSide
             }
         }
 
@@ -356,7 +499,8 @@ struct MatchScoringView: View {
             displaySide: live?.currentServerSide ?? "player1",
             displaySideLabel: String(live?.serviceSide?.prefix(1) ?? "").uppercased(),
             displayScore: currentScore,
-            isCurrentServe: true
+            isCurrentServe: true,
+            actionLabel: nil
         )
 
         return RacketPointRailReducer.reconcile(
@@ -389,18 +533,15 @@ struct MatchScoringView: View {
         Button {
             dismiss()
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "chevron.left")
-                Text("Back")
-            }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            Image(systemName: "chevron.left")
+            .font(.headline.weight(.bold))
+            .frame(width: 40, height: 40)
             .background(Color.rcktBlue.opacity(0.12))
             .foregroundStyle(Color.rcktBlue)
-            .clipShape(Capsule())
+            .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Back")
         .accessibilityIdentifier("scoring.backButton")
     }
 
@@ -463,7 +604,7 @@ struct MatchScoringView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(pendingActionSelection == nil ? "Match Actions" : actionDialogTitle)
+                        Text(showStrokeLetHelp ? "Stroke / Let Help" : (pendingActionSelection == nil ? "Match Actions" : actionDialogTitle))
                             .font(.title2.weight(.bold))
                         Text("\(playerOneActionLabel) vs \(playerTwoActionLabel)")
                             .font(.subheadline.weight(.semibold))
@@ -473,8 +614,12 @@ struct MatchScoringView: View {
                     Spacer(minLength: 0)
 
                     Button {
-                        pendingActionSelection = nil
-                        showActionMenu = false
+                        if showStrokeLetHelp {
+                            showStrokeLetHelp = false
+                        } else {
+                            pendingActionSelection = nil
+                            showActionMenu = false
+                        }
                     } label: {
                         Image(systemName: "xmark")
                             .font(.headline.weight(.bold))
@@ -484,10 +629,12 @@ struct MatchScoringView: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Close match actions")
+                    .accessibilityLabel(showStrokeLetHelp ? "Back to match actions" : "Close match actions")
                 }
 
-                if pendingActionSelection == nil {
+                if showStrokeLetHelp {
+                    strokeLetHelpGuide
+                } else if pendingActionSelection == nil {
                     if !isTennisMatch {
                         matchActionButton(title: "Stroke", systemImage: "hand.raised.fill") {
                             pendingActionSelection = .strokeAgainst
@@ -500,6 +647,13 @@ struct MatchScoringView: View {
                         }
                         .accessibilityIdentifier("scoring.action.let")
                         .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+                    }
+
+                    if strokeLetHelpEnabled && (isPersonalPlus || !isPersonalAccount) {
+                        matchActionButton(title: "ST/L Help", systemImage: "questionmark.diamond.fill") {
+                            showStrokeLetHelp = true
+                        }
+                        .accessibilityIdentifier("scoring.action.strokeLetHelp")
                     }
 
                     matchActionButton(title: "Undo Last Action", systemImage: "arrow.uturn.backward.circle.fill") {
@@ -559,8 +713,123 @@ struct MatchScoringView: View {
             .padding(22)
             .background(Color.rcktCardBackground)
         }
-        .presentationDetents([.medium])
+        .presentationDetents(showStrokeLetHelp ? [.large] : [.medium])
         .presentationDragIndicator(.visible)
+    }
+
+    private var strokeLetHelpGuide: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                strokeLetFlowRow(
+                    question: "Was there any interference?",
+                    detail: "Direct access, full view, freedom to hit and freedom to play?",
+                    noResult: "No Let",
+                    shape: .hexagon
+                )
+                strokeLetDownConnector()
+                strokeLetFlowRow(
+                    question: "Did the player make every effort to get there and could they have made a good return?",
+                    detail: nil,
+                    noResult: "No Let",
+                    shape: .hexagon
+                )
+                strokeLetDownConnector()
+                strokeLetFlowRow(
+                    question: "Did the opponent make every effort to clear the ball?",
+                    detail: nil,
+                    noResult: "Stroke",
+                    shape: .rectangle
+                )
+                strokeLetDownConnector()
+                strokeLetFlowRow(
+                    question: "Was the player in a position to make the winning return?",
+                    detail: nil,
+                    noResult: "Yes Let",
+                    shape: .capsule
+                )
+                strokeLetDownConnector()
+                strokeLetResult("Stroke", shape: .rectangle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 52)
+                    .padding(.bottom, 16)
+
+                Button {
+                    showStrokeLetHelp = false
+                } label: {
+                    Label("Back to Match Actions", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                }
+                .buttonStyle(.bordered)
+                .tint(Color.rcktBlue)
+            }
+        }
+    }
+
+    private enum StrokeLetResultShape { case hexagon, rectangle, capsule }
+
+    private func strokeLetFlowRow(
+        question: String,
+        detail: String?,
+        noResult: String,
+        shape: StrokeLetResultShape
+    ) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(question)
+                    .font(.subheadline.weight(.bold))
+                if let detail {
+                    Text(detail)
+                        .font(.caption)
+                        .italic()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 1) {
+                Text("NO")
+                    .font(.caption2.weight(.bold))
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(.secondary)
+
+            strokeLetResult(noResult, shape: shape)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+    }
+
+    private func strokeLetDownConnector() -> some View {
+        VStack(spacing: 0) {
+            Text("YES")
+                .font(.caption2.weight(.bold))
+            Image(systemName: "arrow.down")
+                .font(.headline.weight(.bold))
+        }
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 86)
+        .frame(height: 40)
+    }
+
+    @ViewBuilder
+    private func strokeLetResult(_ title: String, shape: StrokeLetResultShape) -> some View {
+        let content = Text(title)
+            .font(.caption.weight(.bold))
+            .frame(width: 82, height: 52)
+            .foregroundStyle(.primary)
+
+        switch shape {
+        case .hexagon:
+            content.overlay(StrokeLetHexagon().stroke(Color.primary, lineWidth: 2))
+        case .rectangle:
+            content.overlay(Rectangle().stroke(Color.primary, lineWidth: 2))
+        case .capsule:
+            content.overlay(Capsule().stroke(Color.primary, lineWidth: 2))
+        }
     }
 
     private func matchActionButton(
@@ -616,7 +885,7 @@ struct MatchScoringView: View {
             ShirtColorOption(id: "yellow", value: "yellow", label: "Yellow", fill: Color.yellow, border: Color.yellow.opacity(0.9)),
             ShirtColorOption(id: "orange", value: "orange", label: "Orange", fill: Color.orange, border: Color.orange.opacity(0.8)),
             ShirtColorOption(id: "purple", value: "purple", label: "Purple", fill: Color.purple, border: Color.purple.opacity(0.8)),
-            ShirtColorOption(id: "pink", value: "pink", label: "Pink", fill: Color.pink, border: Color.pink.opacity(0.8))
+            ShirtColorOption(id: "pink", value: "pink", label: "Pink", fill: Color.rcktPink, border: Color(red: 217/255, green: 70/255, blue: 143/255))
         ]
     }
 
@@ -850,6 +1119,27 @@ struct MatchScoringView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if isPersonalPlus {
+                let metrics = completedMatchActionMetrics
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        completedServeMetric(
+                            playerName: shortDisplayName(firstName: match.player1Name, surname: match.player1Surname),
+                            won: metrics.player1ServeWon,
+                            lost: metrics.player1ServeLost
+                        )
+                        completedServeMetric(
+                            playerName: shortDisplayName(firstName: match.player2Name, surname: match.player2Surname),
+                            won: metrics.player2ServeWon,
+                            lost: metrics.player2ServeLost
+                        )
+                    }
+                    Text("Strokes \(metrics.strokes)  •  Lets \(metrics.lets)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Button {
                 dismiss()
             } label: {
@@ -872,6 +1162,71 @@ struct MatchScoringView: View {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.rcktBorder, lineWidth: 1)
         )
+    }
+
+    private var completedMatchActionMetrics: (
+        player1ServeWon: Int,
+        player1ServeLost: Int,
+        player2ServeWon: Int,
+        player2ServeLost: Int,
+        strokes: Int,
+        lets: Int
+    ) {
+        var p1Won = 0
+        var p1Lost = 0
+        var p2Won = 0
+        var p2Lost = 0
+        var strokes = 0
+        var lets = 0
+
+        for event in live?.events ?? [] {
+            if event.eventType == "stroke" { strokes += 1 }
+            if event.eventType == "let" { lets += 1 }
+            guard ["score_point", "stroke"].contains(event.eventType) else { continue }
+            let scorer = event.payload?.scorer ?? event.payload?.playerSide
+            let server = event.payload?.pointServerSide ?? event.payload?.currentServerSide
+            if server == "player1" {
+                if scorer == "player1" { p1Won += 1 } else { p1Lost += 1 }
+            } else if server == "player2" {
+                if scorer == "player2" { p2Won += 1 } else { p2Lost += 1 }
+            }
+        }
+
+        return (p1Won, p1Lost, p2Won, p2Lost, strokes, lets)
+    }
+
+    private func shortDisplayName(firstName: String, surname: String?) -> String {
+        let surnameInitial = surname?.trimmingCharacters(in: .whitespacesAndNewlines).first
+        return surnameInitial.map { "\(firstName) \($0)" } ?? firstName
+    }
+
+    private func completedServeMetric(playerName: String, won: Int, lost: Int) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(playerName)
+                .font(.subheadline.weight(.bold))
+                .lineLimit(1)
+
+            HStack(spacing: 6) {
+                Text("Serves Won")
+                Spacer(minLength: 4)
+                Text("\(won)")
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.rcktBlue)
+            }
+
+            HStack(spacing: 6) {
+                Text("Serves Lost")
+                Spacer(minLength: 4)
+                Text("\(lost)")
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color.rcktBlue)
+            }
+        }
+        .font(.caption)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func completedMatchMetric(title: String, value: String) -> some View {
@@ -1076,7 +1431,12 @@ struct MatchScoringView: View {
             Button {
                 handleToggleTimer()
             } label: {
-                Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
+                HStack(spacing: 8) {
+                    if timerPhase == .matchLive && !timerRunning {
+                        Image(systemName: "pause.fill")
+                    }
+                    Text(timerPhase == .warmupReady ? "Start Warm-Up" : formatSeconds(displayedTimerSeconds))
+                }
                     .font(.system(size: isTabletLandscape ? 26 : (compactLayout ? 20 : 22), weight: .heavy, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, isTabletLandscape ? 13 : (compactLayout ? 11 : 12))
@@ -1493,7 +1853,10 @@ struct MatchScoringView: View {
                         .id(entry.id)
                         .accessibilityElement(children: .ignore)
                         .accessibilityIdentifier("scoring.pointRail.\(entry.displaySide).\(entry.displayScore)")
-                        .accessibilityLabel("\(entry.displaySideLabel)\(entry.displayScore)")
+                        .accessibilityLabel(
+                            entry.actionLabel
+                                ?? "\(entry.displaySideLabel)\(entry.displayScore)"
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -1527,23 +1890,46 @@ struct MatchScoringView: View {
     ) -> some View {
         Group {
             if entry.displaySide == targetSide {
-                HStack(spacing: landscapeTablet ? 10 : (compact ? 4 : 8)) {
-                    scoreSheetMarker(
-                        label: entry.displaySideLabel,
-                        isCurrentServe: entry.isCurrentServe,
-                        accent: timelineAccent(for: targetSide),
-                        compact: compact,
-                        landscapeTablet: landscapeTablet
-                    )
-                    scoreSheetMarker(
-                        label: entry.displayScore,
-                        isCurrentServe: entry.isCurrentServe,
-                        accent: timelineAccent(for: targetSide),
-                        compact: compact,
-                        landscapeTablet: landscapeTablet
-                    )
+                if let actionLabel = entry.actionLabel {
+                    Text(actionLabel)
+                        .font(.system(
+                            size: landscapeTablet ? 16 : (compact ? 11 : 13),
+                            weight: .heavy,
+                            design: .rounded
+                        ))
+                        .foregroundStyle(Color.black)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .frame(
+                            width: max(56, laneWidth - 4),
+                            height: landscapeTablet ? 44 : (compact ? 30 : 34)
+                        )
+                        .background(Color(red: 1.0, green: 0.82, blue: 0.0))
+                        .clipShape(RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous)
+                                .stroke(Color(red: 0.86, green: 0.64, blue: 0.0), lineWidth: 1.5)
+                        )
+                        .frame(width: laneWidth, alignment: targetSide == "player1" ? .trailing : .leading)
+                } else {
+                    HStack(spacing: landscapeTablet ? 10 : (compact ? 4 : 8)) {
+                        scoreSheetMarker(
+                            label: entry.displaySideLabel,
+                            isCurrentServe: entry.isCurrentServe,
+                            accent: timelineAccent(for: targetSide),
+                            compact: compact,
+                            landscapeTablet: landscapeTablet
+                        )
+                        scoreSheetMarker(
+                            label: entry.displayScore,
+                            isCurrentServe: entry.isCurrentServe,
+                            accent: timelineAccent(for: targetSide),
+                            compact: compact,
+                            landscapeTablet: landscapeTablet
+                        )
+                    }
+                    .frame(width: laneWidth, alignment: targetSide == "player1" ? .trailing : .leading)
                 }
-                .frame(width: laneWidth, alignment: targetSide == "player1" ? .trailing : .leading)
             } else {
                 Color.clear
                     .frame(width: laneWidth, height: landscapeTablet ? 44 : (compact ? 30 : 34))
@@ -1682,24 +2068,49 @@ struct MatchScoringView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Remote Match Viewing")
-                    .font(.headline)
-                Text("Share this match-specific code with a Personal Plus user so they can follow the score remotely.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                detailItem("Match Viewing Code", value: viewerCode.isEmpty ? "Not available" : viewerCode)
+            if isPersonalAccount {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Remote Match Viewing")
+                        .font(.headline)
+                    if canUseRemoteMatchViewing {
+                        Text("Share this match-specific code so another user can follow the score remotely.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        detailItem("Match Viewing Code", value: viewerCode.isEmpty ? "Not available" : viewerCode)
+                    } else {
+                        Text("Remote match viewing is available with Personal Plus.")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.rcktBlue)
+                        Text("Upgrade from Settings → Subscription to create a private viewing code.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Event Timeline")
-                    .font(.headline)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showEventTimeline.toggle()
+                    }
+                } label: {
+                    HStack {
+                        Text("Event Timeline")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: showEventTimeline ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.rcktBlue)
+                    }
+                }
+                .buttonStyle(.plain)
 
-                if live?.events.isEmpty ?? true {
+                if showEventTimeline && (live?.events.isEmpty ?? true) {
                     Text("No events yet.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                } else {
+                } else if showEventTimeline {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 10) {
                             ForEach(Array((live?.events ?? []).reversed())) { event in
@@ -1868,7 +2279,7 @@ struct MatchScoringView: View {
             Text(value)
                 .font(.subheadline)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 82, alignment: .topLeading)
         .padding(12)
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -2103,28 +2514,8 @@ struct MatchScoringView: View {
 
             Spacer(minLength: 8)
 
-            Menu {
-                ForEach(shirtColorOptions) { option in
-                    Button {
-                        selection.wrappedValue = option.value
-                    } label: {
-                        shirtColorMenuIcon(for: option)
-                    }
-                    .accessibilityLabel(option.label)
-                }
-            } label: {
-                let selectedOption = shirtColorOptions.first(where: { $0.value == selection.wrappedValue })
-                    ?? shirtColorOptions[0]
-
-                Circle()
-                    .fill(selectedOption.fill)
-                    .frame(width: 24, height: 24)
-                    .overlay(Circle().stroke(selectedOption.border, lineWidth: 1))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .accessibilityLabel("\(title) colour")
-            .accessibilityValue(shirtColorOptions.first(where: { $0.value == selection.wrappedValue })?.label ?? "Navy")
+            ScoringShirtColorGridPicker(selection: selection, options: shirtColorOptions)
+                .accessibilityLabel("\(title) colour")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2186,7 +2577,7 @@ struct MatchScoringView: View {
         }
 
         if timerPhase == .matchLive {
-            return timerRunning ? Color.rcktTimerRunning : Color.rcktSlate
+            return timerRunning ? Color.rcktTimerRunning : Color.rcktDanger
         }
 
         return timerRunning ? Color.rcktBlue : Color.rcktSlate
@@ -2239,6 +2630,15 @@ struct MatchScoringView: View {
 
     private func loadDisplayAccessIfNeeded() async {
         guard isOnline else {
+            await MainActor.run {
+                displayAccess = nil
+            }
+            return
+        }
+
+        // Personal Free matches must not request or expose a remote-viewing
+        // code. Club matches still load display access for their scoreboard.
+        if isPersonalAccount && !isPersonalPlus {
             await MainActor.run {
                 displayAccess = nil
             }
@@ -2707,6 +3107,7 @@ struct MatchScoringView: View {
             && live?.player1Score == 3
             && live?.player2Score == 3
             && live?.noAdDecidingSide == nil) else { return }
+        resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .scorePoint, matchID: matchID, scorer: side)
         }
@@ -2725,6 +3126,7 @@ struct MatchScoringView: View {
 
     private func awardStroke(to side: String) async {
         guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .stroke, matchID: matchID, playerSide: side)
         }
@@ -2732,6 +3134,7 @@ struct MatchScoringView: View {
 
     private func callLet(awardedTo side: String? = nil) async {
         guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .letCall,
@@ -2740,6 +3143,12 @@ struct MatchScoringView: View {
                 note: side.map { "Let awarded to \($0)" } ?? "General let"
             )
         }
+    }
+
+    private func resumeMatchTimerForDecision() {
+        guard timerPhase == .matchLive, !timerRunning, !isMatchComplete else { return }
+        timerRunning = true
+        persistTimerState()
     }
 
     private func handlePendingActionSelection(for side: String) async {

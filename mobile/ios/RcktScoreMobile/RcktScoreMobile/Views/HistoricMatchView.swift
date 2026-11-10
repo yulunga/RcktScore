@@ -119,18 +119,15 @@ struct HistoricMatchView: View {
                 Button {
                     dismiss()
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    Image(systemName: "chevron.left")
+                    .font(.headline.weight(.bold))
+                    .frame(width: 40, height: 40)
                     .background(Color.rcktBlue.opacity(0.12))
                     .foregroundStyle(Color.rcktBlue)
-                    .clipShape(Capsule())
+                    .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Back")
             }
         }
         .task {
@@ -169,12 +166,14 @@ struct HistoricMatchView: View {
         VStack(alignment: .leading, spacing: 16) {
             historicPlayerScoreRow(
                 playerName: fullName(firstName: match.player1Name, surname: match.player1Surname),
-                gamesWon: player1GamesWon
+                gamesWon: player1GamesWon,
+                isWinner: player1GamesWon > player2GamesWon
             )
 
             historicPlayerScoreRow(
                 playerName: fullName(firstName: match.player2Name, surname: match.player2Surname),
-                gamesWon: player2GamesWon
+                gamesWon: player2GamesWon,
+                isWinner: player2GamesWon > player1GamesWon
             )
         }
         .padding(18)
@@ -448,15 +447,19 @@ struct HistoricMatchView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func historicPlayerScoreRow(playerName: String, gamesWon: Int) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+    private func historicPlayerScoreRow(playerName: String, gamesWon: Int, isWinner: Bool) -> some View {
+        let colour = isWinner
+            ? Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
+            : Color.rcktBlue
+        return HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(playerName)
                 .font(.title3.weight(.bold))
+                .foregroundStyle(colour)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text("\(gamesWon)")
                 .font(.system(size: 30, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.rcktBlue)
+                .foregroundStyle(colour)
         }
     }
 

@@ -585,11 +585,15 @@ private enum OfflineScoringReducer {
                     noAdDecidingSide: state.noAdDecidingSide,
                     player1ScoreLabel: state.player1ScoreLabel,
                     player2ScoreLabel: state.player2ScoreLabel,
-                    pointServerSide: isTennisPoint ? previousState.currentServerSide : nil,
+                    pointServerSide: [OfflineMatchActionKind.scorePoint, .stroke].contains(action.kind)
+                        ? previousState.currentServerSide
+                        : nil,
                     pointServerParticipantID: isTennisPoint ? previousState.currentServerParticipantID : nil,
                     pointReceiverSide: isTennisPoint ? previousState.currentReceiverSide : nil,
                     pointReceiverParticipantID: isTennisPoint ? previousState.currentReceiverParticipantID : nil,
-                    pointServiceSide: isTennisPoint ? previousState.serviceSide : nil,
+                    pointServiceSide: [OfflineMatchActionKind.scorePoint, .stroke].contains(action.kind)
+                        ? previousState.serviceSide
+                        : nil,
                     pointPlayer1Score: pointPlayer1Score,
                     pointPlayer2Score: pointPlayer2Score,
                     pointPlayer1ScoreLabel: pointLabels?.0,

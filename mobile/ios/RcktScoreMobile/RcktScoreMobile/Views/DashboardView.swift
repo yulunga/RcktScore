@@ -82,6 +82,7 @@ struct DashboardView: View {
     @State private var showsManageSubscriptions = false
     @State private var isPersonalPlusOptionsExpanded = false
     @State private var personalPlusCollapseTask: Task<Void, Never>?
+    @AppStorage("hitnscore.strokeLetHelpEnabled") private var strokeLetHelpEnabled = false
 
     private var session: UserSession? { container.sessionStore.session }
     private var isOnline: Bool { container.networkMonitor.isOnline }
@@ -101,6 +102,11 @@ struct DashboardView: View {
             return personalMembership.plan?.lowercased() == "personal_plus"
         }
         return isPersonalAccount && isPersonalPlus
+    }
+    private var canUseStrokeLetHelp: Bool {
+        personalAnalyticsIsPlus || availableMemberships.contains { membership in
+            membership.organizationType?.lowercased() != "personal" && membership.organizationID < 50_000
+        }
     }
     private var personalProfileOrganizationID: Int? {
         personalMembership?.organizationID ?? (isPersonalAccount ? session?.organizationID : nil)
@@ -601,10 +607,12 @@ struct DashboardView: View {
         VStack(spacing: 18) {
             HStack(spacing: 8) {
                 Image(systemName: isPersonalAccount ? "person.fill" : "building.2.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 18, height: 18)
                 Text(isPersonalAccount ? "Personal matches" : "\(session?.organizationName ?? "Club") matches")
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
             }
-            .font(.caption.weight(.semibold))
             .foregroundStyle(Color.dashboardBrand)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -635,6 +643,7 @@ struct DashboardView: View {
                 }
                 dashboardSection(
                     title: "Current Matches",
+                    systemImage: "dot.radiowaves.left.and.right",
                     subtitle: isPersonalAccount ? "Your matches currently in progress." : "All active matches recorded under this club account."
                 ) {
                     activeMatchesContent(matches: activeMatches)
@@ -1379,18 +1388,15 @@ struct DashboardView: View {
                 Button {
                     settingsNavigationItem = nil
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    Image(systemName: "chevron.left")
+                    .font(.headline.weight(.bold))
+                    .frame(width: 40, height: 40)
                     .background(Color.dashboardBrand.opacity(0.12))
                     .foregroundStyle(Color.dashboardBrand)
-                    .clipShape(Capsule())
+                    .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Back")
             }
         }
     }
@@ -2146,6 +2152,24 @@ struct DashboardView: View {
             .disabled(savingSettingsKey != nil)
             .opacity(savingSettingsKey != nil ? 0.7 : 1)
             .accessibilityIdentifier("settings.gameSettings.saveTimerDefaults")
+
+            Divider()
+                .padding(.vertical, 4)
+
+            Toggle(isOn: $strokeLetHelpEnabled) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ST/L Help")
+                        .font(.subheadline.weight(.semibold))
+                    Text(canUseStrokeLetHelp
+                         ? "Show the Stroke / Let decision guide in Match Actions."
+                         : "Available for Personal Plus and club matches.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color.dashboardBrand)
+            .disabled(!canUseStrokeLetHelp)
+            .accessibilityIdentifier("settings.gameSettings.strokeLetHelp")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -2987,7 +3011,7 @@ struct DashboardView: View {
                             .minimumScaleFactor(0.65)
                             .dynamicTypeSize(.xSmall ... .large)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 56)
                     .foregroundStyle(selectedTab == tab ? Color.dashboardBrand : Color.dashboardTabMuted)
                     .padding(.top, usesCompactBottomNavigation ? 8 : 10)
                     .padding(.bottom, usesCompactBottomNavigation ? 6 : 8)
@@ -3017,7 +3041,7 @@ struct DashboardView: View {
                                 .minimumScaleFactor(0.65)
                                 .dynamicTypeSize(.xSmall ... .large)
                         }
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 56)
                         .foregroundStyle(Color.dashboardTabMuted)
                         .padding(.top, usesCompactBottomNavigation ? 8 : 10)
                         .padding(.bottom, usesCompactBottomNavigation ? 6 : 8)
@@ -3028,7 +3052,8 @@ struct DashboardView: View {
                 }
             }
         }
-        .padding(.horizontal, usesCompactBottomNavigation ? 8 : 12)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, usesCompactBottomNavigation ? 2 : 4)
         .background(
             ZStack(alignment: .top) {
                 Color.dashboardTabBarBackground
@@ -3435,20 +3460,26 @@ struct DashboardView: View {
         let player2Games = match.state?.player2GamesWon ?? 0
 
         return HStack(spacing: 0) {
-            VStack(spacing: 4) {
+            VStack(spacing: 1) {
                 Text(dateParts.day)
                     .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
 
                 Text(dateParts.month)
-                    .font(.caption2.weight(.bold))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.dashboardBrand)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.85)
+
+                if let year = dateParts.year {
+                    Text(year)
+                        .font(.system(size: 8, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.dashboardBrand.opacity(0.82))
+                }
             }
             .frame(width: 64)
-            .padding(.vertical, 6)
+            .frame(maxHeight: .infinity)
             .background(
                 LinearGradient(
                     colors: [
@@ -3459,6 +3490,15 @@ struct DashboardView: View {
                     endPoint: .bottomTrailing
                 )
             )
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 20,
+                    bottomLeadingRadius: 20,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+            )
 
             Text(sportDisplayName(match.sport).uppercased())
                 .font(.system(size: 9, weight: .heavy, design: .rounded))
@@ -3467,6 +3507,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.65)
                 .rotationEffect(.degrees(-90))
                 .frame(width: 30)
+                .padding(.vertical, 2)
                 .frame(maxHeight: .infinity)
                 .background(recentMatchSportColor(match.sport))
 
@@ -4006,16 +4047,16 @@ struct DashboardView: View {
                         .frame(width: 24)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Logout")
+                        Text("Sign Out")
                             .font(.subheadline.weight(.bold))
                         Text("Sign out of HitnScore")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.dashboardCompletedStatus.opacity(0.78))
                     }
 
                     Spacer(minLength: 8)
                 }
-                .foregroundStyle(Color.dashboardAccentPink)
+                .foregroundStyle(Color.dashboardCompletedStatus)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .contentShape(Rectangle())
@@ -5167,23 +5208,28 @@ struct DashboardView: View {
         return "Unknown date"
     }
 
-    private func recentMatchDateParts(for match: MatchSummary) -> (day: String, month: String) {
+    private func recentMatchDateParts(for match: MatchSummary) -> (day: String, month: String, year: String?) {
         let rawValue: String
         if let completedAt = match.completedAt, !completedAt.isEmpty {
             rawValue = completedAt
         } else if let updatedAt = match.updatedAt, !updatedAt.isEmpty {
             rawValue = updatedAt
         } else {
-            return ("--", "Unknown")
+            return ("--", "Unknown", nil)
         }
 
         guard let date = parsedISODate(rawValue) else {
-            return ("--", "Unknown")
+            return ("--", "Unknown", nil)
         }
+
+        let calendar = Calendar.current
+        let matchYear = calendar.component(.year, from: date)
+        let currentYear = calendar.component(.year, from: Date())
 
         return (
             DateFormatter.dashboardRecentDay.string(from: date),
-            DateFormatter.dashboardRecentMonth.string(from: date)
+            DateFormatter.dashboardRecentMonth.string(from: date),
+            matchYear < currentYear ? String(matchYear) : nil
         )
     }
 
@@ -5818,7 +5864,7 @@ private extension DateFormatter {
 
     static let dashboardRecentMonth: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
+        formatter.dateFormat = "MMM"
         return formatter
     }()
 }

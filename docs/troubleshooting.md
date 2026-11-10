@@ -241,6 +241,25 @@ so it cannot be shorter than the expanded timing rows. If it is, inspect
 `HistoricMatchView.formatSeconds`, `gameDurations`,
 `historicMatchDurationSeconds`, `formatDuration`, and `segmentDuration`.
 
+For the current native iOS layout, verify that all six bottom navigation items
+occupy equal widths, match-card months use three-letter abbreviations, and a
+year appears only for a match from an earlier calendar year. Match setup and
+live Match Settings should both open the compact two-row shirt-colour grid;
+Player 1 starts blue and Player 2 starts pink, and `Lefty` must remain on one
+line beside Country.
+
+In a live Squash/Racketball match, pausing the match clock should turn the timer
+red and add a pause icon. The next point, Stroke, or Let must resume it. Stroke
+and Let decisions should appear as bright-yellow `Stroke` and `Let` rows on the
+awarded/requesting player's point rail. A Let should be followed by the same
+server score/service marker; a Stroke should be followed by the awarded point
+and resulting service marker. If the ST/L Help item is missing, confirm it is enabled in native Game
+Settings and that the match is either a Personal Plus personal match or a club
+match. The preference is stored on that iOS device. Remote Match Viewing must
+not expose a code for Personal Free or a club match; club matches instead show
+the court scoreboard code, while a Personal Plus personal match shows the
+private viewing code.
+
 When opening a scheduled native match through its edit control, its clock must
 remain at `00:00` and its timer, score, and action controls must remain disabled
 until Start Match succeeds. If elapsed time appears before activation, inspect

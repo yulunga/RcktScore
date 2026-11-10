@@ -7,6 +7,25 @@ struct RacketPointRailEntry: Identifiable, Equatable {
     let displaySideLabel: String
     let displayScore: String
     let isCurrentServe: Bool
+    let actionLabel: String?
+
+    init(
+        id: String,
+        serverSide: String?,
+        displaySide: String,
+        displaySideLabel: String,
+        displayScore: String,
+        isCurrentServe: Bool,
+        actionLabel: String? = nil
+    ) {
+        self.id = id
+        self.serverSide = serverSide
+        self.displaySide = displaySide
+        self.displaySideLabel = displaySideLabel
+        self.displayScore = displayScore
+        self.isCurrentServe = isCurrentServe
+        self.actionLabel = actionLabel
+    }
 }
 
 enum RacketPointRailReducer {
@@ -26,7 +45,8 @@ enum RacketPointRailReducer {
             displaySide: lastEntry.displaySide,
             displaySideLabel: sideLabel,
             displayScore: lastEntry.displayScore,
-            isCurrentServe: true
+            isCurrentServe: true,
+            actionLabel: lastEntry.actionLabel
         )
         return reconciled
     }

@@ -418,6 +418,79 @@ def test_golden_point_completes_on_the_next_point_at_target_all():
     assert _is_game_complete(10, 10, 11, golden_point=True) is False
 
 
+def test_let_event_records_unchanged_score_and_service_snapshot(monkeypatch):
+    match = {
+        "state": {
+            "current_game_number": 2,
+            "player1_score": 8,
+            "player2_score": 7,
+            "player1_games_won": 1,
+            "player2_games_won": 0,
+            "current_server": "Beth",
+            "current_server_side": "player2",
+            "service_side": "Right",
+        }
+    }
+    recorded = {}
+
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda connection, match_id: match)
+
+    def capture_event(connection, match_id, event_type, payload, **kwargs):
+        recorded.update(event_type=event_type, payload=payload, kwargs=kwargs)
+        return {"id": "let-event"}
+
+    monkeypatch.setattr(squash_match_logic, "_append_event", capture_event)
+
+    result = squash_match_logic.event_action(
+        object(),
+        "match-1",
+        "let",
+        {"player_side": "player2"},
+        source="ios",
+    )
+
+    assert result == {"id": "let-event"}
+    assert recorded["event_type"] == "let"
+    assert recorded["payload"]["player_side"] == "player2"
+    assert recorded["payload"]["game_number"] == 2
+    assert recorded["payload"]["player1_score"] == 8
+    assert recorded["payload"]["player2_score"] == 7
+    assert recorded["payload"]["current_server_side"] == "player2"
+    assert recorded["payload"]["service_side"] == "Right"
+
+
+def test_scoring_transition_records_point_time_server_before_service_transfer():
+    match = {
+        "status": "active",
+        "score_type": 11,
+        "player1_name": "Seth",
+        "player2_name": "Beth",
+        "player1_handedness": "right",
+        "player2_handedness": "right",
+        "state": {
+            "current_game_number": 1,
+            "player1_score": 7,
+            "player2_score": 7,
+            "player1_games_won": 0,
+            "player2_games_won": 0,
+            "best_of": 3,
+            "games_to_win": 2,
+            "current_server": "Seth",
+            "current_server_side": "player1",
+            "service_side": "Right",
+            "match_complete": False,
+            "game_history": [],
+            "tennis_no_ad_scoring": False,
+        },
+    }
+
+    transition = _prepare_scoring_transition(match, "player2", "stroke")
+
+    assert transition["payload"]["point_server_side"] == "player1"
+    assert transition["payload"]["point_service_side"] == "Right"
+    assert transition["payload"]["current_server_side"] == "player2"
+
+
 def _active_match(**state_overrides):
     state = {
         "player1_score": 1,

@@ -368,7 +368,7 @@ struct TennisScoringPresentation: View {
         case "green": return .green
         case "yellow": return .yellow
         case "orange": return .orange
-        case "pink": return .pink
+        case "pink": return Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255)
         case "purple": return .purple
         case "black": return .black
         default: return navy
@@ -376,6 +376,6 @@ struct TennisScoringPresentation: View {
     }
 
     private func foreground(for shirt: String) -> Color {
-        ["white", "yellow"].contains(shirt.lowercased()) ? .black : .white
+        ["white", "yellow", "pink"].contains(shirt.lowercased()) ? .black : .white
     }
 }

@@ -134,7 +134,7 @@ private struct ShirtColorGridPicker: View {
                                 if option.id == selection {
                                     Image(systemName: "checkmark")
                                         .font(.caption.weight(.heavy))
-                                        .foregroundStyle(option.id == "white" || option.id == "yellow" ? Color.black : Color.white)
+                                        .foregroundStyle(["white", "yellow", "pink"].contains(option.id) ? Color.black : Color.white)
                                 }
                             }
                     }
@@ -162,20 +162,20 @@ private struct MatchSetupFormState {
     var player1Surname = ""
     var player1Country = ""
     var player1IsLeftHanded = false
-    var player1ShirtColor = "navy"
+    var player1ShirtColor = "blue"
     var player2Name = ""
     var player2Surname = ""
     var player2Country = ""
     var player2IsLeftHanded = false
-    var player2ShirtColor = "white"
+    var player2ShirtColor = "pink"
     var player3Name = ""
     var player3Surname = ""
     var player4Name = ""
     var player4Surname = ""
-    var doublesPlayer1ShirtColor = "navy"
-    var doublesPlayer2ShirtColor = "white"
-    var doublesPlayer3ShirtColor = "blue"
-    var doublesPlayer4ShirtColor = "red"
+    var doublesPlayer1ShirtColor = "blue"
+    var doublesPlayer2ShirtColor = "navy"
+    var doublesPlayer3ShirtColor = "pink"
+    var doublesPlayer4ShirtColor = "white"
     var refereeName = ""
     var scoreType = 15
     var bestOf = 5
@@ -1380,7 +1380,7 @@ struct StartNewMatchView: View {
                         }
                         if showsHandedness {
                             handednessToggle(isLeftHanded: isLeftHanded)
-                                .frame(width: 118)
+                                .frame(width: 126)
                         }
                     }
                 }
@@ -1569,10 +1569,14 @@ struct StartNewMatchView: View {
     }
 
     private func handednessToggle(isLeftHanded: Binding<Bool>) -> some View {
-        Toggle("Lefty", isOn: isLeftHanded)
+        Toggle(isOn: isLeftHanded) {
+            Text("Lefty")
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
             .font(.subheadline.weight(.semibold))
             .tint(Color.dashboardBrand)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .frame(minHeight: 44)
             .background(Color.dashboardInnerCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -2070,7 +2074,7 @@ struct StartNewMatchView: View {
             ShirtColorOption(id: "yellow", label: "Yellow", swatch: Color(red: 247 / 255, green: 209 / 255, blue: 84 / 255), border: Color(red: 227 / 255, green: 185 / 255, blue: 36 / 255), foreground: Color(red: 16 / 255, green: 42 / 255, blue: 67 / 255)),
             ShirtColorOption(id: "orange", label: "Orange", swatch: Color(red: 217 / 255, green: 130 / 255, blue: 43 / 255), border: Color(red: 217 / 255, green: 130 / 255, blue: 43 / 255), foreground: .white),
             ShirtColorOption(id: "purple", label: "Purple", swatch: Color(red: 124 / 255, green: 58 / 255, blue: 237 / 255), border: Color(red: 124 / 255, green: 58 / 255, blue: 237 / 255), foreground: .white),
-            ShirtColorOption(id: "pink", label: "Pink", swatch: Color(red: 217 / 255, green: 70 / 255, blue: 143 / 255), border: Color(red: 217 / 255, green: 70 / 255, blue: 143 / 255), foreground: .white)
+            ShirtColorOption(id: "pink", label: "Pink", swatch: Color(red: 236 / 255, green: 94 / 255, blue: 168 / 255), border: Color(red: 217 / 255, green: 70 / 255, blue: 143 / 255), foreground: .black)
         ]
     }
 

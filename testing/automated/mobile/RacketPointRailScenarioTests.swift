@@ -9,6 +9,7 @@ enum RacketPointRailScenarioTests {
         testNextPointAppendsOneNewScore()
         testServiceTransferAppendsOneNewScore()
         testUndoStyleRollbackDoesNotRetainFutureEntry()
+        testDecisionLabelSurvivesServiceSideCorrection()
         print("Racket point-rail scenarios passed")
     }
 
@@ -119,6 +120,26 @@ enum RacketPointRailScenarioTests {
 
         check(result.count == 2, "restored state must not invent a future timeline entry")
         check(result.last?.displayScore == "2", "restored timeline must end at the restored score")
+    }
+
+    private static func testDecisionLabelSurvivesServiceSideCorrection() {
+        let stroke = RacketPointRailEntry(
+            id: "stroke-1",
+            serverSide: "player1",
+            displaySide: "player1",
+            displaySideLabel: "R",
+            displayScore: "4",
+            isCurrentServe: false,
+            actionLabel: "Stroke"
+        )
+
+        let result = RacketPointRailReducer.replacingLatestServiceSide(
+            in: [stroke],
+            sideLabel: "L",
+            eventID: "serve-side-left"
+        )
+
+        check(result.last?.actionLabel == "Stroke", "service-side correction must preserve decision labels")
     }
 
     private static func entry(

@@ -1272,6 +1272,8 @@ def _prepare_scoring_transition(match, scorer_side, event_type, extra_payload=No
         "current_server": current_server,
         "current_server_side": current_server_side,
         "service_side": service_side,
+        "point_server_side": previous_server_side,
+        "point_service_side": previous_service_side,
         "game_completed": bool(game_result),
         "game_result": game_result,
         "match_completed": match_completed,
@@ -1518,6 +1520,33 @@ def event_action(connection, match_id, action_type, payload, source="api", commi
 
     if action_type == "timer":
         return _record_match_duration(connection, match_id, payload, source=source, commit=commit)
+
+    if action_type == "let":
+        match = get_match(connection, match_id)
+        if not match:
+            return None
+
+        state = match["state"]
+        let_payload = {
+            **payload,
+            "game_number": state.get("current_game_number"),
+            "current_game_number": state.get("current_game_number"),
+            "player1_score": state.get("player1_score"),
+            "player2_score": state.get("player2_score"),
+            "player1_games_won": state.get("player1_games_won"),
+            "player2_games_won": state.get("player2_games_won"),
+            "current_server": state.get("current_server"),
+            "current_server_side": state.get("current_server_side"),
+            "service_side": state.get("service_side"),
+        }
+        return _append_event(
+            connection,
+            match_id,
+            "let",
+            let_payload,
+            source=source,
+            commit=commit,
+        )
 
     if action_type == "stroke":
         scorer_side = payload.get("player_side")
