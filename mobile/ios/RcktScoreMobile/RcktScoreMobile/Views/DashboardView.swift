@@ -31,6 +31,10 @@ struct DashboardView: View {
     @State private var navigationTarget: MatchRoute?
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
+    @State private var transientNotice: String?
+    @State private var transientNoticeTask: Task<Void, Never>?
+    @State private var showsAccountContextMenu = false
+    @State private var associationClubRoute: AssociationClubRoute?
     @State private var selectedTab: DashboardTab = .home
     @State private var selectedSettingsSection: SettingsSection = .subscription
     @State private var settingsNavigationItem: SettingsMenuItem?
@@ -248,6 +252,41 @@ struct DashboardView: View {
     private var availableMemberships: [UserMembership] {
         session?.availableMemberships ?? []
     }
+    private var orderedMemberships: [UserMembership] {
+        resolvedMemberships.sorted { lhs, rhs in
+            let lhsPersonal = isPersonalMembership(lhs)
+            let rhsPersonal = isPersonalMembership(rhs)
+            if lhsPersonal != rhsPersonal {
+                return lhsPersonal
+            }
+            return lhs.organizationName.localizedCaseInsensitiveCompare(rhs.organizationName) == .orderedAscending
+        }
+    }
+    private var clubMemberships: [UserMembership] {
+        orderedMemberships.filter { !isPersonalMembership($0) }
+    }
+    private var resolvedMemberships: [UserMembership] {
+        if !availableMemberships.isEmpty {
+            return availableMemberships
+        }
+        guard let current = session else { return [] }
+        return [UserMembership(
+            id: current.id,
+            username: current.username,
+            role: current.role,
+            organizationID: current.organizationID,
+            organizationName: current.organizationName,
+            organizationType: current.organizationType,
+            plan: current.plan,
+            enabledSports: current.enabledSports,
+            firstName: current.firstName,
+            surname: current.surname,
+            fullName: current.fullName,
+            email: current.email,
+            country: current.country,
+            telephone: current.telephone
+        )]
+    }
     private var availableSportOptions: [MatchSport] {
         MatchSport.allCases
     }
@@ -366,6 +405,9 @@ struct DashboardView: View {
             .navigationDestination(item: $settingsNavigationItem) { item in
                 settingsDetailPage(for: item)
             }
+            .navigationDestination(item: $associationClubRoute) { route in
+                associationClubManagementPage(for: route.membership)
+            }
             .navigationDestination(item: $clubEnquiryPlan) { plan in
                 clubSubscriptionEnquiryPage(for: plan)
             }
@@ -424,22 +466,60 @@ struct DashboardView: View {
                     errorMessage = nil
                 }
             }
+            .onChange(of: dashboardNotice) { _, notice in
+                guard let notice else { return }
+                presentTransientNotice(notice)
+                dashboardNotice = nil
+            }
+            .onChange(of: settingsSuccessMessage) { _, notice in
+                guard let notice else { return }
+                presentTransientNotice(notice)
+                settingsSuccessMessage = nil
+            }
+            .onChange(of: feedbackSuccessMessage) { _, notice in
+                guard let notice else { return }
+                presentTransientNotice(notice)
+                feedbackSuccessMessage = nil
+            }
+            .onChange(of: resetMessage) { _, notice in
+                guard let notice else { return }
+                presentTransientNotice(notice)
+                resetMessage = nil
+            }
             .refreshable { await loadDashboard() }
             .alert(item: $accountDeletionPrompt) { prompt in
                 accountDeletionAlert(for: prompt)
             }
+            .overlay(alignment: .bottom) {
+                if let transientNotice {
+                    Text(transientNotice)
+                        .font(.footnote.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                        .background(Color.black.opacity(colorScheme == .dark ? 0.88 : 0.78))
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.22), radius: 10, y: 4)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .accessibilityIdentifier("dashboard.transientNotice")
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: transientNotice)
         }
     }
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .center, spacing: 4) {
                 Image("BrandLogo")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 58, height: 58)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: 8)
 
                 Button {
                     guard isOnline else { return }
@@ -452,7 +532,7 @@ struct DashboardView: View {
                                 ? (hasUnreadNotifications ? Color.yellow : Color.dashboardBrand)
                                 : Color.orange
                         )
-                        .frame(width: 38, height: 38)
+                        .frame(width: 34, height: 38)
                         .shadow(
                             color: isOnline && hasUnreadNotifications ? Color.yellow.opacity(0.9) : .clear,
                             radius: 8
@@ -464,12 +544,6 @@ struct DashboardView: View {
                 .disabled(!isOnline)
 
                 accountContextSwitcher(label: nil, compact: true)
-            }
-
-            if let dashboardNotice {
-                Text(dashboardNotice)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1027,10 +1101,6 @@ struct DashboardView: View {
                         dashboardInlineError(settingsErrorMessage)
                     }
 
-                    if let settingsSuccessMessage {
-                        dashboardInlineSuccess(settingsSuccessMessage)
-                    }
-
                     if isPersonalAccount {
                         personalSettingsContent
                     } else {
@@ -1275,10 +1345,6 @@ struct DashboardView: View {
                     dashboardInlineError(settingsErrorMessage)
                 }
 
-                if let settingsSuccessMessage {
-                    dashboardInlineSuccess(settingsSuccessMessage)
-                }
-
                 settingsDetailContent(for: item.section)
             }
             .padding(.horizontal, 18)
@@ -1318,6 +1384,115 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func associationClubManagementPage(for membership: UserMembership) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Manage club")
+                        .font(.title3.weight(.bold))
+                    Text("Profile, people, courts and match defaults for \(membership.organizationName).")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ], spacing: 12) {
+                    clubManagementLink(title: "Profile", icon: "building.2", item: .orgSettings)
+                    clubManagementLink(title: "Users", icon: "person.2.fill", item: .users)
+                    clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
+                    clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
+                }
+
+                if isLoadingSettings && organizationSettings == nil {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Loading club details…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(Color.dashboardInnerCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else {
+                    organizationOverviewCard
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.dashboardBackgroundStart, Color.dashboardBackgroundEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle(membership.organizationName)
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: membership.organizationID) {
+            await loadOrganizationSettingsIfNeeded(force: true)
+        }
+    }
+
+    private func clubManagementLink(title: String, icon: String, item: SettingsMenuItem) -> some View {
+        NavigationLink {
+            associationClubDetailPage(title: title, item: item)
+        } label: {
+            VStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 23, weight: .semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .frame(width: 44, height: 44)
+                    .background(Color.dashboardBrand.opacity(0.12))
+                    .clipShape(Circle())
+
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, minHeight: 104)
+            .padding(.horizontal, 10)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.clubManagement.\(item.rawValue)")
+    }
+
+    private func associationClubDetailPage(title: String, item: SettingsMenuItem) -> some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                if let settingsErrorMessage {
+                    dashboardInlineError(settingsErrorMessage)
+                }
+                settingsDetailContent(for: item.section)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.dashboardBackgroundStart, Color.dashboardBackgroundEnd],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var subscriptionSettingsCard: some View {
@@ -1789,10 +1964,6 @@ struct DashboardView: View {
                 dashboardInlineError(resetErrorMessage)
             }
 
-            if let resetMessage {
-                dashboardInlineSuccess(resetMessage)
-            }
-
             if let biometricMessage = container.sessionStore.biometricErrorMessage {
                 dashboardInlineError(biometricMessage)
             }
@@ -1805,25 +1976,24 @@ struct DashboardView: View {
 
     private var associationSettingsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Association")
-                .font(.headline.weight(.semibold))
+            if clubMemberships.isEmpty {
+                Label("No club associations", systemImage: "building.2")
+                    .font(.headline.weight(.semibold))
 
-            if availableMemberships.count > 1 {
-                Text("Choose which club or account you want to work in for this session.")
+                Text("No clubs are linked to this account yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Your clubs")
+                    .font(.headline.weight(.semibold))
+
+                Text("Open a club to view its profile and, where your role allows, manage users, courts and club settings.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                ForEach(availableMemberships) { membership in
+                ForEach(clubMemberships) { membership in
                     associationMembershipRow(membership)
                 }
-            } else {
-                settingsValueRow(title: "Account Type", value: isPersonalAccount ? "Personal" : "Club")
-                settingsValueRow(title: "Organisation", value: settingsOrganizationName)
-                settingsValueRow(title: "Tier", value: settingsPlanLine)
-
-                Text("This login currently has access to a single account.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
         .padding(16)
@@ -3498,9 +3668,6 @@ struct DashboardView: View {
                 dashboardInlineError(feedbackErrorMessage)
             }
 
-            if let feedbackSuccessMessage {
-                dashboardInlineSuccess(feedbackSuccessMessage)
-            }
 
             Button(isSubmittingFeedback ? "Sending..." : "Send Feedback") {
                 submitFeedback()
@@ -3536,9 +3703,6 @@ struct DashboardView: View {
                 dashboardInlineError(resetErrorMessage)
             }
 
-            if let resetMessage {
-                dashboardInlineSuccess(resetMessage)
-            }
 
             Button(isRequestingPasswordReset ? "Sending..." : "Send Reset Link") {
                 requestPasswordReset()
@@ -3641,76 +3805,60 @@ struct DashboardView: View {
     }
 
     private func associationMembershipRow(_ membership: UserMembership) -> some View {
-        let isCurrent = membership.organizationID == session?.organizationID
-
         return Button {
-            switchAssociation(to: membership)
+            openAssociationClub(membership)
         } label: {
             HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
+                        .fill(Color.dashboardBrand.opacity(0.12))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "building.2.fill")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(membership.organizationName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text(planDisplayName(for: membership.plan ?? (membership.organizationType == "personal" ? "personal_free" : "club_essentials")))
+                    Text(planDisplayName(for: membership.plan ?? "club_essentials"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 8)
 
-                Text(isCurrent ? "Current" : "Switch")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(isCurrent ? Color.dashboardBrand : Color.dashboardAccentPink)
+                Text(roleDisplayName(for: membership.role))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background((isCurrent ? Color.dashboardBrand : Color.dashboardAccentPink).opacity(0.12))
+                    .background(Color.dashboardBrand.opacity(0.12))
                     .clipShape(Capsule())
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
             .background(Color.dashboardInputBackground)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.dashboardBorder, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
-        .disabled(isCurrent)
-        .opacity(isCurrent ? 0.92 : 1)
         .accessibilityIdentifier("settings.association.\(membership.organizationID)")
     }
 
     private func accountContextSwitcher(label: String?, compact: Bool = false) -> some View {
-        let memberships = availableMemberships.isEmpty ? session.map { current in
-            [UserMembership(
-                id: current.id,
-                username: current.username,
-                role: current.role,
-                organizationID: current.organizationID,
-                organizationName: current.organizationName,
-                organizationType: current.organizationType,
-                plan: current.plan,
-                enabledSports: current.enabledSports,
-                firstName: current.firstName,
-                surname: current.surname,
-                fullName: current.fullName,
-                email: current.email,
-                country: current.country,
-                telephone: current.telephone
-            )]
-        } ?? [] : availableMemberships
-
-        return Menu {
-            ForEach(memberships) { membership in
-                Button {
-                    switchAssociation(to: membership)
-                } label: {
-                    if membership.organizationID == session?.organizationID {
-                        Label(membership.organizationType == "personal" ? "Personal" : membership.organizationName, systemImage: "checkmark")
-                    } else {
-                        Text(membership.organizationType == "personal" ? "Personal" : membership.organizationName)
-                    }
-                }
-                .disabled(membership.organizationID == session?.organizationID)
-            }
+        Button {
+            showsAccountContextMenu.toggle()
         } label: {
             HStack(spacing: 8) {
                 if let label, !label.isEmpty {
@@ -3735,8 +3883,121 @@ struct DashboardView: View {
                     .stroke(Color.dashboardBorder, lineWidth: 1)
             )
         }
-        .disabled(memberships.count <= 1)
+        .buttonStyle(.plain)
+        .popover(
+            isPresented: $showsAccountContextMenu,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: .top
+        ) {
+            accountContextPanel
+                .presentationCompactAdaptation(.popover)
+        }
         .accessibilityIdentifier("account.contextSwitcher")
+    }
+
+    private var accountContextPanel: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(orderedMemberships.enumerated()), id: \.element.id) { index, membership in
+                accountContextMembershipRow(membership)
+
+                if index < orderedMemberships.count - 1 {
+                    Divider()
+                        .padding(.horizontal, 12)
+                }
+            }
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            Button {
+                showsAccountContextMenu = false
+                container.logout()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Logout")
+                            .font(.subheadline.weight(.bold))
+                        Text("Sign out of HitnScore")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 8)
+                }
+                .foregroundStyle(Color.red)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(width: 320)
+        .padding(.vertical, 6)
+        .background(Color.dashboardCardBackground)
+    }
+
+    private func accountContextMembershipRow(_ membership: UserMembership) -> some View {
+        let isCurrent = membership.organizationID == session?.organizationID
+        let title = isPersonalMembership(membership) ? "Personal" : membership.organizationName
+        let plan = planDisplayName(for: membership.plan ?? (isPersonalMembership(membership) ? "personal_free" : "club_essentials"))
+        let subtitle = isPersonalMembership(membership)
+            ? plan
+            : "\(plan) · \(roleDisplayName(for: membership.role))"
+
+        return Button {
+            guard !isCurrent else { return }
+            showsAccountContextMenu = false
+            switchAssociation(to: membership)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(Color.dashboardBrand.opacity(isCurrent ? 0.18 : 0.1))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: isPersonalMembership(membership) ? "person.fill" : "building.2.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                if isCurrent {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("Current")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Color.dashboardBrand)
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.dashboardBrand)
+                    }
+                } else {
+                    Text("Switch")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(isCurrent ? Color.dashboardBrand.opacity(0.08) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isCurrent)
+        .accessibilityIdentifier("account.context.\(membership.organizationID)")
     }
 
     @ViewBuilder
@@ -4652,13 +4913,47 @@ struct DashboardView: View {
         scheduledMatches = []
         recentMatches = []
         settingsErrorMessage = nil
-        settingsSuccessMessage = "Switched to \(membership.organizationName)."
+        settingsSuccessMessage = nil
         settingsNavigationItem = nil
-        dashboardNotice = nil
+        dashboardNotice = "Switched to \(isPersonalMembership(membership) ? "Personal" : membership.organizationName)."
 
         Task {
             await loadDashboard()
             await loadOrganizationSettingsIfNeeded(force: true)
+        }
+    }
+
+    private func openAssociationClub(_ membership: UserMembership) {
+        if membership.organizationID != session?.organizationID {
+            switchAssociation(to: membership)
+        }
+        associationClubRoute = AssociationClubRoute(membership: membership)
+    }
+
+    private func isPersonalMembership(_ membership: UserMembership) -> Bool {
+        membership.organizationType?.lowercased() == "personal" || membership.organizationID >= 50_000
+    }
+
+    private func roleDisplayName(for role: String) -> String {
+        switch role.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "admin":
+            return "Administrator"
+        case "scorer", "user":
+            return "Scorer"
+        case "read_only", "readonly":
+            return "Read only"
+        default:
+            return role.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func presentTransientNotice(_ message: String) {
+        transientNoticeTask?.cancel()
+        transientNotice = message
+        transientNoticeTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            transientNotice = nil
         }
     }
 
@@ -5401,6 +5696,12 @@ private struct SettingsMenuSectionDescriptor: Identifiable {
         }
         return items.map(\.rawValue).joined(separator: "-")
     }
+}
+
+private struct AssociationClubRoute: Identifiable, Hashable {
+    let membership: UserMembership
+
+    var id: Int { membership.organizationID }
 }
 
 private extension DateFormatter {

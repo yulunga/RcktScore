@@ -8,8 +8,7 @@
     <meta name="description" content="HitNScore brings clear scoring, match history and performance insight to racket-sport players and clubs." />
     <link rel="canonical" href="https://www.hitnscore.com/" />
     <link rel="icon" href="./assets/icons/favicon.ico?v=20261006-2" sizes="any" />
-    <link rel="preload" href="./assets/images/app/club-devices-v3.png" as="image" />
-    <link rel="stylesheet" href="./assets/css/landing.css?v=20261006-11" />
+    <link rel="stylesheet" href="./assets/css/landing.css?v=20261110-1" />
 
     <!-- Google tag (gtag.js) — loaded only after optional analytics consent -->
     <script>
@@ -37,7 +36,7 @@
         window.gtag("consent", "update", { analytics_storage: "denied" });
       };
     </script>
-    <script src="./assets/js/landing.js?v=20261006-4" defer></script>
+    <script src="./assets/js/landing.js?v=20261109-1" defer></script>
   </head>
   <body>
     <header class="landing-header" id="landing-header">
@@ -57,76 +56,128 @@
           <p class="hero-availability"><span><strong>Available now:</strong> squash, racketball, tennis and Padel.</span><span><strong>Coming:</strong> table tennis, badminton and pickleball.</span></p>
         </div>
 
-        <div class="device-art" aria-label="HitNScore running on a modern iPad and iPhone">
-          <img src="./assets/images/app/club-devices-v3.png" alt="HitNScore analytics on iPad and club match dashboard on iPhone" fetchpriority="high" />
+        <div class="device-art">
+          <img id="hero-device-image" width="1664" height="945" alt="" fetchpriority="high" />
+          <script>
+            (function () {
+              // Hero images rotate on each page load. Both are 1664 x 945 so the layout never shifts.
+              var images = [
+                { src: "./assets/images/app/hero-devices-1.webp", alt: "HitNScore stats on iPad and the home screen with recent matches on iPhone" },
+                { src: "./assets/images/app/hero-devices-2.webp", alt: "HitNScore tournament draw on a laptop, Personal Plus player stats on iPad and a live squash match on iPhone" }
+              ];
+              var index = Math.floor(Math.random() * images.length);
+              try {
+                // Strict alternation needs a small stored counter, so only use it once optional storage is allowed.
+                if (window.localStorage.getItem("hitnscore_cookie_consent") === "all") {
+                  var last = parseInt(window.localStorage.getItem("hitnscore_hero_image") || "-1", 10);
+                  index = (last + 1) % images.length;
+                  window.localStorage.setItem("hitnscore_hero_image", String(index));
+                }
+              } catch (error) { /* storage unavailable: keep the random choice */ }
+              var img = document.getElementById("hero-device-image");
+              img.src = images[index].src;
+              img.alt = images[index].alt;
+            }());
+          </script>
+          <noscript><img src="./assets/images/app/hero-devices-2.webp" width="1664" height="945" alt="HitNScore tournament draw on a laptop, Personal Plus player stats on iPad and a live squash match on iPhone" /></noscript>
         </div>
       </section>
 
-      <section class="scroll-page personal-page" id="personal" aria-labelledby="personal-title">
-        <div class="section-intro">
-          <p class="section-kicker">Personal accounts</p>
-          <h2 id="personal-title">Score today.<br />Learn from every match.</h2>
-          <p>Start free with everything needed to score. Move to Personal Plus when you want a longer match record and a clearer view of your performance.</p>
-        </div>
+      <section class="scroll-page personal-page" id="personal" aria-labelledby="personal-title" data-parallax>
+        <div class="parallax-layer parallax-layer--glow" aria-hidden="true"></div>
+        <svg class="parallax-layer parallax-layer--court" aria-hidden="true" viewBox="0 0 640 975" fill="none">
+          <rect x="4" y="4" width="632" height="967" rx="6" />
+          <line x1="4" y1="550" x2="636" y2="550" />
+          <line x1="320" y1="550" x2="320" y2="971" />
+          <rect x="4" y="550" width="160" height="160" />
+          <rect x="476" y="550" width="160" height="160" />
+        </svg>
 
-        <div class="tier-grid tier-grid--personal">
-          <article class="tier-card">
-            <div class="tier-card__name"><span>Personal</span><b>Free</b></div>
-            <h3>Your match starts here.</h3>
-            <p>Core scoring and a simple record of your most recent matches.</p>
-            <strong class="tier-price">Free <small>No payment needed</small></strong>
-            <ul>
-              <li>Scoring for enabled racket sports</li>
-              <li>One active personal match</li>
-              <li>Latest 25 completed matches</li>
-              <li>Shirt colours and match details</li>
-              <li>Basic scored-match statistics</li>
-              <li>Offline continuation for a previously opened iPhone match</li>
-            </ul>
-            <a class="tier-action tier-action--outline" href="https://app.hitnscore.com/login?interest=1#want-in">Create free account</a>
-            <small class="tier-note">Older results remain stored and become readable when you upgrade.</small>
-          </article>
+        <div class="personal-layout">
+          <div class="section-intro personal-intro">
+            <p class="section-kicker">Personal accounts</p>
+            <h2 id="personal-title">Score today.<br />Learn from every match.</h2>
+            <p>Personal Free has everything you need to score. Personal Plus adds a 100-match record, scheduling, live match following and full performance analytics.</p>
+          </div>
 
-          <article class="tier-card tier-card--featured">
-            <span class="tier-ribbon">For regular players</span>
-            <div class="tier-card__name"><span>Personal Plus</span><b>Upgrade</b></div>
-            <h3>See the player behind the score.</h3>
-            <p>Turn separate results into a cross-device performance story.</p>
-            <strong class="tier-price">App Store pricing <small>Yearly upgrade when purchasing is enabled</small></strong>
-            <ul>
-              <li>Everything in Personal Free</li>
-              <li>Latest 100 matches across signed-in devices</li>
-              <li>Win, game, point and serve-point percentages</li>
-              <li>Court time, close games and streaks</li>
-              <li>Opponent, scoreline and sport breakdowns</li>
-              <li>Weekly and monthly progress summaries</li>
-            </ul>
-            <a class="tier-action" href="https://app.hitnscore.com/login">Explore Personal Plus</a>
-            <small class="tier-note">Subscription access is verified against your account.</small>
-          </article>
+          <div class="tier-grid tier-grid--personal">
+            <article class="tier-card tier-card--free">
+              <div class="tier-card__name"><span>Personal</span><b>Free</b></div>
+              <h3>Your match starts here.</h3>
+              <p>Score any enabled sport and keep your recent results.</p>
+              <strong class="tier-price">Free <small>No payment needed</small></strong>
+              <ul>
+                <li>Live scoring for squash, racketball, tennis and Padel</li>
+                <li>One active match at a time</li>
+                <li>Your latest 25 completed matches</li>
+                <li>Shirt colours and point-by-point match timelines</li>
+                <li>Basic match and app-usage stats</li>
+                <li>Offline continuation for an open iPhone match</li>
+              </ul>
+              <a class="tier-action tier-action--outline" href="https://app.hitnscore.com/login?interest=1#want-in">Create free account</a>
+              <small class="tier-note">Older results stay stored and become readable when you upgrade.</small>
+            </article>
+
+            <article class="tier-card tier-card--featured">
+              <span class="tier-ribbon">For regular players</span>
+              <div class="tier-card__name"><span>Personal Plus</span><b>Upgrade</b></div>
+              <h3>See the player behind the score.</h3>
+              <p>A longer record, deeper stats and live match following.</p>
+              <strong class="tier-price">Yearly upgrade <small>Upgrade on the web, the App Store or Google Play</small></strong>
+              <ul>
+                <li><strong>Everything in Personal Free</strong></li>
+                <li>Latest 100 matches across web, iPhone and iPad</li>
+                <li>Schedule matches ahead of time</li>
+                <li>Follow live matches remotely with a viewing code</li>
+                <li>Win, game, point and serve percentages, streaks and close games</li>
+                <li>Opponent, scoreline, sport and monthly progress breakdowns</li>
+                <li>Export your personal report as CSV</li>
+              </ul>
+              <a class="tier-action" href="https://app.hitnscore.com/login">Explore Personal Plus</a>
+              <small class="tier-note">Subscription access is verified against your account.</small>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section class="scroll-page club-page" id="clubs" aria-labelledby="clubs-title">
-        <div class="section-intro section-intro--light">
-          <p class="section-kicker">Clubs and venues</p>
-          <h2 id="clubs-title">One workspace for match day.</h2>
-          <p>Bring members, courts, scheduled matches and scoring into one club workspace. Share the match display in the venue or with viewers following remotely.</p>
-        </div>
+      <section class="scroll-page club-page" id="clubs" aria-labelledby="clubs-title" data-parallax>
+        <div class="parallax-layer parallax-layer--glow" aria-hidden="true"></div>
+        <svg class="parallax-layer parallax-layer--court" aria-hidden="true" viewBox="0 0 640 975" fill="none">
+          <rect x="4" y="4" width="632" height="967" rx="6" />
+          <line x1="4" y1="550" x2="636" y2="550" />
+          <line x1="320" y1="550" x2="320" y2="971" />
+          <rect x="4" y="550" width="160" height="160" />
+          <rect x="476" y="550" width="160" height="160" />
+        </svg>
 
         <div class="club-layout">
+          <div class="club-aside">
+            <div class="section-intro section-intro--light club-intro">
+              <p class="section-kicker">Clubs and venues</p>
+              <h2 id="clubs-title">One workspace for match day.</h2>
+              <p>Bring members, courts, scheduled matches and scoring into one club workspace, then put live scores on your clubhouse screens.</p>
+            </div>
+
+            <ol class="club-flow" aria-label="Club match-day workflow">
+              <li><span>01</span><div><strong>Set up the club</strong><small>Add courts, users and enabled sports.</small></div></li>
+              <li><span>02</span><div><strong>Organise play</strong><small>Create active or scheduled matches.</small></div></li>
+              <li><span>03</span><div><strong>Score the match</strong><small>Keep the score clear from the court.</small></div></li>
+              <li><span>04</span><div><strong>Share the action</strong><small>Show live scores on a screen with a court display code.</small></div></li>
+            </ol>
+          </div>
+
           <div class="tier-grid tier-grid--clubs">
-            <article class="tier-card tier-card--dark">
+            <article class="tier-card tier-card--dark tier-card--essentials">
               <div class="tier-card__name"><span>Club Essentials</span><b>Club</b></div>
               <h3>The practical scoring workspace.</h3>
-              <p>For clubs ready to organise their day-to-day match operation.</p>
+              <p>Run day-to-day match play across your members and courts.</p>
               <ul>
-                <li>Multi-user club workspace</li>
-                <li>User and role administration</li>
-                <li>Court creation and management</li>
-                <li>Active and scheduled matches</li>
-                <li>Control which supported sports are available</li>
-                <li>Club match display available in beta</li>
+                <li>Multi-user club workspace with user and role admin</li>
+                <li>Court set-up and control of which sports are available</li>
+                <li>Multiple active and scheduled matches</li>
+                <li>Court scoreboard displays for clubhouse screens (beta)</li>
+                <li>Club usage analytics and CSV club report</li>
+                <li>Full club match history</li>
               </ul>
               <a class="tier-action tier-action--light" href="https://app.hitnscore.com/login?interest=1#want-in">Register club interest</a>
             </article>
@@ -134,53 +185,62 @@
             <article class="tier-card tier-card--dark tier-card--pro">
               <div class="tier-card__name"><span>Club Pro</span><b>Tailored</b></div>
               <h3>Plan a wider club rollout.</h3>
-              <p>Start with the club foundation and shape the package around your operation.</p>
+              <p>Tournaments and a package shaped around your club.</p>
               <ul>
-                <li>Everything in Club Essentials</li>
-                <li>Discuss users, courts and match volume</li>
-                <li>Capture reporting and expansion requirements</li>
-                <li>Plan for higher-tier capabilities as they release</li>
+                <li><strong>Everything in Club Essentials</strong></li>
+                <li>Tournament Manager: knockout, plate, round robin and Monrad draws</li>
+                <li>Seeding, CSV player import and public draw links</li>
+                <li>Schedule and score tournament matches on your courts</li>
+                <li>Sized around your users, courts and match volume</li>
                 <li>Final package confirmed during onboarding</li>
               </ul>
               <a class="tier-action tier-action--light" href="https://app.hitnscore.com/login?interest=1#want-in">Discuss Club Pro</a>
             </article>
           </div>
-
-          <ol class="club-flow" aria-label="Club match-day workflow">
-            <li><span>01</span><div><strong>Set up the club</strong><small>Add courts, users and enabled sports.</small></div></li>
-            <li><span>02</span><div><strong>Organise play</strong><small>Create active or scheduled matches.</small></div></li>
-            <li><span>03</span><div><strong>Score the match</strong><small>Keep the score clear from the court.</small></div></li>
-            <li><span>04</span><div><strong>Share the action</strong><small>Open the beta club display for viewers.</small></div></li>
-          </ol>
         </div>
       </section>
 
-      <section class="scroll-page comparison-page" id="compare" aria-labelledby="comparison-title">
-        <div class="section-intro section-intro--center">
-          <p class="section-kicker">All plans</p>
-          <h2 id="comparison-title">Choose where to start.</h2>
-          <p>Four routes into HitNScore, compared using the features available today.</p>
-        </div>
+      <section class="scroll-page comparison-page" id="compare" aria-labelledby="comparison-title" data-parallax>
+        <div class="parallax-layer parallax-layer--glow" aria-hidden="true"></div>
+        <svg class="parallax-layer parallax-layer--court" aria-hidden="true" viewBox="0 0 640 975" fill="none">
+          <rect x="4" y="4" width="632" height="967" rx="6" />
+          <line x1="4" y1="550" x2="636" y2="550" />
+          <line x1="320" y1="550" x2="320" y2="971" />
+          <rect x="4" y="550" width="160" height="160" />
+          <rect x="476" y="550" width="160" height="160" />
+        </svg>
 
-        <div class="comparison-wrap" tabindex="0" role="region" aria-label="Scrollable plan comparison">
-          <table class="plan-comparison">
-            <thead><tr><th>Capability</th><th>Personal</th><th class="plan-comparison__plus">Personal Plus</th><th>Club Essentials</th><th>Club Pro</th></tr></thead>
-            <tbody>
-              <tr><th>Core scoring for enabled sports</th><td>Included</td><td>Included</td><td>Included</td><td>Included</td></tr>
-              <tr><th>Readable completed history</th><td>Latest 25</td><td>Latest 100</td><td>Club history</td><td>Club history</td></tr>
-              <tr><th>Basic scored-match statistics</th><td><span class="check">✓</span></td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
-              <tr><th>Personal performance reporting</th><td>—</td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
-              <tr><th>Weekly, monthly and sport insights</th><td>—</td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
-              <tr><th>Multi-user club workspace</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
-              <tr><th>User, role and court management</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
-              <tr><th>Active and scheduled club matches</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
-              <tr><th>Club match display</th><td>—</td><td>—</td><td>Beta</td><td>Beta</td></tr>
-              <tr><th>Club scale and future requirements</th><td>—</td><td>—</td><td>Core package</td><td>Discuss with us</td></tr>
-              <tr><th>How to join</th><td>Start free</td><td>App Store</td><td>Enquire</td><td>Enquire</td></tr>
-            </tbody>
-          </table>
+        <div class="compare-layout">
+          <div class="section-intro compare-intro">
+            <p class="section-kicker">All plans</p>
+            <h2 id="comparison-title">Choose where to start.</h2>
+            <p>Four routes into HitNScore, compared feature by feature using what is available today.</p>
+            <p class="comparison-note">Offline continuation applies to a previously opened active match on iPhone. New matches, uncached history and settings still need a connection.</p>
+          </div>
+
+          <div class="comparison-wrap" tabindex="0" role="region" aria-label="Scrollable plan comparison">
+            <table class="plan-comparison">
+              <thead><tr><th>Capability</th><th>Personal</th><th class="plan-comparison__plus">Personal Plus</th><th>Club Essentials</th><th>Club Pro</th></tr></thead>
+              <tbody>
+                <tr><th>Live scoring: squash, racketball, tennis and Padel</th><td>Included</td><td>Included</td><td>Included</td><td>Included</td></tr>
+                <tr><th>Readable completed history</th><td>Latest 25</td><td>Latest 100</td><td>Club history</td><td>Club history</td></tr>
+                <tr><th>Basic match and usage stats</th><td><span class="check">✓</span></td><td><span class="check">✓</span></td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+                <tr><th>Schedule matches ahead</th><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+                <tr><th>Follow live matches with a viewing code</th><td>—</td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
+                <tr><th>Player stats: win, serve, streaks and close games</th><td>—</td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
+                <tr><th>Progress, opponent and sport breakdowns</th><td>—</td><td><span class="check">✓</span></td><td>—</td><td>—</td></tr>
+                <tr><th>CSV report export</th><td>—</td><td>Personal report</td><td>Club report</td><td>Club report</td></tr>
+                <tr><th>Multi-user club workspace</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+                <tr><th>User, role and court management</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+                <tr><th>Multiple active club matches</th><td>—</td><td>—</td><td><span class="check">✓</span></td><td><span class="check">✓</span></td></tr>
+                <tr><th>Court scoreboard displays</th><td>—</td><td>—</td><td>Beta</td><td>Beta</td></tr>
+                <tr><th>Tournament Manager</th><td>—</td><td>—</td><td>—</td><td><span class="check">✓</span></td></tr>
+                <tr><th>Package sized to your club</th><td>—</td><td>—</td><td>Core package</td><td>Tailored</td></tr>
+                <tr><th>How to join</th><td>Start free</td><td>Web, App Store or Google Play</td><td>Enquire</td><td>Enquire</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <p class="comparison-note">Offline continuation applies to a previously opened active match on iPhone. New matches, uncached history and settings still require connectivity.</p>
       </section>
 
       <section class="scroll-page answers-page" id="answers" aria-labelledby="answers-title">
@@ -196,7 +256,7 @@
           <details><summary>Which sports work today?</summary><p>Squash, racketball, tennis and doubles Padel are available, subject to the sports enabled for your account or club.</p></details>
           <details><summary>Can I score without a connection?</summary><p>A previously opened active match can continue offline on iPhone and queued actions replay when the connection returns. Other areas still require connectivity.</p></details>
           <details><summary>How does my club join?</summary><p>Register your interest, choose club use and provide your club details. We will follow up about onboarding and the most suitable plan.</p></details>
-          <details><summary>What is different about Club Pro?</summary><p>Club Pro is an enquiry-led higher tier. We discuss your scale and future requirements, with final package details confirmed during onboarding.</p></details>
+          <details><summary>What is different about Club Pro?</summary><p>Club Pro adds Tournament Manager — knockout, plate, round robin and Monrad draws with public draw links — and a package sized around your users, courts and match volume, confirmed during onboarding.</p></details>
         </div>
 
         <div class="answers-cta">

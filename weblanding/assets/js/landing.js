@@ -22,6 +22,38 @@
   updateHeader();
   window.addEventListener("scroll", updateHeader, { passive: true });
 
+  // Parallax: expose each section's scroll progress (0 entering → .5 filling the screen → 1 leaving) as --p.
+  const parallaxSections = Array.from(document.querySelectorAll("[data-parallax]"));
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  let parallaxQueued = false;
+
+  function updateParallax() {
+    parallaxQueued = false;
+    const viewport = window.innerHeight || 1;
+    parallaxSections.forEach((section) => {
+      if (reduceMotion?.matches) {
+        section.style.setProperty("--p", "0.5");
+        return;
+      }
+      const rect = section.getBoundingClientRect();
+      if (rect.bottom < -viewport || rect.top > viewport * 2) return;
+      const progress = (viewport - rect.top) / (viewport + rect.height);
+      section.style.setProperty("--p", Math.min(1, Math.max(0, progress)).toFixed(4));
+    });
+  }
+
+  function queueParallax() {
+    if (parallaxQueued) return;
+    parallaxQueued = true;
+    window.requestAnimationFrame(updateParallax);
+  }
+
+  if (parallaxSections.length) {
+    updateParallax();
+    window.addEventListener("scroll", queueParallax, { passive: true });
+    window.addEventListener("resize", queueParallax);
+  }
+
   try {
     const storedConsent = window.localStorage.getItem(consentKey);
     if (storedConsent === "all") {
