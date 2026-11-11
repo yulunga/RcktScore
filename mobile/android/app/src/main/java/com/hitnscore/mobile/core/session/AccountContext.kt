@@ -16,6 +16,10 @@ data class AccountContext(
     val role: String,
     /** Display name of the plan, e.g. "Personal Plus". */
     val plan: String,
+    val subscriptionProvider: String? = null,
+    val subscriptionStatus: String? = null,
+    val subscriptionExpiresAt: String? = null,
+    val subscriptionLastRenewedAt: String? = null,
 )
 
 fun UserMembership.toAccountContext() = AccountContext(
@@ -25,6 +29,10 @@ fun UserMembership.toAccountContext() = AccountContext(
     type = if (isPersonal) AccountContextType.Personal else AccountContextType.Club,
     role = role,
     plan = planDisplayName(plan, isPersonal),
+    subscriptionProvider = subscriptionProvider,
+    subscriptionStatus = subscriptionStatus,
+    subscriptionExpiresAt = subscriptionExpiresAt,
+    subscriptionLastRenewedAt = subscriptionLastRenewedAt,
 )
 
 /** Matches iOS `UserSession.planDisplayName`. */

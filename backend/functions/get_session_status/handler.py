@@ -10,7 +10,7 @@ def lambda_handler(event, context):
             session = require_org_user_session(connection, event)
             memberships = [
                 _serialize_org_user(row, client_type=session["login_source"])
-                for row in get_org_users(connection, session["username"])
+                for row in get_org_users(connection, session["username"], False)
                 if (row.get("approval_status") or "approved") == "approved"
             ]
             selected = next(

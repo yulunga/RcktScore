@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import RootAdminMonthlyCard from "../components/RootAdminMonthlyCard";
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
 import {
@@ -151,22 +152,22 @@ export default function RootAdminDashboardPage() {
             <strong>Clubs</strong>
             <div>{summary.organization_count ?? 0}</div>
           </div>
-          <div className="meta-item">
-            <strong>Users</strong>
-            <button
-              className="root-admin-summary-count"
-              type="button"
-              onClick={() => navigate("/rckscoreAdmin/users")}
-            >
-              {summary.total_user_count ?? 0}
-            </button>
-            <span className="root-admin-summary-note">{summary.unverified_user_count ?? 0} unverified</span>
-          </div>
-          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/subscriptions") }>
-            <strong>Subscriptions</strong>
-            <div>{summary.subscription_count ?? 0}</div>
-            <span>Apple subscription records</span>
-          </button>
+          <RootAdminMonthlyCard
+            title="Users"
+            count={summary.total_user_count ?? 0}
+            note={`${summary.unverified_user_count ?? 0} unverified`}
+            metric="users"
+            series={dashboard?.monthly_counts}
+            onOpen={() => navigate("/rckscoreAdmin/users")}
+          />
+          <RootAdminMonthlyCard
+            title="Subscriptions"
+            count={summary.subscription_count ?? 0}
+            note="Apple subscription records"
+            metric="subscriptions"
+            series={dashboard?.monthly_counts}
+            onOpen={() => navigate("/rckscoreAdmin/subscriptions")}
+          />
           <div className="meta-item">
             <strong>Club Enquiries</strong>
             <button
@@ -180,19 +181,14 @@ export default function RootAdminDashboardPage() {
               Pending {summary.pending_interest_count ?? 0}
             </span>
           </div>
-          <div className="meta-item">
-            <strong>Match Scores</strong>
-            <button
-              className="root-admin-summary-count"
-              type="button"
-              onClick={() => navigate("/rckscoreAdmin/matches")}
-            >
-              {summary.match_count ?? 0}
-            </button>
-            <span className="root-admin-summary-note">
-              Completed {summary.completed_match_count ?? 0}
-            </span>
-          </div>
+          <RootAdminMonthlyCard
+            title="Match Scores"
+            count={summary.match_count ?? 0}
+            note={`Completed ${summary.completed_match_count ?? 0}`}
+            metric="matches"
+            series={dashboard?.monthly_counts}
+            onOpen={() => navigate("/rckscoreAdmin/matches")}
+          />
           <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/online-users")}>
             <strong>Online Users</strong>
             <div>{summary.online_now ?? "—"}</div>

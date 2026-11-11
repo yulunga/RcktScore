@@ -15,6 +15,11 @@ struct UserMembership: Codable, Identifiable, Hashable {
     let email: String?
     let country: String?
     let telephone: String?
+    let subscriptionProvider: String?
+    let subscriptionStatus: String?
+    let subscriptionExpiresAt: String?
+    let subscriptionAutoRenewEnabled: Bool?
+    let subscriptionLastRenewedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -31,6 +36,53 @@ struct UserMembership: Codable, Identifiable, Hashable {
         case email
         case country
         case telephone
+        case subscriptionProvider = "subscription_provider"
+        case subscriptionStatus = "subscription_status"
+        case subscriptionExpiresAt = "subscription_expires_at"
+        case subscriptionAutoRenewEnabled = "subscription_auto_renew_enabled"
+        case subscriptionLastRenewedAt = "subscription_last_renewed_at"
+    }
+
+    init(
+        id: Int,
+        username: String,
+        role: String,
+        organizationID: Int,
+        organizationName: String,
+        organizationType: String?,
+        plan: String?,
+        enabledSports: [String]?,
+        firstName: String?,
+        surname: String?,
+        fullName: String?,
+        email: String?,
+        country: String?,
+        telephone: String?,
+        subscriptionProvider: String? = nil,
+        subscriptionStatus: String? = nil,
+        subscriptionExpiresAt: String? = nil,
+        subscriptionAutoRenewEnabled: Bool? = nil,
+        subscriptionLastRenewedAt: String? = nil
+    ) {
+        self.id = id
+        self.username = username
+        self.role = role
+        self.organizationID = organizationID
+        self.organizationName = organizationName
+        self.organizationType = organizationType
+        self.plan = plan
+        self.enabledSports = enabledSports
+        self.firstName = firstName
+        self.surname = surname
+        self.fullName = fullName
+        self.email = email
+        self.country = country
+        self.telephone = telephone
+        self.subscriptionProvider = subscriptionProvider
+        self.subscriptionStatus = subscriptionStatus
+        self.subscriptionExpiresAt = subscriptionExpiresAt
+        self.subscriptionAutoRenewEnabled = subscriptionAutoRenewEnabled
+        self.subscriptionLastRenewedAt = subscriptionLastRenewedAt
     }
 }
 
@@ -51,6 +103,11 @@ struct UserSession: Codable, Equatable {
     let email: String?
     let country: String?
     let telephone: String?
+    let subscriptionProvider: String?
+    let subscriptionStatus: String?
+    let subscriptionExpiresAt: String?
+    let subscriptionAutoRenewEnabled: Bool?
+    let subscriptionLastRenewedAt: String?
     let availableMemberships: [UserMembership]?
 
     enum CodingKeys: String, CodingKey {
@@ -70,7 +127,60 @@ struct UserSession: Codable, Equatable {
         case email
         case country
         case telephone
+        case subscriptionProvider = "subscription_provider"
+        case subscriptionStatus = "subscription_status"
+        case subscriptionExpiresAt = "subscription_expires_at"
+        case subscriptionAutoRenewEnabled = "subscription_auto_renew_enabled"
+        case subscriptionLastRenewedAt = "subscription_last_renewed_at"
         case availableMemberships = "available_memberships"
+    }
+
+    init(
+        id: Int,
+        username: String,
+        role: String,
+        sessionToken: String?,
+        sessionExpiresAt: String?,
+        organizationID: Int,
+        organizationName: String,
+        organizationType: String?,
+        plan: String?,
+        enabledSports: [String]?,
+        firstName: String?,
+        surname: String?,
+        fullName: String?,
+        email: String?,
+        country: String?,
+        telephone: String?,
+        subscriptionProvider: String? = nil,
+        subscriptionStatus: String? = nil,
+        subscriptionExpiresAt: String? = nil,
+        subscriptionAutoRenewEnabled: Bool? = nil,
+        subscriptionLastRenewedAt: String? = nil,
+        availableMemberships: [UserMembership]?
+    ) {
+        self.id = id
+        self.username = username
+        self.role = role
+        self.sessionToken = sessionToken
+        self.sessionExpiresAt = sessionExpiresAt
+        self.organizationID = organizationID
+        self.organizationName = organizationName
+        self.organizationType = organizationType
+        self.plan = plan
+        self.enabledSports = enabledSports
+        self.firstName = firstName
+        self.surname = surname
+        self.fullName = fullName
+        self.email = email
+        self.country = country
+        self.telephone = telephone
+        self.subscriptionProvider = subscriptionProvider
+        self.subscriptionStatus = subscriptionStatus
+        self.subscriptionExpiresAt = subscriptionExpiresAt
+        self.subscriptionAutoRenewEnabled = subscriptionAutoRenewEnabled
+        self.subscriptionLastRenewedAt = subscriptionLastRenewedAt
+        self.availableMemberships = availableMemberships
     }
 }
 
@@ -138,6 +248,11 @@ extension UserSession {
             email: membership.email,
             country: membership.country,
             telephone: membership.telephone,
+            subscriptionProvider: membership.subscriptionProvider,
+            subscriptionStatus: membership.subscriptionStatus,
+            subscriptionExpiresAt: membership.subscriptionExpiresAt,
+            subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
+            subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
             availableMemberships: refreshedMemberships ?? availableMemberships
         )
     }

@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import ClubPageHeader from "../components/ClubPageHeader";
-import EventTimeline from "../components/EventTimeline";
 import MatchCompletedSummary from "../components/MatchCompletedSummary";
 import MatchControls from "../components/MatchControls";
 import Scoreboard from "../components/Scoreboard";
@@ -17,17 +16,6 @@ import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 import { getMatchDisplayAccess } from "../services/api";
 import { canManageMatches } from "../utils/accessControl";
-
-function formatDate(value) {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function getInitials(value) {
   if (!value) {
@@ -292,7 +280,6 @@ export default function MatchScreen() {
     player1_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player1,
     player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
   });
-  const [showExtraMatchDetails, setShowExtraMatchDetails] = useState(false);
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
   const seenTennisCompletionRefs = useRef(new Set());
@@ -1241,46 +1228,6 @@ export default function MatchScreen() {
           {error ? <div className="notice error">{error}</div> : null}
         </div>
       </div>
-
-      {currentMatch && !isPersonalAccount ? (
-        <section className="panel stack match-detail-panel">
-          <div className="match-meta-toggle-wrap">
-            <button
-              className="match-meta-toggle"
-              type="button"
-              onClick={() => setShowExtraMatchDetails((value) => !value)}
-            >
-              Match Details
-              <span className="match-meta-toggle__arrow" aria-hidden="true">
-                {showExtraMatchDetails ? "^" : "v"}
-              </span>
-            </button>
-          </div>
-
-          {showExtraMatchDetails ? (
-            <>
-              <div className="meta-grid match-meta-grid">
-                <div className="meta-item meta-item--compact">
-                  <strong>Server</strong>
-                  <div>{live.current_server || "Not set"}</div>
-                </div>
-                <div className="meta-item meta-item--compact">
-                  <strong>Service Side</strong>
-                  <div>{serviceSide}</div>
-                </div>
-                <div className="meta-item meta-item--compact">
-                  <strong>Referee</strong>
-                  <div>{currentMatch.referee_name || "TBC"}</div>
-                </div>
-              </div>
-              {currentMatch?.updated_at ? (
-                <div className="notice match-updated-notice">Updated: {formatDate(currentMatch.updated_at)}</div>
-              ) : null}
-              <EventTimeline events={currentMatch?.state?.events || []} />
-            </>
-          ) : null}
-        </section>
-      ) : null}
 
       <AppFooter />
     </main>

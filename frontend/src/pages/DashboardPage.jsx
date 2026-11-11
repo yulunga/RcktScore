@@ -235,6 +235,14 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, [screenMode, session?.organization_id]);
 
   useEffect(() => {
+    setDashboard(null);
+    setActivePage(0);
+    setScheduledPage(0);
+    setHistoryPage(0);
+    setActionError("");
+  }, [session?.organization_id]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadLiveTournaments() {
@@ -320,10 +328,12 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   }, [location.hash]);
 
   useEffect(() => {
-    if (screenMode === "dashboard" && location.hash === "#new-match" && matchManagementEnabled) {
-      setShowSportOverlay(true);
-    }
-  }, [location.hash, matchManagementEnabled, screenMode]);
+    const shouldShow = screenMode === "dashboard"
+      && location.pathname === "/dashboard"
+      && location.hash === "#new-match"
+      && matchManagementEnabled;
+    setShowSportOverlay(shouldShow);
+  }, [location.hash, location.pathname, matchManagementEnabled, screenMode]);
 
   useEffect(() => {
     if (!showSportOverlay) {
@@ -734,26 +744,31 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     const historyDate = formatHistoryDate(match.completed_at || match.ended_at || match.updated_at);
 
     return (
-      <article className="dashboard-item dashboard-history-card" key={match.id}>
+      <article
+        className={`dashboard-item dashboard-history-card dashboard-history-card--${String(match.sport || "squash").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+        key={match.id}
+      >
         <div className="dashboard-history-card__date-tile" aria-label={`${historyDate.day} ${historyDate.month} at ${historyDate.time}`}>
           <strong>{historyDate.day}</strong>
           <span>{historyDate.month}</span>
           <small>{historyDate.time}</small>
         </div>
-        <div className="dashboard-history-card__top">
-          <span className="dashboard-history-card__sport">{formatSportName(match.sport)}</span>
-          <div className="dashboard-history-card__players">
-            <strong className={`dashboard-history-card__player-name${player1ResultClass}`}>
-              {player1.firstName} {player1.surname || "Player 1"}
-            </strong>
-            <span className="dashboard-history-card__versus">vs</span>
-            <strong className={`dashboard-history-card__player-name${player2ResultClass}`}>
-              {player2.firstName} {player2.surname || "Player 2"}
-            </strong>
+        <span className="dashboard-history-card__sport">{formatSportName(match.sport)}</span>
+        <div className="dashboard-history-card__content">
+          <div className="dashboard-history-card__top">
+            <div className="dashboard-history-card__players">
+              <strong className={`dashboard-history-card__player-name${player1ResultClass}`}>
+                {player1.firstName} {player1.surname || "Player 1"}
+              </strong>
+              <span className="dashboard-history-card__versus">vs</span>
+              <strong className={`dashboard-history-card__player-name${player2ResultClass}`}>
+                {player2.firstName} {player2.surname || "Player 2"}
+              </strong>
+            </div>
           </div>
-        </div>
-        <div className="dashboard-history-card__meta">
-          <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
+          <div className="dashboard-history-card__meta">
+            <span className="dashboard-history-card__result">{formatMatchHistoryResult(match).scoreLine}</span>
+          </div>
         </div>
         <button
           className="dashboard-history-card__view"
@@ -1126,7 +1141,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
             <div className="settings-header-row match-sport-overlay__heading">
               <div className="panel-heading">
                 <h2 id="match-sport-overlay-title">Personal or Club Match</h2>
-                <p>Confirm the match account, then choose a racket sport.</p>
               </div>
             </div>
 
@@ -1134,6 +1148,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <AccountContextSwitcher
                 className="account-context-switcher--match-start"
                 label="Score this match for"
+                menuIcon="hamburger"
               />
               <button aria-label="Close match selection" className="help-close-button" type="button" onClick={handleCloseSportOverlay}>&times;</button>
             </div>

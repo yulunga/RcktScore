@@ -114,7 +114,9 @@ export function AuthProvider({ children }) {
         // leave the non-secret interface state available for offline recovery.
       }
     }
-    const intervalId = window.setInterval(validateSession, 30000);
+    // Keep role, plan and enabled-sport UI close to the server-authoritative
+    // membership state after an administrator changes access.
+    const intervalId = window.setInterval(validateSession, 5000);
     const validateOnFocus = () => validateSession();
     const validateOnVisibility = () => { if (document.visibilityState === "visible") validateSession(); };
     window.addEventListener("focus", validateOnFocus);

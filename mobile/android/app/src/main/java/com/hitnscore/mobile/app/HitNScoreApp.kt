@@ -37,7 +37,9 @@ fun HitNScoreApp(viewModel: AppViewModel) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 viewModel.refreshMemberships()
-                delay(30_000)
+                // Membership permissions and plan/sport controls are
+                // server-authoritative and may change while the app is open.
+                delay(5_000)
             }
         }
     }

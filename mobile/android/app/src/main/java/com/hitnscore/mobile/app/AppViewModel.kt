@@ -53,6 +53,7 @@ class AppViewModel(
     /** Re-checks expiry, and re-locks after the same 5-minute grace period as iOS. */
     fun onAppForegrounded() {
         sessionRepository.validateExpiry()
+        viewModelScope.launch { sessionRepository.refreshMemberships() }
         val backgroundedAt = backgroundedAtMillis ?: return
         backgroundedAtMillis = null
         if (SystemClock.elapsedRealtime() - backgroundedAt >= BIOMETRIC_GRACE_PERIOD_MS) {

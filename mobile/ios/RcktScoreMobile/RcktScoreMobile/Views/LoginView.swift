@@ -989,6 +989,11 @@ struct LoginView: View {
             email: membership.email,
             country: membership.country,
             telephone: membership.telephone,
+            subscriptionProvider: membership.subscriptionProvider,
+            subscriptionStatus: membership.subscriptionStatus,
+            subscriptionExpiresAt: membership.subscriptionExpiresAt,
+            subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
+            subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
             availableMemberships: selection.memberships
         )
 

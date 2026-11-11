@@ -4864,7 +4864,7 @@ textarea {
 }
 
 .dashboard-history-card {
-  grid-template-columns: 70px minmax(0, 1fr) auto;
+  grid-template-columns: 70px 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px 12px;
   padding: 10px 14px 10px 10px;
@@ -4873,12 +4873,16 @@ textarea {
   border: 1px solid #dde7f1;
 }
 
-.dashboard-history-card__top,
-.dashboard-history-card__meta {
+.dashboard-history-card__content {
   display: grid;
   gap: 4px;
   min-width: 0;
-  grid-column: 2;
+  grid-column: 3;
+}
+
+.dashboard-history-card__top,
+.dashboard-history-card__meta {
+  min-width: 0;
 }
 
 .dashboard-history-card__date-tile {
@@ -4913,11 +4917,27 @@ textarea {
 }
 
 .dashboard-history-card__sport {
-  color: #7b8794;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #284f74;
+  color: #fff;
   font-size: 0.68rem;
-  font-weight: 750;
+  font-weight: 850;
+  letter-spacing: 0.05em;
   line-height: 1;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
+
+.dashboard-history-card--racketball .dashboard-history-card__sport { background: #1274d0; }
+.dashboard-history-card--tennis .dashboard-history-card__sport { background: #8aa500; }
+.dashboard-history-card--padel .dashboard-history-card__sport { background: #d43b8c; }
 
 .dashboard-history-card__players {
   display: flex;
@@ -4956,7 +4976,7 @@ textarea {
 }
 
 .dashboard-history-card__view {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 1 / span 2;
   align-self: center;
   display: inline-flex;
@@ -8769,7 +8789,7 @@ textarea {
   }
 
   .dashboard-history-card {
-    grid-template-columns: 58px minmax(0, 1fr) 24px;
+    grid-template-columns: 58px 28px minmax(0, 1fr) 24px;
     gap: 6px 8px;
     padding: 10px 12px;
     border-radius: 18px;
@@ -8789,6 +8809,7 @@ textarea {
     font-size: 0.58rem;
   }
 
+  .dashboard-history-card__content,
   .dashboard-history-card__top,
   .dashboard-history-card__meta {
     justify-items: start;
@@ -13036,4 +13057,330 @@ textarea {
 
 .root-admin-club-tournament-row h2 {
   font-size: 1rem;
+}
+
+/* November phone polish: on-brand account actions and a native-style live rail. */
+.account-context-switcher__menu button.account-context-switcher__logout,
+.account-context-switcher__menu button.account-context-switcher__logout b {
+  color: #d43b8c;
+}
+
+.account-context-switcher__menu button.account-context-switcher__logout:hover {
+  background: #fff2f8;
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  main.page-shell:not(.login-shell):not(.public-tournament-page):not(.display-shell) {
+    padding-top: 0;
+  }
+
+  .club-page-header,
+  .club-page-header.club-page-header--compact {
+    top: 0;
+    min-height: 0;
+    padding-top: 1px;
+  }
+
+  .club-page-header__top {
+    align-items: center;
+  }
+
+  .club-page-header__account,
+  .club-page-header--compact .club-page-header__account {
+    padding-top: 0;
+  }
+
+  .club-page-header .club-page-header__logo,
+  .club-page-header.club-page-header--compact .club-page-header__logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .club-page-header .club-page-header__brand-stack,
+  .club-page-header.club-page-header--compact .club-page-header__brand-stack {
+    display: none;
+  }
+
+  .club-page-header__notification-button,
+  .club-page-header.club-page-header--compact .club-page-header__notification-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .account-context-switcher--header .account-context-switcher__trigger,
+  .club-page-header--compact .account-context-switcher--header .account-context-switcher__trigger {
+    min-height: 34px;
+    padding: 4px 8px;
+  }
+
+  .dashboard-history-card {
+    grid-template-columns: 54px 26px minmax(0, 1fr) 28px;
+    gap: 0 7px;
+    padding: 0 9px 0 0;
+    overflow: hidden;
+  }
+
+  .dashboard-history-card__date-tile {
+    min-height: 82px;
+    border-radius: 17px 0 0 17px;
+  }
+
+  .dashboard-history-card__sport {
+    border-radius: 0;
+    font-size: 0.58rem;
+  }
+
+  .dashboard-history-card__players {
+    display: grid;
+    gap: 3px;
+  }
+
+  .dashboard-history-card__versus {
+    display: none;
+  }
+
+  .dashboard-history-card__player-name,
+  .dashboard-history-card__result {
+    font-size: 0.72rem;
+  }
+
+  .match-sport-overlay__heading {
+    padding-right: 48px;
+  }
+
+  .match-sport-overlay__context-row .help-close-button {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+  }
+
+  .match-sport-overlay .account-context-switcher--match-start .account-context-switcher__trigger {
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .match-setup-form {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .match-setup-form > .section-heading h2 {
+    font-size: 1.15rem;
+  }
+
+  .match-setup-form .match-setup-grid,
+  .match-setup-form .match-setup-row {
+    gap: 8px;
+  }
+
+  .match-setup-form .match-setup-row--player {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .match-setup-form .match-setup-checkbox-field {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+
+  .match-setup-form .field {
+    gap: 4px;
+  }
+
+  .match-setup-form .field label,
+  .match-setup-form .match-setup-section-title {
+    font-size: 0.76rem;
+  }
+
+  .match-setup-form input:not([type="checkbox"]):not([type="radio"]),
+  .match-setup-form select,
+  .match-setup-form textarea {
+    min-height: 44px;
+    padding: 9px 11px;
+    border-radius: 13px;
+    font-size: 0.82rem;
+  }
+
+  .match-setup-form .checkbox-label input[type="checkbox"] {
+    width: 25px;
+    height: 25px;
+  }
+
+  .match-screen-shell {
+    gap: 7px;
+  }
+
+  .match-screen-shell .scoreboard-card {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .match-screen-shell .scoreboard-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(78px, 24%) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 5px;
+    min-height: clamp(380px, 49dvh, 470px);
+  }
+
+  .match-screen-shell .player-card {
+    min-width: 0;
+    min-height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding: 12px 9px;
+  }
+
+  .match-screen-shell .player-card-action,
+  .match-screen-shell .player-card-main,
+  .match-screen-shell .player-card-copy {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .match-screen-shell .player-card-copy {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .match-screen-shell .player-card h3 {
+    font-size: 0.9rem;
+  }
+
+  .match-screen-shell .player-score-button {
+    min-height: 150px;
+    height: 100%;
+  }
+
+  .match-screen-shell .player-score {
+    font-size: clamp(4.3rem, 22vw, 6.4rem);
+  }
+
+  .match-screen-shell .scoreboard-point-strip-wrap,
+  .match-screen-shell .scoreboard-point-strip {
+    min-width: 0;
+    min-height: 100%;
+    height: 100%;
+    max-height: none;
+  }
+
+  .match-screen-shell .scoreboard-point-strip {
+    align-content: stretch;
+    gap: 5px;
+    padding: 2px 0;
+  }
+
+  .match-screen-shell .scoreboard-point-token,
+  .match-screen-shell .scoreboard-point-row {
+    min-width: 0;
+  }
+
+  .match-screen-shell .scoreboard-point-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .match-screen-shell .scoreboard-point-cell {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .match-screen-shell .scoreboard-point-cell--player1 {
+    justify-content: flex-end;
+  }
+
+  .match-screen-shell .scoreboard-point-cell--player2 {
+    justify-content: flex-start;
+  }
+
+  .match-screen-shell .scoreboard-point-marker {
+    width: 21px;
+    height: 21px;
+    flex: 0 0 21px;
+    border-radius: 7px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.66rem;
+    font-weight: 850;
+  }
+
+  .match-screen-shell .scoreboard-point-marker--player1 {
+    border-color: #1274d0;
+    color: #1274d0;
+  }
+
+  .match-screen-shell .scoreboard-point-marker--player2 {
+    border-color: #ec3d97;
+    color: #ec3d97;
+  }
+
+  .match-screen-shell .scoreboard-point-marker--server.scoreboard-point-marker--player1 {
+    background: #1274d0;
+    color: #fff;
+  }
+
+  .match-screen-shell .scoreboard-point-marker--server.scoreboard-point-marker--player2 {
+    background: #ec3d97;
+    color: #fff;
+  }
+
+  .match-screen-shell .scoreboard-point-marker--winner.scoreboard-point-marker--active {
+    transform: none;
+  }
+
+  .match-screen-shell .match-control-grid__actions-icon {
+    fill: none;
+  }
+
+  .match-screen-shell > .app-footer {
+    display: none;
+  }
+}
+
+.root-admin-monthly-card {
+  position: relative;
+}
+
+.root-admin-monthly-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #486581;
+  cursor: pointer;
+}
+
+.root-admin-monthly-toggle:hover,
+.root-admin-monthly-toggle[aria-pressed="true"] {
+  background: #dce9f7;
+  color: #165a9d;
+}
+
+.root-admin-monthly-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.root-admin-dashboard-summary > .root-admin-monthly-card > strong {
+  padding-inline: 14px;
+}
+
+.root-admin-dashboard-summary > .root-admin-monthly-card > .root-admin-monthly-chart {
+  grid-row: 2 / 4;
+  width: 100%;
+  min-width: 0;
+  color: #334e68;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.root-admin-monthly-chart .recharts-wrapper div {
+  font: inherit;
+  color: inherit;
 }

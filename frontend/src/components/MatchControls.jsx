@@ -129,9 +129,10 @@ export default function MatchControls({
           type="button"
         >
           <svg aria-hidden="true" className="match-control-grid__actions-icon" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="12" cy="19" r="2" />
+            <circle cx="12" cy="5.5" r="2.25" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M5.25 10.25L8 13l4.75-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+            <path d="M16 9.25l3.5 3.5M19.5 9.25L16 12.75" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+            <path d="M7.25 20v-2.25c0-2.35 2.13-4.25 4.75-4.25s4.75 1.9 4.75 4.25V20" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
           </svg>
         </button>
         <button

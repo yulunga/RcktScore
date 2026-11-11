@@ -151,6 +151,43 @@ def get_root_admin_online_users(connection):
         return {row["platform"]: row for row in cursor.fetchall()}
 
 
+def _dashboard_monthly_counts(connection):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            WITH current_month AS (
+                SELECT date_trunc('month', now() AT TIME ZONE 'Europe/London') AS month
+            ), months AS (
+                SELECT generate_series(month - interval '11 months', month, interval '1 month') AS month
+                FROM current_month
+            ), records AS (
+                SELECT created_at, 'matches' AS metric FROM matches WHERE NOT COALESCE(is_archived, false)
+                UNION ALL
+                SELECT created_at, 'users' FROM "users"
+                UNION ALL
+                SELECT created_at, 'subscriptions' FROM app_store_subscriptions
+            ), counts AS (
+                SELECT date_trunc('month', created_at AT TIME ZONE 'Europe/London') AS month,
+                       metric, COUNT(*) AS total
+                FROM records
+                WHERE created_at >= (
+                    SELECT (month - interval '11 months') AT TIME ZONE 'Europe/London' FROM current_month
+                )
+                GROUP BY 1, 2
+            )
+            SELECT to_char(months.month, 'YYYY-MM') AS month,
+                   COALESCE(MAX(total) FILTER (WHERE metric = 'matches'), 0) AS matches,
+                   COALESCE(MAX(total) FILTER (WHERE metric = 'users'), 0) AS users,
+                   COALESCE(MAX(total) FILTER (WHERE metric = 'subscriptions'), 0) AS subscriptions
+            FROM months
+            LEFT JOIN counts ON counts.month = months.month
+            GROUP BY months.month
+            ORDER BY months.month
+            """
+        )
+        return cursor.fetchall()
+
+
 def get_root_admin_dashboard(connection):
     platform_enabled_sports = fetch_platform_enabled_sports(connection)
     with connection.cursor() as cursor:
@@ -328,6 +365,7 @@ def get_root_admin_dashboard(connection):
     user_summary = get_root_admin_users(connection)["summary"]
 
     return {
+        "monthly_counts": _dashboard_monthly_counts(connection),
         "summary": {
             "organization_count": len(organizations),
             "tournament_enabled_count": sum(org["tournament_enabled"] for org in organizations),

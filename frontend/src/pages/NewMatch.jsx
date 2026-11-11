@@ -936,7 +936,7 @@ export default function NewMatch() {
     <main className="page-shell stack">
       <ClubPageHeader />
 
-      <form className="panel stack" onSubmit={handleSubmit}>
+      <form className="panel stack match-setup-form" onSubmit={handleSubmit}>
         <div className="section-heading stack compact">
           <h2>{selectedSportOption?.label || "Racket Sport"} Match Setup</h2>
         </div>

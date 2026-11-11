@@ -317,6 +317,38 @@ test("fits racket scoring controls and point order into tablet landscape without
   expect(await page.evaluate(() => document.scrollingElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 1);
 });
 
+test("uses a full-height native-style point rail on iPhone portrait @racket", async ({ page }) => {
+  const match = freshRacketMatch("squash", false);
+  match.state.events.push(
+    { id: "server", event_type: "server", payload: { current_server_side: "player1", service_side: "Right" } },
+    { id: "point-1", event_type: "score_point", payload: { scorer: "player1", player1_score: 1, current_server_side: "player1", service_side: "Left" } },
+    { id: "point-2", event_type: "score_point", payload: { scorer: "player2", player2_score: 1, current_server_side: "player2", service_side: "Right" } },
+  );
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.route("**/get_score/web-squash-1", async (route) => {
+    await route.fulfill({ json: envelope({ match }) });
+  });
+
+  await page.goto("/match/web-squash-1");
+  await expect(page.getByText("Match Details", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".scoreboard-point-marker--player1").first()).toHaveCSS("color", "rgb(18, 116, 208)");
+  await expect(page.locator(".scoreboard-point-marker--player2").first()).toHaveCSS("color", "rgb(236, 61, 151)");
+  await expect(page.locator(".match-control-grid__actions-icon path")).toHaveCount(3);
+
+  const [gridBox, railBox, leftCardBox, rightCardBox] = await Promise.all([
+    page.locator(".scoreboard-grid").boundingBox(),
+    page.getByLabel("Point order").boundingBox(),
+    page.locator(".player-card").nth(0).boundingBox(),
+    page.locator(".player-card").nth(1).boundingBox(),
+  ]);
+  expect(railBox.x).toBeGreaterThanOrEqual(leftCardBox.x + leftCardBox.width - 1);
+  expect(railBox.x + railBox.width).toBeLessThanOrEqual(rightCardBox.x + 1);
+  expect(railBox.y).toBeGreaterThanOrEqual(gridBox.y);
+  expect(railBox.y + railBox.height).toBeLessThanOrEqual(gridBox.y + gridBox.height + 1);
+  expect(leftCardBox.height).toBeGreaterThanOrEqual(380);
+  expect(rightCardBox.height).toBeGreaterThanOrEqual(380);
+});
+
 for (const viewportSize of [
   { name: "iPhone SE", width: 568, height: 320 },
   { name: "iPhone Pro Max", width: 932, height: 430 },

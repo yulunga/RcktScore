@@ -84,6 +84,19 @@ def _serialize_org_user(user_row, client_type="web_app"):
         "email": email,
         "country": country,
         "telephone": telephone,
+        "subscription_provider": user_row.get("subscription_provider"),
+        "subscription_status": user_row.get("subscription_status"),
+        "subscription_expires_at": (
+            user_row["subscription_expires_at"].isoformat()
+            if user_row.get("subscription_expires_at")
+            else None
+        ),
+        "subscription_auto_renew_enabled": user_row.get("subscription_auto_renew_enabled"),
+        "subscription_last_renewed_at": (
+            user_row["subscription_last_renewed_at"].isoformat()
+            if user_row.get("subscription_last_renewed_at")
+            else None
+        ),
     }
 
 
@@ -95,10 +108,11 @@ def _serialize_root_admin(user_row):
     }
 
 
-def get_org_users(connection, username):
+def get_org_users(connection, username, for_update=True):
+    lock_clause = "FOR UPDATE OF u" if for_update else ""
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT
                 u.id,
                 u.clubusername,
@@ -116,15 +130,40 @@ def get_org_users(connection, username):
                 platform.enabled_sports_web AS platform_enabled_sports_web,
                 platform.enabled_sports_ios AS platform_enabled_sports_ios,
                 o.organization_name,
+                subscription.provider AS subscription_provider,
+                subscription.status AS subscription_status,
+                subscription.current_period_end AS subscription_expires_at,
+                subscription.auto_renew_enabled AS subscription_auto_renew_enabled,
+                subscription.last_renewed_at AS subscription_last_renewed_at,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u
             LEFT JOIN "SkwshOrgSettings" AS o
                 ON o.id = u.organization_id
             LEFT JOIN platform_settings AS platform
                 ON platform.id = 'default'
+            LEFT JOIN LATERAL (
+                SELECT
+                    source.provider,
+                    source.status,
+                    source.current_period_end,
+                    source.auto_renew_enabled,
+                    source.last_renewed_at
+                FROM subscription_sources AS source
+                WHERE source.organization_id = o.id
+                ORDER BY
+                    CASE source.status
+                        WHEN 'active' THEN 0
+                        WHEN 'grace_period' THEN 1
+                        WHEN 'billing_retry' THEN 2
+                        ELSE 3
+                    END,
+                    source.last_verified_at DESC,
+                    source.id DESC
+                LIMIT 1
+            ) AS subscription ON TRUE
             WHERE LOWER(u.clubusername) = LOWER(%(username)s)
             ORDER BY o.organization_name ASC, u.organization_id ASC, u.id ASC
-            FOR UPDATE OF u
+            {lock_clause}
             """,
             {"username": normalize_email_address(username)},
         )

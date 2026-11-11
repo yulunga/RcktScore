@@ -98,6 +98,7 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
                     onClick = if (isPlus) null else ({ upgradeOpen = !upgradeOpen }),
                 )
                 AnimatedVisibility(visible = upgradeOpen && !isPlus) { UpgradePanel() }
+                SubscriptionSourceLine(personal)
             }
 
             Kicker(stringResource(R.string.plan_section_club))
@@ -107,6 +108,7 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
                 clubs.forEach { club ->
                     Text(club.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     ClubPlans(current = PlanCodes.of(club)) { plan -> enquiry.open(plan, club.name) }
+                    SubscriptionSourceLine(club)
                 }
             }
             EditorNote(stringResource(R.string.plan_annual_only))
@@ -128,6 +130,23 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
             onSend = { enquiry.send(nameParts.first(), nameParts.getOrElse(1) { "" }, session.username) },
         )
     }
+}
+
+@Composable
+private fun SubscriptionSourceLine(context: AccountContext) {
+    val provider = context.subscriptionProvider ?: return
+    val providerName = when (provider.lowercase()) {
+        "apple" -> "App Store"
+        "google_play" -> "Google Play"
+        "stripe" -> "Web / Stripe"
+        "manual" -> "HitnScore administrator"
+        else -> provider.replace('_', ' ').replaceFirstChar { it.uppercase() }
+    }
+    Text(
+        text = "${if (context.subscriptionLastRenewedAt == null) "Purchased" else "Last renewed"} through $providerName",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+    )
 }
 
 private enum class PlanStatus { Current, Available, Upgrade, Enquire }

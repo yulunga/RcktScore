@@ -43,7 +43,20 @@ function PaymentIcon() {
   );
 }
 
-export default function SubscriptionPreview({ currentPlan = "club_essentials", accountEmail = "" }) {
+function providerName(provider) {
+  if (provider === "apple") return "App Store";
+  if (provider === "google_play") return "Google Play";
+  if (provider === "stripe") return "Web / Stripe";
+  if (provider === "manual") return "HitnScore administrator";
+  return String(provider || "").replaceAll("_", " ");
+}
+
+function sourceLine(membership) {
+  if (!membership?.subscription_provider) return "No verified payment source recorded";
+  return `${membership.subscription_last_renewed_at ? "Last renewed" : "Purchased"} through ${providerName(membership.subscription_provider)}`;
+}
+
+export default function SubscriptionPreview({ currentPlan = "club_essentials", accountEmail = "", personalMembership = null, clubMemberships = [] }) {
   const [billingPeriod, setBillingPeriod] = useState("annual");
   const [selectedPlan, setSelectedPlan] = useState(null);
   const currentPlanLabel = planName(currentPlan);
@@ -54,6 +67,29 @@ export default function SubscriptionPreview({ currentPlan = "club_essentials", a
 
   return (
     <section className="subscription-preview stack">
+      {(personalMembership || clubMemberships.length > 0) ? (
+        <section className="panel stack" aria-label="Subscription accounts">
+          <div className="panel-heading"><h2>Personal</h2></div>
+          {personalMembership ? (
+            <article className="subscription-current-card">
+              <div className="subscription-current-card__copy">
+                <h3>{planName(personalMembership.plan)}</h3>
+                <p>{sourceLine(personalMembership)}</p>
+              </div>
+            </article>
+          ) : <p>No Personal subscription is associated with this sign-in.</p>}
+          <div className="panel-heading"><h2>Club</h2></div>
+          {clubMemberships.length > 0 ? clubMemberships.map((membership) => (
+            <article className="subscription-current-card" key={membership.organization_id}>
+              <div className="subscription-current-card__copy">
+                <h3>{membership.organization_name}</h3>
+                <p>{planName(membership.plan)} · {sourceLine(membership)}</p>
+              </div>
+            </article>
+          )) : <p>No Club subscription is associated with this sign-in.</p>}
+        </section>
+      ) : null}
+
       <div className="subscription-preview__notice" role="note">
         <span>UI preview</span>
         <p>No payment will be taken. Stripe and subscription updates are not connected yet.</p>

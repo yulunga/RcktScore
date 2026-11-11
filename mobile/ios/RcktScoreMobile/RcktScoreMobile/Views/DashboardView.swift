@@ -84,6 +84,7 @@ struct DashboardView: View {
     @State private var showsManageSubscriptions = false
     @State private var isPersonalPlusOptionsExpanded = false
     @State private var personalPlusCollapseTask: Task<Void, Never>?
+    @State private var selectedGameSettingsPage: GameSettingsPage = .sports
     @AppStorage("hitnscore.strokeLetHelpEnabled") private var strokeLetHelpEnabled = false
 
     private var session: UserSession? { container.sessionStore.session }
@@ -293,7 +294,12 @@ struct DashboardView: View {
             fullName: current.fullName,
             email: current.email,
             country: current.country,
-            telephone: current.telephone
+            telephone: current.telephone,
+            subscriptionProvider: current.subscriptionProvider,
+            subscriptionStatus: current.subscriptionStatus,
+            subscriptionExpiresAt: current.subscriptionExpiresAt,
+            subscriptionAutoRenewEnabled: current.subscriptionAutoRenewEnabled,
+            subscriptionLastRenewedAt: current.subscriptionLastRenewedAt
         )]
     }
     private var availableSportOptions: [MatchSport] {
@@ -310,6 +316,9 @@ struct DashboardView: View {
     }
     private var bottomNavigationIconSize: CGFloat {
         usesCompactBottomNavigation ? 18 : 22
+    }
+    private var bottomNavigationIconFrameSize: CGFloat {
+        usesCompactBottomNavigation ? 22 : 26
     }
     private var bottomNavigationFont: Font {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
@@ -1141,49 +1150,17 @@ struct DashboardView: View {
     private var clubSettingsContent: some View {
         VStack(spacing: 6) {
             personalSettingsHeader
-
-            if !isAdmin {
-                Text("You are in view-only mode. Only organisation admins can save changes.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
             settingsMenuSectionsList
         }
     }
 
     private var personalSettingsHeader: some View {
         VStack(spacing: 8) {
-            PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
-                ZStack(alignment: .bottomTrailing) {
-                    profileAvatarView(size: 92)
-
-                    Circle()
-                        .fill(Color.dashboardBrand)
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.white)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white, lineWidth: 2)
-                        )
-                }
-            }
-            .buttonStyle(.plain)
-            .disabled(profileImageBusy)
+            profileImageEditor(size: 92)
 
             if profileImageBusy {
                 ProgressView("Compressing and uploading…")
                     .font(.caption)
-            } else if profileImageURL != nil || selectedProfilePhotoData != nil {
-                Button("Remove photo", role: .destructive) {
-                    Task { await removeCentralProfileImage() }
-                }
-                .font(.caption.weight(.semibold))
             }
 
             Text(personalIdentityUsername)
@@ -1537,11 +1514,15 @@ struct DashboardView: View {
             Text("Subscription")
                 .font(.headline.weight(.semibold))
 
+            Text("Personal")
+                .font(.subheadline.weight(.bold))
+
             ForEach(planCards, id: \.title) { card in
                 if card.title == "Personal Plus" {
                     personalPlusSubscriptionOptionCard(
                         subtitle: card.subtitle,
-                        isCurrent: card.isCurrent
+                        isCurrent: card.isCurrent,
+                        sourceDetail: card.isCurrent ? subscriptionSourceDetail(for: personalMembership) : nil
                     )
 
                     if isPersonalPlusOptionsExpanded {
@@ -1562,6 +1543,46 @@ struct DashboardView: View {
                     )
                 }
             }
+
+            Divider()
+                .padding(.vertical, 4)
+
+            Text("Club")
+                .font(.subheadline.weight(.bold))
+
+            if clubMemberships.isEmpty {
+                Text("You do not currently have a club subscription associated with this account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(clubMemberships) { membership in
+                    subscriptionOptionCardContent(
+                        title: membership.organizationName,
+                        subtitle: planDisplayName(for: membership.plan ?? "club_essentials"),
+                        status: "Current",
+                        isCurrent: true,
+                        detail: subscriptionSourceDetail(for: membership)
+                    )
+                }
+            }
+
+            Text("Register another club")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+
+            subscriptionOptionCard(
+                title: "Club Essentials",
+                subtitle: "Core club package for match operations and member management.",
+                isCurrent: false,
+                enquiryPlan: .essentials
+            )
+            subscriptionOptionCard(
+                title: "Club Pro",
+                subtitle: "Advanced club reporting and expansion options.",
+                isCurrent: false,
+                enquiryPlan: .pro
+            )
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1847,17 +1868,35 @@ struct DashboardView: View {
 
     private var profileSettingsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Profile")
-                .font(.headline.weight(.semibold))
+            VStack(spacing: 9) {
+                profileImageEditor(size: 96)
 
-            Text("Update the account details used for sign-in and player identity. Changing the email address updates your username and signs you back out so you can validate the new login.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                Text(personalIdentityPlanName)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.dashboardBrand.opacity(0.12))
+                    .clipShape(Capsule())
+
+                if profileImageBusy {
+                    ProgressView("Compressing and uploading…")
+                        .font(.caption)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 4)
 
             VStack(spacing: 12) {
                 dashboardTextField(title: "First Name", placeholder: "First name", text: $personalProfileDraft.firstName, accessibilityIdentifier: "settings.profile.firstNameField")
                 dashboardTextField(title: "Surname", placeholder: "Surname", text: $personalProfileDraft.surname, accessibilityIdentifier: "settings.profile.surnameField")
                 dashboardTextField(title: "Email", placeholder: "you@example.com", text: $personalProfileDraft.email, keyboardType: .emailAddress, accessibilityIdentifier: "settings.profile.emailField")
+                if isEditingPersonalProfile {
+                    Text("Changing your email changes your sign-in username and signs you out so the new address can be verified.")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 dashboardTextField(title: "Telephone", placeholder: "Telephone", text: $personalProfileDraft.telephone, keyboardType: .phonePad, accessibilityIdentifier: "settings.profile.telephoneField")
                 dashboardTextField(title: "Country of Origin", placeholder: "Country", text: $personalProfileDraft.country, accessibilityIdentifier: "settings.profile.countryField")
 
@@ -2050,9 +2089,15 @@ struct DashboardView: View {
                 Text("Your clubs")
                     .font(.headline.weight(.semibold))
 
-                Text("Open a club to view its profile and, where your role allows, manage users, courts and club settings.")
+                Text("Select a club below to view or administer it.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if clubMemberships.contains(where: { $0.role.lowercased() != "admin" }) {
+                    Text("Clubs where you are not an administrator open in view-only mode. Only club administrators can save club changes.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
 
                 ForEach(clubMemberships) { membership in
                     associationMembershipRow(membership)
@@ -2095,84 +2140,94 @@ struct DashboardView: View {
             Text("Game Settings")
                 .font(.headline.weight(.semibold))
 
-            Text("Personal Racket Sports")
-                .font(.subheadline.weight(.bold))
-
-            Text("Choose which available sports you want to see when scoring through your Personal account.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            ForEach(availableSportOptions) { sport in
-                sportAccessRow(for: sport, personal: true)
+            Picker("Game Settings Page", selection: $selectedGameSettingsPage) {
+                ForEach(GameSettingsPage.allCases) { page in
+                    Text(page.title).tag(page)
+                }
             }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.gameSettings.pagePicker")
 
-            Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
-                saveOrganizationEnabledSports(personal: true)
-            }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(Color.dashboardBrand)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .buttonStyle(.plain)
-            .disabled(savingSettingsKey != nil || loadedPersonalSportsOrganizationID == nil)
-            .opacity(savingSettingsKey != nil ? 0.7 : 1)
-            .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
+            if selectedGameSettingsPage == .sports {
+                Text("Racket Sports Enablement")
+                    .font(.subheadline.weight(.bold))
 
-            Divider()
-                .padding(.vertical, 4)
+                Text("Choose which available sports you want to see when scoring through your Personal account.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
-            Text("Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                ForEach(availableSportOptions) { sport in
+                    sportAccessRow(for: sport, personal: true)
+                }
 
-            ForEach(availableSportOptions.filter { $0.isImplementedToday && personalSportsDraft.contains($0.rawValue) }) { sport in
-                Toggle(isOn: timedBreakDefaultBinding(for: sport)) {
+                Button(currentSettingsButtonTitle(for: "sports-save", defaultTitle: "Save Personal Sport Access")) {
+                    saveOrganizationEnabledSports(personal: true)
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(savingSettingsKey != nil || loadedPersonalSportsOrganizationID == nil)
+                .opacity(savingSettingsKey != nil ? 0.7 : 1)
+                .accessibilityIdentifier("settings.gameSettings.savePersonalSports")
+            } else if selectedGameSettingsPage == .timers {
+                Text("Timer Details")
+                    .font(.subheadline.weight(.bold))
+
+                Text("Choose which sports preselect their timed warm-up and break option when you create a match. When a default is off, you can still switch the timer on for an individual match.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                ForEach(availableSportOptions.filter { $0.isImplementedToday && personalSportsDraft.contains($0.rawValue) }) { sport in
+                    Toggle(isOn: timedBreakDefaultBinding(for: sport)) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(sport.displayName)
+                                .font(.subheadline.weight(.semibold))
+                            Text("Timer default \((timedBreakDefaultsDraft[sport.rawValue] ?? false) ? "on" : "off")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(Color.dashboardBrand)
+                    .disabled(savingSettingsKey != nil)
+                    .accessibilityIdentifier("settings.gameSettings.\(sport.rawValue).timerDefault")
+                }
+
+                Button(currentSettingsButtonTitle(for: "timer-defaults-save", defaultTitle: "Save Timer Defaults")) {
+                    saveTimedBreakDefaults()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color.dashboardBrand)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(savingSettingsKey != nil)
+                .opacity(savingSettingsKey != nil ? 0.7 : 1)
+                .accessibilityIdentifier("settings.gameSettings.saveTimerDefaults")
+            } else {
+                Text("Game Attributes")
+                    .font(.subheadline.weight(.bold))
+
+                Toggle(isOn: $strokeLetHelpEnabled) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(sport.displayName)
+                        Text("ST/L Help")
                             .font(.subheadline.weight(.semibold))
-                        Text("Timer default \((timedBreakDefaultsDraft[sport.rawValue] ?? false) ? "on" : "off")")
+                        Text(canUseStrokeLetHelp
+                             ? "Show the Stroke / Let decision guide in Match Actions."
+                             : "Available for Personal Plus and club matches.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .tint(Color.dashboardBrand)
-                .disabled(savingSettingsKey != nil)
-                .accessibilityIdentifier("settings.gameSettings.\(sport.rawValue).timerDefault")
+                .disabled(!canUseStrokeLetHelp)
+                .accessibilityIdentifier("settings.gameSettings.strokeLetHelp")
             }
-
-            Button(currentSettingsButtonTitle(for: "timer-defaults-save", defaultTitle: "Save Timer Defaults")) {
-                saveTimedBreakDefaults()
-            }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(Color.dashboardBrand)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .buttonStyle(.plain)
-            .disabled(savingSettingsKey != nil)
-            .opacity(savingSettingsKey != nil ? 0.7 : 1)
-            .accessibilityIdentifier("settings.gameSettings.saveTimerDefaults")
-
-            Divider()
-                .padding(.vertical, 4)
-
-            Toggle(isOn: $strokeLetHelpEnabled) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("ST/L Help")
-                        .font(.subheadline.weight(.semibold))
-                    Text(canUseStrokeLetHelp
-                         ? "Show the Stroke / Let decision guide in Match Actions."
-                         : "Available for Personal Plus and club matches.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .tint(Color.dashboardBrand)
-            .disabled(!canUseStrokeLetHelp)
-            .accessibilityIdentifier("settings.gameSettings.strokeLetHelp")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3017,6 +3072,7 @@ struct DashboardView: View {
                     VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                         Image(systemName: tab.icon)
                             .font(.system(size: bottomNavigationIconSize, weight: selectedTab == tab ? .semibold : .regular))
+                            .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
 
                         Text(tab.title)
                             .font(bottomNavigationFont.weight(selectedTab == tab ? .semibold : .medium))
@@ -3040,13 +3096,14 @@ struct DashboardView: View {
                             ZStack {
                                 Circle()
                                     .fill(Color.dashboardBrand)
-                                    .frame(width: bottomNavigationIconSize, height: bottomNavigationIconSize)
+                                    .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
 
                                 Image(systemName: "play.fill")
-                                    .font(.system(size: usesCompactBottomNavigation ? 9 : 11, weight: .bold))
+                                    .font(.system(size: usesCompactBottomNavigation ? 10 : 12, weight: .bold))
                                     .foregroundStyle(.white)
                                     .offset(x: 1)
                             }
+                            .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
 
                             Text("Play")
                                 .font(bottomNavigationFont.weight(.medium))
@@ -3600,7 +3657,8 @@ struct DashboardView: View {
 
     private func personalPlusSubscriptionOptionCard(
         subtitle: String,
-        isCurrent: Bool
+        isCurrent: Bool,
+        sourceDetail: String?
     ) -> some View {
         Button {
             if isPersonalPlusOptionsExpanded {
@@ -3614,6 +3672,7 @@ struct DashboardView: View {
                 subtitle: subtitle,
                 status: isCurrent ? "Current" : "Upgrade Option",
                 isCurrent: isCurrent,
+                detail: sourceDetail,
                 trailingSystemImage: isPersonalPlusOptionsExpanded ? "chevron.up" : "chevron.down"
             )
         }
@@ -3687,6 +3746,7 @@ struct DashboardView: View {
         subtitle: String,
         status: String,
         isCurrent: Bool,
+        detail: String? = nil,
         trailingSystemImage: String? = nil
     ) -> some View {
         let isEnquiry = status == "Enquire"
@@ -3729,6 +3789,12 @@ struct DashboardView: View {
             Text(subtitle)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            if let detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -5435,6 +5501,49 @@ struct DashboardView: View {
         .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
     }
 
+    private func profileImageEditor(size: CGFloat) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            profileAvatarView(size: size)
+
+            HStack(spacing: 5) {
+                PhotosPicker(selection: $selectedProfilePhotoItem, matching: .images) {
+                    Circle()
+                        .fill(Color.dashboardBrand)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Image(systemName: "pencil")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
+                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                }
+                .buttonStyle(.plain)
+                .disabled(profileImageBusy)
+                .accessibilityLabel("Change profile photo")
+
+                if profileImageURL != nil || selectedProfilePhotoData != nil {
+                    Button {
+                        Task { await removeCentralProfileImage() }
+                    } label: {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.white)
+                            )
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(profileImageBusy)
+                    .accessibilityLabel("Remove profile photo")
+                }
+            }
+            .offset(x: 8, y: 6)
+        }
+    }
+
     private func sportEnabledBinding(for sport: MatchSport) -> Binding<Bool> {
         Binding(
             get: { sport.isImplementedToday && enabledSportIDs.contains(sport.rawValue) },
@@ -5489,7 +5598,12 @@ struct DashboardView: View {
                 fullName: membership.fullName,
                 email: membership.email,
                 country: membership.country,
-                telephone: membership.telephone
+                telephone: membership.telephone,
+                subscriptionProvider: membership.subscriptionProvider,
+                subscriptionStatus: membership.subscriptionStatus,
+                subscriptionExpiresAt: membership.subscriptionExpiresAt,
+                subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
+                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt
             )
         }
 
@@ -5510,6 +5624,11 @@ struct DashboardView: View {
             email: currentSession.email,
             country: currentSession.country,
             telephone: currentSession.telephone,
+            subscriptionProvider: currentSession.subscriptionProvider,
+            subscriptionStatus: currentSession.subscriptionStatus,
+            subscriptionExpiresAt: currentSession.subscriptionExpiresAt,
+            subscriptionAutoRenewEnabled: currentSession.subscriptionAutoRenewEnabled,
+            subscriptionLastRenewedAt: currentSession.subscriptionLastRenewedAt,
             availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)
@@ -5542,7 +5661,12 @@ struct DashboardView: View {
                 fullName: fullName,
                 email: email,
                 country: country,
-                telephone: telephone
+                telephone: telephone,
+                subscriptionProvider: membership.subscriptionProvider,
+                subscriptionStatus: membership.subscriptionStatus,
+                subscriptionExpiresAt: membership.subscriptionExpiresAt,
+                subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
+                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt
             )
         }
 
@@ -5563,6 +5687,11 @@ struct DashboardView: View {
             email: email,
             country: country,
             telephone: telephone,
+            subscriptionProvider: currentSession.subscriptionProvider,
+            subscriptionStatus: currentSession.subscriptionStatus,
+            subscriptionExpiresAt: currentSession.subscriptionExpiresAt,
+            subscriptionAutoRenewEnabled: currentSession.subscriptionAutoRenewEnabled,
+            subscriptionLastRenewedAt: currentSession.subscriptionLastRenewedAt,
             availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)
@@ -5581,6 +5710,25 @@ struct DashboardView: View {
         default:
             return plan.replacingOccurrences(of: "_", with: " ").capitalized
         }
+    }
+
+    private func subscriptionSourceDetail(for membership: UserMembership?) -> String? {
+        guard let membership,
+              let provider = membership.subscriptionProvider?.lowercased() else {
+            return nil
+        }
+
+        let providerName: String
+        switch provider {
+        case "apple": providerName = "App Store"
+        case "google_play": providerName = "Google Play"
+        case "stripe": providerName = "Web / Stripe"
+        case "manual": providerName = "HitnScore administrator"
+        default: providerName = provider.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+
+        let action = membership.subscriptionLastRenewedAt == nil ? "Purchased" : "Last renewed"
+        return "\(action) through \(providerName)"
     }
 }
 
@@ -5699,6 +5847,21 @@ private enum AnalyticsCategory: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var title: String { self == .personal ? "Personal" : "Club" }
+}
+
+private enum GameSettingsPage: String, CaseIterable, Identifiable {
+    case sports
+    case timers
+    case attributes
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .sports: return "Racket Sports"
+        case .timers: return "Timers"
+        case .attributes: return "Attributes"
+        }
+    }
 }
 
 private enum ProfileImagePreparationError: Error {

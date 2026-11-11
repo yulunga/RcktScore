@@ -729,7 +729,7 @@ What to check:
 
 - whether `POST /login` returned the default identity-first `data.session` or the legacy `data.organizationSelection`, and whether `available_memberships` contains every approved account/club
 - whether the account hit `ACTIVE_SESSION_EXISTS` because the identity already has a web or mobile session
-- whether the deployed API includes `GET /session/status`; web and iOS poll it every 30 seconds while active, and a refocused browser validates immediately
+- whether the deployed API includes `GET /session/status`; web, iOS and Android poll it every five seconds while active and validate immediately after browser focus or native foreground
 - if a web refresh flashes the login form, whether `AuthContext` still reports `restoringSession` and `ProtectedRoute` is rendering the branded restoration screen until the initial `/session/status` request finishes
 - whether `GET /match_display_access/{match_id}` is succeeding; it supplies the court display code where applicable and the match-specific Personal Plus viewing code for every live match
 - whether the issue is a backend scoring-state problem or only a scorer-layout problem
@@ -1007,4 +1007,8 @@ If a club cannot open Tournament Manager, check its Enabled status in Ground Con
 
 Club tournament activity in Ground Control uses recorded event status. Draft and cancelled events are excluded from the current list and completed count.
 
-After a club role change, allow up to the next successful session refresh (normally within 30 seconds with the app open). Check the exact club membership on the account if admin controls remain unavailable.
+After a club role change, allow up to the next successful session refresh (normally within five seconds with the app open). Check the exact club membership on the account if admin controls remain unavailable. A stale control must never grant access: protected requests still enforce the current database role server-side.
+
+If subscription source details fail to appear, confirm migration `055_unified_subscription_sources.sql` has been applied before deploying the backend because the session query reads `subscription_sources`. Existing verified App Store rows should be backfilled and later Apple lifecycle updates should be synchronized by the database trigger. Google Play and Stripe source fields are expected to remain empty until verified provider adapters are implemented; do not manually mark one of those providers active to simulate payment.
+
+If a Ground Control card reports monthly counts unavailable, verify the deployed dashboard response contains `monthly_counts`. Counts come from retained records, so removed records no longer contribute.

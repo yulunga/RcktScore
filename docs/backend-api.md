@@ -957,4 +957,8 @@ The Root Admin dashboard includes `summary.tournament_enabled_count` and `organi
 
 The Ground Control dashboard exposes `organizations[].tournament_activity` with `completed_count` and `current_events` containing event ID, name, sport, status and dates.
 
-Web, iOS and Android consume the approved membership list from `GET /session/status` to refresh active role and sport access while keeping the current organisation if it is still approved.
+Web, iOS and Android consume the approved membership list from `GET /session/status` every five seconds while active, and immediately after browser focus/native foreground, to refresh active role, plan, sport access and verified subscription-source display while keeping the current organisation if it is still approved. This is UI reconciliation only: every protected request still authorizes the current membership and role independently.
+
+Migration `055_unified_subscription_sources.sql` adds the provider-neutral, server-written `subscription_sources` ledger. Membership objects returned at login and by `GET /session/status` may include `subscription_provider`, `subscription_status`, `subscription_expires_at`, `subscription_auto_renew_enabled`, and `subscription_last_renewed_at`. Existing verified App Store state is backfilled and synchronized automatically. Google Play and Stripe are valid ledger providers for future verified adapters, but there is currently no Google Play purchase verifier, Stripe checkout endpoint, or cross-provider renewal endpoint; clients must not infer an entitlement from a provider label alone.
+
+The Ground Control dashboard response includes `monthly_counts`, an ordered 12-month series with `month` (YYYY-MM), `matches`, `users` and `subscriptions`. Months use Europe/London and empty months return zero.

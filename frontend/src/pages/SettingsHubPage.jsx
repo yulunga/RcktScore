@@ -503,7 +503,12 @@ export default function SettingsHubPage() {
       ) : null}
 
       {!loading && activeSection === "subscription" ? (
-        <SubscriptionPreview accountEmail={profile.email} currentPlan={identityMembership?.plan || settings?.organization?.plan || "personal_free"} />
+        <SubscriptionPreview
+          accountEmail={profile.email}
+          clubMemberships={clubMemberships}
+          currentPlan={identityMembership?.plan || settings?.organization?.plan || "personal_free"}
+          personalMembership={identityMembership}
+        />
       ) : null}
 
       {!loading && activeSection === "app" ? (

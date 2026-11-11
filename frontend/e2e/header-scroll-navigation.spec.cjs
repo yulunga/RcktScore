@@ -715,6 +715,32 @@ test("uses a native-style bottom navigation with Play after Home on iPhone portr
     .getByRole("button", { name: "Settings" })).toHaveAttribute("aria-current", "page");
 });
 
+test("closes the Play chooser when iPhone navigation moves to Matches @header", async ({ page }) => {
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.goto("/dashboard");
+
+  const navigation = page.getByRole("navigation", { name: "Mobile navigation" });
+  await navigation.getByRole("button", { name: "Start New Match" }).click();
+  await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
+  await navigation.getByRole("button", { name: "Matches" }).click();
+
+  await expect(page).toHaveURL(/\/matches$/);
+  await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toHaveCount(0);
+});
+
+test("reloads Matches for the selected header context without a second context row @header", async ({ page }) => {
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.goto("/matches");
+
+  const headerSwitcher = page.locator(".account-context-switcher--header");
+  await headerSwitcher.locator(".account-context-switcher__trigger").click();
+  await headerSwitcher.getByRole("menuitem", { name: /Personal Personal Plus/ }).click();
+
+  await expect(headerSwitcher.locator(".account-context-switcher__trigger")).toContainText("Personal");
+  await expect(page.getByRole("heading", { name: "Watch a Match" })).toBeVisible();
+  await expect(page.getByText(/Showing matches for/i)).toHaveCount(0);
+});
+
 test("places Start New Match in the iPad portrait navigation @header", async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await page.goto("/dashboard");
@@ -772,7 +798,9 @@ test("fits the match account and sport chooser inside an iPhone 16 Pro viewport 
 
   const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
   await expect(chooser).toBeVisible();
+  await expect(chooser.getByText("Confirm the match account, then choose a racket sport.")).toHaveCount(0);
   await expect(chooser.locator(".account-context-switcher__trigger")).toContainText("Header Test Club");
+  await expect(chooser.locator(".account-context-switcher__expand-icon")).toBeVisible();
   await expect(chooser.locator(".match-sport-artwork")).toHaveCount(4);
   const box = await chooser.boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);

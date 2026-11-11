@@ -174,7 +174,11 @@ final class AppContainer: ObservableObject {
                     let updated = current.switchingMembership(to: selected, refreshedMemberships: memberships)
                     if updated != current { self.sessionStore.save(updated) }
                 }
-                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                // Membership roles, plan and sport access can be changed by a
+                // club/root administrator while this device remains signed in.
+                // Reconcile promptly; every protected request is still
+                // authorised independently by the backend.
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }
     }

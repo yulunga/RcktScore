@@ -458,7 +458,12 @@ struct StartNewMatchFlowView: View {
                 fullName: session.fullName,
                 email: session.email,
                 country: session.country,
-                telephone: session.telephone
+                telephone: session.telephone,
+                subscriptionProvider: session.subscriptionProvider,
+                subscriptionStatus: session.subscriptionStatus,
+                subscriptionExpiresAt: session.subscriptionExpiresAt,
+                subscriptionAutoRenewEnabled: session.subscriptionAutoRenewEnabled,
+                subscriptionLastRenewedAt: session.subscriptionLastRenewedAt
             )
         ]
     }
