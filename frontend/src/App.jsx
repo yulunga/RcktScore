@@ -58,6 +58,10 @@ export default function App() {
         )}
       />
       <Route
+        path="/rckscoreAdmin/clubs"
+        element={<RootAdminProtectedRoute><RootAdminDashboardPage clubsOnly /></RootAdminProtectedRoute>}
+      />
+      <Route
         path="/rckscoreAdmin/clubs/:organizationId"
         element={(
           <RootAdminProtectedRoute>

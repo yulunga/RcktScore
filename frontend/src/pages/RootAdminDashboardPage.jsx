@@ -36,7 +36,7 @@ function formatWebsiteForSave(value) {
   return `${WEBSITE_PREFIX}${stripWebsitePrefix(trimmedValue)}`;
 }
 
-export default function RootAdminDashboardPage() {
+export default function RootAdminDashboardPage({ clubsOnly = false }) {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [organizationForm, setOrganizationForm] = useState(emptyOrganizationForm);
@@ -146,88 +146,94 @@ export default function RootAdminDashboardPage() {
     <main className="page-shell stack">
       <RootAdminSessionBar />
 
-      <section className="hero-card stack compact">
-        <div className="meta-grid root-admin-dashboard-summary">
-          <div className="meta-item">
-            <strong>Clubs</strong>
-            <div>{summary.organization_count ?? 0}</div>
-          </div>
-          <RootAdminMonthlyCard
-            title="Users"
-            count={summary.total_user_count ?? 0}
-            note={`${summary.unverified_user_count ?? 0} unverified`}
-            metric="users"
-            series={dashboard?.monthly_counts}
-            onOpen={() => navigate("/rckscoreAdmin/users")}
-          />
-          <RootAdminMonthlyCard
-            title="Subscriptions"
-            count={summary.subscription_count ?? 0}
-            note="Apple subscription records"
-            metric="subscriptions"
-            series={dashboard?.monthly_counts}
-            onOpen={() => navigate("/rckscoreAdmin/subscriptions")}
-          />
-          <div className="meta-item">
-            <strong>Club Enquiries</strong>
-            <button
-              className="root-admin-summary-count"
-              type="button"
-              onClick={() => navigate("/rckscoreAdmin/interests")}
-            >
-              {summary.interest_count ?? 0}
+      {!clubsOnly ? (
+        <section className="hero-card stack compact">
+          <div className="meta-grid root-admin-dashboard-summary">
+            <div className="meta-item">
+              <strong>Clubs</strong>
+              <button className="root-admin-summary-count" type="button" aria-label={`Open Clubs, ${summary.organization_count ?? 0} total`} onClick={() => navigate("/rckscoreAdmin/clubs")}>
+                {summary.organization_count ?? 0}
+              </button>
+            </div>
+            <RootAdminMonthlyCard
+              title="Users"
+              count={summary.total_user_count ?? 0}
+              note={`${summary.unverified_user_count ?? 0} unverified`}
+              metric="users"
+              series={dashboard?.monthly_counts}
+              onOpen={() => navigate("/rckscoreAdmin/users")}
+            />
+            <RootAdminMonthlyCard
+              title="Subscriptions"
+              count={summary.subscription_count ?? 0}
+              note="Apple subscription records"
+              metric="subscriptions"
+              series={dashboard?.monthly_counts}
+              onOpen={() => navigate("/rckscoreAdmin/subscriptions")}
+            />
+            <div className="meta-item">
+              <strong>Club Enquiries</strong>
+              <button
+                className="root-admin-summary-count"
+                type="button"
+                onClick={() => navigate("/rckscoreAdmin/interests")}
+              >
+                {summary.interest_count ?? 0}
+              </button>
+              <span className="root-admin-summary-note">
+                Pending {summary.pending_interest_count ?? 0}
+              </span>
+            </div>
+            <RootAdminMonthlyCard
+              title="Match Scores"
+              count={summary.match_count ?? 0}
+              note={`Completed ${summary.completed_match_count ?? 0}`}
+              metric="matches"
+              series={dashboard?.monthly_counts}
+              onOpen={() => navigate("/rckscoreAdmin/matches")}
+            />
+            <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/online-users")}>
+              <strong>Online Users</strong>
+              <div>{summary.online_now ?? "—"}</div>
+              <span>Last 5 minutes</span>
             </button>
-            <span className="root-admin-summary-note">
-              Pending {summary.pending_interest_count ?? 0}
-            </span>
-          </div>
-          <RootAdminMonthlyCard
-            title="Match Scores"
-            count={summary.match_count ?? 0}
-            note={`Completed ${summary.completed_match_count ?? 0}`}
-            metric="matches"
-            series={dashboard?.monthly_counts}
-            onOpen={() => navigate("/rckscoreAdmin/matches")}
-          />
-          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/online-users")}>
-            <strong>Online Users</strong>
-            <div>{summary.online_now ?? "—"}</div>
-            <span>Last 5 minutes</span>
-          </button>
-          <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/tournaments")}>
-            <strong>Tournament Manager</strong>
-            <div>{summary.tournament_enabled_count ?? "—"}</div>
-            <span>Clubs enabled</span>
-          </button>
-          <button
-            className="meta-item root-admin-settings-card"
-            type="button"
-            onClick={() => navigate("/rckscoreAdmin/racket-sports")}
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M9.7 3.1h4.6l.6 2.2c.5.2.9.4 1.3.7l2.1-.6 2.3 4-1.6 1.6c0 .3.1.7.1 1s0 .7-.1 1l1.6 1.6-2.3 4-2.1-.6c-.4.3-.9.5-1.3.7l-.6 2.2H9.7l-.6-2.2c-.5-.2-.9-.4-1.3-.7l-2.1.6-2.3-4L5 13c0-.3-.1-.7-.1-1s0-.7.1-1L3.4 9.4l2.3-4 2.1.6c.4-.3.9-.5 1.3-.7l.6-2.2Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <strong>Settings</strong>
+            <button className="meta-item root-admin-settings-card" type="button" onClick={() => navigate("/rckscoreAdmin/tournaments")}>
+              <strong>Tournament Manager</strong>
+              <div>{summary.tournament_enabled_count ?? "—"}</div>
+              <span>Clubs enabled</span>
+            </button>
+            <button
+              className="meta-item root-admin-settings-card"
+              type="button"
+              onClick={() => navigate("/rckscoreAdmin/racket-sports")}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M9.7 3.1h4.6l.6 2.2c.5.2.9.4 1.3.7l2.1-.6 2.3 4-1.6 1.6c0 .3.1.7.1 1s0 .7-.1 1l1.6 1.6-2.3 4-2.1-.6c-.4.3-.9.5-1.3.7l-.6 2.2H9.7l-.6-2.2c-.5-.2-.9-.4-1.3-.7l-2.1.6-2.3-4L5 13c0-.3-.1-.7-.1-1s0-.7.1-1L3.4 9.4l2.3-4 2.1.6c.4-.3.9-.5 1.3-.7l.6-2.2Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <strong>Settings</strong>
 
-          </button>
-        </div>
-      </section>
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {loading ? <div className="notice">Loading root admin dashboard...</div> : null}
       {message ? <div className="notice settings-success">{message}</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
 
-      <section className="panel stack">
-        <div className="panel-heading"><h2>League & Interclub Directory</h2><p className="helper-text">Competition names submitted by club administrators. Remove inappropriate entries from every club.</p></div>
-        <div className="settings-compact-list">
-          {(dashboard?.association_competitions || []).length === 0 ? <div className="dashboard-empty">No club competitions have been added.</div> : (dashboard?.association_competitions || []).map((item) => <article className="settings-competition-row" key={`${item.type}-${item.name}`}><div><strong>{item.name}</strong><span>{item.type === "interclub" ? "Interclub competition" : "League"} · {item.club_count} club{Number(item.club_count) === 1 ? "" : "s"}</span></div><button className="danger" disabled={savingSection === `competition-${item.name}`} type="button" onClick={() => removeCompetition(item.name)}>Delete</button></article>)}
-        </div>
-      </section>
+      {!clubsOnly ? (
+        <section className="panel stack">
+          <div className="panel-heading"><h2>League & Interclub Directory</h2><p className="helper-text">Competition names submitted by club administrators. Remove inappropriate entries from every club.</p></div>
+          <div className="settings-compact-list">
+            {(dashboard?.association_competitions || []).length === 0 ? <div className="dashboard-empty">No club competitions have been added.</div> : (dashboard?.association_competitions || []).map((item) => <article className="settings-competition-row" key={`${item.type}-${item.name}`}><div><strong>{item.name}</strong><span>{item.type === "interclub" ? "Interclub competition" : "League"} · {item.club_count} club{Number(item.club_count) === 1 ? "" : "s"}</span></div><button className="danger" disabled={savingSection === `competition-${item.name}`} type="button" onClick={() => removeCompetition(item.name)}>Delete</button></article>)}
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel stack">
         <div className="root-admin-section-header root-admin-directory-header">
-          <h2>Club Directory</h2>
+          {clubsOnly ? <h1>Clubs</h1> : <h2>Club Directory</h2>}
           <div className="button-row root-admin-directory-actions">
             <div className="root-admin-search root-admin-search-wide">
               <input

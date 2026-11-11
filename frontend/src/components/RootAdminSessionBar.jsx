@@ -5,6 +5,7 @@ import { useRootAdmin } from "../hooks/useRootAdmin";
 
 const CONTROL_PANEL_LINKS = [
   { route: "dashboard", label: "Home", icon: "m3 10 9-7 9 7v10h-6v-6H9v6H3z" },
+  { route: "clubs", label: "Clubs", icon: "M3 21h18M5 21V9l7-5 7 5v12m-10 0v-5h6v5M9 11h.01M15 11h.01" },
   { route: "users", label: "Users", icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-4m-3-12a4 4 0 0 1 0 8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" },
   { route: "matches", label: "Matches", icon: "M3 5h18v14H3zM12 5v14M3 9h18M3 15h18" },
   { route: "notifications", label: "Notifications", icon: "M5 10a7 7 0 0 1 14 0v4l2 3H3l2-3zm4 10h6" },
