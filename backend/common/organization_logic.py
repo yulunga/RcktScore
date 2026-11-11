@@ -29,6 +29,11 @@ ORGANIZATION_FIELDS = [
 ]
 TIMED_BREAK_SPORTS = ("squash", "racketball", "tennis", "padel")
 PERSONAL_ORG_ID_SEQUENCE = "hitnscore_personal_org_id_seq"
+COURT_NUMBER_PATTERN = re.compile(r"^court[- ]?([1-9][0-9]*)$", re.IGNORECASE)
+COURT_NUMBER_LIMITS = {
+    "club_essentials": 5,
+    "club_pro": 25,
+}
 
 
 def normalize_timed_break_defaults(value):
@@ -59,6 +64,55 @@ def normalize_association_competitions(value):
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _normalized_court_number(value, plan):
+    trimmed_value = str(value or "").strip()
+    limit = COURT_NUMBER_LIMITS.get(str(plan or "").strip().lower())
+    if limit is None:
+        if not trimmed_value:
+            raise ValueError("court_number is required")
+        return trimmed_value
+
+    match = COURT_NUMBER_PATTERN.fullmatch(trimmed_value)
+    if not match:
+        raise ValueError(f"court_number must be selected from Court-1 to Court-{limit}")
+    number = int(match.group(1))
+    if number > limit:
+        raise ValueError(f"court_number must be selected from Court-1 to Court-{limit}")
+    return f"Court-{number}"
+
+
+def _court_plan(connection, organization_id):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            'SELECT plan FROM "SkwshOrgSettings" WHERE id = %(organization_id)s LIMIT 1',
+            {"organization_id": int(organization_id)},
+        )
+        row = cursor.fetchone()
+    return (row or {}).get("plan") or "club_essentials"
+
+
+def _court_number_exists(connection, organization_id, sport, court_name, *, excluding_court_id=None):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshCourts"
+            WHERE organization_name = %(organization_id)s
+              AND sport = %(sport)s
+              AND LOWER(court_name) = LOWER(%(court_name)s)
+              AND (%(excluding_court_id)s IS NULL OR id <> %(excluding_court_id)s)
+            LIMIT 1
+            """,
+            {
+                "organization_id": int(organization_id),
+                "sport": sport,
+                "court_name": court_name,
+                "excluding_court_id": int(excluding_court_id) if excluding_court_id is not None else None,
+            },
+        )
+        return cursor.fetchone() is not None
 
 
 def _months_after(value, months):
@@ -1254,12 +1308,14 @@ def approve_organization_user_by_id(connection, organization_id, user_id):
 
 def create_court(connection, organization_id, court_name, court_alias=None, sport=None):
     org_id = int(organization_id)
-    trimmed_name = court_name.strip()
-    if not trimmed_name:
-        raise ValueError("court_name is required")
     normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
-    if sport and not normalized_sport:
-        raise ValueError("sport must be a supported racket sport")
+    if not normalized_sport:
+        raise ValueError("sport is required and must be an enabled racket sport")
+    plan = _court_plan(connection, org_id)
+    trimmed_name = _normalized_court_number(court_name, plan)
+    if _court_number_exists(connection, org_id, normalized_sport, trimmed_name):
+        raise ValueError(f"{trimmed_name} already exists for {normalized_sport.title()}")
+    display_name = (court_alias or "").strip() or trimmed_name
     created_at = _utcnow()
     display_code = generate_unique_display_code(connection)
 
@@ -1300,7 +1356,7 @@ def create_court(connection, organization_id, court_name, court_alias=None, spor
             {
                 "created_at": created_at,
                 "court_name": trimmed_name,
-                "court_alias": (court_alias or "").strip() or None,
+                "court_alias": display_name,
                 "sport": normalized_sport,
                 "organization_id": org_id,
                 "display_code": display_code,
@@ -1324,12 +1380,50 @@ def update_court(
     update_sport=False,
 ):
     org_id = int(organization_id)
-    trimmed_name = court_name.strip()
-    if not trimmed_name:
-        raise ValueError("court_name is required")
     normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
     if update_sport and sport and not normalized_sport:
         raise ValueError("sport must be a supported racket sport")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT court_name, sport
+            FROM "SkwshCourts"
+            WHERE id = %(court_id)s
+              AND organization_name = %(organization_id)s
+            LIMIT 1
+            """,
+            {"court_id": int(court_id), "organization_id": org_id},
+        )
+        existing_court = cursor.fetchone()
+    if not existing_court:
+        return None
+
+    effective_sport = normalized_sport if update_sport else existing_court.get("sport")
+    if not effective_sport:
+        trimmed_name = str(court_name or "").strip()
+        if not trimmed_name:
+            raise ValueError("court_number is required")
+    else:
+        plan = _court_plan(connection, org_id)
+        numbering_changed = (
+            str(court_name or "").strip().casefold() != str(existing_court.get("court_name") or "").strip().casefold()
+            or effective_sport != existing_court.get("sport")
+        )
+        trimmed_name = (
+            _normalized_court_number(court_name, plan)
+            if numbering_changed
+            else str(existing_court.get("court_name") or "").strip()
+        )
+        if numbering_changed and _court_number_exists(
+            connection,
+            org_id,
+            effective_sport,
+            trimmed_name,
+            excluding_court_id=court_id,
+        ):
+            raise ValueError(f"{trimmed_name} already exists for {effective_sport.title()}")
+    display_name = (court_alias or "").strip() or trimmed_name
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -1355,7 +1449,7 @@ def update_court(
                 "court_id": int(court_id),
                 "organization_id": org_id,
                 "court_name": trimmed_name,
-                "court_alias": (court_alias or "").strip() or None,
+                "court_alias": display_name,
                 "sport": normalized_sport,
                 "update_sport": bool(update_sport),
             },

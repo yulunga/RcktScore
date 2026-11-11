@@ -50,6 +50,9 @@ struct DashboardView: View {
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
     @State private var newCourtDraft = CourtDraft()
     @State private var courtDrafts: [Int: CourtDraft] = [:]
+    @State private var courtSportFilter = ""
+    @State private var isAddingCourt = false
+    @State private var editingCourtID: Int?
     @State private var personalProfileDraft = PersonalProfileDraft()
     @State private var isEditingPersonalProfile = false
     @State private var enabledSportsDraft: [String] = []
@@ -254,6 +257,32 @@ struct DashboardView: View {
     }
     private var organizationSettingsCourts: [CourtSummary] {
         organizationSettings?.courts ?? []
+    }
+    private var enabledCourtSports: [MatchSport] {
+        let enabled = Set((organizationSettings?.organization.enabledSports ?? enabledSportsDraft).map { $0.lowercased() })
+        return MatchSport.allCases.filter { $0.isImplementedToday && enabled.contains($0.rawValue) }
+    }
+    private var filteredOrganizationSettingsCourts: [CourtSummary] {
+        organizationSettingsCourts
+            .filter { courtSportFilter.isEmpty || $0.sport == courtSportFilter }
+            .sorted { left, right in
+                let sportOrder = (left.sport ?? "").localizedCaseInsensitiveCompare(right.sport ?? "")
+                if sportOrder != .orderedSame { return sportOrder == .orderedAscending }
+                let leftNumber = courtNumberValue(left.courtName)
+                let rightNumber = courtNumberValue(right.courtName)
+                if leftNumber != rightNumber { return leftNumber < rightNumber }
+                return left.courtName.localizedCaseInsensitiveCompare(right.courtName) == .orderedAscending
+            }
+    }
+    private var selectedClubCourtPlan: String {
+        (organizationSettings?.organization.plan ?? session?.plan ?? "club_essentials").lowercased()
+    }
+    private var clubCourtNumberLimit: Int? {
+        switch selectedClubCourtPlan {
+        case "club_essentials": return 5
+        case "club_pro": return 25
+        default: return nil
+        }
     }
     private var currentSettingsUser: OrganizationUser? {
         let currentUsername = session?.username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
@@ -2499,45 +2528,60 @@ struct DashboardView: View {
 
     private var organizationCourtsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Courts")
-                .font(.headline.weight(.semibold))
-
-            VStack(spacing: 12) {
-                dashboardTextField(
-                    title: "Court Name",
-                    placeholder: "Court 1",
-                    text: $newCourtDraft.courtName,
-                    accessibilityIdentifier: "settings.courts.new.nameField"
-                )
-                .disabled(!isAdmin)
-
-                dashboardTextField(
-                    title: "Court Alias",
-                    placeholder: "Show court name",
-                    text: $newCourtDraft.courtAlias,
-                    accessibilityIdentifier: "settings.courts.new.aliasField"
-                )
-                .disabled(!isAdmin)
-
-                Button(currentSettingsButtonTitle(for: "court-create", defaultTitle: "Add Court")) {
-                    createCourt()
+            HStack {
+                Text("Courts")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isAddingCourt.toggle()
+                    }
+                    if isAddingCourt {
+                        prepareNewCourtDraft()
+                    }
+                } label: {
+                    Image(systemName: isAddingCourt ? "xmark" : "plus")
+                        .font(.system(size: 18, weight: .bold))
+                        .frame(width: 42, height: 42)
                 }
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .background(Color.dashboardBrand)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
+                .foregroundStyle(Color.dashboardBrand)
+                .background(Color.dashboardBrand.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(Color.dashboardBorder, lineWidth: 1))
                 .buttonStyle(.plain)
-                .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
+                .disabled(!isAdmin)
                 .accessibilityIdentifier("settings.courts.new.addButton")
+            }
+
+            if isAddingCourt {
+                addCourtForm
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Filter by Racket Sport")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker("Filter by Racket Sport", selection: $courtSportFilter) {
+                    Text("All available sports").tag("")
+                    ForEach(enabledCourtSports) { sport in
+                        Text(sport.displayName).tag(sport.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.dashboardInputBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
             }
 
             if organizationSettingsCourts.isEmpty {
                 emptyState("No courts available yet.")
+            } else if filteredOrganizationSettingsCourts.isEmpty {
+                emptyState("No courts match this racket sport.")
             } else {
-                ForEach(organizationSettingsCourts) { court in
+                ForEach(filteredOrganizationSettingsCourts) { court in
                     organizationCourtRow(court)
                 }
             }
@@ -2546,6 +2590,61 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var addCourtForm: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Add Court")
+                .font(.subheadline.weight(.bold))
+
+            Picker("", selection: Binding(
+                get: { newCourtDraft.sport },
+                set: { updateNewCourtSport($0) }
+            )) {
+                ForEach(enabledCourtSports) { sport in
+                    Text(sport.displayName).tag(sport.rawValue)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.dashboardInputBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
+
+            courtNumberField(
+                title: "Court Number",
+                draft: $newCourtDraft,
+                existingCourtID: nil,
+                accessibilityIdentifier: "settings.courts.new.numberField"
+            )
+
+            dashboardTextField(
+                title: "Court Name",
+                placeholder: newCourtDraft.courtName,
+                text: $newCourtDraft.courtAlias,
+                accessibilityIdentifier: "settings.courts.new.nameField"
+            )
+
+            Button(currentSettingsButtonTitle(for: "court-create", defaultTitle: "Create Court")) {
+                createCourt()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(Color.dashboardBrand)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+            .buttonStyle(.plain)
+            .disabled(!isAdmin || savingSettingsKey != nil || newCourtDraft.courtName.isEmpty)
+            .accessibilityIdentifier("settings.courts.new.createButton")
+        }
+        .padding(14)
+        .background(Color.dashboardInputBackground.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
     }
 
     private var sportSetupCard: some View {
@@ -2730,80 +2829,56 @@ struct DashboardView: View {
         )
 
         return VStack(alignment: .leading, spacing: 12) {
-            if let displayCode = court.displayCode, !displayCode.isEmpty {
-                HStack {
-                    Text("Display Code")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(displayCode)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.dashboardBrand)
-                }
-            }
-
-            dashboardTextField(title: "Court Name", placeholder: "Court", text: binding.courtName, accessibilityIdentifier: "settings.courts.\(court.id).nameField")
-                .disabled(!isAdmin)
-            dashboardTextField(title: "Court Alias", placeholder: "Alias", text: binding.courtAlias, accessibilityIdentifier: "settings.courts.\(court.id).aliasField")
-                .disabled(!isAdmin)
-
             HStack(spacing: 10) {
-                Button(currentSettingsButtonTitle(for: "court-save-\(court.id)", defaultTitle: "Save")) {
-                    updateCourt(court)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(court.sport.flatMap { sportDisplayName($0) } ?? "All Sports")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                    Text(court.courtName)
+                        .font(.subheadline.weight(.bold))
+                    Text(court.courtAlias.isEmpty ? court.courtName : court.courtAlias)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Scoreboard code: \((court.displayCode?.isEmpty == false) ? court.displayCode! : "Not generated")")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(court.displayCode?.isEmpty == false ? Color.dashboardBrand : Color.secondary)
                 }
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.dashboardBrand)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.courts.\(court.id).saveButton")
-
-                Button(currentSettingsButtonTitle(for: "court-code-\(court.id)", defaultTitle: "New Display Code")) {
-                    regenerateCourtDisplayCode(court)
+                Spacer(minLength: 8)
+                Button {
+                    scanCourtScoreboard(court)
+                } label: {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 36, height: 36)
                 }
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.dashboardInputBackground)
                 .foregroundStyle(Color.dashboardBrand)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.dashboardBorder, lineWidth: 1))
+                .background(Color.dashboardBrand.opacity(0.10), in: Circle())
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.courts.\(court.id).displayCodeButton")
-
-                Button("Scan Scoreboard QR") {
-                    guard let organizationID = session?.organizationID else { return }
-                    activeSheet = .scoreboardPairing(court, organizationID)
-                }
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.dashboardBrand.opacity(0.12))
-                .foregroundStyle(Color.dashboardBrand)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(!isAdmin || savingSettingsKey != nil)
+                .accessibilityLabel("Pair scoreboard for \(court.courtName)")
                 .accessibilityIdentifier("settings.courts.\(court.id).scanScoreboardButton")
 
-                Button(currentSettingsButtonTitle(for: "court-delete-\(court.id)", defaultTitle: "Delete")) {
-                    deleteCourt(court)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editingCourtID = editingCourtID == court.id ? nil : court.id
+                    }
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 36, height: 36)
                 }
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.red.opacity(0.12))
-                .foregroundStyle(.red)
-                .clipShape(Capsule())
+                .foregroundStyle(Color.dashboardBrand)
+                .background(Color.dashboardBrand.opacity(0.10), in: Circle())
                 .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.courts.\(court.id).deleteButton")
+                .accessibilityLabel("Edit \(court.courtName)")
+                .accessibilityIdentifier("settings.courts.\(court.id).editButton")
+            }
+
+            if editingCourtID == court.id {
+                Divider()
+                courtEditor(court, binding: binding)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(14)
@@ -2814,6 +2889,212 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.dashboardBorder, lineWidth: 1)
         )
+    }
+
+    private func courtEditor(_ court: CourtSummary, binding: Binding<CourtDraft>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Racket Sport")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker("Racket Sport", selection: Binding(
+                    get: { binding.wrappedValue.sport },
+                    set: { sport in
+                        let previousNumber = binding.wrappedValue.courtName
+                        binding.wrappedValue.sport = sport
+                        guard !sport.isEmpty else { return }
+                        let nextNumber = courtNumberOptions(
+                            sport: sport,
+                            existingCourtID: court.id,
+                            currentValue: ""
+                        ).first ?? (clubCourtNumberLimit == nil ? previousNumber : "")
+                        binding.wrappedValue.courtName = nextNumber
+                        if binding.wrappedValue.courtAlias.isEmpty || binding.wrappedValue.courtAlias == previousNumber {
+                            binding.wrappedValue.courtAlias = nextNumber
+                        }
+                    }
+                )) {
+                    if court.sport == nil {
+                        Text("All sports (legacy)").tag("")
+                    }
+                    ForEach(enabledCourtSports) { sport in
+                        Text(sport.displayName).tag(sport.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            courtNumberField(
+                title: "Court Number",
+                draft: binding,
+                existingCourtID: court.id,
+                accessibilityIdentifier: "settings.courts.\(court.id).numberField"
+            )
+            dashboardTextField(
+                title: "Court Name",
+                placeholder: binding.wrappedValue.courtName,
+                text: binding.courtAlias,
+                accessibilityIdentifier: "settings.courts.\(court.id).nameField"
+            )
+
+            Text("Created: \(formattedCourtDate(court.createdAt))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("Display code: \((court.displayCode?.isEmpty == false) ? court.displayCode! : "Not generated yet")")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(court.displayCode?.isEmpty == false ? Color.dashboardBrand : Color.secondary)
+            Link("Scoreboard: app.hitnscore.com/scoreboard", destination: URL(string: "https://app.hitnscore.com/scoreboard")!)
+                .font(.caption)
+
+            HStack(spacing: 8) {
+                Button(currentSettingsButtonTitle(for: "court-save-\(court.id)", defaultTitle: "Save")) {
+                    updateCourt(court)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.dashboardBrand)
+
+                Button(currentSettingsButtonTitle(for: "court-code-\(court.id)", defaultTitle: court.displayCode?.isEmpty == false ? "Rotate Code" : "Generate Code")) {
+                    regenerateCourtDisplayCode(court)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    scanCourtScoreboard(court)
+                } label: {
+                    Image(systemName: "qrcode.viewfinder")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Pair scoreboard")
+
+                Button(currentSettingsButtonTitle(for: "court-delete-\(court.id)", defaultTitle: "Delete")) {
+                    deleteCourt(court)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+            }
+            .font(.caption.weight(.semibold))
+            .disabled(!isAdmin || savingSettingsKey != nil)
+        }
+    }
+
+    @ViewBuilder
+    private func courtNumberField(
+        title: String,
+        draft: Binding<CourtDraft>,
+        existingCourtID: Int?,
+        accessibilityIdentifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if clubCourtNumberLimit != nil {
+                let availableNumbers = courtNumberOptions(
+                    sport: draft.wrappedValue.sport,
+                    existingCourtID: existingCourtID,
+                    currentValue: draft.wrappedValue.courtName
+                )
+                if availableNumbers.isEmpty {
+                    Text("This subscription has no unused court numbers for this racket sport.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                } else {
+                    Picker(title, selection: Binding(
+                        get: { draft.wrappedValue.courtName },
+                        set: { value in
+                            let previous = draft.wrappedValue.courtName
+                            if draft.wrappedValue.courtAlias.isEmpty || draft.wrappedValue.courtAlias == previous {
+                                draft.wrappedValue.courtAlias = value
+                            }
+                            draft.wrappedValue.courtName = value
+                        }
+                    )) {
+                        ForEach(availableNumbers, id: \.self) { value in
+                            Text(value).tag(value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.dashboardInputBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
+                    .accessibilityIdentifier(accessibilityIdentifier)
+                }
+            } else {
+                dashboardTextField(
+                    title: "",
+                    placeholder: "Court number",
+                    text: draft.courtName,
+                    accessibilityIdentifier: accessibilityIdentifier
+                )
+            }
+        }
+    }
+
+    private func courtNumberOptions(
+        sport: String,
+        existingCourtID: Int?,
+        currentValue: String
+    ) -> [String] {
+        guard let limit = clubCourtNumberLimit else { return [] }
+        let used = Set(organizationSettingsCourts.compactMap { court -> String? in
+            guard court.id != existingCourtID, court.sport == sport else { return nil }
+            return court.courtName.lowercased()
+        })
+        var values = (1...limit)
+            .map { "Court-\($0)" }
+            .filter { !used.contains($0.lowercased()) }
+        if !currentValue.isEmpty && !values.contains(where: { $0.caseInsensitiveCompare(currentValue) == .orderedSame }) {
+            values.insert(currentValue, at: 0)
+        }
+        return values
+    }
+
+    private func prepareNewCourtDraft() {
+        let preferredSport = enabledCourtSports.first(where: { $0 == .squash }) ?? enabledCourtSports.first
+        let sport = preferredSport?.rawValue ?? "squash"
+        let firstNumber = courtNumberOptions(sport: sport, existingCourtID: nil, currentValue: "").first ?? ""
+        newCourtDraft = CourtDraft(
+            courtName: firstNumber.isEmpty && clubCourtNumberLimit == nil ? "Court-1" : firstNumber,
+            courtAlias: firstNumber.isEmpty && clubCourtNumberLimit == nil ? "Court-1" : firstNumber,
+            sport: sport
+        )
+    }
+
+    private func updateNewCourtSport(_ sport: String) {
+        let previousNumber = newCourtDraft.courtName
+        let nextNumber = courtNumberOptions(sport: sport, existingCourtID: nil, currentValue: "").first
+            ?? (clubCourtNumberLimit == nil ? previousNumber : "")
+        newCourtDraft.sport = sport
+        newCourtDraft.courtName = nextNumber
+        if newCourtDraft.courtAlias.isEmpty || newCourtDraft.courtAlias == previousNumber {
+            newCourtDraft.courtAlias = nextNumber
+        }
+    }
+
+    private func scanCourtScoreboard(_ court: CourtSummary) {
+        guard let organizationID = session?.organizationID else { return }
+        activeSheet = .scoreboardPairing(court, organizationID)
+    }
+
+    private func sportDisplayName(_ value: String) -> String? {
+        MatchSport(rawValue: value)?.displayName
+    }
+
+    private func courtNumberValue(_ value: String) -> Int {
+        let digits = value.split(whereSeparator: { !$0.isNumber }).last.map(String.init) ?? ""
+        return Int(digits) ?? Int.max
+    }
+
+    private func formattedCourtDate(_ value: String?) -> String {
+        guard let value,
+              let date = ISO8601DateFormatter().date(from: value) else {
+            return "Unknown"
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func settingsRolePicker(selection: Binding<String>, accessibilityIdentifier: String? = nil) -> some View {
@@ -3119,12 +3400,12 @@ struct DashboardView: View {
                         VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.dashboardBrand)
+                                    .fill(Color.dashboardTabMuted)
                                     .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
 
                                 Image(systemName: "play.fill")
                                     .font(.system(size: usesCompactBottomNavigation ? 10 : 12, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Color.dashboardAccentPink)
                                     .offset(x: 1)
                             }
                             .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
@@ -4310,6 +4591,9 @@ struct DashboardView: View {
             uniqueKeysWithValues: settings.courts.map { ($0.id, CourtDraft(court: $0)) }
         )
         enabledSportsDraft = settings.organization.enabledSports
+        if !settings.organization.enabledSports.contains(newCourtDraft.sport) {
+            prepareNewCourtDraft()
+        }
         personalProfileDraft = PersonalProfileDraft(user: profileUser, fallbackSession: session)
         normalizeSelectedSettingsMenuItem()
     }
@@ -4910,6 +5194,7 @@ struct DashboardView: View {
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
                     newCourtDraft = CourtDraft()
+                    isAddingCourt = false
                     settingsSuccessMessage = "Court created."
                     savingSettingsKey = nil
                 }
@@ -4944,6 +5229,7 @@ struct DashboardView: View {
                 )
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
+                    editingCourtID = nil
                     settingsSuccessMessage = "Court updated."
                     savingSettingsKey = nil
                 }
@@ -4974,6 +5260,7 @@ struct DashboardView: View {
                 )
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
+                    editingCourtID = nil
                     settingsSuccessMessage = "Court deleted."
                     savingSettingsKey = nil
                 }

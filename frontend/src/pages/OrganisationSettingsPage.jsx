@@ -37,8 +37,8 @@ const emptyUserForm = {
 };
 
 const emptyCourtForm = {
-  court_name: "",
-  court_alias: "",
+  court_name: "Court-1",
+  court_alias: "Court-1",
   sport: "squash",
 };
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -195,6 +195,23 @@ export default function OrganisationSettingsPage() {
     [enabledSports],
   );
   const courts = settings?.courts || [];
+  const courtNumberLimit = settings?.organization?.plan === "club_essentials"
+    ? 5
+    : settings?.organization?.plan === "club_pro"
+      ? 25
+      : null;
+  const courtNumberOptions = useCallback((sport, excludedCourtId = null, currentValue = "") => {
+    if (!courtNumberLimit) return [];
+    const used = new Set(courts
+      .filter((court) => court.id !== excludedCourtId && court.sport === sport)
+      .map((court) => String(court.court_name || "").toLowerCase()));
+    const values = Array.from({ length: courtNumberLimit }, (_, index) => `Court-${index + 1}`)
+      .filter((value) => !used.has(value.toLowerCase()));
+    if (currentValue && !values.some((value) => value.toLowerCase() === currentValue.toLowerCase())) {
+      values.unshift(currentValue);
+    }
+    return values;
+  }, [courtNumberLimit, courts]);
   const filteredCourts = useMemo(() => courts.filter((court) => (
     !courtSportFilter || court.sport === courtSportFilter || !court.sport
   )).sort((left, right) => (
@@ -486,6 +503,8 @@ export default function OrganisationSettingsPage() {
     setCourtForm({
       ...emptyCourtForm,
       sport: courtSportOptions[0]?.value || "squash",
+      court_name: courtNumberOptions(courtSportOptions[0]?.value || "squash")[0] || "Court-1",
+      court_alias: courtNumberOptions(courtSportOptions[0]?.value || "squash")[0] || "Court-1",
     });
     setAddCourtOpen(false);
   }
@@ -1271,22 +1290,46 @@ export default function OrganisationSettingsPage() {
                       id="court_sport"
                       required
                       value={courtForm.sport}
-                      onChange={(event) => setCourtForm((current) => ({ ...current, sport: event.target.value }))}
+                      onChange={(event) => setCourtForm((current) => {
+                        const sport = event.target.value;
+                        const courtNumber = courtNumberOptions(sport)[0] || (courtNumberLimit ? "" : current.court_name);
+                        return {
+                          ...current,
+                          sport,
+                          court_name: courtNumber,
+                          court_alias: !current.court_alias || current.court_alias === current.court_name
+                            ? courtNumber
+                            : current.court_alias,
+                        };
+                      })}
                     >
                       {courtSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
                     </select>
                   </div>
                   <div className="field">
-                    <label htmlFor="court_name">Court Name</label>
-                    <input
+                    <label htmlFor="court_name">Court Number</label>
+                    {courtNumberLimit ? <select
+                      disabled={!isAdmin}
+                      id="court_name"
+                      value={courtForm.court_name}
+                      onChange={(event) => setCourtForm((current) => ({
+                        ...current,
+                        court_name: event.target.value,
+                        court_alias: !current.court_alias || current.court_alias === current.court_name
+                          ? event.target.value
+                          : current.court_alias,
+                      }))}
+                    >
+                      {courtNumberOptions(courtForm.sport, null, courtForm.court_name).map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select> : <input
                       disabled={!isAdmin}
                       id="court_name"
                       value={courtForm.court_name}
                       onChange={(event) => setCourtForm((current) => ({ ...current, court_name: event.target.value }))}
-                    />
+                    />}
                   </div>
                   <div className="field">
-                    <label htmlFor="court_alias">Court Alias</label>
+                    <label htmlFor="court_alias">Court Name</label>
                     <input
                       disabled={!isAdmin}
                       id="court_alias"
@@ -1311,7 +1354,7 @@ export default function OrganisationSettingsPage() {
               </div>
 
               <div className="settings-compact-list settings-court-list">
-                {filteredCourts.length ? <div aria-hidden="true" className="settings-court-row settings-list-header"><span>Sport</span><span>Name</span><span>Alias</span><span /></div> : null}
+                {filteredCourts.length ? <div aria-hidden="true" className="settings-court-row settings-list-header"><span>Sport</span><span>Number</span><span>Name</span><span /></div> : null}
                 {filteredCourts.length === 0 ? (
                   <div className="dashboard-empty">{courts.length ? "No courts match this sport filter." : "No courts configured yet."}</div>
                 ) : filteredCourts.map((court) => (
@@ -1339,21 +1382,52 @@ export default function OrganisationSettingsPage() {
                           disabled={!isAdmin}
                           id={`court-sport-${court.id}`}
                           value={courtDrafts[court.id]?.sport || ""}
-                          onChange={(event) => setCourtDrafts((current) => ({
-                            ...current,
-                            [court.id]: {
-                              ...(current[court.id] || {}),
-                              sport: event.target.value,
-                            },
-                          }))}
+                          onChange={(event) => setCourtDrafts((current) => {
+                            const draft = current[court.id] || {};
+                            const sport = event.target.value;
+                            const courtNumber = sport
+                              ? courtNumberOptions(sport, court.id)[0] || (courtNumberLimit ? "" : draft.court_name)
+                              : draft.court_name;
+                            return {
+                              ...current,
+                              [court.id]: {
+                                ...draft,
+                                sport,
+                                court_name: courtNumber,
+                                court_alias: !draft.court_alias || draft.court_alias === draft.court_name
+                                  ? courtNumber
+                                  : draft.court_alias,
+                              },
+                            };
+                          })}
                         >
                           <option value="">All sports (legacy)</option>
                           {courtSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
                         </select>
                       </div>
                       <div className="field">
-                        <label htmlFor={`court-name-${court.id}`}>Court Name</label>
-                        <input
+                        <label htmlFor={`court-name-${court.id}`}>Court Number</label>
+                        {courtNumberLimit ? <select
+                          disabled={!isAdmin}
+                          id={`court-name-${court.id}`}
+                          value={courtDrafts[court.id]?.court_name || ""}
+                          onChange={(event) => setCourtDrafts((current) => ({
+                            ...current,
+                            [court.id]: {
+                              ...(current[court.id] || {}),
+                              court_name: event.target.value,
+                              court_alias: !current[court.id]?.court_alias || current[court.id]?.court_alias === current[court.id]?.court_name
+                                ? event.target.value
+                                : current[court.id]?.court_alias,
+                            },
+                          }))}
+                        >
+                          {courtNumberOptions(
+                            courtDrafts[court.id]?.sport || court.sport || "",
+                            court.id,
+                            courtDrafts[court.id]?.court_name || court.court_name || "",
+                          ).map((value) => <option key={value} value={value}>{value}</option>)}
+                        </select> : <input
                           disabled={!isAdmin}
                           id={`court-name-${court.id}`}
                           value={courtDrafts[court.id]?.court_name || ""}
@@ -1364,10 +1438,10 @@ export default function OrganisationSettingsPage() {
                               court_name: event.target.value,
                             },
                           }))}
-                        />
+                        />}
                       </div>
                       <div className="field">
-                        <label htmlFor={`court-alias-${court.id}`}>Court Alias</label>
+                        <label htmlFor={`court-alias-${court.id}`}>Court Name</label>
                         <input
                           disabled={!isAdmin}
                           id={`court-alias-${court.id}`}

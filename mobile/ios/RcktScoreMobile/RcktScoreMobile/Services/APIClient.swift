@@ -1398,7 +1398,8 @@ final class APIClient {
             body: CourtRequest(
                 organizationID: organizationID,
                 courtName: draft.courtName,
-                courtAlias: draft.courtAlias
+                courtAlias: draft.courtAlias,
+                sport: draft.sport
             )
         )
         let _: APIEnvelope<CourtResponseData> = try await send(request)
@@ -1415,7 +1416,8 @@ final class APIClient {
             body: CourtRequest(
                 organizationID: organizationID,
                 courtName: draft.courtName,
-                courtAlias: draft.courtAlias
+                courtAlias: draft.courtAlias,
+                sport: draft.sport
             )
         )
         let _: APIEnvelope<CourtResponseData> = try await send(request)

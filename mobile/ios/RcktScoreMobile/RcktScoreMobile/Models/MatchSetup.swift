@@ -371,11 +371,13 @@ struct CourtRequest: Encodable {
     let organizationID: Int
     let courtName: String
     let courtAlias: String
+    let sport: String
 
     enum CodingKeys: String, CodingKey {
         case organizationID = "organization_id"
         case courtName = "court_name"
         case courtAlias = "court_alias"
+        case sport
     }
 }
 
@@ -440,13 +442,21 @@ struct PersonalProfileDraft {
 }
 
 struct CourtDraft {
-    var courtName: String = ""
-    var courtAlias: String = ""
+    var courtName: String = "Court-1"
+    var courtAlias: String = "Court-1"
+    var sport: String = "squash"
 
     init() {}
 
+    init(courtName: String, courtAlias: String, sport: String) {
+        self.courtName = courtName
+        self.courtAlias = courtAlias
+        self.sport = sport
+    }
+
     init(court: CourtSummary) {
         courtName = court.courtName
-        courtAlias = court.courtAlias
+        courtAlias = court.courtAlias.isEmpty ? court.courtName : court.courtAlias
+        sport = court.sport ?? ""
     }
 }
