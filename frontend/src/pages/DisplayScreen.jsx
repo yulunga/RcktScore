@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
 import AppFooter from "../components/AppFooter";
 import PublicAccessHeader from "../components/PublicAccessHeader";
 import Scoreboard from "../components/Scoreboard";
 import {
   createScoreboardDisplaySession,
+  createScoreboardPairing,
+  exchangeScoreboardPairing,
   getScoreboardDisplayCurrent,
 } from "../services/api";
 
@@ -87,6 +90,10 @@ export default function DisplayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [displayMode, setDisplayMode] = useState(() => readStoredDisplayMode());
   const [allGamesPage, setAllGamesPage] = useState(0);
+  const [entryMode, setEntryMode] = useState("qr");
+  const [pairing, setPairing] = useState(null);
+  const [pairingAttempted, setPairingAttempted] = useState(false);
+  const [pairingSeconds, setPairingSeconds] = useState(0);
 
   const pollIntervalSeconds = displaySession?.poll_interval_seconds || 5;
   const clearDisplaySession = useCallback(() => {
@@ -94,6 +101,8 @@ export default function DisplayScreen() {
     setCourt(null);
     setCurrentMatch(null);
     setClubMatches([]);
+    setPairing(null);
+    setPairingAttempted(false);
     storeDisplaySession(null);
   }, []);
 
@@ -156,6 +165,63 @@ export default function DisplayScreen() {
 
     return () => window.clearInterval(intervalId);
   }, [displaySession?.display_session_token, loadCurrent, pollIntervalSeconds]);
+
+  const startPairing = useCallback(async () => {
+    setPairingAttempted(true);
+    setLoading(true);
+    setError("");
+    try {
+      const payload = await createScoreboardPairing();
+      setPairing(payload?.pairing || null);
+    } catch (requestError) {
+      setPairing(null);
+      setError(requestError.message || "Unable to create a scoreboard QR code.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (displaySession?.display_session_token || entryMode !== "qr" || pairing || pairingAttempted) return;
+    startPairing();
+  }, [displaySession?.display_session_token, entryMode, pairing, pairingAttempted, startPairing]);
+
+  useEffect(() => {
+    if (!pairing?.expires_at || displaySession?.display_session_token) return undefined;
+    const updateCountdown = () => {
+      setPairingSeconds(Math.max(0, Math.ceil((new Date(pairing.expires_at).getTime() - Date.now()) / 1000)));
+    };
+    updateCountdown();
+    const intervalId = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [displaySession?.display_session_token, pairing?.expires_at]);
+
+  useEffect(() => {
+    if (entryMode !== "qr" || !pairing?.token || displaySession?.display_session_token) return undefined;
+    let cancelled = false;
+    const checkPairing = async () => {
+      if (new Date(pairing.expires_at).getTime() <= Date.now()) return;
+      try {
+        const payload = await exchangeScoreboardPairing(pairing.token);
+        if (cancelled || payload?.state !== "approved") return;
+        setError("");
+        applyDisplayPayload(payload, payload.display_session_token);
+        setPairing(null);
+      } catch (requestError) {
+        if (cancelled) return;
+        if (["PAIRING_EXPIRED", "PAIRING_ALREADY_USED", "PAIRING_RATE_LIMITED"].includes(requestError.code)) {
+          setPairing(null);
+        }
+        setError(requestError.message || "Unable to complete scoreboard pairing.");
+      }
+    };
+    checkPairing();
+    const intervalId = window.setInterval(checkPairing, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [applyDisplayPayload, displaySession?.display_session_token, entryMode, pairing?.expires_at, pairing?.token]);
 
   useEffect(() => {
     storeDisplayMode(displayMode);
@@ -249,11 +315,33 @@ export default function DisplayScreen() {
         <section className="panel stack public-access-key-card scoreboard-entry-card">
           <div className="panel-heading">
             <h1>Open a Court Scoreboard</h1>
-            <p className="helper-text">
-              Enter the display code supplied by your club. No login is required.
-            </p>
+            <p className="helper-text">Pair this screen from a club administrator's HitnScore app, or enter the court display code.</p>
           </div>
-          <form className="stack" onSubmit={handleCodeSubmit}>
+          <div className="scoreboard-entry-tabs" role="tablist" aria-label="Scoreboard sign-in method">
+            <button className={entryMode === "qr" ? "active" : "secondary"} type="button" onClick={() => setEntryMode("qr")}>Scan QR</button>
+            <button className={entryMode === "code" ? "active" : "secondary"} type="button" onClick={() => setEntryMode("code")}>Enter Code</button>
+          </div>
+          {entryMode === "qr" ? (
+            <div className="scoreboard-pairing stack" role="tabpanel">
+              {pairing?.qr_value && pairingSeconds > 0 ? (
+                <>
+                  <div className="scoreboard-pairing__qr" aria-label="Scoreboard pairing QR code">
+                    <QRCodeSVG value={pairing.qr_value} size={224} level="M" marginSize={2} />
+                  </div>
+                  <p className="helper-text">In the HitnScore app, open Club Management → Courts, choose this court and tap <strong>Scan Scoreboard QR</strong>.</p>
+                  <p className="scoreboard-pairing__countdown">Expires in {pairingSeconds} seconds</p>
+                </>
+              ) : (
+                <p className="helper-text">{loading ? "Preparing a secure QR code…" : "This QR code has expired."}</p>
+              )}
+              <div className="button-row scoreboard-shell__actions">
+                <button className="secondary" disabled={loading} type="button" onClick={startPairing}>
+                  {loading ? "Preparing…" : "Refresh QR"}
+                </button>
+              </div>
+            </div>
+          ) : (
+          <form className="stack" onSubmit={handleCodeSubmit} role="tabpanel">
             <div className="field">
               <label htmlFor="scoreboard_code">Scoreboard Display Code</label>
               <input
@@ -273,6 +361,7 @@ export default function DisplayScreen() {
               </button>
             </div>
           </form>
+          )}
         </section>
       ) : null}
 

@@ -563,6 +563,10 @@
     <string name="club_enquiry_send">Send enquiry</string>
     <string name="club_enquiry_sent">We have received your %1$s enquiry for %2$s. A confirmation has been sent to %3$s.</string>
     <string name="settings_refresh_code">Refresh scoreboard code</string>
+    <string name="settings_scan_scoreboard_qr">Scan scoreboard QR</string>
+    <string name="settings_scoreboard_paired">Scoreboard connected to this court.</string>
+    <string name="settings_scoreboard_qr_invalid">That is not a valid HitnScore scoreboard QR code.</string>
+    <string name="settings_scoreboard_qr_scan_failed">The QR scanner could not open. Check Google Play services and try again.</string>
     <string name="settings_all_racket_sports">All racket sports</string>
     <plurals name="settings_court_count">
         <item quantity="one">%d court</item>

@@ -215,6 +215,24 @@ struct ProfileImageUploadPayload: Decodable {
     }
 }
 
+private struct ScoreboardPairingApprovalRequest: Encodable {
+    let organizationID: Int
+    let token: String
+
+    enum CodingKeys: String, CodingKey {
+        case organizationID = "organization_id"
+        case token
+    }
+}
+
+private struct ScoreboardPairingApproval: Decodable {
+    let approved: Bool
+}
+
+private struct ScoreboardPairingApprovalData: Decodable {
+    let pairing: ScoreboardPairingApproval
+}
+
 private struct ProfileImageResponseData: Decodable { let profileImage: ProfileImagePayload
     enum CodingKeys: String, CodingKey { case profileImage = "profile_image" }
 }
@@ -1425,6 +1443,22 @@ final class APIClient {
             body: OrganizationEntityRequest(organizationID: organizationID)
         )
         return try await unwrapOrganizationSettingsResponse(request)
+    }
+
+    func approveScoreboardPairing(
+        organizationID: Int,
+        courtID: Int,
+        token: String
+    ) async throws {
+        let request = try makeRequest(
+            path: "/organization_courts/\(courtID)/scoreboard-pairing",
+            method: "POST",
+            body: ScoreboardPairingApprovalRequest(organizationID: organizationID, token: token)
+        )
+        let envelope: APIEnvelope<ScoreboardPairingApprovalData> = try await send(request)
+        guard envelope.data?.pairing.approved == true else {
+            throw APIErrorResponse(code: "PAIRING_NOT_APPROVED", message: "The scoreboard could not be paired.", details: nil)
+        }
     }
 
     func searchMatchSetupLookup(organizationID: Int, query: String) async throws -> MatchSetupLookups {

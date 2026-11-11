@@ -667,6 +667,20 @@ export function createScoreboardDisplaySession(payload) {
   });
 }
 
+export function createScoreboardPairing() {
+  return apiRequest("/scoreboard_display/pairing", {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+export function exchangeScoreboardPairing(token) {
+  return apiRequest("/scoreboard_display/session/qr", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
 export function getScoreboardDisplayCurrent(displaySessionToken) {
   return apiRequest("/scoreboard_display/current", {
     method: "GET",

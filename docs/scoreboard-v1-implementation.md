@@ -6,13 +6,13 @@
 
 Ship a first-testable public scoreboard flow for a single court without requiring a user login.
 
-The v1 flow is:
+The current flow is:
 
-1. An admin or root admin creates or rotates a 12-character display code for a court.
-2. A user opens `https://app.hitnscore.com/scoreboard`.
-3. The user enters only that 12-character code.
-4. The backend resolves the court and tenant, issues a read-only display session, and returns the current active match for the court.
-5. The screen polls for updates and supports manual refresh.
+1. A scoreboard opens `https://app.hitnscore.com/scoreboard` and shows a two-minute pairing QR.
+2. A signed-in club admin opens Courts in the iOS or Android client, chooses a court and scans the QR.
+3. The backend binds the pending request to that tenant and court, then the scoreboard exchanges it once for a read-only display session.
+4. The backend returns the current active match for the court; the screen polls for updates and supports manual refresh.
+5. The existing 12-character court display code remains available as a fallback.
 
 Realtime fan-out is intentionally deferred until the polling-based testing flow is proven.
 
@@ -26,6 +26,7 @@ Included in v1:
 - polling fallback every 5 seconds
 - manual refresh button
 - court-code generation and rotation from organisation settings and root-admin club management
+- short-lived, one-time QR pairing approved by an authenticated club admin from iOS or Android
 
 Deferred until after testing:
 
@@ -34,6 +35,10 @@ Deferred until after testing:
 - code expiry rules
 - code rate limiting and lockout policy
 - multi-screen device management
+
+## QR Pairing Data Model
+
+Migration `056_scoreboard_qr_pairing.sql` adds `scoreboard_pairing_requests`. It stores a SHA-256 token hash, hashed source IP, expiry, optional approved tenant/court/admin membership, approval time and consumption time. The raw token exists only in the scoreboard response and QR. Requests expire after two minutes, can be approved and consumed once, and are removed after their short operational lifetime.
 
 ## Current Data Model
 
@@ -74,6 +79,18 @@ TTL:
 - 24 hours from creation in the current implementation
 
 ## Backend Endpoints
+
+### `POST /scoreboard_display/pairing`
+
+Public, source-IP-rate-limited endpoint that creates a pending request and returns its raw token, `expires_at`, and a QR value. No court access or display session is granted at this stage.
+
+### `POST /organization_courts/{court_id}/scoreboard-pairing`
+
+Authenticated club-admin endpoint. It accepts `organization_id` and `token`, verifies that the court belongs to that tenant, then approves the unexpired request for that court. Scorer, read-only, cross-tenant and reused approvals are rejected.
+
+### `POST /scoreboard_display/session/qr`
+
+Public one-time exchange. Before approval it returns `state: pending`. After approval it atomically consumes the request and returns the normal court display-session payload. An expired or already-consumed token cannot create another session.
 
 ### `POST /scoreboard_display/session`
 
@@ -161,7 +178,7 @@ Route:
 
 Behavior:
 
-- if a display session is not present, show a single code-entry form
+- if a display session is not present, show QR pairing by default with manual code entry as a second tab
 - if a display session exists, load the current court match immediately
 - poll `GET /scoreboard_display/current` every 5 seconds
 - allow manual refresh
@@ -197,12 +214,14 @@ Organisation settings and root-admin club pages now show:
 
 1. Start an active match on that court.
 2. Open `/scoreboard`.
-3. Enter the court display code.
-4. Confirm the current match appears.
+3. In an iOS or Android admin session, open that club's Courts section, choose the court and scan the QR.
+4. Confirm the scoreboard signs in automatically and the current match appears.
 5. Score points from the scorer app.
 6. Confirm the scoreboard updates on the next polling cycle or with manual refresh.
 7. End the match.
 8. Confirm the scoreboard transitions to the empty-court state.
+9. Confirm rescanning or re-exchanging the same QR is rejected, an expired QR requires refresh, a non-admin cannot approve it, and an admin cannot bind it to another tenant's court.
+10. Repeat using the 12-character display code to confirm the fallback remains operational.
 
 ### Expected v1 limitations
 

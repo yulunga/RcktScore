@@ -51,6 +51,19 @@ Use this checklist after UI changes and before releases.
 - Confirm the Club CSV contains court and match-use aggregates but no player names, member names, usernames, email addresses or member directory data
 - Start and abandon one setup, then complete another on both web and iOS; confirm the setup figures update without blocking match creation if analytics recording fails
 
+## Scoreboard QR pairing
+
+- Open `/scoreboard`; confirm Scan QR is selected, a QR and expiry countdown appear, and Enter Code remains available
+- As a club admin on iOS, open Club Settings → Courts, tap Scan Scoreboard QR beside the intended court, scan it, and confirm the scoreboard opens that court automatically
+- Repeat on Android and confirm the Google scanner completes pairing without requesting direct app camera permission
+- Confirm scorer and read-only memberships cannot pair a court
+- Confirm an admin cannot pair a court belonging to another club
+- Let a QR expire, confirm it does not pair, refresh it, and confirm the replacement works
+- Confirm an already-used QR cannot create a second display session
+- Deny iOS camera permission and confirm the app gives an actionable Settings message
+- Enter the permanent 12-character display code and confirm the fallback still works
+- Start, score, end and replace a court match; confirm the paired display continues polling the selected court throughout
+
 ## Responsive checks
 
 - iPhone portrait

@@ -22,6 +22,8 @@ import com.hitnscore.mobile.data.model.ProfileImagePayload
 import com.hitnscore.mobile.data.model.ProfileImageResponseData
 import com.hitnscore.mobile.data.model.ProfileImageUploadPayload
 import com.hitnscore.mobile.data.model.ProfileImageUploadResponseData
+import com.hitnscore.mobile.data.model.ScoreboardPairingApprovalData
+import com.hitnscore.mobile.data.model.ScoreboardPairingApprovalRequest
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,6 +49,7 @@ interface SettingsApi {
     suspend fun updateCourt(courtId: Int, request: CourtRequest): ApiResult<CourtSummary>
     suspend fun deleteCourt(courtId: Int, organizationId: Int): ApiResult<Boolean>
     suspend fun newDisplayCode(courtId: Int, organizationId: Int): ApiResult<CourtSummary>
+    suspend fun approveScoreboardPairing(courtId: Int, organizationId: Int, token: String): ApiResult<Boolean>
     suspend fun getProfileImage(organizationId: Int): ApiResult<ProfileImagePayload>
     suspend fun beginProfileImageUpload(organizationId: Int): ApiResult<ProfileImageUploadPayload>
     suspend fun uploadProfileImage(upload: ProfileImageUploadPayload, jpeg: ByteArray): ApiResult<Unit>
@@ -104,6 +107,14 @@ class RemoteSettingsApi(
             OrganizationIdRequest.serializer(),
             CourtResponseData.serializer(),
         ).map { it.court }
+
+    override suspend fun approveScoreboardPairing(courtId: Int, organizationId: Int, token: String) =
+        client.post(
+            "organization_courts/$courtId/scoreboard-pairing",
+            ScoreboardPairingApprovalRequest(organizationId, token),
+            ScoreboardPairingApprovalRequest.serializer(),
+            ScoreboardPairingApprovalData.serializer(),
+        ).map { it.pairing.approved }
 
     override suspend fun getProfileImage(organizationId: Int) =
         client.get("profile_image/$organizationId", ProfileImageResponseData.serializer()).map { it.profileImage }

@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +10,10 @@ DISPLAY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 DISPLAY_CODE_LENGTH = 12
 DISPLAY_SESSION_TTL_HOURS = 24
 DISPLAY_POST_MATCH_HOLD_MINUTES = 30
+PAIRING_TOKEN_TTL_SECONDS = 120
+PAIRING_CREATE_RATE_WINDOW_SECONDS = 300
+PAIRING_CREATE_RATE_LIMIT = 10
+PAIRING_MAX_EXCHANGE_ATTEMPTS = 90
 
 
 def _utcnow():
@@ -30,6 +35,13 @@ def normalize_display_code(value):
 
 def _token_hash(token):
     return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+
+
+def _source_ip_hash(event):
+    request_context = event.get("requestContext") or {}
+    http_context = request_context.get("http") or {}
+    source_ip = str(http_context.get("sourceIp") or request_context.get("identity", {}).get("sourceIp") or "unknown")
+    return hashlib.sha256(source_ip.encode("utf-8")).hexdigest()
 
 
 def _request_headers(event):
@@ -235,15 +247,7 @@ def _build_scoreboard_payload(connection, court_row, *, display_session_token=No
     return payload
 
 
-def create_scoreboard_display_session(connection, code):
-    normalized_code = normalize_display_code(code)
-    if len(normalized_code) != DISPLAY_CODE_LENGTH:
-        raise ValueError("Enter the 12-character display code.")
-
-    court_row = _get_court_by_display_code(connection, normalized_code)
-    if not court_row:
-        raise DisplaySessionError(404, "DISPLAY_CODE_NOT_FOUND", "Display code not recognised.")
-
+def _create_scoreboard_display_session_for_court(connection, court_row, *, commit=True):
     token = secrets.token_urlsafe(48)
     now = _utcnow()
     expires_at = now + timedelta(hours=DISPLAY_SESSION_TTL_HOURS)
@@ -289,8 +293,187 @@ def create_scoreboard_display_session(connection, code):
             },
         )
 
-    connection.commit()
+    if commit:
+        connection.commit()
     return _build_scoreboard_payload(connection, court_row, display_session_token=token)
+
+
+def create_scoreboard_display_session(connection, code):
+    normalized_code = normalize_display_code(code)
+    if len(normalized_code) != DISPLAY_CODE_LENGTH:
+        raise ValueError("Enter the 12-character display code.")
+
+    court_row = _get_court_by_display_code(connection, normalized_code)
+    if not court_row:
+        raise DisplaySessionError(404, "DISPLAY_CODE_NOT_FOUND", "Display code not recognised.")
+
+    return _create_scoreboard_display_session_for_court(connection, court_row)
+
+
+def create_scoreboard_pairing_request(connection, event):
+    now = _utcnow()
+    request_ip_hash = _source_ip_hash(event)
+    rate_cutoff = now - timedelta(seconds=PAIRING_CREATE_RATE_WINDOW_SECONDS)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "DELETE FROM scoreboard_pairing_requests WHERE expires_at < %(cleanup_cutoff)s",
+            {"cleanup_cutoff": now - timedelta(days=1)},
+        )
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS request_count
+            FROM scoreboard_pairing_requests
+            WHERE request_ip_hash = %(request_ip_hash)s
+              AND created_at >= %(rate_cutoff)s
+            """,
+            {"request_ip_hash": request_ip_hash, "rate_cutoff": rate_cutoff},
+        )
+        rate_row = cursor.fetchone() or {}
+        if int(rate_row.get("request_count") or 0) >= PAIRING_CREATE_RATE_LIMIT:
+            connection.rollback()
+            raise DisplaySessionError(429, "PAIRING_RATE_LIMITED", "Too many QR pairing requests. Wait a few minutes and try again.")
+
+        token = secrets.token_urlsafe(32)
+        expires_at = now + timedelta(seconds=PAIRING_TOKEN_TTL_SECONDS)
+        cursor.execute(
+            """
+            INSERT INTO scoreboard_pairing_requests (
+                token_hash, request_ip_hash, created_at, expires_at
+            ) VALUES (
+                %(token_hash)s, %(request_ip_hash)s, %(created_at)s, %(expires_at)s
+            )
+            """,
+            {
+                "token_hash": _token_hash(token),
+                "request_ip_hash": request_ip_hash,
+                "created_at": now,
+                "expires_at": expires_at,
+            },
+        )
+    connection.commit()
+    web_origin = (os.getenv("WEB_APP_ORIGIN") or "https://app.hitnscore.com").rstrip("/")
+    return {
+        "token": token,
+        "expires_at": expires_at.isoformat(),
+        "expires_in_seconds": PAIRING_TOKEN_TTL_SECONDS,
+        "qr_value": f"{web_origin}/scoreboard?qr={token}",
+    }
+
+
+def approve_scoreboard_pairing(connection, organization_id, court_id, membership_id, token):
+    if not token:
+        raise ValueError("QR pairing token is required")
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, expires_at, approved_at, consumed_at
+            FROM scoreboard_pairing_requests
+            WHERE token_hash = %(token_hash)s
+            FOR UPDATE
+            """,
+            {"token_hash": _token_hash(token)},
+        )
+        pairing = cursor.fetchone()
+        if not pairing:
+            raise DisplaySessionError(404, "PAIRING_NOT_FOUND", "That scoreboard QR code is not recognised.")
+        if pairing["expires_at"] <= now:
+            raise DisplaySessionError(410, "PAIRING_EXPIRED", "That scoreboard QR code has expired. Refresh it on the scoreboard and scan again.")
+        if pairing.get("consumed_at") is not None:
+            raise DisplaySessionError(409, "PAIRING_ALREADY_USED", "That scoreboard QR code has already been used.")
+        if pairing.get("approved_at") is not None:
+            raise DisplaySessionError(409, "PAIRING_ALREADY_APPROVED", "That scoreboard QR code has already been approved.")
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshCourts"
+            WHERE id = %(court_id)s
+              AND organization_name = %(organization_id)s
+            LIMIT 1
+            """,
+            {"court_id": int(court_id), "organization_id": int(organization_id)},
+        )
+        if not cursor.fetchone():
+            raise DisplaySessionError(404, "COURT_NOT_FOUND", "Court not found for this club.")
+
+        cursor.execute(
+            """
+            UPDATE scoreboard_pairing_requests
+            SET tenant_id = %(organization_id)s,
+                court_id = %(court_id)s,
+                approved_by_membership_id = %(membership_id)s,
+                approved_at = %(approved_at)s
+            WHERE id = %(pairing_id)s
+            """,
+            {
+                "organization_id": int(organization_id),
+                "court_id": int(court_id),
+                "membership_id": int(membership_id),
+                "approved_at": now,
+                "pairing_id": pairing["id"],
+            },
+        )
+    connection.commit()
+    return {"approved": True, "court_id": int(court_id), "approved_at": now.isoformat()}
+
+
+def exchange_scoreboard_pairing(connection, token):
+    if not token:
+        raise ValueError("QR pairing token is required")
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                pairing.id AS pairing_id,
+                pairing.expires_at,
+                pairing.approved_at,
+                pairing.consumed_at,
+                pairing.exchange_attempts,
+                court.id,
+                court.organization_name,
+                court.court_name,
+                court.court_alias,
+                court.created_at,
+                court.display_code_enabled,
+                court.display_code_created_at,
+                court.display_code_last_used_at
+            FROM scoreboard_pairing_requests AS pairing
+            LEFT JOIN "SkwshCourts" AS court ON court.id = pairing.court_id
+            WHERE pairing.token_hash = %(token_hash)s
+            FOR UPDATE OF pairing
+            """,
+            {"token_hash": _token_hash(token)},
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise DisplaySessionError(404, "PAIRING_NOT_FOUND", "That scoreboard QR code is not recognised.")
+        if row["expires_at"] <= now:
+            raise DisplaySessionError(410, "PAIRING_EXPIRED", "That scoreboard QR code has expired.")
+        if row.get("consumed_at") is not None:
+            raise DisplaySessionError(409, "PAIRING_ALREADY_USED", "That scoreboard QR code has already been used.")
+        attempts = int(row.get("exchange_attempts") or 0) + 1
+        if attempts > PAIRING_MAX_EXCHANGE_ATTEMPTS:
+            raise DisplaySessionError(429, "PAIRING_RATE_LIMITED", "Too many pairing checks. Refresh the QR code and try again.")
+        cursor.execute(
+            "UPDATE scoreboard_pairing_requests SET exchange_attempts = %(attempts)s WHERE id = %(pairing_id)s",
+            {"attempts": attempts, "pairing_id": row["pairing_id"]},
+        )
+        if row.get("approved_at") is None:
+            connection.commit()
+            return {"state": "pending", "expires_at": row["expires_at"].isoformat()}
+        if row.get("id") is None:
+            raise DisplaySessionError(404, "COURT_NOT_FOUND", "The paired court is no longer available.")
+        cursor.execute(
+            "UPDATE scoreboard_pairing_requests SET consumed_at = %(consumed_at)s WHERE id = %(pairing_id)s",
+            {"consumed_at": now, "pairing_id": row["pairing_id"]},
+        )
+
+    payload = _create_scoreboard_display_session_for_court(connection, row, commit=False)
+    connection.commit()
+    payload["state"] = "approved"
+    return payload
 
 
 def require_scoreboard_display_session(connection, event):

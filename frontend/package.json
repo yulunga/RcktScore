@@ -27,6 +27,7 @@
     "test:e2e:mobile-settings": "playwright test -c playwright.config.cjs e2e/mobile-settings-navigation.spec.cjs --project=mobile-android"
   },
   "dependencies": {
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.4",

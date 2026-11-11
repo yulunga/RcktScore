@@ -673,10 +673,10 @@ Current live sport engines:
 
 ### Current path
 
-1. The display page opens with `?match=<id>`.
-2. It loads the same match payload as the operator screen.
-3. It attempts a WebSocket connection through [frontend/src/services/websocket.js](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/services/websocket.js).
-4. It renders a read-only scoreboard and optional event timeline. Standard layout sizes the court name to the game-details text (0.8rem), keeps header/history rows content-sized, and gives score cards the remaining height with point scores scaled to viewport width and height, up to 24rem, so the numbers dominate the cards.
+1. An unpaired `/scoreboard` creates a two-minute public pairing request and displays its one-time token as a QR code. Manual court display-code entry remains available.
+2. A signed-in club administrator opens Club Settings → Courts in iOS or Android, chooses the intended court and scans the QR. The authenticated approval route verifies the admin membership and that the court belongs to that tenant.
+3. The scoreboard polls the one-time exchange route. After approval, the backend consumes the request atomically and returns the same read-only, court-scoped 24-hour display session used by manual code entry. The QR never carries the permanent display code or resulting session token.
+4. The display loads the active court match and polls `GET /scoreboard_display/current` every five seconds. It renders a read-only scoreboard and optional event timeline. Standard layout sizes the court name to the game-details text (0.8rem), keeps header/history rows content-sized, and gives score cards the remaining height with point scores scaled to viewport width and height, up to 24rem, so the numbers dominate the cards.
 
 ### Important current limitation
 

@@ -163,6 +163,18 @@ data class CourtResponseData(
 )
 
 @Serializable
+data class ScoreboardPairingApprovalRequest(
+    @SerialName("organization_id") val organizationId: Int,
+    val token: String,
+)
+
+@Serializable
+data class ScoreboardPairingApproval(val approved: Boolean = false)
+
+@Serializable
+data class ScoreboardPairingApprovalData(val pairing: ScoreboardPairingApproval)
+
+@Serializable
 data class DeletedResponseData(val deleted: Boolean = false)
 
 @Serializable

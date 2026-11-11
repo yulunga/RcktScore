@@ -2,6 +2,8 @@ import Foundation
 import PhotosUI
 import StoreKit
 import SwiftUI
+import Vision
+import VisionKit
 
 struct DashboardView: View {
     @EnvironmentObject private var container: AppContainer
@@ -454,6 +456,14 @@ struct DashboardView: View {
                         .environmentObject(container)
                     }
                     .presentationDetents([.large])
+                case .scoreboardPairing(let court, let organizationID):
+                    ScoreboardQRScannerView(
+                        courtName: court.courtName,
+                        onToken: { token in
+                            approveScoreboardPairing(token: token, court: court, organizationID: organizationID)
+                        },
+                        onCancel: { activeSheet = nil }
+                    )
                 }
             }
             .toolbar {
@@ -2767,6 +2777,20 @@ struct DashboardView: View {
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
                 .accessibilityIdentifier("settings.courts.\(court.id).displayCodeButton")
 
+                Button("Scan Scoreboard QR") {
+                    guard let organizationID = session?.organizationID else { return }
+                    activeSheet = .scoreboardPairing(court, organizationID)
+                }
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color.dashboardBrand.opacity(0.12))
+                .foregroundStyle(Color.dashboardBrand)
+                .clipShape(Capsule())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin || savingSettingsKey != nil)
+                .accessibilityIdentifier("settings.courts.\(court.id).scanScoreboardButton")
+
                 Button(currentSettingsButtonTitle(for: "court-delete-\(court.id)", defaultTitle: "Delete")) {
                     deleteCourt(court)
                 }
@@ -4993,6 +5017,35 @@ struct DashboardView: View {
         }
     }
 
+    private func approveScoreboardPairing(token: String, court: CourtSummary, organizationID: Int) {
+        guard let token = ScoreboardPairingLink.token(from: token) else {
+            activeSheet = nil
+            dashboardNotice = "That is not a valid HitnScore scoreboard QR code."
+            return
+        }
+        savingSettingsKey = "court-pairing-\(court.id)"
+        Task {
+            do {
+                try await container.apiClient.approveScoreboardPairing(
+                    organizationID: organizationID,
+                    courtID: court.id,
+                    token: token
+                )
+                await MainActor.run {
+                    activeSheet = nil
+                    savingSettingsKey = nil
+                    dashboardNotice = "\(court.courtName) is now connected to the scoreboard."
+                }
+            } catch {
+                await MainActor.run {
+                    activeSheet = nil
+                    savingSettingsKey = nil
+                    dashboardNotice = (error as? APIErrorResponse)?.message ?? "Unable to connect that scoreboard."
+                }
+            }
+        }
+    }
+
     private func startScheduledMatch(_ matchID: String) async {
         await MainActor.run {
             startingScheduledMatchID = matchID
@@ -5770,6 +5823,7 @@ private enum MatchPresentation: Hashable {
 private enum DashboardSheet: Identifiable {
     case newMatch
     case watchMatch(String)
+    case scoreboardPairing(CourtSummary, Int)
 
     var id: String {
         switch self {
@@ -5777,6 +5831,126 @@ private enum DashboardSheet: Identifiable {
             return "new-match"
         case .watchMatch(let code):
             return "watch-match-\(code)"
+        case .scoreboardPairing(let court, _):
+            return "scoreboard-pairing-\(court.id)"
+        }
+    }
+}
+
+private enum ScoreboardPairingLink {
+    static func token(from value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: trimmed),
+           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           (url.host?.lowercased() == "app.hitnscore.com" || url.scheme?.lowercased() == "hitnscore"),
+           let token = components.queryItems?.first(where: { $0.name == "qr" })?.value,
+           token.count >= 32 {
+            return token
+        }
+        return trimmed.count >= 32 && !trimmed.contains(" ") ? trimmed : nil
+    }
+}
+
+private struct ScoreboardQRScannerView: View {
+    let courtName: String
+    let onToken: (String) -> Void
+    let onCancel: () -> Void
+    @State private var scannerError: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
+                    ScoreboardDataScanner(onToken: onToken, onError: { scannerError = $0 })
+                        .ignoresSafeArea()
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white, lineWidth: 3)
+                        .frame(width: 250, height: 250)
+                        .shadow(color: .black.opacity(0.45), radius: 10)
+                } else {
+                    ContentUnavailableView(
+                        "Camera scanning unavailable",
+                        systemImage: "qrcode.viewfinder",
+                        description: Text("Use a supported device or enter the court display code on the scoreboard.")
+                    )
+                    .foregroundStyle(.white)
+                }
+                VStack {
+                    Spacer()
+                    Text(scannerError ?? "Point the camera at the QR code shown on the scoreboard for \(courtName).")
+                        .font(.footnote.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(scannerError == nil ? .white : .red)
+                        .padding(14)
+                        .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .padding()
+                }
+            }
+            .navigationTitle("Scan Scoreboard QR")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+            }
+        }
+    }
+}
+
+private struct ScoreboardDataScanner: UIViewControllerRepresentable {
+    let onToken: (String) -> Void
+    let onError: (String) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onToken: onToken)
+    }
+
+    func makeUIViewController(context: Context) -> DataScannerViewController {
+        let scanner = DataScannerViewController(
+            recognizedDataTypes: [.barcode(symbologies: [.qr])],
+            qualityLevel: .balanced,
+            recognizesMultipleItems: false,
+            isHighFrameRateTrackingEnabled: false,
+            isPinchToZoomEnabled: true,
+            isGuidanceEnabled: true,
+            isHighlightingEnabled: true
+        )
+        scanner.delegate = context.coordinator
+        return scanner
+    }
+
+    func updateUIViewController(_ scanner: DataScannerViewController, context: Context) {
+        guard !scanner.isScanning else { return }
+        do {
+            try scanner.startScanning()
+        } catch {
+            onError("Camera access is unavailable. Allow camera access in Settings and try again.")
+        }
+    }
+
+    final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+        private let onToken: (String) -> Void
+        private var completed = false
+
+        init(onToken: @escaping (String) -> Void) {
+            self.onToken = onToken
+        }
+
+        func dataScanner(
+            _ dataScanner: DataScannerViewController,
+            didAdd addedItems: [RecognizedItem],
+            allItems: [RecognizedItem]
+        ) {
+            guard !completed else { return }
+            for item in addedItems {
+                if case .barcode(let barcode) = item, let value = barcode.payloadStringValue {
+                    completed = true
+                    dataScanner.stopScanning()
+                    onToken(value)
+                    return
+                }
+            }
         }
     }
 }

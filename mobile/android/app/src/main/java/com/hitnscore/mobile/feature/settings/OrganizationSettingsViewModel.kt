@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** What a successful change reports back, shown as a short confirmation line. */
-enum class SettingsNotice { Saved, UserInvited, UserUpdated, UserRemoved, ResetSent, CourtSaved, CourtRemoved, DisplayCodeIssued }
+enum class SettingsNotice { Saved, UserInvited, UserUpdated, UserRemoved, ResetSent, CourtSaved, CourtRemoved, DisplayCodeIssued, ScoreboardPaired }
 
 data class OrganizationSettingsUiState(
     val isLoading: Boolean = true,
@@ -134,6 +134,10 @@ class OrganizationSettingsViewModel(
     /** Issues a new scoreboard code for a court; the old one stops working. */
     fun newDisplayCode(courtId: Int) = change(SettingsNotice.DisplayCodeIssued, reload = true) {
         settingsApi.newDisplayCode(courtId, organizationId)
+    }
+
+    fun approveScoreboardPairing(courtId: Int, token: String) = change(SettingsNotice.ScoreboardPaired) {
+        settingsApi.approveScoreboardPairing(courtId, organizationId, token)
     }
 
     private fun change(notice: SettingsNotice, reload: Boolean = false, call: suspend () -> ApiResult<*>) {

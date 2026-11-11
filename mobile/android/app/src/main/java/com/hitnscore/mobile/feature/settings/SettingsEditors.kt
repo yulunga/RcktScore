@@ -1,5 +1,6 @@
 package com.hitnscore.mobile.feature.settings
 
+import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -46,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -64,6 +66,9 @@ import com.hitnscore.mobile.data.model.MatchFormatting
 import com.hitnscore.mobile.data.model.OrganizationDetailsRequest
 import com.hitnscore.mobile.data.model.OrganizationUser
 import com.hitnscore.mobile.feature.scoring.Choice
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 
 /** The sports HitnScore scores today, in picker order. */
 internal val SETTINGS_SPORTS = listOf("squash", "racketball", "tennis", "padel")
@@ -187,6 +192,7 @@ private fun noticeText(notice: SettingsNotice): String = stringResource(
         SettingsNotice.CourtSaved -> R.string.settings_court_saved
         SettingsNotice.CourtRemoved -> R.string.settings_court_removed
         SettingsNotice.DisplayCodeIssued -> R.string.settings_display_code_issued
+        SettingsNotice.ScoreboardPaired -> R.string.settings_scoreboard_paired
     },
 )
 
@@ -710,11 +716,27 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
     var adding by rememberSaveable { mutableStateOf(false) }
     // Filter: only court types the club has courts for and plays (squash covers racketball).
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var scannerError by remember { mutableStateOf<String?>(null) }
+    val invalidQrMessage = stringResource(R.string.settings_scoreboard_qr_invalid)
+    val scanFailedMessage = stringResource(R.string.settings_scoreboard_qr_scan_failed)
+    val scannerContext = LocalContext.current
+    val scannerOptions = remember {
+        GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom()
+            .build()
+    }
+    val scanner = remember(scannerContext, scannerOptions) {
+        GmsBarcodeScanning.getClient(scannerContext, scannerOptions)
+    }
     val types = CourtTypes.available(enabledSports).filter { type -> courts.any { CourtTypes.of(it.sport) == type } }
     if (typeFilter != null && typeFilter !in types) typeFilter = null
     val shown = courts.filter { typeFilter == null || it.sport.isNullOrBlank() || CourtTypes.of(it.sport) == typeFilter }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusLine(state.notice, state.actionError)
+        scannerError?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = HitNScoreTheme.colors.brandPink)
+        }
         AddAndFilterRow(
             addLabel = stringResource(R.string.settings_add_court),
             onAdd = { adding = true },
@@ -753,6 +775,27 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                         style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                     )
                 }
+                OutlinedButton(
+                    onClick = {
+                        scannerError = null
+                        scanner.startScan()
+                            .addOnSuccessListener { barcode ->
+                                val token = scoreboardPairingToken(barcode.rawValue.orEmpty())
+                                if (token == null) {
+                                    scannerError = invalidQrMessage
+                                } else {
+                                    viewModel.approveScoreboardPairing(court.id, token)
+                                }
+                            }
+                            .addOnFailureListener {
+                                scannerError = scanFailedMessage
+                            }
+                    },
+                    enabled = !state.isSaving,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.settings_scan_scoreboard_qr))
+                }
             }
         }
     }
@@ -782,6 +825,19 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                 viewModel.newDisplayCode(court.id)
             },
         )
+    }
+}
+
+internal fun scoreboardPairingToken(rawValue: String): String? {
+    val trimmed = rawValue.trim()
+    val parsed = runCatching { Uri.parse(trimmed) }.getOrNull()
+    val linkedToken = parsed
+        ?.takeIf { it.host.equals("app.hitnscore.com", ignoreCase = true) || it.scheme.equals("hitnscore", ignoreCase = true) }
+        ?.getQueryParameter("qr")
+    return when {
+        !linkedToken.isNullOrBlank() && linkedToken.length >= 32 -> linkedToken
+        trimmed.length >= 32 && trimmed.none(Char::isWhitespace) && !trimmed.contains("://") -> trimmed
+        else -> null
     }
 }
 

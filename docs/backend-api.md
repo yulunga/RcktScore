@@ -521,8 +521,15 @@ and saved-view tables.
 
 ### Display and WebSocket helper routes
 
+- `POST /scoreboard_display/pairing`
+- `POST /scoreboard_display/session/qr`
+- `POST /organization_courts/{court_id}/scoreboard-pairing`
 - `POST /scoreboard_display/session`
 - `GET /scoreboard_display/current`
+- `POST /scoreboard_display/pairing` is public and creates a two-minute pairing request. It returns a one-time token and QR URL while storing only the token hash and a hash of the source IP. Creation is rate-limited per source IP.
+- The scoreboard polls public `POST /scoreboard_display/session/qr` with that token. It returns `state: pending` until approval, then atomically marks the request consumed and returns the same read-only 24-hour display-session payload as manual code entry. Expired or consumed tokens cannot be exchanged again.
+- A signed-in club administrator scans the QR after choosing a court and calls authenticated `POST /organization_courts/{court_id}/scoreboard-pairing` with `organization_id` and `token`. The route verifies admin capability, tenant/court ownership, expiry and single-use state before binding the request. Root-admin authority is not substituted for a club membership on this mobile approval path.
+- Migration `056_scoreboard_qr_pairing.sql` adds the short-lived approval records. The QR does not contain the permanent court display code or a display session.
 - Standard display court-label sizing, viewport-scaled score numbers and score layout are frontend-only; these routes and payloads are unchanged.
 - `backend/functions/websocket_broadcast/handler.py` exists
 - the function is part of the backend codebase
