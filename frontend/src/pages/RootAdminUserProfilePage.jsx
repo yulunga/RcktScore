@@ -11,6 +11,7 @@ import {
   deleteRootAdminUserMembership,
   getRootAdminUserProfile,
   updateRootAdminPersonalAccount,
+  updateRootAdminOrganizationUserRole,
   updateRootAdminUserSportAccess,
   updateRootAdminUserPassword,
   verifyRootAdminUserEmail,
@@ -60,6 +61,7 @@ export default function RootAdminUserProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(true);
+  const [roleEdit, setRoleEdit] = useState(null);
   const [savingKey, setSavingKey] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -116,6 +118,20 @@ export default function RootAdminUserProfilePage() {
       setSelectedClubId("");
       setSelectedRole("user");
     }
+  }
+
+  async function handleClubRoleSave(event, membership) {
+    event.preventDefault();
+    if (savingKey || roleEdit?.id !== membership.id || roleEdit.role === membership.role) return;
+    const result = await runMutation(
+      `role-${membership.id}`,
+      () => updateRootAdminOrganizationUserRole(membership.id, {
+        organization_id: membership.organization_id,
+        role: roleEdit.role,
+      }),
+      "Club role updated.",
+    );
+    if (result) setRoleEdit(null);
   }
 
   async function handleRemoveClub(membership) {
@@ -373,11 +389,32 @@ export default function RootAdminUserProfilePage() {
               <div className="dashboard-list">
                 {clubMemberships.map((membership) => (
                   <article className="dashboard-item" key={membership.id}>
-                    <div className="dashboard-item-head"><strong>{membership.organization_name}</strong><span className={`status-pill ${membership.status === "pending" ? "warning" : ""}`}>{membership.status}</span></div>
+                    <div className="dashboard-item-head">
+                      <strong>{membership.organization_name}</strong>
+                      <div className="button-row root-admin-association-actions">
+                        <span className={`status-pill ${membership.status === "pending" ? "warning" : ""}`}>{membership.status}</span>
+                        <button className="secondary root-admin-icon-button" type="button" disabled={Boolean(savingKey)} aria-label={`Edit role for ${membership.organization_name}`} title="Edit club role" onClick={() => setRoleEdit({ id: membership.id, role: membership.role })}>
+                          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L20 8l-4-4L4 16zM14 6l4 4" /></svg>
+                        </button>
+                        <button className="danger root-admin-icon-button" type="button" disabled={Boolean(savingKey)} aria-label={`Remove from ${membership.organization_name}`} title="Remove from club" onClick={() => handleRemoveClub(membership)}>
+                          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" /></svg>
+                        </button>
+                      </div>
+                    </div>
                     <div className="dashboard-item-meta">
                       <span>{PLAN_LABELS[membership.plan] || membership.plan}</span><span>Role: {membership.role}</span><span>Joined: {formatDateTime(membership.registered_at)}</span><span>Sports: {displaySportList(membership.enabled_sports)}</span>
                     </div>
-                    <div className="button-row"><button className="danger" disabled={savingKey === `remove-${membership.id}`} type="button" onClick={() => handleRemoveClub(membership)}>{savingKey === `remove-${membership.id}` ? "Removing..." : "Remove from Club"}</button></div>
+                    {roleEdit?.id === membership.id ? (
+                      <form className="settings-inline-actions button-row" onSubmit={(event) => handleClubRoleSave(event, membership)}>
+                        <select aria-label={`Role in ${membership.organization_name}`} value={roleEdit.role} disabled={Boolean(savingKey)} onChange={(event) => setRoleEdit({ id: membership.id, role: event.target.value })}>
+                          <option value="admin">Admin</option>
+                          <option value="scorer">Scorer</option>
+                          <option value="read_only">Read only</option>
+                        </select>
+                        <button type="submit" disabled={Boolean(savingKey) || roleEdit.role === membership.role}>Save Role</button>
+                        <button className="secondary" type="button" disabled={Boolean(savingKey)} onClick={() => setRoleEdit(null)}>Cancel</button>
+                      </form>
+                    ) : null}
                   </article>
                 ))}
                 {clubMemberships.length === 0 ? <div className="dashboard-empty">No club associations.</div> : null}

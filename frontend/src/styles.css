@@ -13464,3 +13464,21 @@ textarea {
   .root-admin-match-row time { grid-column: 2; }
   .root-admin-match-row .root-admin-match-actions { grid-column: 4; grid-row: 1 / 3; }
 }
+
+.root-admin-association-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.root-admin-association-actions button.root-admin-icon-button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.root-admin-association-actions button svg {
+  width: 16px;
+  height: 16px;
+}
