@@ -1,6 +1,6 @@
 from common import squash_match_logic as squash_logic
 from common.sport_engine_registry import normalize_sport, resolve_engine_module
-from common.sport_config import SPORT_LABELS, fetch_enabled_sports
+from common.sport_config import SPORT_LABELS, court_supports_match, fetch_enabled_sports
 
 
 def _fetch_match_row(connection, match_id):
@@ -240,7 +240,7 @@ def create_match(connection, payload, source="api"):
             court = cursor.fetchone()
         if not court:
             raise ValueError("The selected court does not belong to this account or club")
-        if court.get("sport") and court["sport"] != normalized_sport:
+        if not court_supports_match(court.get("sport"), normalized_sport):
             court_sport = SPORT_LABELS.get(court["sport"], str(court["sport"]).replace("_", " ").title())
             raise ValueError(f"The selected court is configured for {court_sport}")
         payload = {

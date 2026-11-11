@@ -48,6 +48,12 @@ struct DashboardView: View {
     @State private var organizationDetailsDraft = OrganizationDetailsDraft()
     @State private var newOrganizationUserDraft = OrganizationUserDraft()
     @State private var organizationUserDrafts: [Int: OrganizationUserDraft] = [:]
+    @State private var isAddingOrganizationUser = false
+    @State private var editingOrganizationUserID: Int?
+    @State private var organizationUserSearch = ""
+    @State private var organizationUserRoleFilter = "all"
+    @State private var pendingOrganizationUserRemovalID: Int?
+    @State private var organizationUserRemovalConfirmation = ""
     @State private var newCourtDraft = CourtDraft()
     @State private var courtDrafts: [Int: CourtDraft] = [:]
     @State private var courtSportFilter = ""
@@ -90,6 +96,10 @@ struct DashboardView: View {
     @State private var isPersonalPlusOptionsExpanded = false
     @State private var personalPlusCollapseTask: Task<Void, Never>?
     @State private var selectedGameSettingsPage: GameSettingsPage = .sports
+    @State private var tournamentClubs: [TournamentClubContext] = []
+    @State private var currentTournaments: [ClubTournamentSummary] = []
+    @State private var isLoadingTournaments = false
+    @State private var tournamentErrorMessage: String?
     @AppStorage("hitnscore.strokeLetHelpEnabled") private var strokeLetHelpEnabled = false
 
     private var session: UserSession? { container.sessionStore.session }
@@ -255,16 +265,41 @@ struct DashboardView: View {
     private var organizationSettingsUsers: [OrganizationUser] {
         organizationSettings?.users ?? []
     }
+    private var filteredOrganizationSettingsUsers: [OrganizationUser] {
+        let query = organizationUserSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return organizationSettingsUsers
+            .filter { user in
+                let matchesRole = organizationUserRoleFilter == "all"
+                    || (organizationUserRoleFilter == "admin" && user.role == "admin")
+                    || (organizationUserRoleFilter == "user" && user.role != "admin")
+                let searchableName = "\(user.firstName) \(user.surname)".lowercased()
+                return matchesRole && (query.isEmpty || searchableName.contains(query))
+            }
+            .sorted {
+                let surnameOrder = $0.surname.localizedCaseInsensitiveCompare($1.surname)
+                if surnameOrder != .orderedSame { return surnameOrder == .orderedAscending }
+                return $0.firstName.localizedCaseInsensitiveCompare($1.firstName) == .orderedAscending
+            }
+    }
     private var organizationSettingsCourts: [CourtSummary] {
         organizationSettings?.courts ?? []
     }
     private var enabledCourtSports: [MatchSport] {
         let enabled = Set((organizationSettings?.organization.enabledSports ?? enabledSportsDraft).map { $0.lowercased() })
-        return MatchSport.allCases.filter { $0.isImplementedToday && enabled.contains($0.rawValue) }
+        return MatchSport.allCases.filter {
+            guard $0.isImplementedToday, $0 != .racketball else { return false }
+            if $0 == .squash {
+                return enabled.contains("squash") || enabled.contains("racketball")
+            }
+            return enabled.contains($0.rawValue)
+        }
     }
     private var filteredOrganizationSettingsCourts: [CourtSummary] {
         organizationSettingsCourts
-            .filter { courtSportFilter.isEmpty || $0.sport == courtSportFilter }
+            .filter {
+                courtSportFilter.isEmpty
+                    || courtSportCategory($0.sport) == courtSportCategory(courtSportFilter)
+            }
             .sorted { left, right in
                 let sportOrder = (left.sport ?? "").localizedCaseInsensitiveCompare(right.sport ?? "")
                 if sportOrder != .orderedSame { return sportOrder == .orderedAscending }
@@ -343,7 +378,10 @@ struct DashboardView: View {
         dynamicTypeSize.isAccessibilitySize
     }
     private var availableDashboardTabs: [DashboardTab] {
-        [.home, .matches, .performance, .settings, .help]
+        if tournamentClubs.isEmpty {
+            return [.home, .matches, .performance, .settings, .help]
+        }
+        return [.home, .matches, .performance, .tournament, .settings]
     }
     private var bottomNavigationIconSize: CGFloat {
         usesCompactBottomNavigation ? 18 : 22
@@ -501,6 +539,7 @@ struct DashboardView: View {
             .task {
                 seedHelpDefaults()
                 await loadDashboard()
+                await loadTournamentAccess()
                 await loadNotifications()
                 await loadCentralProfileImage()
             }
@@ -518,6 +557,7 @@ struct DashboardView: View {
                 if isOnline {
                     Task {
                         await loadDashboard()
+                        await loadTournamentAccess()
                         await loadNotifications()
                     }
                 } else if errorMessage == "Unable to fetch dashboard data." {
@@ -544,7 +584,10 @@ struct DashboardView: View {
                 presentTransientNotice(notice)
                 resetMessage = nil
             }
-            .refreshable { await loadDashboard() }
+            .refreshable {
+                await loadDashboard()
+                await loadTournamentAccess()
+            }
             .alert(item: $accountDeletionPrompt) { prompt in
                 accountDeletionAlert(for: prompt)
             }
@@ -619,6 +662,8 @@ struct DashboardView: View {
             historyContent
         case .performance:
             performanceContent
+        case .tournament:
+            tournamentContent
         case .settings:
             settingsContent
         case .help:
@@ -2336,7 +2381,7 @@ struct DashboardView: View {
 
             settingsValueRow(title: "Name", value: settingsOrganizationName)
             settingsValueRow(title: "Plan", value: settingsPlanLine)
-            settingsValueRow(title: "Role", value: session?.role.replacingOccurrences(of: "_", with: " ").capitalized ?? "User")
+            settingsValueRow(title: "Role", value: roleDisplayName(for: session?.role ?? "user"))
             settingsValueRow(title: "Contact", value: organizationDetailsDraft.organizationContact)
             settingsValueRow(title: "Email", value: organizationDetailsDraft.organizationEmail)
         }
@@ -2461,10 +2506,73 @@ struct DashboardView: View {
 
     private var organizationUsersCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Organisation Users")
-                .font(.headline.weight(.semibold))
+            HStack {
+                Text("Users")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isAddingOrganizationUser.toggle()
+                    }
+                } label: {
+                    Image(systemName: isAddingOrganizationUser ? "xmark" : "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 38, height: 38)
+                }
+                .foregroundStyle(Color.dashboardBrand)
+                .background(Color.dashboardBrand.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(Color.dashboardBrand.opacity(0.35), lineWidth: 1))
+                .buttonStyle(.plain)
+                .disabled(!isAdmin)
+                .accessibilityLabel(isAddingOrganizationUser ? "Close add user form" : "Add user")
+                .accessibilityIdentifier("settings.users.addButton")
+            }
 
-            VStack(spacing: 12) {
+            if isAddingOrganizationUser {
+                addOrganizationUserForm
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            dashboardTextField(
+                title: "Search Users",
+                placeholder: "First name or surname",
+                text: $organizationUserSearch,
+                accessibilityIdentifier: "settings.users.searchField"
+            )
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Role")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker("Role", selection: $organizationUserRoleFilter) {
+                    Text("All roles").tag("all")
+                    Text("Admin").tag("admin")
+                    Text("User").tag("user")
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("settings.users.roleFilter")
+            }
+
+            if filteredOrganizationSettingsUsers.isEmpty {
+                emptyState(organizationSettingsUsers.isEmpty ? "No club users yet." : "No users match this search and role filter.")
+            } else {
+                ForEach(filteredOrganizationSettingsUsers) { user in
+                    organizationUserRow(user)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var addOrganizationUserForm: some View {
+        VStack(spacing: 12) {
+            Text("Add User")
+                .font(.subheadline.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 dashboardTextField(
                     title: "First Name",
                     placeholder: "First name",
@@ -2510,20 +2618,12 @@ struct DashboardView: View {
                 .disabled(!isAdmin || savingSettingsKey != nil)
                 .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
                 .accessibilityIdentifier("settings.users.new.addButton")
-            }
-
-            if organizationSettingsUsers.isEmpty {
-                emptyState("No organisation users yet.")
-            } else {
-                ForEach(organizationSettingsUsers) { user in
-                    organizationUserRow(user)
-                }
-            }
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.dashboardInnerCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color.dashboardInputBackground.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
     }
 
     private var organizationCourtsCard: some View {
@@ -2747,69 +2847,95 @@ struct DashboardView: View {
         )
 
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(userDisplayName(user))
-                        .font(.subheadline.weight(.semibold))
-                    Text(user.username)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
+            HStack(spacing: 12) {
+                Text(userDisplayName(user))
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    settingsBadge(title: user.role.capitalized)
-                    Text(user.status.capitalized)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editingOrganizationUserID = editingOrganizationUserID == user.id ? nil : user.id
+                        pendingOrganizationUserRemovalID = nil
+                        organizationUserRemovalConfirmation = ""
+                    }
+                } label: {
+                    Image(systemName: editingOrganizationUserID == user.id ? "eye.slash" : "pencil")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 36, height: 36)
                 }
+                .foregroundStyle(Color.dashboardBrand)
+                .background(Color.dashboardBrand.opacity(0.10), in: Circle())
+                .buttonStyle(.plain)
+                .disabled(!isAdmin)
+                .accessibilityLabel(editingOrganizationUserID == user.id
+                    ? "Close \(userDisplayName(user))"
+                    : "View and edit \(userDisplayName(user))")
+                .accessibilityIdentifier("settings.users.\(user.id).editButton")
             }
 
-            dashboardTextField(title: "First Name", placeholder: "First name", text: binding.firstName, accessibilityIdentifier: "settings.users.\(user.id).firstNameField")
-                .disabled(!isAdmin)
-            dashboardTextField(title: "Surname", placeholder: "Surname", text: binding.surname, accessibilityIdentifier: "settings.users.\(user.id).surnameField")
-                .disabled(!isAdmin)
-            dashboardTextField(title: "Email", placeholder: "Email", text: binding.username, keyboardType: .emailAddress, accessibilityIdentifier: "settings.users.\(user.id).emailField")
-                .disabled(!isAdmin)
+            if editingOrganizationUserID == user.id {
+                Divider()
+                settingsValueRow(title: "First Name", value: user.firstName)
+                settingsValueRow(title: "Surname", value: user.surname)
+                settingsValueRow(title: "Email", value: user.username)
+                settingsValueRow(title: "Status", value: user.status.capitalized)
 
-            Button(currentSettingsButtonTitle(for: "user-password-\(user.id)", defaultTitle: "Send Password Reset")) {
-                sendOrganizationUserPasswordReset(user)
-            }
-            .buttonStyle(.bordered)
-            .disabled(!isAdmin || savingSettingsKey != nil)
+                Text("Names and email addresses are managed by the user through their Personal profile.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-            settingsRolePicker(selection: binding.role, accessibilityIdentifier: "settings.users.\(user.id).rolePicker")
-                .disabled(!isAdmin)
+                settingsRolePicker(selection: Binding(
+                    get: { binding.wrappedValue.role == "admin" ? "admin" : "scorer" },
+                    set: { binding.wrappedValue.role = $0 }
+                ), accessibilityIdentifier: "settings.users.\(user.id).rolePicker")
 
-            HStack(spacing: 10) {
-                Button(currentSettingsButtonTitle(for: "user-save-\(user.id)", defaultTitle: "Save")) {
-                    updateOrganizationUser(user)
+                HStack(spacing: 10) {
+                    Button(currentSettingsButtonTitle(for: "user-save-\(user.id)", defaultTitle: "Save Role")) {
+                        updateOrganizationUser(user)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.dashboardBrand)
+
+                    Button("Remove from Club", role: .destructive) {
+                        pendingOrganizationUserRemovalID = user.id
+                        organizationUserRemovalConfirmation = ""
+                    }
+                    .buttonStyle(.bordered)
                 }
                 .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.dashboardBrand)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
                 .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.users.\(user.id).saveButton")
 
-                Button(currentSettingsButtonTitle(for: "user-delete-\(user.id)", defaultTitle: "Delete")) {
-                    deleteOrganizationUser(user)
+                if pendingOrganizationUserRemovalID == user.id {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Type delete to remove this user from the club. Their Personal account and other club associations will not be deleted.")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        TextField("delete", text: $organizationUserRemovalConfirmation)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color.dashboardInputBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.red.opacity(0.45), lineWidth: 1))
+                            .accessibilityIdentifier("settings.users.\(user.id).removeConfirmation")
+                        HStack {
+                            Button("Cancel") {
+                                pendingOrganizationUserRemovalID = nil
+                                organizationUserRemovalConfirmation = ""
+                            }
+                            .buttonStyle(.bordered)
+                            Button("Confirm Removal", role: .destructive) {
+                                deleteOrganizationUser(user)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(organizationUserRemovalConfirmation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "delete")
+                            .accessibilityIdentifier("settings.users.\(user.id).confirmRemovalButton")
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.red.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                .font(.footnote.weight(.semibold))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.red.opacity(0.12))
-                .foregroundStyle(.red)
-                .clipShape(Capsule())
-                .buttonStyle(.plain)
-                .disabled(!isAdmin || savingSettingsKey != nil)
-                .opacity((!isAdmin || savingSettingsKey != nil) ? 0.7 : 1)
-                .accessibilityIdentifier("settings.users.\(user.id).deleteButton")
             }
         }
         .padding(14)
@@ -2831,7 +2957,7 @@ struct DashboardView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(court.sport.flatMap { sportDisplayName($0) } ?? "All Sports")
+                    Text(court.sport.map { courtSportCategory($0) == "squash" ? "Squash" : (sportDisplayName($0) ?? "All Sports") } ?? "All Sports")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(Color.dashboardBrand)
                     Text(court.courtName)
@@ -3041,7 +3167,8 @@ struct DashboardView: View {
     ) -> [String] {
         guard let limit = clubCourtNumberLimit else { return [] }
         let used = Set(organizationSettingsCourts.compactMap { court -> String? in
-            guard court.id != existingCourtID, court.sport == sport else { return nil }
+            guard court.id != existingCourtID,
+                  courtSportCategory(court.sport) == courtSportCategory(sport) else { return nil }
             return court.courtName.lowercased()
         })
         var values = (1...limit)
@@ -3084,6 +3211,10 @@ struct DashboardView: View {
         MatchSport(rawValue: value)?.displayName
     }
 
+    private func courtSportCategory(_ value: String?) -> String {
+        value?.lowercased() == "racketball" ? "squash" : (value?.lowercased() ?? "")
+    }
+
     private func courtNumberValue(_ value: String) -> Int {
         let digits = value.split(whereSeparator: { !$0.isNumber }).last.map(String.init) ?? ""
         return Int(digits) ?? Int.max
@@ -3105,8 +3236,7 @@ struct DashboardView: View {
 
             Picker("Role", selection: selection) {
                 Text("Admin").tag("admin")
-                Text("Scorer").tag("scorer")
-                Text("Read only").tag("read_only")
+                Text("User").tag("scorer")
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier(accessibilityIdentifier ?? "settings.rolePicker")
@@ -3136,6 +3266,65 @@ struct DashboardView: View {
                 VStack(spacing: 14) {
                     feedbackForm
                     privacyComplianceLinkCard
+                }
+            }
+        }
+    }
+
+    private var tournamentContent: some View {
+        VStack(spacing: 18) {
+            dashboardSection(
+                title: "Tournaments",
+                systemImage: "trophy",
+                subtitle: "Current tournaments for your clubs."
+            ) {
+                VStack(spacing: 12) {
+                    if isLoadingTournaments {
+                        ProgressView("Loading tournaments...")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if let tournamentErrorMessage {
+                        dashboardInlineError(tournamentErrorMessage)
+                    } else if currentTournaments.isEmpty {
+                        emptyState("No tournaments currently")
+                    } else {
+                        ForEach(currentTournaments) { item in
+                            HStack(alignment: .top, spacing: 14) {
+                                Image(systemName: "trophy.fill")
+                                    .font(.system(size: 21, weight: .semibold))
+                                    .foregroundStyle(Color.dashboardAccentPink)
+                                    .frame(width: 42, height: 42)
+                                    .background(Color.dashboardBrand.opacity(0.10))
+                                    .clipShape(Circle())
+
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(item.tournament.name)
+                                        .font(.headline.weight(.bold))
+                                    Text(item.clubName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Color.dashboardBrand)
+                                    Text(tournamentDetailLine(item.tournament))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Text(tournamentStatusLabel(item.tournament.status))
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.dashboardBrand)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 6)
+                                    .background(Color.dashboardBrand.opacity(0.10))
+                                    .clipShape(Capsule())
+                            }
+                            .padding(14)
+                            .background(Color.dashboardInnerCardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.dashboardBorder, lineWidth: 1)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -3400,7 +3589,7 @@ struct DashboardView: View {
                         VStack(spacing: usesCompactBottomNavigation ? 3 : 6) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.dashboardTabMuted)
+                                    .stroke(Color.dashboardTabMuted, lineWidth: 2)
                                     .frame(width: bottomNavigationIconFrameSize, height: bottomNavigationIconFrameSize)
 
                                 Image(systemName: "play.fill")
@@ -4733,6 +4922,113 @@ struct DashboardView: View {
         }
     }
 
+    private func loadTournamentAccess() async {
+        let clubs = clubMemberships
+        guard isOnline, !clubs.isEmpty else {
+            await MainActor.run {
+                tournamentClubs = []
+                currentTournaments = []
+                tournamentErrorMessage = nil
+                isLoadingTournaments = false
+                if selectedTab == .tournament {
+                    selectedTab = .home
+                }
+            }
+            return
+        }
+
+        await MainActor.run {
+            isLoadingTournaments = true
+            tournamentErrorMessage = nil
+        }
+
+        var enabledClubs: [TournamentClubContext] = []
+        var loadedTournaments: [ClubTournamentSummary] = []
+        var firstError: String?
+        let currentStatuses: Set<String> = ["registration", "draw_published", "in_progress"]
+
+        for membership in clubs {
+            do {
+                let settings = try await container.apiClient.getOrganizationSettings(
+                    organizationID: membership.organizationID
+                )
+                guard settings.organization.features.tournamentManager.webEnabled else { continue }
+
+                let club = TournamentClubContext(
+                    id: membership.organizationID,
+                    name: membership.organizationName
+                )
+                enabledClubs.append(club)
+
+                let tournaments = try await container.apiClient.getTournaments(
+                    organizationID: membership.organizationID
+                )
+                loadedTournaments.append(contentsOf: tournaments
+                    .filter { currentStatuses.contains($0.status.lowercased()) }
+                    .map { ClubTournamentSummary(clubName: club.name, tournament: $0) })
+            } catch {
+                if firstError == nil {
+                    firstError = (error as? APIErrorResponse)?.message
+                        ?? "Unable to load tournaments right now."
+                }
+            }
+        }
+
+        enabledClubs.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        loadedTournaments.sort {
+            let leftDate = $0.tournament.startsOn ?? "9999-12-31"
+            let rightDate = $1.tournament.startsOn ?? "9999-12-31"
+            if leftDate != rightDate { return leftDate < rightDate }
+            return $0.tournament.name.localizedCaseInsensitiveCompare($1.tournament.name) == .orderedAscending
+        }
+
+        await MainActor.run {
+            tournamentClubs = enabledClubs
+            currentTournaments = loadedTournaments
+            tournamentErrorMessage = enabledClubs.isEmpty ? nil : firstError
+            isLoadingTournaments = false
+            if enabledClubs.isEmpty && selectedTab == .tournament {
+                selectedTab = .home
+            } else if !enabledClubs.isEmpty && selectedTab == .help {
+                selectedTab = .home
+            }
+        }
+    }
+
+    private func tournamentStatusLabel(_ status: String) -> String {
+        switch status.lowercased() {
+        case "registration": return "Registration"
+        case "draw_published": return "Live"
+        case "in_progress": return "In Progress"
+        default: return status.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func tournamentDetailLine(_ tournament: TournamentSummary) -> String {
+        var parts = [tournament.sport.capitalized]
+        if let startsOn = tournament.startsOn, !startsOn.isEmpty {
+            if let endsOn = tournament.endsOn, !endsOn.isEmpty, endsOn != startsOn {
+                parts.append("\(displayTournamentDate(startsOn))–\(displayTournamentDate(endsOn))")
+            } else {
+                parts.append(displayTournamentDate(startsOn))
+            }
+        }
+        parts.append("\(tournament.entryCount) \(tournament.entryCount == 1 ? "entry" : "entries")")
+        return parts.joined(separator: " · ")
+    }
+
+    private func displayTournamentDate(_ value: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: String(value.prefix(10))) else { return value }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: date)
+    }
+
     private func markNotificationRead(_ notification: AppNotification) async {
         guard let organizationID = session?.organizationID else { return }
         do {
@@ -5082,6 +5378,7 @@ struct DashboardView: View {
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
                     newOrganizationUserDraft = OrganizationUserDraft()
+                    isAddingOrganizationUser = false
                     settingsSuccessMessage = "User added to organisation. Invitation email sent and access is pending approval."
                     savingSettingsKey = nil
                 }
@@ -5115,7 +5412,7 @@ struct DashboardView: View {
                 )
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
-                    settingsSuccessMessage = "User updated."
+                    settingsSuccessMessage = "User role updated."
                     savingSettingsKey = nil
                 }
             } catch {
@@ -5164,7 +5461,10 @@ struct DashboardView: View {
                 )
                 await loadOrganizationSettingsIfNeeded(force: true)
                 await MainActor.run {
-                    settingsSuccessMessage = "User deleted."
+                    editingOrganizationUserID = nil
+                    pendingOrganizationUserRemovalID = nil
+                    organizationUserRemovalConfirmation = ""
+                    settingsSuccessMessage = "User removed from the club. Their Personal account was not deleted."
                     savingSettingsKey = nil
                 }
             } catch {
@@ -5474,6 +5774,7 @@ struct DashboardView: View {
         Task {
             await loadDashboard()
             await loadOrganizationSettingsIfNeeded(force: true)
+            await loadTournamentAccess()
         }
     }
 
@@ -5491,13 +5792,11 @@ struct DashboardView: View {
     private func roleDisplayName(for role: String) -> String {
         switch role.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "admin":
-            return "Administrator"
-        case "scorer", "user":
-            return "Scorer"
-        case "read_only", "readonly":
-            return "Read only"
+            return "Admin"
+        case "scorer", "user", "read_only", "readonly":
+            return "User"
         default:
-            return role.replacingOccurrences(of: "_", with: " ").capitalized
+            return "User"
         }
     }
 
@@ -6242,11 +6541,24 @@ private struct ScoreboardDataScanner: UIViewControllerRepresentable {
     }
 }
 
+private struct TournamentClubContext: Identifiable, Hashable {
+    let id: Int
+    let name: String
+}
+
+private struct ClubTournamentSummary: Identifiable, Hashable {
+    let clubName: String
+    let tournament: TournamentSummary
+
+    var id: String { "\(tournament.organizationID)-\(tournament.id)" }
+}
+
 private enum DashboardTab: String, CaseIterable, Identifiable {
     case home
     case matches
     case history
     case performance
+    case tournament
     case settings
     case help
 
@@ -6262,6 +6574,8 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "History"
         case .performance:
             return "Analytics"
+        case .tournament:
+            return "Tournament"
         case .settings:
             return "Settings"
         case .help:
@@ -6279,6 +6593,8 @@ private enum DashboardTab: String, CaseIterable, Identifiable {
             return "clock"
         case .performance:
             return "chart.xyaxis.line"
+        case .tournament:
+            return "trophy"
         case .settings:
             return "gearshape"
         case .help:

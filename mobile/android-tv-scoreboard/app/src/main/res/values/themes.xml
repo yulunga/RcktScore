@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Scoreboard" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+    <color name="background">#FF091018</color>
+    <color name="brand">#FF1274D0</color>
+    <color name="text_muted">#FFA9B6C9</color>
+</resources>

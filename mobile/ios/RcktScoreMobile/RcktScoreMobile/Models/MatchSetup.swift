@@ -35,6 +35,7 @@ struct OrganizationProfile: Decodable {
     let isHidden: Bool
     let entitlements: PersonalPlanEntitlements?
     let availablePlanEntitlements: [String: PersonalPlanEntitlements]
+    let features: OrganizationFeatures
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -52,6 +53,7 @@ struct OrganizationProfile: Decodable {
         case isHidden = "is_hidden"
         case entitlements
         case availablePlanEntitlements = "available_plan_entitlements"
+        case features
     }
 
     init(from decoder: Decoder) throws {
@@ -71,6 +73,31 @@ struct OrganizationProfile: Decodable {
         isHidden = try container.decodeIfPresent(Bool.self, forKey: .isHidden) ?? false
         entitlements = try container.decodeIfPresent(PersonalPlanEntitlements.self, forKey: .entitlements)
         availablePlanEntitlements = try container.decodeIfPresent([String: PersonalPlanEntitlements].self, forKey: .availablePlanEntitlements) ?? [:]
+        features = try container.decodeIfPresent(OrganizationFeatures.self, forKey: .features) ?? OrganizationFeatures()
+    }
+}
+
+struct OrganizationFeatures: Decodable {
+    let tournamentManager: TournamentManagerFeature
+
+    enum CodingKeys: String, CodingKey {
+        case tournamentManager = "tournament_manager"
+    }
+
+    init(tournamentManager: TournamentManagerFeature = TournamentManagerFeature()) {
+        self.tournamentManager = tournamentManager
+    }
+}
+
+struct TournamentManagerFeature: Decodable {
+    let webEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case webEnabled = "web_enabled"
+    }
+
+    init(webEnabled: Bool = false) {
+        self.webEnabled = webEnabled
     }
 }
 
@@ -457,6 +484,6 @@ struct CourtDraft {
     init(court: CourtSummary) {
         courtName = court.courtName
         courtAlias = court.courtAlias.isEmpty ? court.courtName : court.courtAlias
-        sport = court.sport ?? ""
+        sport = court.sport == "racketball" ? "squash" : (court.sport ?? "")
     }
 }

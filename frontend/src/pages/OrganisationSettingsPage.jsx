@@ -191,7 +191,7 @@ export default function OrganisationSettingsPage() {
       ));
   }, [userSearchQuery, users]);
   const courtSportOptions = useMemo(
-    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value)),
+    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && sport.value !== "racketball" && enabledSports.includes(sport.value)),
     [enabledSports],
   );
   const courts = settings?.courts || [];
@@ -213,7 +213,10 @@ export default function OrganisationSettingsPage() {
     return values;
   }, [courtNumberLimit, courts]);
   const filteredCourts = useMemo(() => courts.filter((court) => (
-    !courtSportFilter || court.sport === courtSportFilter || !court.sport
+    !courtSportFilter
+      || court.sport === courtSportFilter
+      || (courtSportFilter === "squash" && court.sport === "racketball")
+      || !court.sport
   )).sort((left, right) => (
     String(left.sport || "").localeCompare(String(right.sport || ""))
     || String(left.court_name || "").localeCompare(String(right.court_name || ""), undefined, { sensitivity: "base" })
@@ -278,7 +281,7 @@ export default function OrganisationSettingsPage() {
           {
             court_name: court.court_name || "",
             court_alias: court.court_alias || "",
-            sport: court.sport || "",
+            sport: court.sport === "racketball" ? "squash" : (court.sport || ""),
           },
         ]),
       ),

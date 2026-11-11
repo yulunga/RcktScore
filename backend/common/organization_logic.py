@@ -8,7 +8,7 @@ from psycopg.types.json import Jsonb
 from common.mailer import send_email_message
 from common.notification_templates import render_branded_email, render_notification_template
 from common.scoreboard_logic import generate_unique_display_code
-from common.sport_config import constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports, normalize_sport_id
+from common.sport_config import court_sport_id, constrain_enabled_sports, fetch_platform_enabled_sports, normalize_enabled_sports, normalize_sport_id
 from common.plan_entitlements import personal_plan_contract, personal_plan_entitlements
 from common.access_control import VALID_MEMBERSHIP_ROLES, normalize_membership_role
 
@@ -100,14 +100,14 @@ def _court_number_exists(connection, organization_id, sport, court_name, *, excl
             SELECT id
             FROM "SkwshCourts"
             WHERE organization_name = %(organization_id)s
-              AND sport = %(sport)s
+              AND CASE WHEN sport = 'racketball' THEN 'squash' ELSE sport END = %(sport)s
               AND LOWER(court_name) = LOWER(%(court_name)s)
               AND (%(excluding_court_id)s IS NULL OR id <> %(excluding_court_id)s)
             LIMIT 1
             """,
             {
                 "organization_id": int(organization_id),
-                "sport": sport,
+                "sport": court_sport_id(sport),
                 "court_name": court_name,
                 "excluding_court_id": int(excluding_court_id) if excluding_court_id is not None else None,
             },
@@ -1067,7 +1067,8 @@ def update_organization_user(connection, organization_id, user_id, payload):
         raise ValueError("Club administrators cannot set member passwords. Send a secure password reset instead.")
 
     current_username = normalize_email_address(existing_row["clubusername"])
-    target_username = normalize_email_address(payload.get("username") or current_username)
+    identity_is_user_managed = (existing_row.get("approval_status") or "approved") == "approved"
+    target_username = current_username if identity_is_user_managed else normalize_email_address(payload.get("username") or current_username)
     if not target_username:
         raise ValueError("username is required")
     if not is_valid_email_address(target_username):
@@ -1087,8 +1088,16 @@ def update_organization_user(connection, organization_id, user_id, payload):
     if target_username != current_username and other_memberships:
         raise ValueError("Email address is already used elsewhere and cannot be reassigned here")
 
-    trimmed_first_name = (payload.get("first_name") if "first_name" in payload else existing_row.get("first_name") or "").strip()
-    trimmed_surname = (payload.get("surname") if "surname" in payload else existing_row.get("surname") or "").strip()
+    if identity_is_user_managed:
+        trimmed_first_name = (existing_row.get("first_name") or "").strip()
+        trimmed_surname = (existing_row.get("surname") or "").strip()
+    else:
+        trimmed_first_name = (
+            payload.get("first_name") if "first_name" in payload else existing_row.get("first_name") or ""
+        ).strip()
+        trimmed_surname = (
+            payload.get("surname") if "surname" in payload else existing_row.get("surname") or ""
+        ).strip()
     if existing_row.get("role") == "admin" and normalized_role != "admin" and _organization_admin_count(connection, org_id) <= 1:
         raise ValueError("Organisation must keep at least one admin user")
 
@@ -1308,7 +1317,7 @@ def approve_organization_user_by_id(connection, organization_id, user_id):
 
 def create_court(connection, organization_id, court_name, court_alias=None, sport=None):
     org_id = int(organization_id)
-    normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
+    normalized_sport = court_sport_id(sport) if str(sport or "").strip() else None
     if not normalized_sport:
         raise ValueError("sport is required and must be an enabled racket sport")
     plan = _court_plan(connection, org_id)
@@ -1380,7 +1389,7 @@ def update_court(
     update_sport=False,
 ):
     org_id = int(organization_id)
-    normalized_sport = normalize_sport_id(sport, default="") if str(sport or "").strip() else None
+    normalized_sport = court_sport_id(sport) if str(sport or "").strip() else None
     if update_sport and sport and not normalized_sport:
         raise ValueError("sport must be a supported racket sport")
 
@@ -1399,7 +1408,7 @@ def update_court(
     if not existing_court:
         return None
 
-    effective_sport = normalized_sport if update_sport else existing_court.get("sport")
+    effective_sport = normalized_sport if update_sport else court_sport_id(existing_court.get("sport"))
     if not effective_sport:
         trimmed_name = str(court_name or "").strip()
         if not trimmed_name:
@@ -1408,7 +1417,7 @@ def update_court(
         plan = _court_plan(connection, org_id)
         numbering_changed = (
             str(court_name or "").strip().casefold() != str(existing_court.get("court_name") or "").strip().casefold()
-            or effective_sport != existing_court.get("sport")
+            or effective_sport != court_sport_id(existing_court.get("sport"))
         )
         trimmed_name = (
             _normalized_court_number(court_name, plan)

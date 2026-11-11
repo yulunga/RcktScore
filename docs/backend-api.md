@@ -290,7 +290,7 @@ Current root-admin match-management behavior:
 
 Current root-admin Tournament Manager behavior:
 
-- Tournament Manager is web-only and disabled for clubs without an explicit enabled record
+- Tournament Manager administration remains web-based, while native iOS can use the same enabled flag and read-only list route to show current club tournaments
 - `PUT /root_admin/organizations/{organization_id}/tournament-feature` accepts `web_enabled` and changes access without deleting tournament data
 - the root-admin club page exposes this control in a dedicated Tournament tab immediately after Game Settings
 - personal organisations cannot be enabled
@@ -440,6 +440,20 @@ the match abandonment rate. Migration `050_analytics_setup_and_exports.sql`
 adds privacy-minimised setup sessions; `app_analytics.setup_completion` reports
 completed, explicitly abandoned, open, and two-hour-stale abandoned setups plus
 aggregate active-user adoption without returning member identities.
+
+Club-admin user updates intentionally separate identity and membership ownership.
+`POST /organization_users` accepts the invited user's name/email and club role.
+Once accepted, `PUT /organization_users/{user_id}` preserves the identity fields
+server-side and is used for the club role only; the member changes their own name
+and email through Personal Profile.
+`DELETE /organization_users/{user_id}` removes that organisation membership and
+does not delete the identity, Personal workspace, or memberships of other clubs.
+
+Court sport matching canonicalizes `racketball` to the shared physical `squash`
+category. Court create/update stores new Racketball selections as Squash, court
+number uniqueness treats legacy Racketball and Squash rows as one category, and
+match creation permits either Squash or Racketball to use a court stored under
+either legacy value. Null-sport legacy courts remain available to every sport.
 
 Analytics-specific routes:
 
@@ -701,6 +715,11 @@ Current behavior:
 
 - org-user admin access is enforced for normal club operations
 - Root Admin club requests use the separate Root Admin cookie and are validated server-side
+- create requests require an implemented racket-sport `sport`; `court_name` is the controlled court number and `court_alias` is the editable customer-facing court name, defaulting to the number when omitted
+- Club Essentials accepts `Court-1` through `Court-5` per sport and Club Pro accepts `Court-1` through `Court-25` per sport. The backend normalizes case and spacing, rejects an out-of-tier number, and prevents a duplicate number within the same organisation and sport
+- an unrestricted future plan, including the planned Premium tier, accepts a non-empty free-text court number. Premium is not yet an active subscription plan, so this policy does not create or sell that plan
+- existing legacy courts remain readable and may keep their current number when only the display name changes; changing their number or sport applies the active plan policy
+- court responses include `sport`, `display_code`, `display_code_enabled`, creation/code dates, number and display name for the compact web/iOS court lists and QR pairing action
 
 ### Match setup lookup
 

@@ -1,5 +1,7 @@
 from common.sport_config import (
     client_sport_field,
+    court_sport_id,
+    court_supports_match,
     effective_enabled_sports,
     normalize_sport_client,
 )
@@ -27,3 +29,11 @@ def test_missing_membership_override_inherits_the_organization_access():
         ["squash", "racketball", "tennis"],
         None,
     ) == ["squash", "tennis"]
+
+
+def test_racketball_uses_the_squash_physical_court_category():
+    assert court_sport_id("racketball") == "squash"
+    assert court_supports_match("squash", "racketball") is True
+    assert court_supports_match("racketball", "squash") is True
+    assert court_supports_match("tennis", "racketball") is False
+    assert court_supports_match(None, "racketball") is True

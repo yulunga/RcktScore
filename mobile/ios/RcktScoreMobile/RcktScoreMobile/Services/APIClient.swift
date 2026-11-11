@@ -588,6 +588,31 @@ struct OrganizationSettingsResponseData: Decodable {
     }
 }
 
+struct TournamentSummary: Decodable, Identifiable, Hashable {
+    let id: String
+    let organizationID: Int
+    let name: String
+    let sport: String
+    let status: String
+    let startsOn: String?
+    let endsOn: String?
+    let venueName: String
+    let entryCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, sport, status
+        case organizationID = "organization_id"
+        case startsOn = "starts_on"
+        case endsOn = "ends_on"
+        case venueName = "venue_name"
+        case entryCount = "entry_count"
+    }
+}
+
+struct TournamentListResponseData: Decodable {
+    let tournaments: [TournamentSummary]
+}
+
 struct OrganizationUserResponseData: Decodable {
     let user: OrganizationUser
 }
@@ -1229,6 +1254,12 @@ final class APIClient {
         return settings
     }
 
+    func getTournaments(organizationID: Int) async throws -> [TournamentSummary] {
+        let request = try makeRequest(path: "/organizations/\(organizationID)/tournaments", method: "GET")
+        let envelope: APIEnvelope<TournamentListResponseData> = try await send(request)
+        return envelope.data?.tournaments ?? []
+    }
+
     func updateOrganizationDetails(
         organizationID: Int,
         draft: OrganizationDetailsDraft
@@ -1367,9 +1398,9 @@ final class APIClient {
             method: "PUT",
             body: OrganizationUserUpdateRequest(
                 organizationID: organizationID,
-                firstName: draft.firstName,
-                surname: draft.surname,
-                username: draft.username,
+                firstName: nil,
+                surname: nil,
+                username: nil,
                 role: draft.role
             )
         )

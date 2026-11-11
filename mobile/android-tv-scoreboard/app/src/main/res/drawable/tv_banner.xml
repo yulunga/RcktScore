@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 launcher banner for Google TV: brand blue with the HitnScore mascot. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp">
+    <item>
+        <shape><gradient android:angle="0" android:startColor="#FF0F57C2" android:endColor="#FFEC5EA8" /></shape>
+    </item>
+    <item android:gravity="center" android:width="140dp" android:height="140dp" android:drawable="@drawable/splash_logo" />
+</layer-list>

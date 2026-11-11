@@ -1739,7 +1739,9 @@ struct StartNewMatchView: View {
             await MainActor.run {
                 availableCourts = settings.courts.filter { court in
                     guard let courtSport = court.sport?.lowercased(), !courtSport.isEmpty else { return true }
-                    return courtSport == selectedSport.rawValue
+                    let courtCategory = courtSport == "racketball" ? "squash" : courtSport
+                    let matchCategory = selectedSport == .racketball ? "squash" : selectedSport.rawValue
+                    return courtCategory == matchCategory
                 }
                 loadedOrganizationType = settings.organization.organizationType
                 loadedTimedBreakDefaults = settings.organization.timedBreakDefaults

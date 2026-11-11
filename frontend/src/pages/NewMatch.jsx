@@ -445,7 +445,10 @@ export default function NewMatch() {
         const response = await getOrganizationSettings(organizationId);
         const organizationSettings = response?.organizationSettings || {};
         const courts = (organizationSettings?.courts || []).filter((court) => (
-          !court.sport || court.sport === selectedSport
+          !court.sport
+          || court.sport === selectedSport
+          || (selectedSport === "racketball" && court.sport === "squash")
+          || (selectedSport === "squash" && court.sport === "racketball")
         ));
         const timedBreakDefaults = organizationSettings?.organization?.timed_break_defaults || {};
         const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HitnScore Scoreboard</string>
+    <string name="loading">Loading the scoreboard…</string>
+    <string name="offline_title">Can\'t reach HitnScore</string>
+    <string name="offline_body">Check the TV\'s internet connection. Retrying automatically…</string>
+    <string name="retry">Retry now</string>
+    <string name="exit_hint">Press Back again to close the scoreboard</string>
+</resources>

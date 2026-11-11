@@ -49,8 +49,8 @@ const emptyUserForm = {
 
 const emptyCourtForm = {
   sport: "squash",
-  court_name: "",
-  court_alias: "",
+  court_name: "Court-1",
+  court_alias: "Court-1",
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -90,7 +90,7 @@ export default function RootAdminClubPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const courtSportOptions = useMemo(
-    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value)),
+    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && sport.value !== "racketball" && enabledSports.includes(sport.value)),
     [enabledSports],
   );
   const scoreboardUrl = useMemo(() => {
@@ -135,7 +135,7 @@ export default function RootAdminClubPage() {
         (nextSettings?.courts || []).map((court) => [
           court.id,
           {
-            sport: court.sport || "",
+            sport: court.sport === "racketball" ? "squash" : (court.sport || ""),
             court_name: court.court_name || "",
             court_alias: court.court_alias || "",
           },

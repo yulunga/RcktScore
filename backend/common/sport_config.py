@@ -24,6 +24,19 @@ def normalize_sport_id(value, default="squash"):
     return parsed if parsed in SPORT_LABELS else default
 
 
+def court_sport_id(value):
+    """Return the physical-court category used by a scoring sport."""
+    normalized = normalize_sport_id(value, default="")
+    return "squash" if normalized == "racketball" else normalized
+
+
+def court_supports_match(court_sport, match_sport):
+    """Legacy unassigned courts support every sport; Racketball shares Squash courts."""
+    if not str(court_sport or "").strip():
+        return True
+    return court_sport_id(court_sport) == court_sport_id(match_sport)
+
+
 def normalize_enabled_sports(values, default=None):
     fallback = tuple(default or DEFAULT_ENABLED_SPORTS)
     if values is None:

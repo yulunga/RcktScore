@@ -495,6 +495,7 @@ Common symptoms:
 - a selected shirt colour is replaced by the default colour
 - tennis appears in setup but cannot be created
 - the wrong sport's courts appear in setup, or match creation rejects the selected court
+- a court cannot be added or renumbered, or its selected number disappears after changing racket sport
 - tennis score labels or server rotation look wrong during tie-breaks
 - tennis shows an unexpected service side or scoring-mode label
 - the live Game Settings modal is missing shirt choices or club Spectator Display access
@@ -509,7 +510,11 @@ What to check:
 - the submitted `player1_shirt_color` and `player2_shirt_color` values, plus all four `team{1|2}_player{1|2}_shirt_color` values for tennis doubles (all personal and club plans may set them)
 - if the web or iOS referee `Me` switch is disabled or clears itself, compare the signed-in profile first name and surname with every entered singles/doubles participant; a player cannot referee the same match
 - `matches.sport` and the tenant `enabled_sports` list
-- whether migration `037_court_sports.sql` is deployed and the selected `SkwshCourts.sport` is either null (legacy/all sports) or matches `matches.sport`
+- whether migration `037_court_sports.sql` is deployed and the selected `SkwshCourts.sport` is null (legacy/all sports), matches `matches.sport`, or belongs to the shared Squash/Racketball court category
+- for Court Settings validation, confirm the selected club plan and sport: Club Essentials permits `Court-1`–`Court-5` per sport and Club Pro permits `Court-1`–`Court-25` per sport. The same number may be used for a different sport, but not twice for the same sport. Existing legacy values are retained until their number or sport is changed
+- if the iOS court list is empty or its filter omits a sport, confirm that sport is enabled for the club. The add form intentionally begins with Squash when available, while its Court Name defaults from the selected Court Number and remains independently editable
+- Racketball deliberately has no separate court filter/add option. A Racketball match must accept Squash courts, legacy `sport = 'racketball'` rows must appear under Squash, and editing one converts it to the canonical Squash value
+- the QR icon on an iOS court row opens the authenticated scoreboard pairing scanner; the permanent scoreboard code remains visible in the row/editor and can be regenerated from the expanded editor
 - court conflict behavior
 - latest `match_events` entries
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
@@ -855,6 +860,19 @@ If the Tournament button does not appear in the signed-in web header, confirm th
 user is currently associated with the enabled club rather than another personal
 or club membership. The header reads the effective feature from organisation
 settings whenever the active organisation changes.
+
+On iOS, Tournament replaces Need Help in the bottom bar when at least one retained
+club membership returns `organization.features.tournament_manager.web_enabled =
+true`. It sits between Analytics and Settings. The landing page intentionally
+omits draft, completed, and cancelled events; `registration`, `draw_published`,
+and `in_progress` are current. If no current rows exist it shows `No tournaments
+currently`. Help remains reachable through Settings → Help & Feedback.
+
+For iOS club Users, verify search matches first name/surname while typing and the
+role filter exposes only Admin/User labels. Expanding a row must not enable name
+or email editing. Removal remains disabled until `delete` is typed and calls the
+membership-delete route; confirm the user's Personal login and other club
+memberships still exist afterwards.
 
 Direct calls return `TOURNAMENT_FEATURE_DISABLED` while the club feature is off.
 Disabling the feature retains its tournament and player data.
