@@ -1,0 +1,58 @@
+.registration-dialog {
+  width: min(29rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  padding: 2rem;
+  border: 1px solid #c5d9e8;
+  border-radius: 1.25rem;
+  color: #163650;
+  background: #fff;
+}
+
+.registration-dialog::backdrop {
+  background: rgb(11 32 51 / 65%);
+}
+
+.registration-dialog h2 {
+  margin: 0 1.5rem 0.75rem 0;
+  font-size: 1.5rem;
+}
+
+.registration-dialog p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.registration-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #c5d9e8;
+  border-radius: 50%;
+  color: inherit;
+  background: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.registration-actions a:first-child {
+  padding: 0.65rem 1rem;
+  border-radius: 0.65rem;
+  background: #1769aa;
+  color: #fff;
+  text-decoration: none;
+}
+
+.registration-actions a:last-child {
+  color: #165c96;
+  text-decoration: underline;
+}

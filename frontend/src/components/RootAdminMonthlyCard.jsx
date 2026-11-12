@@ -6,7 +6,24 @@ const monthFull = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numer
 const formatMonth = (month, formatter) => formatter.format(new Date(`${month}-01T00:00:00Z`));
 
 export default function RootAdminMonthlyCard({ title, count, note, metric, series, onOpen }) {
-  const [showChart, setShowChart] = useState(false);
+  const preferenceKey = `hitnscore.ground-control.card-view.${metric}`;
+  const [showChart, setShowChart] = useState(() => {
+    try {
+      return window.localStorage.getItem(preferenceKey) === "chart";
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleView() {
+    const next = !showChart;
+    setShowChart(next);
+    try {
+      window.localStorage.setItem(preferenceKey, next ? "chart" : "total");
+    } catch {
+      // The toggle still works when browser storage is unavailable.
+    }
+  }
 
   return (
     <div className="meta-item root-admin-monthly-card">
@@ -17,7 +34,7 @@ export default function RootAdminMonthlyCard({ title, count, note, metric, serie
         aria-label={`Monthly chart for ${title}`}
         aria-pressed={showChart}
         title={showChart ? "Show total" : "Show monthly chart"}
-        onClick={() => setShowChart((visible) => !visible)}
+        onClick={toggleView}
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d={showChart ? "M5 6h14M5 12h14M5 18h14" : "M4 3v17h17M8 16v-4m5 4V8m5 8V5"} />

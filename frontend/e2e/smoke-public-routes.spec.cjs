@@ -48,6 +48,9 @@ for (const viewportSize of [
 }
 
 test("registration and privacy copy use the public product wording @smoke", async ({ page }) => {
+  await page.route("**/registration/status?challenge=1", (route) => route.fulfill({
+    json: { success: true, data: { enabled: true } },
+  }));
   await page.goto("/login?interest=1#want-in");
 
   await expect(page.getByText(
@@ -56,6 +59,70 @@ test("registration and privacy copy use the public product wording @smoke", asyn
   )).toBeVisible();
   await expect(page.locator(".cookie-consent")).toContainText("Optional Analytics");
   await expect(page.locator(".cookie-consent")).not.toContainText("Google Analytics");
+});
+
+test("paused Want In registers interest and keeps sign-in available @smoke", async ({ page }) => {
+  await page.route("**/registration/status?challenge=1", (route) => route.fulfill({
+    json: {
+      success: true,
+      data: {
+        enabled: false,
+        message: "Please register your interest.",
+        challenge: { prompt: "Human check: what is 2 + 3?", token: "challenge-token" },
+      },
+    },
+  }));
+  await page.route("**/registration/interest", (route) => route.fulfill({
+    status: 202,
+    json: { success: true, data: { accepted: true } },
+  }));
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Essential only" }).click();
+  await page.getByRole("button", { name: "Want In" }).click();
+  await expect(page.getByText("Please register your interest.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign In" })).toBeEnabled();
+  await page.getByLabel("First name").fill("Sam");
+  await page.getByLabel("Surname").fill("Smith");
+  await page.getByLabel("Email address").fill("sam@example.com");
+  await page.getByLabel("App Use").selectOption("club");
+  await expect(page.getByLabel("Club name")).toHaveCount(0);
+  await page.getByLabel("Human check: what is 2 + 3?").fill("5");
+
+  const requestPromise = page.waitForRequest("**/registration/interest");
+  await page.getByRole("button", { name: "Register interest", exact: true }).click();
+  expect((await requestPromise).postDataJSON()).toMatchObject({
+    first_name: "Sam", surname: "Smith", email: "sam@example.com", use_type: "club",
+    challenge_token: "challenge-token", challenge_answer: "5",
+  });
+  await expect(page.getByText(/Thanks for registering your interest/)).toBeVisible();
+});
+
+test("Ground Control saves the registration switch and pause message @smoke", async ({ page }) => {
+  await page.route("**/root_admin/session/status", (route) => route.fulfill({
+    json: { success: true, data: { rootAdminSession: { username: "Admin", csrf_token: "test-csrf" } } },
+  }));
+  await page.route("**/registration/status", (route) => route.fulfill({
+    json: { success: true, data: { enabled: true, message: "Please register your interest." } },
+  }));
+  await page.route("**/root_admin/registration", (route) => route.fulfill({
+    json: { success: true, data: route.request().postDataJSON() },
+  }));
+
+  await page.goto("/rckscoreAdmin/registration");
+  await page.getByRole("button", { name: "Essential only" }).click();
+  const flag = page.getByRole("link", { name: "Public registration open" });
+  await expect(flag).toHaveAttribute("data-enabled", "true");
+  await expect(page.locator(".root-admin-session-nav a").nth(-2)).toHaveAccessibleName("Settings");
+
+  await page.getByRole("switch", { name: "Enable new users" }).uncheck();
+  await page.getByLabel("Message when registration is paused").fill("Join our waiting list.");
+  const requestPromise = page.waitForRequest("**/root_admin/registration");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  const request = await requestPromise;
+  expect(request.postDataJSON()).toEqual({ enabled: false, message: "Join our waiting list." });
+  expect(request.headers()["x-csrf-token"]).toBe("test-csrf");
+  await expect(page.getByRole("link", { name: "Public registration paused" })).toHaveAttribute("data-enabled", "false");
 });
 
 test("email confirmation validates its link and enforces the password checklist @smoke", async ({ page }) => {

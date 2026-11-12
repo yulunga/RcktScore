@@ -203,6 +203,8 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /root_admin/login`
 - `POST /root_admin/logout`
 - `GET /root_admin/session/status`
+- `GET /registration/status`
+- `POST /registration/interest`
 - `POST /register_interest`
 - `POST /feedback`
 
@@ -212,7 +214,7 @@ The login card keeps its public Help entry but no longer links to Tournament Dra
 
 Tournament Draw and Scoreboard Display use the same permanently compact, full-viewport-width public header and compact access-code card. The Tournament Draw shell derives its full width from the page container instead of `100vw`, avoiding scrollbar-width document overflow on large desktop displays. The scoreboard code card is centred in the available space below its header. The header has the landing site's square edges, the brand logo returns to the landing site, `Tournament` or `Live Scoreboard` appears beneath the wordmark in a lightweight system font, and page-description copy is intentionally excluded from public headers. This is client-only and does not change public draw-key or scoreboard-session contracts.
 
-Standalone landing-page actions labelled Start Scoring route to the plain `https://app.hitnscore.com/login` state. Only explicitly labelled account-creation, registration and club-interest actions route to `?interest=1#want-in`.
+Standalone landing-page Start Scoring actions check the public registration setting. When green they open `https://app.hitnscore.com/login`. When red they show the configured message in a dialog with links to Want In and Sign in.
 
 The public Help Centre at `/help` uses a search-free, sectioned Guides library and the shared React `PublicSiteFooter` presentation. Guide selection and direct `section` query values are entirely client-side and add no search or guide-content API. Password and account-setup links first call `POST /password_reset/validate`; valid Personal setup links use `mode=confirm-email`, while ordinary recovery links retain `mode=reset`. Both finish through `POST /password_reset/confirm` and apply the same backend password policy: at least eight characters, an uppercase letter, a number, a symbol, and no configured common password term. Native iOS calls those same two public endpoints without a bearer token after receiving the emailed Universal Link or a pasted link/token; this adds no backend route or alternate reset contract. The production Universal Link handoff to the native password screen was verified through TestFlight on 9 November 2026. The browser `/help` form remains the fallback when the native app is not installed or the link is deliberately opened on the web.
 
@@ -237,6 +239,7 @@ The public login logo and wordmark also link to the public landing homepage. Thi
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`
+- `PUT /root_admin/registration`
 - `GET /root_admin/platform_sports`
 - `POST /root_admin/platform_sports/preview`
 - `PUT /root_admin/platform_sports`
@@ -779,6 +782,14 @@ Current behavior:
 - tennis/padel action types: `match_settings`, `receiver_choice`, `server`, `timer`
 - new tennis point events preserve point-time fields separately from the next-point state: `point_server_side`, `point_server_participant_id`, `point_receiver_side`, `point_receiver_participant_id`, `point_service_side`, point score/labels, `tennis_game_completed`, `set_completed`, and completed-game number/score. `game_completed` now marks every completed tennis game rather than only a completed set
 - migration `021_tennis_scoring_formats.sql` adds the two persisted tennis format flags
+
+### Public registration controls
+
+- `GET /registration/status` returns `enabled` and the saved `message` with caching disabled. When paused, `?challenge=1` also returns a math `challenge` with a prompt and a 15-minute token.
+- `PUT /root_admin/registration` updates `enabled` and the message, which must contain 1–1,000 characters after trimming. It requires a root-admin session and normal browser CSRF protection.
+- While paused, `POST /registration/interest` accepts `first_name`, `surname`, `email`, `use_type` (`personal` or `club`), `challenge_token`, and `challenge_answer`. It verifies and consumes the challenge server-side, stores one interest record per email and use type, and emails the team via SES. It returns `202` without opening an account. When signup is open, this endpoint returns `409 REGISTRATION_OPEN`.
+- While paused, the public account-creation endpoint `POST /register_interest` returns `409 REGISTRATION_PAUSED` with the saved message. Existing sign-in, invitations, and authenticated club subscription enquiries continue.
+- Apply migration `059_public_registration.sql` before deploying the updated handlers. It defaults the setting to green.
 
 ### Interest requests and feedback
 

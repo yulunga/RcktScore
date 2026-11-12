@@ -14,7 +14,8 @@ This keeps the landing site separate from the React app in `frontend/`, which ca
 ## Architecture
 
 - `www.hitnscore.com` -> CloudFront distribution
-- CloudFront -> private S3 bucket
+- CloudFront -> private S3 bucket for static content
+- CloudFront `/registration/status` -> `api.hitnscore.com` with caching disabled
 - `hitnscore.com` -> GoDaddy 301 forwarding to `https://www.hitnscore.com`
 - `app.hitnscore.com` -> existing app deployment
 
@@ -67,7 +68,7 @@ In GoDaddy DNS, add the ACM validation `CNAME` records exactly as returned by AC
 
 ## Step 2: Deploy the AWS Stack
 
-Create the isolated S3 bucket and CloudFront distribution:
+Create or update the isolated S3 bucket and CloudFront distribution. Deploy the backend registration status endpoint first when rolling out the registration flag.
 
 ```bash
 ./scripts/deploy-weblanding-stack.sh <stack-name> <certificate-arn> www.hitnscore.com

@@ -687,3 +687,21 @@ export function getScoreboardDisplayCurrent(displaySessionToken) {
     bearerToken: displaySessionToken,
   });
 }
+
+export function getRegistrationStatus({ challenge = false, signal } = {}) {
+  return apiRequest(`/registration/status${challenge ? "?challenge=1" : ""}`, { signal });
+}
+
+export function updateRegistrationSettings(settings) {
+  return apiRequest("/root_admin/registration", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}
+
+export function submitRegistrationInterest(payload) {
+  return apiRequest("/registration/interest", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

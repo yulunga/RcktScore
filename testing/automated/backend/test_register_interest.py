@@ -1,7 +1,14 @@
 import json
 from contextlib import contextmanager
 
+import pytest
+
 from functions.register_interest import handler
+
+
+@pytest.fixture(autouse=True)
+def open_registration(monkeypatch):
+    monkeypatch.setattr(handler, "get_registration_settings", lambda *_args, **_kwargs: {"enabled": True})
 
 
 class FakeConnection:
@@ -166,6 +173,7 @@ def test_logged_in_club_subscription_enquiry_captures_full_club_details(monkeypa
     def fake_connection():
         yield connection
 
+    monkeypatch.setattr(handler, "get_registration_settings", lambda *_args, **_kwargs: {"enabled": False})
     event = registration_event("club")
     event["headers"]["authorization"] = "Bearer valid-session"
     event["body"].update(
@@ -243,3 +251,27 @@ def test_club_subscription_enquiry_requires_a_logged_in_session(monkeypatch):
 
     assert response["statusCode"] == 401
     assert body["error"]["code"] == "SESSION_REQUIRED"
+
+
+@pytest.mark.parametrize("use_type", ["personal", "club"])
+def test_paused_registration_rejects_public_signup_before_account_lookup(monkeypatch, use_type):
+    @contextmanager
+    def fake_connection():
+        yield FakeConnection()
+
+    monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+    monkeypatch.setattr(
+        handler, "get_registration_settings",
+        lambda _connection, *, lock: {"enabled": False, "message": "Please register your interest."},
+    )
+    monkeypatch.setattr(
+        handler, "_personal_account_exists",
+        lambda *_args: pytest.fail("Paused signup reached account lookup"),
+    )
+
+    response = handler.lambda_handler(registration_event(use_type), None)
+
+    assert response["statusCode"] == 409
+    assert json.loads(response["body"])["error"] == {
+        "code": "REGISTRATION_PAUSED", "message": "Please register your interest.",
+    }

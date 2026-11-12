@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useRootAdmin } from "../hooks/useRootAdmin";
+
+import { getRegistrationStatus } from "../services/api";
 
 const CONTROL_PANEL_LINKS = [
   { route: "dashboard", label: "Home", icon: "m3 10 9-7 9 7v10h-6v-6H9v6H3z" },
@@ -12,9 +14,23 @@ const CONTROL_PANEL_LINKS = [
   { route: "racket-sports", label: "Settings", icon: "M9.7 3.1h4.6l.6 2.2 1.3.7 2.1-.6 2.3 4-1.6 1.6v2l1.6 1.6-2.3 4-2.1-.6-1.3.7-.6 2.2H9.7l-.6-2.2-1.3-.7-2.1.6-2.3-4L5 13v-2L3.4 9.4l2.3-4 2.1.6 1.3-.7zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" },
 ];
 
-export default function RootAdminSessionBar() {
+export default function RootAdminSessionBar({ registrationEnabled }) {
   const navigate = useNavigate();
   const { session, logout } = useRootAdmin();
+
+  const [publicRegistrationEnabled, setPublicRegistrationEnabled] = useState(null);
+  useEffect(() => {
+    if (registrationEnabled !== undefined) return undefined;
+    const controller = new AbortController();
+    getRegistrationStatus({ signal: controller.signal })
+      .then(({ enabled }) => setPublicRegistrationEnabled(enabled))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [registrationEnabled]);
+  const enabled = registrationEnabled ?? publicRegistrationEnabled;
+  const flagLabel = enabled === null
+    ? "Public registration"
+    : (enabled ? "Public registration open" : "Public registration paused");
 
   return (
     <section className="session-bar">
@@ -52,6 +68,18 @@ export default function RootAdminSessionBar() {
               </svg>
             </NavLink>
           ))}
+          <NavLink
+            to="/rckscoreAdmin/registration"
+            className="session-link-button root-admin-dashboard-link registration-flag"
+            data-enabled={enabled}
+            aria-label={flagLabel}
+            title={flagLabel}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path d="M5 22V3" fill="none" />
+              <path d="M5 3c5-5 9 5 15 0v11c-6 5-10-5-15 0z" fill="currentColor" />
+            </svg>
+          </NavLink>
         </nav>
       </div>
     </section>

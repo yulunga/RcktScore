@@ -37,6 +37,8 @@
       };
     </script>
     <script src="./assets/js/landing.js?v=20261109-1" defer></script>
+    <link rel="stylesheet" href="./assets/css/registration.css" />
+    <script src="./assets/js/registration.js" defer></script>
   </head>
   <body>
     <header class="landing-header" id="landing-header">
@@ -44,7 +46,7 @@
         <img src="./assets/images/brand-logo.png?v=20261006-1" alt="" />
         <span><span class="brand-blue">Hit</span><span class="brand-pink">n</span><span class="brand-blue">Score</span></span>
       </a>
-      <a class="primary-action primary-action--header" href="https://app.hitnscore.com/login">Start scoring</a>
+      <a class="primary-action primary-action--header" data-start-scoring href="https://app.hitnscore.com/login">Start scoring</a>
     </header>
 
     <main id="top">
@@ -52,7 +54,7 @@
         <div class="hero-copy">
           <h1 id="opening-title"><span>Every point.</span><span class="heading-line--offset">Every court.</span></h1>
           <p class="hero-summary">Keep every result. See how the games are developing. Stream live scores to clubhouse screens and let viewers follow remotely.</p>
-          <a class="primary-action primary-action--hero" href="https://app.hitnscore.com/login">Start scoring</a>
+          <a class="primary-action primary-action--hero" data-start-scoring href="https://app.hitnscore.com/login">Start scoring</a>
           <p class="hero-availability"><span><strong>Available now:</strong> squash, racketball, tennis and Padel.</span><span><strong>Coming:</strong> table tennis, badminton and pickleball.</span></p>
         </div>
 
@@ -261,7 +263,7 @@
 
         <div class="answers-cta">
           <div><strong>Ready for the next point?</strong><span>Start free—or start a conversation for your club.</span></div>
-          <a class="primary-action primary-action--hero" href="https://app.hitnscore.com/login">Start scoring</a>
+          <a class="primary-action primary-action--hero" data-start-scoring href="https://app.hitnscore.com/login">Start scoring</a>
         </div>
       </section>
     </main>
@@ -289,5 +291,16 @@
       </div>
       <div class="cookie-panel__actions"><button class="cookie-allow" type="button" data-cookie-choice="all">Allow all</button><button class="cookie-essential" type="button" data-cookie-choice="essential">Essential only</button></div>
     </aside>
+    <dialog class="registration-dialog" aria-labelledby="registration-title">
+      <form method="dialog">
+        <button class="registration-close" aria-label="Close" autofocus>×</button>
+      </form>
+      <h2 id="registration-title">Public registration is paused</h2>
+      <p data-registration-message></p>
+      <div class="registration-actions">
+        <a href="https://app.hitnscore.com/login?interest=1#want-in">Register interest</a>
+        <a href="https://app.hitnscore.com/login">Sign in</a>
+      </div>
+    </dialog>
   </body>
 </html>

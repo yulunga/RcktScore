@@ -11,6 +11,8 @@
     <link rel="canonical" href="https://www.hitnscore.com/plans.html" />
     <link rel="icon" href="./assets/icons/favicon.ico?v=20260910-1" sizes="any" />
     <link rel="stylesheet" href="./assets/css/styles.css?v=20260910-1" />
+    <link rel="stylesheet" href="./assets/css/registration.css" />
+    <script src="./assets/js/registration.js" defer></script>
   </head>
   <body>
     <div class="page-shell plans-shell">
@@ -47,7 +49,7 @@
               your whole club onto one shared platform.
             </p>
             <div class="plans-hero__actions">
-              <a class="login-btn" href="https://app.hitnscore.com/login">Start scoring free</a>
+              <a class="login-btn" data-start-scoring href="https://app.hitnscore.com/login">Start scoring free</a>
               <a class="secondary-btn secondary-btn--blue" href="#club-plans">Explore club plans</a>
             </div>
             <p class="availability-note"><span aria-hidden="true"></span> Squash, racketball and tennis available in early access</p>
@@ -270,5 +272,16 @@
         </nav>
       </footer>
     </div>
+    <dialog class="registration-dialog" aria-labelledby="registration-title">
+      <form method="dialog">
+        <button class="registration-close" aria-label="Close" autofocus>×</button>
+      </form>
+      <h2 id="registration-title">Public registration is paused</h2>
+      <p data-registration-message></p>
+      <div class="registration-actions">
+        <a href="https://app.hitnscore.com/login?interest=1#want-in">Register interest</a>
+        <a href="https://app.hitnscore.com/login">Sign in</a>
+      </div>
+    </dialog>
   </body>
 </html>

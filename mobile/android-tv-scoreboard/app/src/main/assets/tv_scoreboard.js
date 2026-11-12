@@ -233,13 +233,28 @@
     ".scoreboard-pairing__qr{position:relative!important;}" +
     ".hns-qr-overlay{position:absolute;inset:0;display:flex;padding:10px;border-radius:20px;" +
       "background:rgba(255,255,255,0.7);}" +
-    "#hns-qr-slot{width:250px;height:250px;display:flex;padding:10px;box-sizing:border-box;border-radius:20px;}" +
+    "#hns-qr-slot{width:252px;height:252px;display:flex;padding:10px;box-sizing:border-box;border-radius:20px;}" +
     // The whole square is one light, bright button holding the message.
     ".hns-qr-refresh{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;" +
       "padding:16px;border-radius:16px;border:2px solid #1274d0;background:#e9f4ff;color:#0b5fb3;" +
       "font-size:1.1rem;font-weight:800;line-height:1.3;box-shadow:0 8px 24px rgba(18,116,208,0.18);cursor:pointer;}" +
     ".hns-qr-refresh:focus,.hns-qr-refresh:hover{background:#d6ebff;outline:3px solid #f5b301;outline-offset:2px;}" +
     ".hns-qr-refresh:disabled{opacity:0.7;}" +
+    // Fixed order and sizes on the pairing panel, whatever the page re-renders: QR (or the
+    // Refresh square) first, then the countdown line, then the display-code box. The code
+    // box therefore never moves when the QR code expires.
+    ".hns-qr-mode .scoreboard-pairing > *{order:9;}" +
+    ".hns-qr-mode .scoreboard-pairing > .scoreboard-pairing__qr,.hns-qr-mode .scoreboard-pairing > #hns-qr-slot{order:1;}" +
+    ".hns-qr-mode .scoreboard-pairing > #hns-qr-countdown{order:2;height:1.6em;line-height:1.6em;}" +
+    ".hns-qr-mode .scoreboard-pairing > #hns-code-entry{order:3;}" +
+    // Active QR: light green frame. Expired: light red (below).
+    ".hns-qr-mode .scoreboard-pairing__qr{background:#ecfbf1!important;border:2px solid #2fa866!important;" +
+      "box-shadow:0 8px 24px rgba(47,168,102,0.18)!important;box-sizing:border-box!important;}" +
+    ".hns-qr-mode .scoreboard-pairing__qr.hns-expired{background:#fdecec!important;border-color:#d64545!important;" +
+      "box-shadow:0 8px 24px rgba(214,69,69,0.18)!important;}" +
+    ".hns-qr-refresh{flex-direction:column!important;gap:4px;}" +
+    ".hns-qr-line1,.hns-qr-line2{display:block;white-space:nowrap;}" +
+    ".hns-qr-line2{font-size:0.9em;font-weight:700;}" +
     // Expired: the QR square turns light red (Preparing… stays blue).
     ".hns-qr-refresh:not(:disabled){border-color:#d64545;background:#fdecec;color:#b42318;box-shadow:0 8px 24px rgba(214,69,69,0.18);}" +
     ".hns-qr-refresh:not(:disabled):focus,.hns-qr-refresh:not(:disabled):hover{background:#fbd5d5;}" +
@@ -293,11 +308,24 @@
     return null;
   }
 
+  // "QR expired" on the first line, "Click to refresh" on the next.
+  function setExpiredText(button) {
+    button.textContent = "";
+    var line1 = document.createElement("span");
+    line1.className = "hns-qr-line1";
+    line1.textContent = "QR expired";
+    var line2 = document.createElement("span");
+    line2.className = "hns-qr-line2";
+    line2.textContent = "Click to refresh";
+    button.appendChild(line1);
+    button.appendChild(line2);
+  }
+
   function refreshButton(pairing) {
     var button = document.createElement("button");
     button.type = "button";
     button.className = "hns-qr-refresh";
-    button.textContent = "QR expired \u2013 click to refresh";
+    setExpiredText(button);
     button.addEventListener("click", function () {
       var page = pageRefreshButton(pairing);
       if (page && !page.disabled) page.click();
@@ -332,11 +360,18 @@
         if (slot.style.height !== hgt) slot.style.height = hgt;
       }
       var slotButton = slot.querySelector("button");
-      var slotText = preparing ? "Preparing\u2026" : "QR expired \u2013 click to refresh";
-      if (slotButton.textContent !== slotText) slotButton.textContent = slotText;
+      if (preparing) {
+        if (slotButton.textContent !== "Preparing\u2026") slotButton.textContent = "Preparing\u2026";
+      } else if (!slotButton.querySelector(".hns-qr-line2")) {
+        setExpiredText(slotButton);
+      }
       slotButton.disabled = preparing;
       // Keep the countdown line (and so everything below it) where it was.
-      if (own && slot.nextSibling !== own) pairing.insertBefore(own, slot.nextSibling);
+      if (!own) {
+        own = document.createElement("p");
+        own.id = "hns-qr-countdown";
+        pairing.appendChild(own);
+      }
       var waitText = preparing ? "Preparing a new code\u2026" : "QR expired";
       if (own && own.textContent !== waitText) own.textContent = waitText;
       return;
@@ -349,6 +384,7 @@
     if (key !== qrKey) {
       qrKey = key;
       qrShownAt = Date.now();
+      qr.classList.remove("hns-expired");
       var oldOverlay = qr.querySelector(".hns-qr-overlay");
       if (oldOverlay) oldOverlay.remove();
     }
@@ -360,6 +396,7 @@
     var left = Math.max(0, Math.ceil((QR_SHOW_MS - (Date.now() - qrShownAt)) / 1000));
     var text = left > 0 ? "Expires in " + Math.floor(left / 60) + ":" + ("0" + (left % 60)).slice(-2) : "QR expired";
     if (own.textContent !== text) own.textContent = text;
+    qr.classList.toggle("hns-expired", left === 0);
     if (left === 0 && !qr.querySelector(".hns-qr-overlay")) {
       var overlay = document.createElement("div");
       overlay.className = "hns-qr-overlay";
@@ -561,6 +598,7 @@
         var own = m.type === "attributes" && (m.target === document.documentElement ||
           (m.target.classList && (m.target.classList.contains("scoreboard-club-grid") ||
             m.target.classList.contains("player-name-stack") || m.target.tagName === "H3" ||
+            m.target.classList.contains("scoreboard-pairing__qr") ||
             (m.attributeName === "class" && m.target.classList.contains("display-shell")))));
         if (!own) { schedule(); return; }
       }

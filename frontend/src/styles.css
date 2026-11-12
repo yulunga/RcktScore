@@ -13482,3 +13482,62 @@ textarea {
   width: 16px;
   height: 16px;
 }
+
+.registration-flag[data-enabled="true"] {
+  color: #15803d;
+}
+
+.registration-flag[data-enabled="false"] {
+  color: #c52a42;
+}
+
+.registration-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: fit-content;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.registration-switch input {
+  appearance: none;
+  width: 2.75rem;
+  height: 1.5rem;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  padding: 0.125rem;
+  background: #c52a42;
+  cursor: inherit;
+}
+
+.registration-switch input::before {
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: white;
+  content: "";
+}
+
+.registration-switch input:checked {
+  background: #15803d;
+}
+
+.registration-switch input:checked::before {
+  transform: translateX(1.25rem);
+}
+
+.registration-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.registration-fields {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

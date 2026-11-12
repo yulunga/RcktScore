@@ -143,7 +143,18 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 
 - [frontend/src/pages/LoginPage.jsx](/Users/glennrowe/Development/Projects/RcktScore/frontend/src/pages/LoginPage.jsx)
 
-### Current path
+### Public registration flag
+
+Ground Control's flag opens Public Registration. The administrator saves the
+Enable new users switch and the message shown while registration is paused.
+The landing site's Start Scoring buttons check the uncached status through a
+CloudFront route. In red mode the dialog links to the same form that opens
+from Want In on the app login page. The form stores the person's details
+and emails the team after a server-validated math question. Existing users
+can sign in directly or through the dialog. Native clients receive the
+configured pause message if they attempt public signup.
+
+### Green registration flow
 
 1. A visitor opens the `Want In` form on the login page.
    - both the standard web login and registration states omit internal package-version/build details

@@ -114,6 +114,18 @@ Resources:
           ResponseHeadersPolicyId: !Ref LandingSiteResponseHeadersPolicy
           TargetOriginId: s3-origin
           ViewerProtocolPolicy: redirect-to-https
+        CacheBehaviors:
+          - PathPattern: /registration/status
+            AllowedMethods: [GET, HEAD]
+            TargetOriginId: registration-api
+            ViewerProtocolPolicy: redirect-to-https
+            MinTTL: 0
+            DefaultTTL: 0
+            MaxTTL: 0
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
         DefaultRootObject: index.html
         Enabled: true
         HttpVersion: http2and3
@@ -123,6 +135,11 @@ Resources:
             Id: s3-origin
             OriginAccessControlId: !Ref LandingSiteOriginAccessControl
             S3OriginConfig: {}
+          - DomainName: api.hitnscore.com
+            Id: registration-api
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
         PriceClass: !Ref PriceClass
         ViewerCertificate:
           AcmCertificateArn: !Ref AcmCertificateArn

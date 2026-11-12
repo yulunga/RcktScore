@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
-import { registerInterest } from "../services/api";
+import { getRegistrationStatus, registerInterest, submitRegistrationInterest } from "../services/api";
 import { clubRoleLabel } from "../utils/accessControl";
 import SessionLoadingScreen from "../components/SessionLoadingScreen";
 
@@ -21,6 +21,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showInterestForm, setShowInterestForm] = useState(false);
+  const [registration, setRegistration] = useState(null);
+  const [registrationError, setRegistrationError] = useState("");
+  const [registrationRefresh, setRegistrationRefresh] = useState(0);
+  const registrationPaused = registration?.enabled === false;
   const [interestFirstName, setInterestFirstName] = useState("");
   const [interestSurname, setInterestSurname] = useState("");
   const [interestEmail, setInterestEmail] = useState("");
@@ -91,6 +95,29 @@ export default function LoginPage() {
   }, [shouldOpenInterestFormFromUrl]);
 
   useEffect(() => {
+    if (!showInterestForm || isAuthenticated || restoringSession) return undefined;
+
+    const controller = new AbortController();
+    setRegistrationError("");
+    getRegistrationStatus({ challenge: true, signal: controller.signal })
+      .then((settings) => {
+        if (!controller.signal.aborted) setRegistration(settings);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setRegistrationError("Unable to check registration availability. Please try again.");
+        }
+      });
+    return () => controller.abort();
+  }, [showInterestForm, isAuthenticated, restoringSession, registrationRefresh]);
+
+  function refreshRegistration() {
+    setRegistration(null);
+    setRegistrationError("");
+    setRegistrationRefresh((revision) => revision + 1);
+  }
+
+  useEffect(() => {
     if (!showInterestForm || !shouldOpenInterestFormFromUrl) {
       return;
     }
@@ -104,7 +131,7 @@ export default function LoginPage() {
   }, [showInterestForm, shouldOpenInterestFormFromUrl]);
 
   useEffect(() => {
-    if (!showInterestForm || hasInterestDraft) {
+    if (!showInterestForm || hasInterestDraft || registration?.enabled !== true) {
       return undefined;
     }
 
@@ -121,7 +148,7 @@ export default function LoginPage() {
     }, 15000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [hasInterestDraft, showInterestForm, shouldOpenInterestFormFromUrl]);
+  }, [hasInterestDraft, registration?.enabled, showInterestForm, shouldOpenInterestFormFromUrl]);
 
   if (restoringSession) {
     return <SessionLoadingScreen />;
@@ -175,6 +202,7 @@ export default function LoginPage() {
 
   async function handleInterestSubmit(event) {
     event.preventDefault();
+    if (!registration) return;
     const requestedUseType = interestUseType;
 
     if (!interestFirstName.trim()) {
@@ -192,12 +220,12 @@ export default function LoginPage() {
       return;
     }
 
-    if (requestedUseType === "club" && !interestClubName.trim()) {
+    if (!registrationPaused && requestedUseType === "club" && !interestClubName.trim()) {
       setInterestError("Club name is required for club use.");
       return;
     }
 
-    if (interestAnswer.trim() !== interestCaptcha.answer) {
+    if (!registrationPaused && interestAnswer.trim() !== interestCaptcha.answer) {
       setInterestError("Human check answer is incorrect.");
       setInterestCaptcha(createCaptchaChallenge());
       setInterestAnswer("");
@@ -210,20 +238,33 @@ export default function LoginPage() {
     setInterestMessage("");
 
     try {
-      await registerInterest({
+      const details = {
         first_name: interestFirstName.trim(),
         surname: interestSurname.trim(),
         email: interestEmail.trim(),
         use_type: requestedUseType,
-        club_name: requestedUseType === "club" ? interestClubName.trim() : "",
         company: interestHoneypot,
-        page_url: typeof window !== "undefined" ? window.location.href : "",
-        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
-      });
+      };
+      if (registrationPaused) {
+        await submitRegistrationInterest({
+          ...details,
+          challenge_token: registration.challenge.token,
+          challenge_answer: interestAnswer.trim(),
+        });
+      } else {
+        await registerInterest({
+          ...details,
+          club_name: requestedUseType === "club" ? interestClubName.trim() : "",
+          page_url: typeof window !== "undefined" ? window.location.href : "",
+          user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        });
+      }
       setInterestMessage(
-        requestedUseType === "personal"
-          ? "Your personal account has been created. Check your email to verify your address and choose your password."
-          : "Thanks. We have received your club enquiry and will be in touch.",
+        registrationPaused
+          ? "Thanks for registering your interest. We’ll be in touch."
+          : (requestedUseType === "personal"
+            ? "Your personal account has been created. Check your email to verify your address and choose your password."
+            : "Thanks. We have received your club enquiry and will be in touch."),
       );
       setInterestFirstName("");
       setInterestSurname("");
@@ -233,12 +274,17 @@ export default function LoginPage() {
       setInterestAnswer("");
       setInterestHoneypot("");
       setInterestCaptcha(createCaptchaChallenge());
+      if (registrationPaused) return;
       window.setTimeout(() => {
         setShowInterestForm(false);
         setInterestMessage("");
         setInterestError("");
       }, 5000);
     } catch (requestError) {
+      if (["REGISTRATION_PAUSED", "REGISTRATION_OPEN", "INVALID_HUMAN_CHECK"].includes(requestError.code)) {
+        setInterestAnswer("");
+        refreshRegistration();
+      }
       setInterestAccountExists(requestError.code === "ACCOUNT_ALREADY_REGISTERED");
       setInterestError(
         requestError.message
@@ -356,6 +402,7 @@ export default function LoginPage() {
                     className="text-link-button login-inline-link"
                     type="button"
                     onClick={() => {
+                      if (!showInterestForm) refreshRegistration();
                       setShowInterestForm((current) => !current);
                       setInterestError("");
                       setInterestMessage("");
@@ -370,30 +417,80 @@ export default function LoginPage() {
             )}
 
             <div className="stack compact">
-              {showInterestForm ? (
+              {showInterestForm && !registration ? (
+                <div ref={interestPanelRef} className="interest-panel stack compact">
+                  {registrationError ? (
+                    <>
+                      <p role="alert">{registrationError}</p>
+                      <button type="button" onClick={refreshRegistration}>Try again</button>
+                    </>
+                  ) : <p role="status">Checking registration availability…</p>}
+                </div>
+              ) : null}
+              {showInterestForm && registration ? (
                 <form ref={interestPanelRef} className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
-                  <h2 className="interest-panel__heading">Join Hit n Score</h2>
-                  <p className="helper-text interest-copy">
+                  <h2 className="interest-panel__heading">
+                    {registrationPaused ? "Register your interest" : "Join Hit n Score"}
+                  </h2>
+                  {registrationPaused ? (
+                    <p className="helper-text interest-copy registration-message">{registration.message}</p>
+                  ) : <p className="helper-text interest-copy">
                     Welcome to HitnScore the racket sport scoring app. Create a free personal account to start scoring
                     matches. We also offer multi-user accounts for Rackets Sports Clubs. Register your interest for a
                     club account and we will be in touch.
-                  </p>
-                  {requestedPersonalPlan === "personal_plus" ? (
+                  </p>}
+                  {!registrationPaused && requestedPersonalPlan === "personal_plus" ? (
                     <div className="notice">
                       Create your Personal account first, then choose Personal Plus from Subscription after signing in.
                     </div>
                   ) : null}
 
-                  <div className="field-grid">
+                  <fieldset className="registration-fields" disabled={interestLoading || (registrationPaused && Boolean(interestMessage))}>
+                    <div className="field-grid">
+                      <div className="field">
+                        <label htmlFor="interest_first_name">{registrationPaused ? "First name" : "Name"}</label>
+                        <input
+                          id="interest_first_name"
+                          name="interest_first_name"
+                          required
+                          value={interestFirstName}
+                          onChange={(event) => {
+                            setInterestFirstName(event.target.value);
+                            if (interestError) {
+                              setInterestError("");
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="interest_surname">Surname</label>
+                        <input
+                          id="interest_surname"
+                          name="interest_surname"
+                          required
+                          value={interestSurname}
+                          onChange={(event) => {
+                            setInterestSurname(event.target.value);
+                            if (interestError) {
+                              setInterestError("");
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
                     <div className="field">
-                      <label htmlFor="interest_first_name">Name</label>
+                      <label htmlFor="interest_email">Email address</label>
                       <input
-                        id="interest_first_name"
-                        name="interest_first_name"
+                        id="interest_email"
+                        name="interest_email"
+                        placeholder="you@email.com"
                         required
-                        value={interestFirstName}
+                        type="email"
+                        value={interestEmail}
                         onChange={(event) => {
-                          setInterestFirstName(event.target.value);
+                          setInterestEmail(event.target.value);
                           if (interestError) {
                             setInterestError("");
                           }
@@ -402,105 +499,71 @@ export default function LoginPage() {
                     </div>
 
                     <div className="field">
-                      <label htmlFor="interest_surname">Surname</label>
-                      <input
-                        id="interest_surname"
-                        name="interest_surname"
-                        required
-                        value={interestSurname}
+                      <label htmlFor="interest_use_type">App Use</label>
+                      <select
+                        id="interest_use_type"
+                        name="interest_use_type"
+                        value={interestUseType}
                         onChange={(event) => {
-                          setInterestSurname(event.target.value);
+                          setInterestUseType(event.target.value);
                           if (interestError) {
                             setInterestError("");
                           }
                         }}
+                      >
+                        <option value="personal">Personal use</option>
+                        <option value="club">Club use</option>
+                      </select>
+                    </div>
+
+                    {!registrationPaused && interestUseType === "club" ? (
+                      <div className="field">
+                        <label htmlFor="interest_club_name">Club name</label>
+                        <input
+                          id="interest_club_name"
+                          name="interest_club_name"
+                          required
+                          value={interestClubName}
+                          onChange={(event) => {
+                            setInterestClubName(event.target.value);
+                            if (interestError) {
+                              setInterestError("");
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="interest-honeypot" aria-hidden="true">
+                      <label htmlFor="company">Company</label>
+                      <input
+                        autoComplete="off"
+                        id="company"
+                        name="company"
+                        tabIndex="-1"
+                        type="text"
+                        value={interestHoneypot}
+                        onChange={(event) => setInterestHoneypot(event.target.value)}
                       />
                     </div>
-                  </div>
 
-                  <div className="field">
-                    <label htmlFor="interest_email">Email address</label>
-                    <input
-                      id="interest_email"
-                      name="interest_email"
-                      placeholder="you@email.com"
-                      required
-                      type="email"
-                      value={interestEmail}
-                      onChange={(event) => {
-                        setInterestEmail(event.target.value);
-                        if (interestError) {
-                          setInterestError("");
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="interest_use_type">App Use</label>
-                    <select
-                      id="interest_use_type"
-                      name="interest_use_type"
-                      value={interestUseType}
-                      onChange={(event) => {
-                        setInterestUseType(event.target.value);
-                        if (interestError) {
-                          setInterestError("");
-                        }
-                      }}
-                    >
-                      <option value="personal">Personal use</option>
-                      <option value="club">Club use</option>
-                    </select>
-                  </div>
-
-                  {interestUseType === "club" ? (
                     <div className="field">
-                      <label htmlFor="interest_club_name">Club name</label>
+                      <label htmlFor="interest_captcha">{registrationPaused ? registration.challenge.prompt : interestCaptcha.prompt}</label>
                       <input
-                        id="interest_club_name"
-                        name="interest_club_name"
-                        required
-                        value={interestClubName}
+                        id="interest_captcha"
+                        name="interest_captcha"
+                        placeholder="Enter answer"
+                        inputMode="numeric"
+                        value={interestAnswer}
                         onChange={(event) => {
-                          setInterestClubName(event.target.value);
+                          setInterestAnswer(event.target.value);
                           if (interestError) {
                             setInterestError("");
                           }
                         }}
                       />
                     </div>
-                  ) : null}
-
-                  <div className="interest-honeypot" aria-hidden="true">
-                    <label htmlFor="company">Company</label>
-                    <input
-                      autoComplete="off"
-                      id="company"
-                      name="company"
-                      tabIndex="-1"
-                      type="text"
-                      value={interestHoneypot}
-                      onChange={(event) => setInterestHoneypot(event.target.value)}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="interest_captcha">{interestCaptcha.prompt}</label>
-                    <input
-                      id="interest_captcha"
-                      name="interest_captcha"
-                      placeholder="Enter answer"
-                      inputMode="numeric"
-                      value={interestAnswer}
-                      onChange={(event) => {
-                        setInterestAnswer(event.target.value);
-                        if (interestError) {
-                          setInterestError("");
-                        }
-                      }}
-                    />
-                  </div>
+                  </fieldset>
 
                   {interestError ? (
                     <div className="notice error">
@@ -510,12 +573,13 @@ export default function LoginPage() {
                       ) : null}
                     </div>
                   ) : null}
-                  {interestMessage ? <div className="notice settings-success">{interestMessage}</div> : null}
+                  {interestMessage ? <div className="notice settings-success" role="status">{interestMessage}</div> : null}
 
                   <div className="button-row">
-                    <button disabled={interestLoading} type="submit">
+                    <button disabled={interestLoading || (registrationPaused && Boolean(interestMessage))} type="submit">
                       {interestLoading
                         ? "Sending..."
+                        : registrationPaused ? "Register interest"
                         : (interestUseType === "personal" ? "Create Personal Account" : "Register Club Interest")}
                     </button>
                   </div>

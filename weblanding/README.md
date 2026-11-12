@@ -25,7 +25,7 @@ This split means changes in `frontend/` do not alter the landing page unless you
 - Single-page responsive marketing experience with no menu navigation
 - Large fixed white brand header that compacts after scrolling
 - Public personal-registration calls to action
-- Start Scoring calls to action open the standard app login; explicitly labelled account-creation and club-interest actions open `Want In`
+- Start Scoring opens the app login when registration is green and shows the configured message in a dialog when red. The dialog links to the app’s Want In form and existing-user sign-in.
 - High-resolution court imagery for squash, tennis, Padel, table tennis,
   pickleball, and badminton
 - Responsive iPhone and iPad product mockups

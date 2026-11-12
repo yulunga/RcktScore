@@ -7,6 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
+from common.public_registration import get_registration_settings
 from common.notification_center_logic import create_direct_notification
 from common.notification_templates import render_branded_email, render_notification_template
 from common.root_admin_logic import create_self_service_personal_account
@@ -346,6 +347,10 @@ def lambda_handler(event, context):
             if requested_plan:
                 authenticated_session = require_org_user_session(connection, event)
                 request_payload["email"] = authenticated_session["username"]
+            else:
+                registration = get_registration_settings(connection, lock=True)
+                if not registration["enabled"]:
+                    return error_response(409, "REGISTRATION_PAUSED", registration["message"])
             personal_account_exists = _personal_account_exists(connection, request_payload["email"])
             if use_type == "personal" and personal_account_exists:
                 return error_response(

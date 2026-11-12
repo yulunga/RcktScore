@@ -565,6 +565,13 @@ If the display is stale:
 - treat WebSocket behavior as optional/partial until the infra is completed
 - check `VITE_WEBSOCKET_URL`, `WEBSOCKET_DOMAIN_NAME`, and `WEBSOCKET_STAGE`
 
+## Public registration flag
+
+- If the flag is unavailable or Want In cannot check availability, verify migration `059_public_registration.sql` and the backend deployment, then check `GET https://api.hitnscore.com/registration/status`.
+- If the app sees the saved setting and the landing page does not, check `GET https://www.hitnscore.com/registration/status`. It should return the same setting. The landing CloudFront stack must route that exact path to the API without caching. If the check fails, Start Scoring opens the normal login page and the backend still enforces the signup pause.
+- If the interest form reports an expired or used question, answer the new question displayed in the form. For email errors, check the Public Registration Lambda logs and the configured SES sender and recipient. A failed SES send rolls back the interest record so the visitor can retry.
+- A red flag leaves login and invitation acceptance available. Use Ground Control's Public Registration page to reopen public signup.
+
 ## 6. Email Flow Issues
 
 Relevant files:
