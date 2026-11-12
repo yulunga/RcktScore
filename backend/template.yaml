@@ -1047,6 +1047,12 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /notifications/{notification_id}/read
             Method: POST
+        DismissNotification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /notifications/{notification_id}
+            Method: DELETE
 
   RootAdminNotificationsFunction:
     Type: AWS::Serverless::Function

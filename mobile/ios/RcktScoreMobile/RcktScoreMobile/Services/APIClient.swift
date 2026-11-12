@@ -493,6 +493,10 @@ struct NotificationReadResponseData: Decodable {
     let read: Bool
 }
 
+struct NotificationDismissResponseData: Decodable {
+    let dismissed: Bool
+}
+
 struct NotificationReadRequest: Encodable {
     let organizationID: Int
     enum CodingKeys: String, CodingKey { case organizationID = "organization_id" }
@@ -1240,6 +1244,18 @@ final class APIClient {
         let envelope: APIEnvelope<NotificationReadResponseData> = try await send(request)
         guard envelope.data?.read == true else {
             throw APIErrorResponse(code: "notification_read_failed", message: "The notification was not marked as read.", details: nil)
+        }
+    }
+
+    func dismissNotification(notificationID: String, organizationID: Int) async throws {
+        let request = try makeRequest(
+            path: "/notifications/\(notificationID)",
+            method: "DELETE",
+            body: NotificationReadRequest(organizationID: organizationID)
+        )
+        let envelope: APIEnvelope<NotificationDismissResponseData> = try await send(request)
+        guard envelope.data?.dismissed == true else {
+            throw APIErrorResponse(code: "notification_dismiss_failed", message: "The notification was not deleted.", details: nil)
         }
     }
 

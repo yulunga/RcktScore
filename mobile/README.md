@@ -36,3 +36,8 @@ Current limitations:
 
 Use the dedicated docs in [docs/mobile](../docs/mobile/README.md) for current
 setup, build, and release guidance.
+
+## Android TV scoreboard
+
+`android-tv-scoreboard/` is a separate Android TV / Google TV app that shows the web court
+scoreboard full screen for clubs (application ID `com.hitnscore.tvscoreboard`). See its README.

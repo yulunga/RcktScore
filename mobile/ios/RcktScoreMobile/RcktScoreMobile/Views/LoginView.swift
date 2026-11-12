@@ -30,6 +30,7 @@ private let interestInactivityTimer = Timer.publish(every: 1, on: .main, in: .co
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openURL) private var openURL
 
     @State private var username = ""
     @State private var password = ""
@@ -82,14 +83,16 @@ struct LoginView: View {
         ZStack {
             backgroundGradient
 
-            VStack {
-                Spacer(minLength: 40)
-
-                loginCard
-
-                Spacer()
+            GeometryReader { geometry in
+                let compactLandscape = geometry.size.width > geometry.size.height && geometry.size.height < 600
+                VStack {
+                    Spacer(minLength: compactLandscape ? 8 : 40)
+                    loginCard(compactLandscape: compactLandscape)
+                    Spacer(minLength: compactLandscape ? 8 : 0)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .padding(.horizontal, compactLandscape ? 18 : 24)
             }
-            .padding(24)
 
             if let overlayMode {
                 overlayBackdrop(for: overlayMode)
@@ -130,10 +133,54 @@ struct LoginView: View {
         .ignoresSafeArea()
     }
 
-    private var loginCard: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            loginBranding
-            loginFields
+    @ViewBuilder
+    private func loginCard(compactLandscape: Bool) -> some View {
+        Group {
+            if compactLandscape {
+                HStack(spacing: 22) {
+                    loginBranding(compact: true)
+                        .frame(width: 160)
+                    loginFormContent(compact: true)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 22) {
+                    loginBranding(compact: false)
+                    loginFormContent(compact: false)
+                }
+            }
+        }
+        .padding(compactLandscape ? 18 : 24)
+        .frame(maxWidth: compactLandscape ? 760 : 420)
+        .background(Color.loginCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.loginBorder, lineWidth: 1)
+        )
+        .shadow(
+            color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
+            radius: 24,
+            x: 0,
+            y: 14
+        )
+    }
+
+    private func loginBranding(compact: Bool) -> some View {
+        VStack(alignment: .center, spacing: compact ? 6 : 12) {
+            Image("BrandLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: compact ? 96 : 132, height: compact ? 96 : 132)
+
+            hitnScoreWordmark(size: compact ? 24 : 30)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func loginFormContent(compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 10 : 22) {
+            loginFields(compact: compact)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -159,7 +206,7 @@ struct LoginView: View {
 
             if !isOnline {
                 Label(
-                    "You are offline. Connect to the internet to sign in. Previously saved sessions can be reopened with Face ID or Touch ID until they expire.",
+                    compact ? "Connect to the internet to sign in." : "You are offline. Connect to the internet to sign in. Previously saved sessions can be reopened with Face ID or Touch ID until they expire.",
                     systemImage: "wifi.slash"
                 )
                 .font(.footnote)
@@ -174,33 +221,7 @@ struct LoginView: View {
                     .accessibilityIdentifier("login.sessionExpiryMessage")
             }
 
-            loginLinks
-        }
-        .padding(24)
-        .frame(maxWidth: 420)
-        .background(Color.loginCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.loginBorder, lineWidth: 1)
-        )
-        .shadow(
-            color: colorScheme == .dark ? .clear : Color.black.opacity(0.08),
-            radius: 24,
-            x: 0,
-            y: 14
-        )
-    }
-
-    private var loginBranding: some View {
-        VStack(alignment: .center, spacing: 12) {
-            Image("BrandLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 132, height: 132)
-
-            hitnScoreWordmark(size: 30)
-                .frame(maxWidth: .infinity)
+            loginLinks(compact: compact)
         }
     }
 
@@ -217,9 +238,9 @@ struct LoginView: View {
         .accessibilityLabel("HitnScore")
     }
 
-    private var loginFields: some View {
-        VStack(spacing: 14) {
-            styledField(title: "Username") {
+    private func loginFields(compact: Bool) -> some View {
+        VStack(spacing: compact ? 8 : 14) {
+            styledField(title: "Username", compact: compact) {
                 TextField("Enter username", text: $username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
@@ -227,7 +248,7 @@ struct LoginView: View {
                     .accessibilityIdentifier("login.usernameField")
             }
 
-            styledField(title: "Password") {
+            styledField(title: "Password", compact: compact) {
                 HStack(spacing: 10) {
                     Group {
                         if showsPassword {
@@ -320,7 +341,7 @@ struct LoginView: View {
         isBiometricLoading = false
     }
 
-    private var loginLinks: some View {
+    private func loginLinks(compact: Bool) -> some View {
         HStack(spacing: 10) {
             Spacer()
 
@@ -349,19 +370,19 @@ struct LoginView: View {
 
             Spacer()
         }
-        .padding(.top, 14)
+        .padding(.top, compact ? 0 : 14)
     }
 
     @ViewBuilder
-    private func styledField<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func styledField<Content: View>(title: String, compact: Bool = false, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 4 : 8) {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             content()
                 .padding(.horizontal, 14)
-                .padding(.vertical, 14)
+                .padding(.vertical, compact ? 10 : 14)
                 .background(Color(.tertiarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
@@ -383,12 +404,19 @@ struct LoginView: View {
                 }
 
             GeometryReader { geometry in
-                if mode == .registerInterest || mode == .helpOptions {
+                if mode == .registerInterest || mode == .helpOptions || mode == .pingUs || mode == .passwordReset {
                     VStack {
-                        if mode == .registerInterest {
+                        switch mode {
+                        case .registerInterest:
                             registerInterestCard
-                        } else {
+                        case .helpOptions:
                             helpOptionsCard
+                        case .pingUs:
+                            pingUsCard
+                        case .passwordReset:
+                            passwordResetCard
+                        case .sessionConflict, .organizationSelection:
+                            EmptyView()
                         }
                     }
                     .padding(.horizontal, 16)
@@ -398,12 +426,8 @@ struct LoginView: View {
                     ScrollView(showsIndicators: false) {
                         VStack {
                             switch mode {
-                            case .registerInterest, .helpOptions:
+                            case .registerInterest, .helpOptions, .pingUs, .passwordReset:
                                 EmptyView()
-                            case .pingUs:
-                                pingUsCard
-                            case .passwordReset:
-                                passwordResetCard
                             case .sessionConflict:
                                 sessionConflictCard
                             case .organizationSelection:
@@ -551,6 +575,11 @@ struct LoginView: View {
                 overlayMode = .pingUs
             }
 
+            overlaySecondaryButton("Guides") {
+                openURL(URL(string: "https://app.hitnscore.com/help")!)
+            }
+            .accessibilityIdentifier("login.guidesButton")
+
             overlaySecondaryButton("Password Reset") {
                 resetEmail = username.contains("@") ? username : ""
                 resetErrorMessage = nil
@@ -569,7 +598,7 @@ struct LoginView: View {
     }
 
     private var pingUsCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             overlayHeader("Ping Us")
 
             if let feedbackSuccessMessage {
@@ -584,13 +613,13 @@ struct LoginView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                styledField(title: "Your name") {
+                styledField(title: "Your name", compact: true) {
                     TextField("Your name", text: $feedbackName)
                         .textInputAutocapitalization(.words)
                         .autocorrectionDisabled(true)
                 }
 
-                styledField(title: "Your email") {
+                styledField(title: "Your email", compact: true) {
                     TextField("you@email.com", text: $feedbackEmail)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
@@ -610,7 +639,7 @@ struct LoginView: View {
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 10)
                     .background(Color(.tertiarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
@@ -625,7 +654,7 @@ struct LoginView: View {
                         .foregroundStyle(.secondary)
 
                     TextEditor(text: $feedbackMessage)
-                        .frame(minHeight: 120)
+                        .frame(height: 92)
                         .padding(10)
                         .background(Color(.tertiarySystemBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -658,8 +687,8 @@ struct LoginView: View {
                 }
             }
         }
-        .padding(24)
-        .frame(maxWidth: 380, alignment: .leading)
+        .padding(18)
+        .frame(maxWidth: 400, alignment: .leading)
         .background(Color.loginCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
@@ -669,14 +698,14 @@ struct LoginView: View {
     }
 
     private var passwordResetCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             overlayHeader("Password Reset")
 
             Text("Enter the email address used for your account. If it is registered, we will send a reset link.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            styledField(title: "Account email") {
+            styledField(title: "Account email", compact: true) {
                 TextField("you@club.com", text: $resetEmail)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
@@ -704,7 +733,7 @@ struct LoginView: View {
                 .disabled(isRequestingPasswordReset)
 
                 overlayPrimaryButton(
-                    title: isRequestingPasswordReset ? "Sending..." : "Send Reset Email",
+                    title: isRequestingPasswordReset ? "Sending..." : "Send Reset",
                     showProgress: isRequestingPasswordReset
                 ) {
                     requestPasswordReset()
@@ -718,7 +747,7 @@ struct LoginView: View {
                 Text("Already have the reset link?")
                     .font(.subheadline.weight(.semibold))
 
-                styledField(title: "Paste link or token") {
+                styledField(title: "Paste link or token", compact: true) {
                     TextField("https://app.hitnscore.com/help?...", text: $pastedResetLink)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
@@ -743,7 +772,7 @@ struct LoginView: View {
                 .disabled(pastedResetLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(24)
+        .padding(18)
         .frame(maxWidth: 380, alignment: .leading)
         .background(Color.loginCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))

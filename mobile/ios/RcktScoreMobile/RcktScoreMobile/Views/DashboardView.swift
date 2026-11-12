@@ -24,6 +24,7 @@ struct DashboardView: View {
     @State private var analyticsExportError: String?
     @State private var organizationSummary: DashboardOrganizationSummary?
     @State private var organizationSettings: OrganizationSettings?
+    @State private var organizationSettingsOrganizationID: Int?
     @State private var isLoading = false
     @State private var isLoadingSettings = false
     @State private var errorMessage: String?
@@ -88,6 +89,7 @@ struct DashboardView: View {
     @State private var showsNotifications = false
     @State private var notifications: [AppNotification] = []
     @State private var notificationErrorMessage: String?
+    @State private var selectedNotificationIDs: Set<String> = []
     @State private var selectedMatchesCategory: MatchesCategory = .current
     @State private var matchWatchCode = ""
     @State private var selectedAnalyticsCategory: AnalyticsCategory = .personal
@@ -550,7 +552,9 @@ struct DashboardView: View {
                 seedHelpDefaults()
                 if selectedTab == .settings {
                     normalizeSelectedSettingsMenuItem()
-                    await loadOrganizationSettingsIfNeeded()
+                    await loadOrganizationSettingsIfNeeded(
+                        organizationID: personalProfileOrganizationID ?? session?.organizationID
+                    )
                 }
             }
             .onChange(of: isOnline) { _, isOnline in
@@ -700,16 +704,18 @@ struct DashboardView: View {
 
     private var matchesContent: some View {
         VStack(spacing: 18) {
-            HStack(spacing: 8) {
-                Image(systemName: isPersonalAccount ? "person.fill" : "building.2.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 18, height: 18)
-                Text(isPersonalAccount ? "Personal matches" : "\(session?.organizationName ?? "Club") matches")
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
+            if !isPersonalAccount || !clubMemberships.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: isPersonalAccount ? "person.fill" : "building.2.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 18, height: 18)
+                    Text(isPersonalAccount ? "Personal matches" : "\(session?.organizationName ?? "Club") matches")
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(Color.dashboardBrand)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .foregroundStyle(Color.dashboardBrand)
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             Picker("Match category", selection: $selectedMatchesCategory) {
                 ForEach(MatchesCategory.allCases) { category in
@@ -819,7 +825,7 @@ struct DashboardView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                Button("View Personal Plus") {
+                Button("Upgrade") {
                     selectedTab = .settings
                     selectedSettingsSection = .subscription
                     settingsNavigationItem = .subscription
@@ -1353,12 +1359,12 @@ struct DashboardView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(Color.dashboardCompletedStatus)
+                        .foregroundStyle(Color.dashboardAccentPink)
                         .frame(width: 24)
 
                     Text("Sign Out")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.dashboardCompletedStatus)
+                        .foregroundStyle(Color.dashboardAccentPink)
 
                     Spacer(minLength: 12)
                 }
@@ -1522,7 +1528,7 @@ struct DashboardView: View {
         .navigationTitle(membership.organizationName)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: membership) {
-            await loadOrganizationSettingsIfNeeded(force: true)
+            await loadOrganizationSettingsIfNeeded(force: true, organizationID: membership.organizationID)
         }
     }
 
@@ -3265,6 +3271,7 @@ struct DashboardView: View {
             ) {
                 VStack(spacing: 14) {
                     feedbackForm
+                    guidesLinkCard
                     privacyComplianceLinkCard
                 }
             }
@@ -3340,8 +3347,43 @@ struct DashboardView: View {
                 if notifications.isEmpty {
                     emptyState("You have no notifications.")
                 } else {
+                    HStack {
+                        Button(selectedNotificationIDs.count == notifications.count ? "Clear selection" : "Select all") {
+                            if selectedNotificationIDs.count == notifications.count {
+                                selectedNotificationIDs.removeAll()
+                            } else {
+                                selectedNotificationIDs = Set(notifications.map(\.id))
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+
+                        Spacer()
+
+                        if !selectedNotificationIDs.isEmpty {
+                            Button("Delete selected (\(selectedNotificationIDs.count))", role: .destructive) {
+                                Task { await dismissSelectedNotifications() }
+                            }
+                            .font(.caption.weight(.bold))
+                        }
+                    }
+                    .padding(.horizontal, 4)
+
                     ForEach(notifications) { notification in
                         HStack(alignment: .top, spacing: 14) {
+                            Button {
+                                if selectedNotificationIDs.contains(notification.id) {
+                                    selectedNotificationIDs.remove(notification.id)
+                                } else {
+                                    selectedNotificationIDs.insert(notification.id)
+                                }
+                            } label: {
+                                Image(systemName: selectedNotificationIDs.contains(notification.id) ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Color.dashboardBrand)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(selectedNotificationIDs.contains(notification.id) ? "Deselect message" : "Select message")
+
                             Image(systemName: notification.isRead ? "envelope.open" : "envelope.badge")
                                 .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(notification.isRead ? Color.secondary : Color.dashboardBrand)
@@ -3354,14 +3396,26 @@ struct DashboardView: View {
                                 Text(notification.message).font(.subheadline).foregroundStyle(.secondary)
                                 if notification.isRead {
                                     Text("Read").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                } else {
-                                    Button("Mark as read") {
-                                        Task { await markNotificationRead(notification) }
-                                    }
-                                    .font(.caption.weight(.bold))
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                guard !notification.isRead else { return }
+                                Task { await markNotificationRead(notification) }
+                            }
+
                             Spacer(minLength: 0)
+
+                            Button {
+                                Task { await dismissNotification(notification) }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Color.dashboardAccentPink)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Delete \(notification.title)")
                         }
                         .padding(16)
                         .background(Color.dashboardInnerCardBackground)
@@ -3383,6 +3437,31 @@ struct DashboardView: View {
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadNotifications() }
+    }
+
+    private var guidesLinkCard: some View {
+        Link(destination: URL(string: "https://app.hitnscore.com/help")!) {
+            HStack(spacing: 14) {
+                Image(systemName: "book.closed.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.dashboardBrand)
+                    .frame(width: 36, height: 36)
+                    .background(Color.dashboardBrand.opacity(0.12))
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Guides").font(.subheadline.weight(.bold)).foregroundStyle(.primary)
+                    Text("Open HitnScore help and scoring guides.").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(Color.dashboardInnerCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("help.guidesButton")
     }
 
     private var privacyComplianceLinkCard: some View {
@@ -4329,12 +4408,9 @@ struct DashboardView: View {
     }
 
     private var feedbackForm: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Ping Us")
-                .font(.headline.weight(.semibold))
-
-            dashboardTextField(title: "Name", placeholder: "Your name", text: $feedbackName)
-            dashboardTextField(title: "Email", placeholder: "you@example.com", text: $feedbackEmail, keyboardType: .emailAddress)
+        VStack(alignment: .leading, spacing: 9) {
+            compactFeedbackField(placeholder: "Your name", text: $feedbackName)
+            compactFeedbackField(placeholder: "you@example.com", text: $feedbackEmail, keyboardType: .emailAddress)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Category")
@@ -4355,8 +4431,8 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
 
                 TextEditor(text: $feedbackMessage)
-                    .frame(minHeight: 120)
-                    .padding(10)
+                    .frame(height: 72)
+                    .padding(8)
                     .background(Color.dashboardInputBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(
@@ -4382,15 +4458,28 @@ struct DashboardView: View {
             .buttonStyle(.plain)
             .disabled(isSubmittingFeedback)
             .opacity(isSubmittingFeedback ? 0.75 : 1)
-
-            Text(helpFooterText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(16)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func compactFeedbackField(
+        placeholder: String,
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default
+    ) -> some View {
+        TextField(placeholder, text: text)
+            .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
+            .autocorrectionDisabled(keyboardType == .emailAddress)
+            .keyboardType(keyboardType)
+            .padding(.horizontal, 12)
+            .frame(height: 42)
+            .background(Color.dashboardInputBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.dashboardBorder, lineWidth: 1))
     }
 
     private var resetForm: some View {
@@ -4624,12 +4713,12 @@ struct DashboardView: View {
                             .font(.subheadline.weight(.bold))
                         Text("Sign out of HitnScore")
                             .font(.caption)
-                            .foregroundStyle(Color.dashboardCompletedStatus.opacity(0.78))
+                            .foregroundStyle(Color.dashboardAccentPink.opacity(0.78))
                     }
 
                     Spacer(minLength: 8)
                 }
-                .foregroundStyle(Color.dashboardCompletedStatus)
+                .foregroundStyle(Color.dashboardAccentPink)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .contentShape(Rectangle())
@@ -4913,6 +5002,7 @@ struct DashboardView: View {
             let loaded = try await container.apiClient.getNotifications(organizationID: organizationID)
             await MainActor.run {
                 notifications = loaded
+                selectedNotificationIDs.formIntersection(Set(loaded.map(\.id)))
                 notificationErrorMessage = nil
             }
         } catch {
@@ -5041,12 +5131,35 @@ struct DashboardView: View {
         }
     }
 
-    private func loadOrganizationSettingsIfNeeded(force: Bool = false) async {
-        guard let organizationID = container.sessionStore.session?.organizationID else {
+    private func dismissNotification(_ notification: AppNotification) async {
+        guard let organizationID = session?.organizationID else { return }
+        do {
+            try await container.apiClient.dismissNotification(notificationID: notification.id, organizationID: organizationID)
+            await MainActor.run {
+                notifications.removeAll { $0.id == notification.id }
+                selectedNotificationIDs.remove(notification.id)
+                notificationErrorMessage = nil
+            }
+        } catch {
+            await MainActor.run {
+                notificationErrorMessage = (error as? APIErrorResponse)?.message ?? "Unable to delete this notification."
+            }
+        }
+    }
+
+    private func dismissSelectedNotifications() async {
+        let selected = notifications.filter { selectedNotificationIDs.contains($0.id) }
+        for notification in selected {
+            await dismissNotification(notification)
+        }
+    }
+
+    private func loadOrganizationSettingsIfNeeded(force: Bool = false, organizationID requestedOrganizationID: Int? = nil) async {
+        guard let organizationID = requestedOrganizationID ?? container.sessionStore.session?.organizationID else {
             return
         }
 
-        if organizationSettings != nil && !force {
+        if organizationSettings != nil && organizationSettingsOrganizationID == organizationID && !force {
             return
         }
 
@@ -5059,6 +5172,7 @@ struct DashboardView: View {
             let settings = try await container.apiClient.getOrganizationSettings(organizationID: organizationID)
             await MainActor.run {
                 organizationSettings = settings
+                organizationSettingsOrganizationID = organizationID
                 syncSettingsDrafts(from: settings)
                 isLoadingSettings = false
             }
@@ -5763,6 +5877,7 @@ struct DashboardView: View {
         container.sessionStore.switchMembership(to: membership)
         organizationSummary = nil
         organizationSettings = nil
+        organizationSettingsOrganizationID = nil
         activeMatches = []
         scheduledMatches = []
         recentMatches = []

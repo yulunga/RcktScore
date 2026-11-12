@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from common.notification_center_logic import create_direct_notification, create_notification
+from common.notification_center_logic import create_direct_notification, create_notification, dismiss_notification
 
 
 class _Cursor:
@@ -19,6 +19,8 @@ class _Cursor:
         self.params = params
 
     def fetchone(self):
+        if "title" not in self.params:
+            return {"id": "notification-id"}
         return {
             "id": "notification-id",
             "title": self.params["title"],
@@ -73,3 +75,16 @@ def test_direct_notification_is_normalized_and_private():
     assert connection.committed is True
     assert notification["title"] == "Club interest"
     assert connection.test_cursor.params["recipient_username"] == "player@example.com"
+
+
+def test_user_can_dismiss_visible_notification_without_deleting_publication():
+    connection = _Connection()
+
+    assert dismiss_notification(
+        connection,
+        "notification-id",
+        " Player@Example.COM ",
+        "personal_free",
+    ) is True
+    assert connection.committed is True
+    assert connection.test_cursor.params["username"] == "player@example.com"

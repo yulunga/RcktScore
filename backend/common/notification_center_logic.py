@@ -22,6 +22,12 @@ def list_user_notifications(connection, username, plan):
                 (n.recipient_username IS NULL AND n.audience IN ('all', %(plan)s))
                 OR LOWER(n.recipient_username) = LOWER(%(username)s)
             )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM system_notification_dismissals AS d
+                  WHERE d.notification_id = n.id
+                    AND LOWER(d.username) = LOWER(%(username)s)
+              )
             ORDER BY n.created_at DESC
             LIMIT 100
             """,
@@ -55,6 +61,36 @@ def mark_notification_read(connection, notification_id, username, plan):
             DO UPDATE SET read_at = EXCLUDED.read_at
             """,
             {"notification_id": notification_id, "username": username, "read_at": _utcnow()},
+        )
+    connection.commit()
+    return True
+
+
+def dismiss_notification(connection, notification_id, username, plan):
+    username = str(username or "").strip().lower()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id FROM system_notifications
+            WHERE id = %(notification_id)s
+              AND (
+                  (recipient_username IS NULL AND audience IN ('all', %(plan)s))
+                  OR LOWER(recipient_username) = LOWER(%(username)s)
+              )
+            LIMIT 1
+            """,
+            {"notification_id": notification_id, "plan": plan, "username": username},
+        )
+        if not cursor.fetchone():
+            return False
+        cursor.execute(
+            """
+            INSERT INTO system_notification_dismissals (notification_id, username, dismissed_at)
+            VALUES (%(notification_id)s, LOWER(%(username)s), %(dismissed_at)s)
+            ON CONFLICT (notification_id, username)
+            DO UPDATE SET dismissed_at = EXCLUDED.dismissed_at
+            """,
+            {"notification_id": notification_id, "username": username, "dismissed_at": _utcnow()},
         )
     connection.commit()
     return True

@@ -412,6 +412,7 @@ Current root-admin club-user behavior:
 - `GET /dashboard/{organization_id}`
 - `GET /notifications/{organization_id}`
 - `POST /notifications/{notification_id}/read`
+- `DELETE /notifications/{notification_id}`
 - `GET /organization_settings/{organization_id}`
 - `GET /match_setup_lookup/{organization_id}?q=...`
 - `PUT /organization_details/{organization_id}`
@@ -491,7 +492,7 @@ Current organisation-settings behavior:
 - the native iOS settings profile page, the web Settings Profile section and the legacy web `/profile` route use `PUT /personal_profile/{organization_id}` for signed-in self-profile updates; clients can change email/username, name, telephone, city/location and country. The payload also accepts nullable integer `birth_month` (1–12) and `birth_year` (1900 through the current year); day of birth is not collected. Migration `054_optional_birth_month_year.sql` is required before sending those fields. An email change revokes existing sessions, so the web client returns to login with the new sign-in address. iOS uses `POST /password_reset/request` for the email, then completes the emailed link natively with `POST /password_reset/validate` and `POST /password_reset/confirm` when Universal Links are available; `/help` remains the web completion fallback
 - personal-account owners can call `DELETE /personal_account/{organization_id}` with the exact confirmation value `DELETE MY ACCOUNT`; the route requires a valid session for that organisation and independently verifies that the session username owns a personal tenant
 - the native iOS `About` settings page reads the installed app version/build from the app bundle locally and does not call a backend route
-- the native iOS login screen now exposes a local show/hide password toggle, but it still submits the same `POST /login` request payload as before
+- the native iOS login screen now exposes a local show/hide password toggle and adaptive no-scroll phone-landscape presentation, but it still submits the same `POST /login` request payload as before. Its Guides action is a direct public web link and adds no API route
 - the native iOS Face ID / Touch ID setting stores the existing unexpired session in the device-bound iOS Keychain and can restore it after local sign-out; it does not add a backend route or create a second server-side login method
 - native iOS and the React web client can include optional tennis-style team-format and lineup metadata, per-participant `team{1|2}_player{1|2}_shirt_color` values, `tennis_no_ad_scoring`, `tennis_final_set_match_tiebreak`, and `tennis_timed_breaks`; Padel is forced to doubles and does not expose the tennis-only final-set match-tiebreak choice. Squash/racketball also use the two compatible boolean fields for Golden Point and timed game breaks. The flags are stored on the match and in the match-start event, while the `server` event path accepts opening serve/receive order metadata. Singles clients derive the receiver as the participant opposite the selected opening server; doubles still submits both named choices, alternating `serve_order`, and each team's Deuce-court receiver. At Padel Golden Point, the web client also sends `receiver_choice` with `Right` or `Left` before allowing the deciding point.
 - the React route `/match/{match_id}/history` and native Historic Match screen are dedicated read-only completed-match presentations over the existing authenticated `GET /get_score/{match_id}` payload. They share the same compact card hierarchy, initially collapsed Match Information, normalized `MM:SS` timing and greater-of-recorded-or-derived duration rule so stale legacy totals cannot be shorter than their displayed parts. Both place completed game/set scores between player names, keep squash/racketball winner-and-time columns geometrically centred with equal score/service rails, omit inactive markers and redundant labels, and derive coloured cumulative games-score rows from `game_history`. Web tennis/Padel rows instead centre score and time, place a tennis-ball marker using the stored point-time server side, and display a game-winning score as `Game`; completion dividers remain. No separate historic-match backend route or schema is introduced
@@ -623,9 +624,10 @@ Current behavior:
 ### Notifications
 
 - `POST /root_admin/notifications` accepts `title`, `message`, and `audience`; supported audiences are `all`, `personal_free`, `personal_plus`, `club_essentials`, and `club_pro`
-- `GET /notifications/{organization_id}` returns notifications addressed to either `all`, the authenticated membership's current plan, or directly to the authenticated normalized email identity
+- `GET /notifications/{organization_id}` returns notifications addressed to either `all`, the authenticated membership's current plan, or directly to the authenticated normalized email identity, excluding messages that identity has dismissed
 - `POST /notifications/{notification_id}/read` records the authenticated username's read state in Postgres, so the state follows that account across web, iPhone, and iPad
-- migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message; migration `057_direct_user_notifications.sql` adds optional per-identity delivery used by controlled-release club-interest confirmations
+- `DELETE /notifications/{notification_id}` records a per-identity dismissal. It does not delete the published notification or affect another recipient's inbox
+- migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message; migration `057_direct_user_notifications.sql` adds optional per-identity delivery used by controlled-release club-interest confirmations; migration `058_notification_dismissals.sql` adds the append-only recipient dismissal state
 - delivery is currently pull/inbox based; APNs push delivery is not yet implemented
 
 ### App Store subscription boundary

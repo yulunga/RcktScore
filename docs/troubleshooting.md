@@ -617,7 +617,7 @@ The club-enquiry requester email intentionally omits blank optional fields. The 
 
 Root-admin user deletion is deliberately separate from removing one club membership. The Profile action requires a second confirmation. Without the games checkbox, Personal tenants are archived so shared history remains; with it selected, matches in the Personal tenant and matches explicitly attributed to the username as referee are removed before identity cleanup. If deletion returns `USER_DELETE_FAILED`, inspect foreign-key errors before retrying and do not manually remove shared club tenants.
 
-On iOS, Want In is deliberately non-scrolling and centred on both iPhone and iPad; Need Help is also centred over the login inputs, and the two entry links stay side by side. The Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
+On iOS, Want In is deliberately non-scrolling and centred on both iPhone and iPad; Need Help, Ping Us and Password Reset also use condensed centred cards over the login inputs. Phone landscape puts compact branding and credentials side by side so the login remains visible without document scrolling. Guides opens the public `https://app.hitnscore.com/help` route. The Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
 
 On the web, package version/build details are intentionally absent from both the standard login and `Want In` registration states. If they still appear at `/` or `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
 
@@ -731,7 +731,7 @@ Common symptoms:
 - a personal-account profile photo disappears after reinstalling or signing in on another device
 - the native start-match form looks washed out or unreadable on a device running dark mode
 - `xcodebuild` reaches Swift compilation but fails later in asset-catalog tooling with no simulator runtimes available
-- the welcome notice remains unread after opening Notifications, or the bell colour does not change
+- the welcome notice remains unread after opening Notifications, the bell colour does not change, or a dismissed notification returns
 - personal-account deletion is rejected or the user remains signed in afterward
 
 What to check:
@@ -753,8 +753,9 @@ What to check:
 - whether the private `ProfileImagesBucket` CORS origin exactly matches `https://app.hitnscore.com`, its Block Public Access settings remain enabled, and the app CSP permits the regional S3 upload/read host
 - whether the installed build includes the adaptive dark-mode styling now used by `StartNewMatchFlowView` and `StartNewMatchView`
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
-- whether migrations `023_system_notifications.sql` and `057_direct_user_notifications.sql` were applied and `GET /notifications/{organization_id}` returns the expected `all`, plan-specific, or direct-email audience; without `057`, a Club selection can store its enquiry but cannot safely publish its private controlled-release confirmation
+- whether migrations `023_system_notifications.sql`, `057_direct_user_notifications.sql`, and `058_notification_dismissals.sql` were applied and `GET /notifications/{organization_id}` returns the expected `all`, plan-specific, or direct-email audience minus that identity's dismissals; without `057`, a Club selection can store its enquiry but cannot safely publish its private controlled-release confirmation, and without `058` native delete requests cannot persist
 - whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user session, including CSRF/Origin for web or bearer authorization for native
+- whether `DELETE /notifications/{notification_id}` succeeds and writes the normalized username plus notification ID to `system_notification_dismissals`
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
 - whether migration `049_personal_account_deletion_retention.sql` is applied; without its timestamp columns the deletion request cannot enter Delete Pending
 - whether `PurgePersonalAccountsFunction` has a healthy daily EventBridge schedule and Lambda logs; dedicated CloudWatch alarms report errors or two missing daily invocations. A pending account must remain visible before `deletion_purge_after`; the clearing query deliberately uses `FOR UPDATE SKIP LOCKED` and deletes only `matches.tenant_id` owned by the due Personal tenant, not club matches attributed to the same referee
@@ -766,7 +767,7 @@ Important current truths:
 - historic matches, new match creation, scheduled-match activation, and settings changes are online-only in the native app
 - one previously opened active match is cached locally; squash/racketball and tennis scoring actions update locally, survive an app restart, and replay in order when connectivity returns
 - offline undo can remove actions still queued on that device; undoing an older server-synchronised action requires connectivity
-- the dashboard stays quiet when offline and replaces the bell with an offline icon; online, an unread persisted notification makes the bell yellow until the user explicitly marks it read
+- the dashboard stays quiet when offline and replaces the bell with an offline icon; online, an unread persisted notification makes the bell yellow until the user opens it, and recipient dismissals remove messages without deleting their root-admin publication
 - self-service deletion applies only to the authenticated owner of Personal and requires typed or repeated client confirmation plus server-side ownership validation. Access and active sessions end immediately, but Root Admin retains the identity in Delete Pending until the 12-month clearing job removes its Personal workspace, Personal matches/scoring data and every club association; club-owned match records remain with their clubs
 - if a registered user is missing Personal, verify migration `047_personal_account_for_every_identity.sql` has run. New club membership writes call `ensure_personal_account_for_identity`, and the deferred `skwsh_org_users_require_personal_account` constraint rejects a transaction that leaves memberships without a Personal owner membership
 - each queued mutation keeps the same `client_action_id` across retries, and the backend receipt prevents duplicate application
