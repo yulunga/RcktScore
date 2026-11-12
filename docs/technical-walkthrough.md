@@ -148,18 +148,18 @@ in [new-user-onboarding-walkthrough.md](/Users/glennrowe/Development/Projects/Rc
 1. A visitor opens the `Want In` form on the login page.
    - both the standard web login and registration states omit internal package-version/build details
    - the login logo and HitnScore wordmark return to `https://www.hitnscore.com/`
-   - the native form introduces personal and multi-user club accounts and links to `https://www.hitnscore.com` for further product information
+   - the native form is a non-scrolling, centred card on iPhone and iPad with the compact mascot and contiguous branded `HitnScore` wordmark, the two-line welcome, and one `Create Account` action; Want In and Need Help remain side by side on the login card
 2. The frontend submits `first_name`, `surname`, `email`, and `use_type`.
 3. The honeypot field is `company`.
 4. [backend/functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py):
    - validates the payload
    - writes or updates `HitnScoreInterestRequests`
    - for Personal, rejects an existing Personal membership for the normalized email with `ACCOUNT_ALREADY_REGISTERED`, otherwise records the self-service registration, commits the pending `personal_free` organisation, owner membership, personal court, and password token, then sends a `mode=confirm-email` password-setup email without entering an admin approval queue. Club-associated identities already own Personal because Personal is now the required base account
-   - for Club, keeps the request pending and sends confirmation/admin enquiry emails; the requester copy renders only supplied optional fields while the admin copy retains all fields
+   - for an unauthenticated Club selection, creates the required Personal Free base account when one does not already exist, keeps the club request pending, adds a private controlled-release club-interest message to that identity's inbox, and sends confirmation/admin enquiry emails; the requester copy renders only supplied optional fields while the admin copy retains all fields
    - for a logged-in native Club Essentials or Club Pro enquiry, validates the bearer session, derives the requester email from it, and stores the club name, address/postcode, club email, website, telephone, and requested plan for root-admin review
 5. Personal signup returns `201` with `data.account_created = true`; the user verifies their email and chooses a password before signing in.
-6. Club enquiries return `202` with `data.account_created = false` and remain controlled by the root-admin workflow.
-7. In the native iOS client, a successful response replaces the submitted form with a confirmation screen. Personal registration explains that the emailed link verifies the address and sets the password; club registration explains that the team will make contact.
+6. A first-time public Club enquiry returns `201` with the newly created Personal account; an enquiry from an existing or authenticated identity returns `202`. The club subscription itself remains controlled by the root-admin workflow.
+7. In the native iOS client, a successful response replaces the submitted form with a confirmation screen. Personal registration explains that the emailed link verifies the address and sets the password; club registration also points to the private controlled-release update that appears in Messages after sign-in.
 
 ### Troubleshooting cues
 

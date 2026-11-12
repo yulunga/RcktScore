@@ -617,7 +617,7 @@ The club-enquiry requester email intentionally omits blank optional fields. The 
 
 Root-admin user deletion is deliberately separate from removing one club membership. The Profile action requires a second confirmation. Without the games checkbox, Personal tenants are archived so shared history remains; with it selected, matches in the Personal tenant and matches explicitly attributed to the username as referee are removed before identity cleanup. If deletion returns `USER_DELETE_FAILED`, inspect foreign-key errors before retrying and do not manually remove shared club tenants.
 
-On iOS, the Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
+On iOS, Want In is deliberately non-scrolling and centred on both iPhone and iPad; Need Help is also centred over the login inputs, and the two entry links stay side by side. The Want In and Ping Us forms are replaced by their confirmation screens only after the API returns success. If a form remains visible, check its inline error and the corresponding registration or feedback backend logs; the retained fields allow the user to correct the request and retry.
 
 On the web, package version/build details are intentionally absent from both the standard login and `Want In` registration states. If they still appear at `/` or `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
 
@@ -753,7 +753,7 @@ What to check:
 - whether the private `ProfileImagesBucket` CORS origin exactly matches `https://app.hitnscore.com`, its Block Public Access settings remain enabled, and the app CSP permits the regional S3 upload/read host
 - whether the installed build includes the adaptive dark-mode styling now used by `StartNewMatchFlowView` and `StartNewMatchView`
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
-- whether migration `023_system_notifications.sql` was applied and `GET /notifications/{organization_id}` returns the expected `all` or plan-specific audience
+- whether migrations `023_system_notifications.sql` and `057_direct_user_notifications.sql` were applied and `GET /notifications/{organization_id}` returns the expected `all`, plan-specific, or direct-email audience; without `057`, a Club selection can store its enquiry but cannot safely publish its private controlled-release confirmation
 - whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user session, including CSRF/Origin for web or bearer authorization for native
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
 - whether migration `049_personal_account_deletion_retention.sql` is applied; without its timestamp columns the deletion request cannot enter Delete Pending

@@ -18,7 +18,10 @@ def list_user_notifications(connection, username, plan):
             LEFT JOIN system_notification_reads AS r
               ON r.notification_id = n.id
              AND LOWER(r.username) = LOWER(%(username)s)
-            WHERE n.audience IN ('all', %(plan)s)
+            WHERE (
+                (n.recipient_username IS NULL AND n.audience IN ('all', %(plan)s))
+                OR LOWER(n.recipient_username) = LOWER(%(username)s)
+            )
             ORDER BY n.created_at DESC
             LIMIT 100
             """,
@@ -33,7 +36,11 @@ def mark_notification_read(connection, notification_id, username, plan):
         cursor.execute(
             """
             SELECT id FROM system_notifications
-            WHERE id = %(notification_id)s AND audience IN ('all', %(plan)s)
+            WHERE id = %(notification_id)s
+              AND (
+                  (recipient_username IS NULL AND audience IN ('all', %(plan)s))
+                  OR LOWER(recipient_username) = LOWER(%(username)s)
+              )
             LIMIT 1
             """,
             {"notification_id": notification_id, "plan": plan},
@@ -85,6 +92,37 @@ def create_notification(connection, title, message, audience, created_by):
             RETURNING id, title, message, audience, created_at, NULL::timestamptz AS read_at
             """,
             {"title": title, "message": message, "audience": audience, "created_by": created_by},
+        )
+        row = cursor.fetchone()
+    connection.commit()
+    return _serialize(row)
+
+
+def create_direct_notification(connection, title, message, recipient_username, created_by="system"):
+    title = str(title or "").strip()
+    message = str(message or "").strip()
+    recipient_username = str(recipient_username or "").strip().lower()
+    if not title or not message or not recipient_username:
+        raise ValueError("title, message and recipient username are required")
+    if len(title) > 120:
+        raise ValueError("title must be 120 characters or fewer")
+    if len(message) > 4000:
+        raise ValueError("message must be 4000 characters or fewer")
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO system_notifications (
+                title, message, audience, created_by, recipient_count, recipient_username
+            )
+            VALUES (%(title)s, %(message)s, 'all', %(created_by)s, 1, %(recipient_username)s)
+            RETURNING id, title, message, audience, created_at, NULL::timestamptz AS read_at
+            """,
+            {
+                "title": title,
+                "message": message,
+                "created_by": created_by,
+                "recipient_username": recipient_username,
+            },
         )
         row = cursor.fetchone()
     connection.commit()

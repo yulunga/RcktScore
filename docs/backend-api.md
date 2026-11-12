@@ -206,7 +206,7 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /register_interest`
 - `POST /feedback`
 
-The public web login and `Want In` presentations omit package-version/build details. This is a client-only display rule and does not change the `POST /login` or `POST /register_interest` contracts.
+The public web login and `Want In` presentations omit package-version/build details. Native iOS uses a fitted, non-scrolling Want In card on iPhone and iPad. A public Club selection now creates the identity's required Personal Free base account when missing, retains the club enquiry for controlled release, and creates a private inbox notification for the normalized email.
 
 The login card keeps its public Help entry but no longer links to Tournament Draw. The standalone `weblanding/` footer provides the public Tournament Draw and Scoreboard Display links to `https://app.hitnscore.com/tournament-draw` and `https://app.hitnscore.com/scoreboard`; these are static navigation changes and add no API route.
 
@@ -623,9 +623,9 @@ Current behavior:
 ### Notifications
 
 - `POST /root_admin/notifications` accepts `title`, `message`, and `audience`; supported audiences are `all`, `personal_free`, `personal_plus`, `club_essentials`, and `club_pro`
-- `GET /notifications/{organization_id}` returns notifications addressed to either `all` or the authenticated membership's current plan
+- `GET /notifications/{organization_id}` returns notifications addressed to either `all`, the authenticated membership's current plan, or directly to the authenticated normalized email identity
 - `POST /notifications/{notification_id}/read` records the authenticated username's read state in Postgres, so the state follows that account across web, iPhone, and iPad
-- migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message
+- migration `023_system_notifications.sql` creates the inbox/read tables and seeds the welcome message; migration `057_direct_user_notifications.sql` adds optional per-identity delivery used by controlled-release club-interest confirmations
 - delivery is currently pull/inbox based; APNs push delivery is not yet implemented
 
 ### App Store subscription boundary
@@ -790,7 +790,8 @@ Current behavior:
 - a second Personal registration for an email that already owns a Personal membership returns `409 ACCOUNT_ALREADY_REGISTERED`; an identity with club memberships only may still create its Personal membership
 - personal signup returns `201` with `account_created = true` and does not require root-admin approval
 - the pending personal organisation/user and password token are committed before SES delivery; completing the emailed password link marks the membership approved and the interest record email-validated, while a delivery failure leaves the pending record available for retry
-- `use_type = club` remains a controlled enquiry, sends club confirmation/admin emails, and returns `202` with `account_created = false`
+- `use_type = club` remains a controlled subscription enquiry and sends club confirmation/admin emails. Public first-time registration also creates the required Personal Free base account and returns `201` with `account_created = true`; an existing or authenticated identity returns `202` with `account_created = false`
+- every accepted club enquiry creates a direct controlled-release inbox message for the normalized requester identity; migration `057_direct_user_notifications.sql` must be applied before deploying this handler
 - the club requester confirmation omits optional details that were not supplied; the admin notification continues to include every field with its fallback value
 - logged-in native subscription enquiries also send `requested_plan`, club address/postcode, club email, website, and telephone; these enriched requests require a valid organisation-user bearer session and the backend derives the requester email from that session
 - migration `022_club_subscription_enquiries.sql` adds the extended club fields and separates personal-registration uniqueness from club-enquiry uniqueness so a club enquiry cannot overwrite the requester’s personal registration record

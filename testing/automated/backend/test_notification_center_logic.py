@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from common.notification_center_logic import create_notification
+from common.notification_center_logic import create_direct_notification, create_notification
 
 
 class _Cursor:
@@ -23,7 +23,7 @@ class _Cursor:
             "id": "notification-id",
             "title": self.params["title"],
             "message": self.params["message"],
-            "audience": self.params["audience"],
+            "audience": self.params.get("audience", "all"),
             "created_at": datetime(2026, 9, 8, tzinfo=timezone.utc),
             "read_at": None,
         }
@@ -59,3 +59,17 @@ def test_root_admin_can_create_plan_targeted_notification():
 def test_notification_rejects_unsupported_audience():
     with pytest.raises(ValueError, match="audience is not supported"):
         create_notification(_Connection(), "Title", "Message", "unknown-plan", "root-admin")
+
+
+def test_direct_notification_is_normalized_and_private():
+    connection = _Connection()
+    notification = create_direct_notification(
+        connection,
+        "Club interest",
+        "We will be in touch.",
+        " Player@Example.COM ",
+    )
+
+    assert connection.committed is True
+    assert notification["title"] == "Club interest"
+    assert connection.test_cursor.params["recipient_username"] == "player@example.com"

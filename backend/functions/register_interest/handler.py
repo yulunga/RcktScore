@@ -7,6 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from psycopg.errors import UndefinedTable
 
 from common.mailer import send_email_message
+from common.notification_center_logic import create_direct_notification
 from common.notification_templates import render_branded_email, render_notification_template
 from common.root_admin_logic import create_self_service_personal_account
 from common.logging_utils import mask_email_for_log
@@ -345,7 +346,8 @@ def lambda_handler(event, context):
             if requested_plan:
                 authenticated_session = require_org_user_session(connection, event)
                 request_payload["email"] = authenticated_session["username"]
-            if use_type == "personal" and _personal_account_exists(connection, request_payload["email"]):
+            personal_account_exists = _personal_account_exists(connection, request_payload["email"])
+            if use_type == "personal" and personal_account_exists:
                 return error_response(
                     409,
                     "ACCOUNT_ALREADY_REGISTERED",
@@ -363,7 +365,40 @@ def lambda_handler(event, context):
                     reset_base_url=password_setup_base_url,
                 )
             else:
-                connection.commit()
+                if not requested_plan and not personal_account_exists:
+                    if not password_setup_base_url:
+                        raise ValueError("PASSWORD_RESET_BASE_URL must be configured for personal account signup")
+                    personal_interest_row = _upsert_interest_request(
+                        connection,
+                        {
+                            **request_payload,
+                            "use_type": "personal",
+                            "club_name": "",
+                            "requested_plan": "",
+                            "club_address": "",
+                            "club_postcode": "",
+                            "club_email": "",
+                            "club_website": "",
+                            "club_telephone": "",
+                        },
+                    )
+                    personal_signup = create_self_service_personal_account(
+                        connection,
+                        personal_interest_row["id"],
+                        source_email=source_email,
+                        reset_base_url=password_setup_base_url,
+                    )
+
+                create_direct_notification(
+                    connection,
+                    "Thanks for your club interest",
+                    (
+                        "Thank you for your interest in a HitnScore club subscription. "
+                        "Club subscriptions are in a controlled release and we will be in touch."
+                    ),
+                    request_payload["email"],
+                    created_by="club-interest registration",
+                )
     except SessionAuthError as auth_error:
         return session_error_response(auth_error)
     except UndefinedTable:
@@ -439,4 +474,12 @@ def lambda_handler(event, context):
         use_type,
     )
 
-    return success_response(202, {"accepted": True, "account_created": False})
+    return success_response(
+        201 if personal_signup else 202,
+        {
+            "accepted": True,
+            "account_created": bool(personal_signup),
+            "requires_password_setup": bool(personal_signup),
+            "personal_account": personal_signup,
+        },
+    )

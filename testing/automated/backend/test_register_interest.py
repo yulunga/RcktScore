@@ -87,26 +87,41 @@ def test_personal_registration_rejects_an_existing_personal_account(monkeypatch)
 def test_club_registration_remains_a_managed_enquiry(monkeypatch):
     connection = FakeConnection()
     email_calls = []
+    account_calls = []
+    notification_calls = []
+    stored_payloads = []
 
     @contextmanager
     def fake_connection():
         yield connection
 
+    monkeypatch.setenv("PASSWORD_RESET_BASE_URL", "https://example.com")
+    monkeypatch.setenv("INTEREST_FROM_EMAIL", "sender@example.com")
     monkeypatch.setattr(handler, "get_db_connection", fake_connection)
-    monkeypatch.setattr(handler, "_upsert_interest_request", lambda current_connection, payload: {"id": 28})
+    monkeypatch.setattr(handler, "_personal_account_exists", lambda *_args: False)
+    monkeypatch.setattr(
+        handler,
+        "_upsert_interest_request",
+        lambda current_connection, payload: stored_payloads.append(payload.copy()) or {"id": 28 + len(stored_payloads)},
+    )
     monkeypatch.setattr(
         handler,
         "create_self_service_personal_account",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("Club enquiry created a personal account")),
+        lambda current_connection, request_id, **kwargs: account_calls.append((request_id, kwargs))
+        or {"organization_id": 50029},
     )
+    monkeypatch.setattr(handler, "create_direct_notification", lambda *args, **kwargs: notification_calls.append((args, kwargs)))
     monkeypatch.setattr(handler, "_send_interest_emails", lambda **kwargs: email_calls.append(kwargs))
 
     response = handler.lambda_handler(registration_event("club"), None)
     body = json.loads(response["body"])
 
-    assert response["statusCode"] == 202
-    assert body["data"]["account_created"] is False
-    assert connection.commit_count == 1
+    assert response["statusCode"] == 201
+    assert body["data"]["account_created"] is True
+    assert stored_payloads[0]["use_type"] == "club"
+    assert stored_payloads[1]["use_type"] == "personal"
+    assert account_calls[0][0] == 30
+    assert len(notification_calls) == 1
     assert len(email_calls) == 1
 
 
@@ -166,6 +181,7 @@ def test_logged_in_club_subscription_enquiry_captures_full_club_details(monkeypa
     )
 
     monkeypatch.setattr(handler, "get_db_connection", fake_connection)
+    monkeypatch.setattr(handler, "_personal_account_exists", lambda *_args: True)
     monkeypatch.setattr(
         handler,
         "require_org_user_session",
@@ -177,6 +193,7 @@ def test_logged_in_club_subscription_enquiry_captures_full_club_details(monkeypa
         lambda current_connection, payload: stored_payloads.append(payload.copy()) or {"id": 29},
     )
     monkeypatch.setattr(handler, "_send_interest_emails", lambda **kwargs: email_calls.append(kwargs))
+    monkeypatch.setattr(handler, "create_direct_notification", lambda *args, **kwargs: None)
 
     response = handler.lambda_handler(event, None)
     body = json.loads(response["body"])

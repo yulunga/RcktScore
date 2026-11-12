@@ -199,17 +199,22 @@ struct LoginView: View {
                 .scaledToFit()
                 .frame(width: 132, height: 132)
 
-            (
-                Text("Hit ")
-                    .foregroundStyle(Color.loginBrandBlue)
-                + Text("n")
-                    .foregroundStyle(Color.loginBrandPink)
-                + Text(" Score")
-                    .foregroundStyle(Color.loginBrandBlue)
-            )
-            .font(.system(size: 30, weight: .heavy, design: .rounded))
-            .frame(maxWidth: .infinity)
+            hitnScoreWordmark(size: 30)
+                .frame(maxWidth: .infinity)
         }
+    }
+
+    private func hitnScoreWordmark(size: CGFloat) -> some View {
+        (
+            Text("Hit")
+                .foregroundStyle(Color.loginBrandBlue)
+            + Text("n")
+                .foregroundStyle(Color.loginBrandPink)
+            + Text("Score")
+                .foregroundStyle(Color.loginBrandBlue)
+        )
+        .font(.system(size: size, weight: .heavy, design: .rounded))
+        .accessibilityLabel("HitnScore")
     }
 
     private var loginFields: some View {
@@ -324,6 +329,7 @@ struct LoginView: View {
             }
             .buttonStyle(.plain)
             .font(.footnote.weight(.semibold))
+            .lineLimit(1)
             .foregroundStyle(Color.loginAction)
             .accessibilityIdentifier("login.wantInButton")
 
@@ -337,6 +343,7 @@ struct LoginView: View {
             }
             .buttonStyle(.plain)
             .font(.footnote.weight(.semibold))
+            .lineLimit(1)
             .foregroundStyle(Color.loginBrandPink)
             .accessibilityIdentifier("login.needHelpButton")
 
@@ -376,37 +383,68 @@ struct LoginView: View {
                 }
 
             GeometryReader { geometry in
-                ScrollView(showsIndicators: false) {
+                if mode == .registerInterest || mode == .helpOptions {
                     VStack {
-                        switch mode {
-                        case .registerInterest:
+                        if mode == .registerInterest {
                             registerInterestCard
-                        case .helpOptions:
+                        } else {
                             helpOptionsCard
-                        case .pingUs:
-                            pingUsCard
-                        case .passwordReset:
-                            passwordResetCard
-                        case .sessionConflict:
-                            sessionConflictCard
-                        case .organizationSelection:
-                            organizationSelectionCard
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 40)
-                    .frame(
-                        minHeight: geometry.size.height,
-                        alignment: mode == .helpOptions ? .center : .top
-                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        VStack {
+                            switch mode {
+                            case .registerInterest, .helpOptions:
+                                EmptyView()
+                            case .pingUs:
+                                pingUsCard
+                            case .passwordReset:
+                                passwordResetCard
+                            case .sessionConflict:
+                                sessionConflictCard
+                            case .organizationSelection:
+                                organizationSelectionCard
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 40)
+                        .frame(minHeight: geometry.size.height, alignment: .top)
+                    }
                 }
             }
         }
     }
 
     private var registerInterestCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            overlayHeader("Join Hit n Score")
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 9) {
+                Image("BrandLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 42, height: 42)
+
+                hitnScoreWordmark(size: 24)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    closeRegisterInterestOverlay()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: 34, height: 34)
+                        .foregroundStyle(Color.loginAction)
+                        .background(Color.loginAction.opacity(0.10))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isSubmittingInterest)
+                .accessibilityLabel("Close")
+            }
 
             if let interestMessage {
                 submissionConfirmation(
@@ -418,36 +456,20 @@ struct LoginView: View {
                     closeRegisterInterestOverlay()
                 }
             } else {
-                Text("Welcome to Hit n Score — the racket sport scoring app.\n\nCreate a free personal account to start scoring matches. Registered users can access additional app features, with the option to upgrade for more advanced functionality.\n\nLooking for a multi-user option for your racket sports club? Club accounts let you manage multiple games, associate courts with matches, schedule games, and display live scores on screens. Register your interest and we’ll be in touch.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Link("Find out more on our website", destination: URL(string: "https://www.hitnscore.com")!)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.loginAction)
-                    .accessibilityIdentifier("login.registerInterest.websiteLink")
-
-                styledField(title: "Name") {
-                    TextField("First name", text: $interestFirstName)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Welcome to HitnScore racketsport app")
+                        .font(.headline.weight(.bold))
+                    Text("Create a account to start scoring")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
 
-                styledField(title: "Surname") {
-                    TextField("Surname", text: $interestSurname)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled(true)
-                }
-
-                styledField(title: "Email address") {
-                    TextField("you@email.com", text: $interestEmail)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled(true)
-                }
+                compactInterestField("First name", text: $interestFirstName, capitalization: .words)
+                compactInterestField("Surname", text: $interestSurname, capitalization: .words)
+                compactInterestField("Email address", text: $interestEmail, capitalization: .never, keyboard: .emailAddress)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("App Use")
+                    Text("Score for")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
@@ -459,53 +481,56 @@ struct LoginView: View {
                 }
 
                 if interestUseType == "club" {
-                    styledField(title: "Club name") {
-                        TextField("Club name", text: $interestClubName)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled(true)
-                    }
+                    compactInterestField("Club name", text: $interestClubName, capitalization: .words)
                 }
 
-                styledField(title: "Human check: what is \(interestHumanLeft) + \(interestHumanRight)?") {
-                    TextField("Enter answer", text: $interestHumanAnswer)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.numberPad)
-                        .autocorrectionDisabled(true)
-                }
+                compactInterestField("Human check: \(interestHumanLeft) + \(interestHumanRight)", text: $interestHumanAnswer, capitalization: .never, keyboard: .numberPad)
 
                 if let interestErrorMessage {
                     Text(interestErrorMessage)
-                        .font(.footnote)
+                        .font(.caption)
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                HStack(spacing: 12) {
-                    overlaySecondaryButton("Cancel") {
-                        overlayMode = nil
-                    }
-                    .disabled(isSubmittingInterest)
-
-                    overlayPrimaryButton(
-                        title: isSubmittingInterest
-                            ? "Sending..."
-                            : (interestUseType == "personal" ? "Create Personal Account" : "Register Club Interest"),
-                        showProgress: isSubmittingInterest
-                    ) {
-                        submitRegisterInterest()
-                    }
-                    .disabled(isSubmittingInterest)
+                overlayPrimaryButton(
+                    title: isSubmittingInterest ? "Creating..." : "Create Account",
+                    showProgress: isSubmittingInterest
+                ) {
+                    submitRegisterInterest()
                 }
+                .disabled(isSubmittingInterest)
+                .accessibilityIdentifier("login.registerInterest.createAccountButton")
             }
         }
-        .padding(24)
-        .frame(maxWidth: 380, alignment: .leading)
+        .padding(18)
+        .frame(maxWidth: 420, alignment: .leading)
         .background(Color.loginCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.loginBorder, lineWidth: 1)
         )
+    }
+
+    private func compactInterestField(
+        _ placeholder: String,
+        text: Binding<String>,
+        capitalization: TextInputAutocapitalization,
+        keyboard: UIKeyboardType = .default
+    ) -> some View {
+        TextField(placeholder, text: text)
+            .textInputAutocapitalization(capitalization)
+            .keyboardType(keyboard)
+            .autocorrectionDisabled(true)
+            .padding(.horizontal, 14)
+            .frame(height: 46)
+            .background(Color(.tertiarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.loginBorder, lineWidth: 1)
+            )
     }
 
     private var helpOptionsCard: some View {
@@ -1093,8 +1118,8 @@ struct LoginView: View {
                 )
                 await MainActor.run {
                     interestMessage = requestedUseType == "personal"
-                        ? "Your personal account has been created. We have sent a verification email to \(email). Open the link in the email to verify your address and set your password. You can then return to Hit n Score and sign in."
-                        : "We have received your club account enquiry. Our team will review the details and contact you at \(email) about the next steps."
+                        ? "Your personal account has been created. We have sent a verification email to \(email). Open the link in the email to verify your address and set your password. You can then return to HitnScore and sign in."
+                        : "Your Personal account has been created and we have received your club subscription interest. Use the email sent to \(email) to set your password. You will also find our controlled-release update in Messages after signing in."
                     interestErrorMessage = nil
                     isSubmittingInterest = false
                 }
