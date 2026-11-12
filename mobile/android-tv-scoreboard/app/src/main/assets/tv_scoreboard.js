@@ -229,6 +229,21 @@
     "#hns-code-entry{display:flex;gap:10px;align-items:center;justify-content:center;}" +
     "#hns-code-entry input{width:16ch;text-align:center;letter-spacing:0.12em;font-size:1.05rem;padding:10px 14px;" +
       "border-radius:14px;border:1px solid rgba(18,116,208,0.35);text-transform:uppercase;}" +
+    ".hns-qr-mode .scoreboard-pairing .scoreboard-shell__actions{display:none!important;}" +
+    ".scoreboard-pairing__qr{position:relative!important;}" +
+    ".hns-qr-overlay{position:absolute;inset:0;display:flex;padding:10px;border-radius:20px;" +
+      "background:rgba(255,255,255,0.7);}" +
+    "#hns-qr-slot{width:250px;height:250px;display:flex;padding:10px;box-sizing:border-box;border-radius:20px;}" +
+    // The whole square is one light, bright button holding the message.
+    ".hns-qr-refresh{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;" +
+      "padding:16px;border-radius:16px;border:2px solid #1274d0;background:#e9f4ff;color:#0b5fb3;" +
+      "font-size:1.1rem;font-weight:800;line-height:1.3;box-shadow:0 8px 24px rgba(18,116,208,0.18);cursor:pointer;}" +
+    ".hns-qr-refresh:focus,.hns-qr-refresh:hover{background:#d6ebff;outline:3px solid #f5b301;outline-offset:2px;}" +
+    ".hns-qr-refresh:disabled{opacity:0.7;}" +
+    // Expired: the QR square turns light red (Preparing… stays blue).
+    ".hns-qr-refresh:not(:disabled){border-color:#d64545;background:#fdecec;color:#b42318;box-shadow:0 8px 24px rgba(214,69,69,0.18);}" +
+    ".hns-qr-refresh:not(:disabled):focus,.hns-qr-refresh:not(:disabled):hover{background:#fbd5d5;}" +
+    ".hns-qr-overlay{background:rgba(253,236,236,0.75)!important;}" +
     "#hns-qr-countdown{margin:0;color:#486581;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;}" +
     "#hns-code-entry input::placeholder{letter-spacing:0.04em;text-transform:none;}";
 
@@ -258,80 +273,105 @@
     })();
   }
 
-  // The server's QR codes last 2 minutes. On the TV a new one is fetched automatically each
-  // time one expires, for up to 10 minutes after the landing page opened; after that the
-  // page waits for Refresh QR (so an unattended TV doesn't keep asking the server).
-  var QR_KEEPALIVE_MS = 10 * 60 * 1000;
-  var landingSince = 0;
-  var lastAutoRefresh = 0;
-  // Each QR code is shown for 5 minutes on the TV, counting down as 5:00, 4:59 …; at 0:00 a
-  // fresh code is fetched (within the 10 minutes above). The page's own seconds countdown
-  // is hidden.
-  var QR_SHOW_MS = 5 * 60 * 1000;
+  // QR code on the TV: each code shows a 10:00 countdown (10:00, 9:59 …). At 0:00 the QR
+  // is covered by a "Refresh" overlay; pressing it fetches a new code and the countdown
+  // starts again. Nothing refreshes by itself, and the page's own Refresh QR button and
+  // seconds countdown are hidden, so the page stays still. If there is no code (still
+  // loading, or the server expired it) the same square shows "Refresh" or "Preparing…".
+  var QR_SHOW_MS = 10 * 60 * 1000;
   var qrKey = "";
   var qrShownAt = 0;
   var qrTicker = null;
-  function qrCountdown(pairing) {
-    var qr = pairing.querySelector(".scoreboard-pairing__qr");
-    var own = document.getElementById("hns-qr-countdown");
-    // Hide the page's own countdown (not ours, which has its own class).
+  var qrSize = null; // last QR box size, so the Refresh square takes exactly the same space
+
+  function pageRefreshButton(pairing) {
+    var buttons = pairing.querySelectorAll(".scoreboard-shell__actions button");
+    for (var i = 0; i < buttons.length; i++) {
+      var label = (buttons[i].textContent || "").trim();
+      if (label === "Refresh QR" || label === "Preparing…" || label === "Preparing...") return buttons[i];
+    }
+    return null;
+  }
+
+  function refreshButton(pairing) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "hns-qr-refresh";
+    button.textContent = "QR expired \u2013 click to refresh";
+    button.addEventListener("click", function () {
+      var page = pageRefreshButton(pairing);
+      if (page && !page.disabled) page.click();
+    });
+    return button;
+  }
+
+  function qrPanel(pairing) {
     var pageCountdowns = pairing.querySelectorAll(".scoreboard-pairing__countdown");
     for (var c = 0; c < pageCountdowns.length; c++) {
       if (pageCountdowns[c].style.display !== "none") pageCountdowns[c].style.display = "none";
     }
+    var qr = pairing.querySelector(".scoreboard-pairing__qr");
+    var own = document.getElementById("hns-qr-countdown");
+    var slot = document.getElementById("hns-qr-slot");
+    var page = pageRefreshButton(pairing);
+    var preparing = !!(page && page.disabled);
+
     if (!qr) {
-      if (own) own.remove();
+      // No code on screen: a QR-sized square with Refresh (or Preparing…) in its place.
       qrKey = "";
+      if (!slot) {
+        slot = document.createElement("div");
+        slot.id = "hns-qr-slot";
+        slot.appendChild(refreshButton(pairing));
+        var first = pairing.firstElementChild;
+        pairing.insertBefore(slot, first);
+      }
+      if (qrSize) {
+        var w = qrSize.width + "px", hgt = qrSize.height + "px";
+        if (slot.style.width !== w) slot.style.width = w;
+        if (slot.style.height !== hgt) slot.style.height = hgt;
+      }
+      var slotButton = slot.querySelector("button");
+      var slotText = preparing ? "Preparing\u2026" : "QR expired \u2013 click to refresh";
+      if (slotButton.textContent !== slotText) slotButton.textContent = slotText;
+      slotButton.disabled = preparing;
+      // Keep the countdown line (and so everything below it) where it was.
+      if (own && slot.nextSibling !== own) pairing.insertBefore(own, slot.nextSibling);
+      var waitText = preparing ? "Preparing a new code\u2026" : "QR expired";
+      if (own && own.textContent !== waitText) own.textContent = waitText;
       return;
     }
+    if (slot) slot.remove();
+    if (qr.offsetWidth > 0) qrSize = { width: qr.offsetWidth, height: qr.offsetHeight };
+
     var svg = qr.querySelector("svg");
     var key = svg ? String(svg.innerHTML.length) + svg.innerHTML.slice(-64) : "";
     if (key !== qrKey) {
       qrKey = key;
       qrShownAt = Date.now();
+      var oldOverlay = qr.querySelector(".hns-qr-overlay");
+      if (oldOverlay) oldOverlay.remove();
     }
     if (!own) {
       own = document.createElement("p");
       own.id = "hns-qr-countdown";
-      own.className = "hns-qr-countdown";
       qr.parentNode.insertBefore(own, qr.nextSibling);
     }
     var left = Math.max(0, Math.ceil((QR_SHOW_MS - (Date.now() - qrShownAt)) / 1000));
-    var text = "Expires in " + Math.floor(left / 60) + ":" + ("0" + (left % 60)).slice(-2);
+    var text = left > 0 ? "Expires in " + Math.floor(left / 60) + ":" + ("0" + (left % 60)).slice(-2) : "QR expired";
     if (own.textContent !== text) own.textContent = text;
-    if (left === 0) refreshQr(pairing);
+    if (left === 0 && !qr.querySelector(".hns-qr-overlay")) {
+      var overlay = document.createElement("div");
+      overlay.className = "hns-qr-overlay";
+      overlay.appendChild(refreshButton(pairing));
+      qr.appendChild(overlay);
+    }
     if (!qrTicker) qrTicker = nativeSetInterval(schedule, 1000);
-  }
-
-  function refreshQr(pairing) {
-    if (Date.now() - landingSince > QR_KEEPALIVE_MS || Date.now() - lastAutoRefresh < 15000) return;
-    var buttons = pairing.querySelectorAll(".scoreboard-shell__actions button");
-    for (var i = 0; i < buttons.length; i++) {
-      if ((buttons[i].textContent || "").trim() === "Refresh QR" && !buttons[i].disabled) {
-        lastAutoRefresh = Date.now();
-        buttons[i].click();
-      }
-    }
-  }
-
-  function keepQrAlive(pairing) {
-    if (!landingSince) landingSince = Date.now();
-    var expired = !pairing.querySelector(".scoreboard-pairing__qr");
-    if (!expired || Date.now() - landingSince > QR_KEEPALIVE_MS) return;
-    if (Date.now() - lastAutoRefresh < 15000) return;
-    var buttons = pairing.querySelectorAll(".scoreboard-shell__actions button");
-    for (var i = 0; i < buttons.length; i++) {
-      if ((buttons[i].textContent || "").trim() === "Refresh QR" && !buttons[i].disabled) {
-        lastAutoRefresh = Date.now();
-        buttons[i].click();
-      }
-    }
   }
 
   function tvLandingPage() {
     var card = document.querySelector(".scoreboard-entry-card");
     if (!card) {
-      landingSince = 0; // the 10 minutes start again next time the landing page shows
       if (qrTicker) {
         nativeClearInterval(qrTicker);
         qrTicker = null;
@@ -344,18 +384,25 @@
     var introText = "Pair this screen with the HitnScore Scoring App";
     if (intro && intro.textContent !== introText) intro.textContent = introText;
 
+    // The QR square now says when a code has expired, so the page's red expiry notice is
+    // not needed (other errors, e.g. a wrong display code, still show).
+    var notices = document.querySelectorAll(".display-shell > .notice.error");
+    for (var e = 0; e < notices.length; e++) {
+      var hideIt = /expired|qr code/i.test(notices[e].textContent || "");
+      var want = hideIt ? "none" : "";
+      if (notices[e].style.display !== want) notices[e].style.display = want;
+    }
+
     var pairing = card.querySelector(".scoreboard-pairing");
     card.classList.toggle("hns-qr-mode", !!pairing);
     if (!pairing) return;
-    keepQrAlive(pairing);
-    qrCountdown(pairing);
+    qrPanel(pairing);
     var qr = pairing.querySelector(".scoreboard-pairing__qr");
-    // No instructions between the QR code and Refresh QR (the intro above covers it).
-    if (qr) {
-      var helps = pairing.querySelectorAll(".helper-text");
-      for (var h = 0; h < helps.length; h++) {
-        if (!helps[h].classList.contains("hns-hide")) helps[h].classList.add("hns-hide");
-      }
+    // No instructions or expiry text under the QR code (the intro above covers it, and the
+    // QR square itself shows Refresh when needed).
+    var helps = pairing.querySelectorAll(".helper-text");
+    for (var h = 0; h < helps.length; h++) {
+      if (!helps[h].classList.contains("hns-hide")) helps[h].classList.add("hns-hide");
     }
     var actions = pairing.querySelector(".scoreboard-shell__actions");
     if (!actions || document.getElementById("hns-code-entry")) return;

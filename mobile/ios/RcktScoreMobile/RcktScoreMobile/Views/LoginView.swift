@@ -85,13 +85,15 @@ struct LoginView: View {
 
             GeometryReader { geometry in
                 let compactLandscape = geometry.size.width > geometry.size.height && geometry.size.height < 600
+                let horizontalInset: CGFloat = compactLandscape ? 18 : 24
+                let maximumCardWidth: CGFloat = compactLandscape ? 760 : 420
+                let cardWidth = min(maximumCardWidth, max(0, geometry.size.width - (horizontalInset * 2)))
                 VStack {
                     Spacer(minLength: compactLandscape ? 8 : 40)
-                    loginCard(compactLandscape: compactLandscape)
+                    loginCard(compactLandscape: compactLandscape, width: cardWidth)
                     Spacer(minLength: compactLandscape ? 8 : 0)
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
-                .padding(.horizontal, compactLandscape ? 18 : 24)
             }
 
             if let overlayMode {
@@ -134,7 +136,7 @@ struct LoginView: View {
     }
 
     @ViewBuilder
-    private func loginCard(compactLandscape: Bool) -> some View {
+    private func loginCard(compactLandscape: Bool, width: CGFloat) -> some View {
         Group {
             if compactLandscape {
                 HStack(spacing: 22) {
@@ -150,7 +152,7 @@ struct LoginView: View {
             }
         }
         .padding(compactLandscape ? 18 : 24)
-        .frame(maxWidth: compactLandscape ? 760 : 420)
+        .frame(width: width)
         .background(Color.loginCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
@@ -671,20 +673,13 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                HStack(spacing: 12) {
-                    overlaySecondaryButton("Back") {
-                        overlayMode = .helpOptions
-                    }
-                    .disabled(isSubmittingFeedback)
-
-                    overlayPrimaryButton(
-                        title: isSubmittingFeedback ? "Sending..." : "Send",
-                        showProgress: isSubmittingFeedback
-                    ) {
-                        submitFeedback()
-                    }
-                    .disabled(isSubmittingFeedback)
+                overlayPrimaryButton(
+                    title: isSubmittingFeedback ? "Sending..." : "Send",
+                    showProgress: isSubmittingFeedback
+                ) {
+                    submitFeedback()
                 }
+                .disabled(isSubmittingFeedback)
             }
         }
         .padding(18)
@@ -726,20 +721,13 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            HStack(spacing: 12) {
-                overlaySecondaryButton("Back") {
-                    overlayMode = .helpOptions
-                }
-                .disabled(isRequestingPasswordReset)
-
-                overlayPrimaryButton(
-                    title: isRequestingPasswordReset ? "Sending..." : "Send Reset",
-                    showProgress: isRequestingPasswordReset
-                ) {
-                    requestPasswordReset()
-                }
-                .disabled(isRequestingPasswordReset)
+            overlayPrimaryButton(
+                title: isRequestingPasswordReset ? "Sending..." : "Send Reset",
+                showProgress: isRequestingPasswordReset
+            ) {
+                requestPasswordReset()
             }
+            .disabled(isRequestingPasswordReset)
 
             Divider()
 
