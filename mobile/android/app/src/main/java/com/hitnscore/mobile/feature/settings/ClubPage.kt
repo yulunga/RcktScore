@@ -101,10 +101,10 @@ fun ClubPage(club: AccountContext, onOpenPage: (SettingsPage, Int) -> Unit) {
                 ProfileRow(R.string.club_sports, organization.enabledSports.joinToString(", ") { MatchFormatting.sportName(it) })
             }
             val address = listOf(organization.organizationName, organization.address, organization.postcode).filter { it.isNotBlank() }.joinToString(", ")
-            if (organization.address.isNotBlank() || organization.postcode.isNotBlank()) {
+                        if (organization.address.isNotBlank() || organization.postcode.isNotBlank()) {
                 EditorCard(stringResource(R.string.club_venue_map), iconRes = R.drawable.ic_map) {
                     EditorNote(stringResource(R.string.club_venue_map_body))
-                    VenueMap(address)
+                    ClubMap(address = organization.address, postcode = organization.postcode)
                 }
             }
             // Social profiles under the map, as the web; admins add them from Edit Profile.

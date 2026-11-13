@@ -431,7 +431,12 @@ struct DashboardView: View {
             return [.association]
         }
 
-        return [.organisation, .users, .courts, .racketSports, .data]
+        var items: [SettingsMenuItem] = [.organisation, .users, .courts, .racketSports]
+        if isTournamentEnabled(for: membership) {
+            items.append(.tournament)
+        }
+        items.append(.data)
+        return items
     }
     private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
         var sections = [
@@ -1483,7 +1488,7 @@ struct DashboardView: View {
     }
 
     private func openSettingsMenuItem(_ item: SettingsMenuItem) {
-        let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .racketSports, .data]
+        let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .racketSports, .tournament, .data]
         if directClubItems.contains(item),
            let membership = singleClubMembership,
            membership.role.lowercased() == "admin",
@@ -1568,6 +1573,8 @@ struct DashboardView: View {
             organizationCourtsCard
         case .data:
             clubDataSettingsCard
+        case .tournament:
+            tournamentSettingsCard(organizationID: session?.organizationID)
         }
     }
 
@@ -1641,6 +1648,9 @@ struct DashboardView: View {
                     clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
                     if membership.role.lowercased() == "admin" {
                         clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
+                        if isTournamentEnabled(for: membership) {
+                            clubManagementLink(title: "Tournament", icon: "trophy.fill", item: .tournament)
+                        }
                         clubManagementLink(title: "Data", icon: "arrow.down.doc", item: .data)
                     }
                 }
@@ -1707,6 +1717,66 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("settings.clubManagement.\(item.rawValue)")
+    }
+
+    private func isTournamentEnabled(for membership: UserMembership) -> Bool {
+        tournamentClubs.contains { $0.id == membership.organizationID }
+    }
+
+    private func tournamentSettingsCard(organizationID: Int?) -> some View {
+        let tournaments = currentTournaments.filter { item in
+            organizationID == nil || item.tournament.organizationID == organizationID
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Tournament", systemImage: "trophy.fill")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Color.dashboardBrand)
+
+            Text("Current tournaments running for this club.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if isLoadingTournaments {
+                ProgressView("Loading tournaments…")
+            } else if let tournamentErrorMessage {
+                dashboardInlineError(tournamentErrorMessage)
+            } else if tournaments.isEmpty {
+                emptyState("No tournaments currently")
+            } else {
+                ForEach(tournaments) { item in
+                    HStack(spacing: 12) {
+                        Image(systemName: "trophy.fill")
+                            .foregroundStyle(Color.dashboardAccentPink)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.tournament.name)
+                                .font(.subheadline.weight(.bold))
+                            Text(tournamentDetailLine(item.tournament))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Text(tournamentStatusLabel(item.tournament.status))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Color.dashboardBrand)
+                    }
+                    .padding(14)
+                    .background(Color.dashboardInputBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private func associationClubDetailPage(title: String, item: SettingsMenuItem) -> some View {
@@ -6987,6 +7057,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case users
     case courts
     case data
+    case tournament
 
     var id: String { rawValue }
 }
@@ -7011,6 +7082,7 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case users
     case courts
     case data
+    case tournament
 
     var id: String { rawValue }
 
@@ -7042,6 +7114,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Courts"
         case .data:
             return "Data"
+        case .tournament:
+            return "Tournament"
         }
     }
 
@@ -7073,6 +7147,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "square.grid.2x2"
         case .data:
             return "arrow.down.doc"
+        case .tournament:
+            return "trophy.fill"
         }
     }
 
@@ -7104,6 +7180,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .courts
         case .data:
             return .data
+        case .tournament:
+            return .tournament
         }
     }
 }
