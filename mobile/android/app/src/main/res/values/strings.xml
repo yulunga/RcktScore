@@ -580,8 +580,8 @@
     <string name="social_x">X / Twitter</string>
     <string name="social_youtube">YouTube</string>
     <string name="club_venue_map">Club Map</string>
-    <string name="club_venue_map_body">Map preview from the saved address. Tap to open it in Maps.</string>
-    <string name="club_open_in_maps">The club's location on OpenStreetMap</string>
+    <string name="club_venue_map_body">OpenStreetMap Location</string>
+    <string name="club_open_in_maps">Open in Maps</string>
     <string name="settings_all_members">All roles</string>
     <string name="settings_members_empty">No members match this filter.</string>
     <plurals name="settings_member_count">
