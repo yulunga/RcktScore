@@ -38,6 +38,7 @@ struct DashboardView: View {
     @State private var transientNoticeTask: Task<Void, Never>?
     @State private var showsAccountContextMenu = false
     @State private var associationClubRoute: AssociationClubRoute?
+    @State private var openingAssociationOrganizationID: Int?
     @State private var selectedTab: DashboardTab = .home
     @State private var selectedSettingsSection: SettingsSection = .subscription
     @State private var settingsNavigationItem: SettingsMenuItem?
@@ -1646,6 +1647,7 @@ struct DashboardView: View {
 
     private func associationClubManagementPage(for membership: UserMembership) -> some View {
         let membership = availableMemberships.first { $0.organizationID == membership.organizationID } ?? membership
+        let destinations = clubManagementDestinations(for: membership)
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -1662,18 +1664,12 @@ struct DashboardView: View {
                     GridItem(.flexible(), spacing: 12),
                     GridItem(.flexible(), spacing: 12)
                 ], spacing: 12) {
-                    clubManagementLink(title: "Profile", icon: "building.2", item: .orgSettings)
-                    if membership.role.lowercased() == "admin" {
-                        clubManagementLink(title: "Users", icon: "person.2.fill", item: .users)
-                    }
-                    clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
-                    clubManagementLink(title: "Leagues", icon: "list.bullet.rectangle.portrait", item: .leagues)
-                    if membership.role.lowercased() == "admin" {
-                        clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
-                        if isTournamentEnabled(for: membership) {
-                            clubManagementLink(title: "Tournament", icon: "trophy.fill", item: .tournament)
-                        }
-                        clubManagementLink(title: "Data", icon: "arrow.down.doc", item: .data)
+                    ForEach(destinations) { destination in
+                        clubManagementLink(
+                            title: destination.title,
+                            icon: destination.icon,
+                            item: destination.item
+                        )
                     }
                 }
 
@@ -1709,6 +1705,49 @@ struct DashboardView: View {
         .task(id: membership) {
             await loadOrganizationSettingsIfNeeded(force: true, organizationID: membership.organizationID)
         }
+    }
+
+    private func clubManagementDestinations(for membership: UserMembership) -> [ClubManagementDestination] {
+        var destinations = [
+            ClubManagementDestination(title: "Profile", icon: "building.2", item: .orgSettings)
+        ]
+
+        if membership.role.lowercased() == "admin" {
+            destinations.append(
+                ClubManagementDestination(title: "Users", icon: "person.2.fill", item: .users)
+            )
+        }
+
+        destinations.append(
+            ClubManagementDestination(title: "Courts", icon: "sportscourt.fill", item: .courts)
+        )
+        destinations.append(
+            ClubManagementDestination(
+                title: "Leagues",
+                icon: "list.bullet.rectangle.portrait",
+                item: .leagues
+            )
+        )
+
+        if membership.role.lowercased() == "admin" {
+            destinations.append(
+                ClubManagementDestination(
+                    title: "Club Settings",
+                    icon: "slider.horizontal.3",
+                    item: .racketSports
+                )
+            )
+            if isTournamentEnabled(for: membership) {
+                destinations.append(
+                    ClubManagementDestination(title: "Tournament", icon: "trophy.fill", item: .tournament)
+                )
+            }
+            destinations.append(
+                ClubManagementDestination(title: "Data", icon: "arrow.down.doc", item: .data)
+            )
+        }
+
+        return destinations
     }
 
     private func clubManagementLink(title: String, icon: String, item: SettingsMenuItem) -> some View {
@@ -5043,6 +5082,7 @@ struct DashboardView: View {
     }
 
     private func associationMembershipRow(_ membership: UserMembership) -> some View {
+        let isOpening = openingAssociationOrganizationID == membership.organizationID
         return Button {
             openAssociationClub(membership)
         } label: {
@@ -5077,9 +5117,14 @@ struct DashboardView: View {
                     .background(Color.dashboardBrand.opacity(0.12))
                     .clipShape(Capsule())
 
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color.dashboardBrand)
+                if isOpening {
+                    ProgressView()
+                        .tint(Color.dashboardBrand)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.dashboardBrand)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
@@ -5091,6 +5136,7 @@ struct DashboardView: View {
             )
         }
         .buttonStyle(.plain)
+        .disabled(openingAssociationOrganizationID != nil)
         .accessibilityIdentifier("settings.association.\(membership.organizationID)")
     }
 
@@ -6317,7 +6363,7 @@ struct DashboardView: View {
         }
     }
 
-    private func switchAssociation(to membership: UserMembership) {
+    private func switchAssociation(to membership: UserMembership, reload: Bool = true) {
         guard membership.organizationID != session?.organizationID else {
             return
         }
@@ -6338,18 +6384,36 @@ struct DashboardView: View {
         settingsNavigationItem = nil
         dashboardNotice = "Switched to \(isPersonalMembership(membership) ? "Personal" : membership.organizationName)."
 
-        Task {
-            await loadDashboard()
-            await loadOrganizationSettingsIfNeeded(force: true)
-            await loadTournamentAccess()
+        if reload {
+            Task {
+                await loadDashboard()
+                await loadOrganizationSettingsIfNeeded(force: true)
+                await loadTournamentAccess()
+            }
         }
     }
 
     private func openAssociationClub(_ membership: UserMembership) {
-        if membership.organizationID != session?.organizationID {
-            switchAssociation(to: membership)
+        guard openingAssociationOrganizationID == nil else {
+            return
         }
-        associationClubRoute = AssociationClubRoute(membership: membership)
+
+        openingAssociationOrganizationID = membership.organizationID
+        Task { @MainActor in
+            if membership.organizationID != session?.organizationID {
+                switchAssociation(to: membership, reload: false)
+                // Do not replace the NavigationStack path in the same render pass
+                // that publishes a new session and rebuilds the Settings menu.
+                await Task.yield()
+            }
+
+            associationClubRoute = AssociationClubRoute(membership: membership)
+            openingAssociationOrganizationID = nil
+
+            async let dashboardReload: Void = loadDashboard()
+            async let tournamentReload: Void = loadTournamentAccess()
+            _ = await (dashboardReload, tournamentReload)
+        }
     }
 
     private func isPersonalMembership(_ membership: UserMembership) -> Bool {
@@ -7371,6 +7435,14 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .tournament
         }
     }
+}
+
+private struct ClubManagementDestination: Identifiable {
+    let title: String
+    let icon: String
+    let item: SettingsMenuItem
+
+    var id: String { item.rawValue }
 }
 
 private struct SettingsMenuSectionDescriptor: Identifiable {
