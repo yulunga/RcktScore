@@ -136,16 +136,25 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await page.getByRole("button", { name: "Add Club leagues" }).click();
   await page.getByLabel("League name").fill("County League");
   await page.getByRole("button", { name: "Save League" }).click();
-  await expect(page.getByRole("button", { name: "Show divisions for County League" })).toBeVisible();
+  const leagueHeader = page.getByRole("button", { name: /County League.*0 divisions/ });
+  await expect(leagueHeader).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByLabel("Division name")).toHaveCount(0);
-  await page.getByRole("button", { name: "Show divisions for County League" }).click();
+  await leagueHeader.click();
+  await expect(leagueHeader).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: "Add division to County League" })).toBeVisible();
+  await page.getByRole("button", { name: "Add division to County League" }).click();
   await page.getByLabel("Division name").fill("Division 1");
-  await page.getByRole("button", { name: "Add Division" }).click();
+  await page.getByRole("button", { name: "Add Division", exact: true }).click();
 
-  await page.getByRole("button", { name: "Add link for Division 1" }).click();
+  await page.getByRole("button", { name: "Edit Division 1" }).click();
+  await page.getByLabel("Division name").fill("Premier Division");
+  await page.getByRole("button", { name: "Save Division" }).click();
+  await expect(page.getByText("Premier Division", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add link for Premier Division" }).click();
   await page.getByLabel("Tables or fixtures link").fill("https://league.example.com/division-1");
   await page.getByRole("button", { name: "Add Link", exact: true }).click();
-  const externalLink = page.getByRole("link", { name: "Open Division 1 tables or fixtures" });
+  const externalLink = page.getByRole("link", { name: "Open Premier Division tables or fixtures" });
   await expect(externalLink).toHaveAttribute("href", "https://league.example.com/division-1");
   await expect(externalLink).toHaveAttribute("target", "_blank");
 
@@ -161,7 +170,7 @@ test("club admins choose a managed club and assign league fixtures @club-setting
       name: "County League",
       type: "league",
       divisions: [{
-        name: "Division 1",
+        name: "Premier Division",
         url: "https://league.example.com/division-1",
         fixtures: [{ date: "2027-02-12", opposition: "North Club", venue: "away" }],
       }],
@@ -173,6 +182,14 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await page.getByRole("button", { name: "Save Name" }).click();
   await expect(page.getByText("County Winter League", { exact: true })).toBeVisible();
   expect(updates.at(-1).association_competitions[0].name).toBe("County Winter League");
+
+  await page.getByRole("button", { name: "Delete Premier Division" }).click();
+  const divisionDeleteDialog = page.getByRole("dialog", { name: "Delete Premier Division?" });
+  await expect(divisionDeleteDialog.getByRole("button", { name: "Delete Division" })).toBeDisabled();
+  await divisionDeleteDialog.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await divisionDeleteDialog.getByRole("button", { name: "Delete Division" }).click();
+  await expect(divisionDeleteDialog).toHaveCount(0);
+  expect(updates.at(-1).association_competitions[0].divisions).toEqual([]);
 
   await page.getByRole("button", { name: "Delete County Winter League" }).click();
   const deleteDialog = page.getByRole("dialog", { name: "Delete County Winter League?" });

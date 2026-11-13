@@ -8718,6 +8718,13 @@ textarea {
   gap: 10px;
 }
 
+.settings-league-divisions__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .settings-division-card {
   overflow: hidden;
   border: 1px solid #c8daec;
@@ -8731,6 +8738,12 @@ textarea {
   align-items: center;
   gap: 6px;
   padding-right: 10px;
+}
+
+.settings-division-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .settings-division-card__toggle {

@@ -143,7 +143,7 @@ export default function OrganisationSettingsPage() {
   const [leagueGroupsOpen, setLeagueGroupsOpen] = useState({ league: false, interclub: false });
   const [addLeagueOpen, setAddLeagueOpen] = useState({ league: false, interclub: false });
   const [expandedCompetition, setExpandedCompetition] = useState("");
-  const [divisionPanelsOpen, setDivisionPanelsOpen] = useState({});
+  const [addDivisionOpen, setAddDivisionOpen] = useState({});
   const [expandedDivisions, setExpandedDivisions] = useState({});
   const [divisionDrafts, setDivisionDrafts] = useState({});
   const [fixtureDrafts, setFixtureDrafts] = useState({});
@@ -151,8 +151,12 @@ export default function OrganisationSettingsPage() {
   const [competitionRenameDrafts, setCompetitionRenameDrafts] = useState({});
   const [editingDivisionLink, setEditingDivisionLink] = useState("");
   const [divisionLinkDrafts, setDivisionLinkDrafts] = useState({});
+  const [editingDivision, setEditingDivision] = useState("");
+  const [divisionRenameDrafts, setDivisionRenameDrafts] = useState({});
   const [pendingCompetitionDelete, setPendingCompetitionDelete] = useState(null);
   const [competitionDeleteConfirmation, setCompetitionDeleteConfirmation] = useState("");
+  const [pendingDivisionDelete, setPendingDivisionDelete] = useState(null);
+  const [divisionDeleteConfirmation, setDivisionDeleteConfirmation] = useState("");
   const settingsTabRefs = useRef({});
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
@@ -499,7 +503,7 @@ export default function OrganisationSettingsPage() {
     if (saved) {
       setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
       setAddLeagueOpen((current) => ({ ...current, [competitionType]: false }));
-      setExpandedCompetition(competitionKey(nextCompetition));
+      setExpandedCompetition("");
     }
   }
 
@@ -519,11 +523,6 @@ export default function OrganisationSettingsPage() {
     if (saved) {
       setEditingCompetition("");
       setExpandedCompetition(newKey);
-      setDivisionPanelsOpen((current) => {
-        const next = { ...current, [newKey]: current[oldKey] };
-        delete next[oldKey];
-        return next;
-      });
       setExpandedDivisions({});
     }
   }
@@ -553,7 +552,47 @@ export default function OrganisationSettingsPage() {
     const saved = await saveAssociationCompetitions(nextCompetitions, "League division added.");
     if (saved) {
       setDivisionDrafts((current) => ({ ...current, [key]: "" }));
+      setAddDivisionOpen((current) => ({ ...current, [key]: false }));
       setExpandedDivisions((current) => ({ ...current, [divisionKey(competition, { name })]: true }));
+    }
+  }
+
+  async function handleDivisionRename(event, competition, division) {
+    event.preventDefault();
+    const competitionId = competitionKey(competition);
+    const oldKey = divisionKey(competition, division);
+    const name = String(divisionRenameDrafts[oldKey] || "").trim();
+    if (!name || competitionDivisions(competition).some((item) => (
+      item.name !== division.name && item.name.toLowerCase() === name.toLowerCase()
+    ))) return;
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === competitionId
+        ? {
+          ...item,
+          divisions: competitionDivisions(item).map((itemDivision) => (
+            itemDivision.name === division.name ? { ...itemDivision, name } : itemDivision
+          )),
+        }
+        : item
+    ));
+    const saved = await saveAssociationCompetitions(nextCompetitions, "Division name updated.");
+    if (saved) {
+      setEditingDivision("");
+      setExpandedDivisions({ [divisionKey(competition, { name })]: true });
+    }
+  }
+
+  async function handleDivisionRemove(competition, division) {
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === competitionKey(competition)
+        ? { ...item, divisions: competitionDivisions(item).filter((itemDivision) => itemDivision.name !== division.name) }
+        : item
+    ));
+    const saved = await saveAssociationCompetitions(nextCompetitions, "League division removed.");
+    if (saved) {
+      setPendingDivisionDelete(null);
+      setDivisionDeleteConfirmation("");
+      setEditingDivision("");
     }
   }
 
@@ -1168,7 +1207,6 @@ export default function OrganisationSettingsPage() {
                             const key = competitionKey(competition);
                             const domKey = key.replace(/[^a-zA-Z0-9_-]+/g, "-");
                             const competitionOpen = expandedCompetition === key;
-                            const divisionsOpen = Boolean(divisionPanelsOpen[key]);
                             const divisions = competitionDivisions(competition);
                             const gameCount = divisions.reduce((total, division) => total + (division.fixtures || []).length, 0);
                             return (
@@ -1197,19 +1235,6 @@ export default function OrganisationSettingsPage() {
                                       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></svg>
                                     </button>
                                     <button
-                                      aria-expanded={divisionsOpen}
-                                      aria-label={`${divisionsOpen ? "Hide" : "Show"} divisions for ${competition.name}`}
-                                      className={`settings-league-action-button${divisionsOpen ? " active" : ""}`}
-                                      title={`${divisionsOpen ? "Hide" : "Show"} divisions`}
-                                      type="button"
-                                      onClick={() => {
-                                        setExpandedCompetition(key);
-                                        setDivisionPanelsOpen((current) => ({ ...current, [key]: !current[key] }));
-                                      }}
-                                    >
-                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>
-                                    </button>
-                                    <button
                                       aria-label={`Delete ${competition.name}`}
                                       className="settings-league-action-button settings-league-action-button--delete"
                                       title="Delete league"
@@ -1235,16 +1260,29 @@ export default function OrganisationSettingsPage() {
                                         <button className="secondary" type="button" onClick={() => setEditingCompetition("")}>Cancel</button>
                                       </form>
                                     ) : null}
-                                    {!divisionsOpen ? <p className="helper-text">Use the divisions control to organise this league and view its games.</p> : (
-                                      <div className="settings-league-divisions stack compact">
-                                        <form className="settings-division-add-form" onSubmit={(event) => handleDivisionAdd(event, competition)}>
+                                    <div className="settings-league-divisions stack compact">
+                                      <div className="settings-league-divisions__heading">
+                                        <strong>Divisions</strong>
+                                        <button
+                                          aria-expanded={Boolean(addDivisionOpen[key])}
+                                          aria-label={addDivisionOpen[key] ? `Close add division form for ${competition.name}` : `Add division to ${competition.name}`}
+                                          className="settings-add-button"
+                                          type="button"
+                                          onClick={() => setAddDivisionOpen((current) => ({ ...current, [key]: !current[key] }))}
+                                        >
+                                          {addDivisionOpen[key] ? "×" : "+"}
+                                        </button>
+                                      </div>
+                                      {addDivisionOpen[key] ? (
+                                        <form className="settings-division-add-form settings-collapsible-card" onSubmit={(event) => handleDivisionAdd(event, competition)}>
                                           <div className="field">
                                             <label htmlFor={`${domKey}-division-name`}>Division name</label>
                                             <input id={`${domKey}-division-name`} placeholder="For example: Division 1" value={divisionDrafts[key] || ""} onChange={(event) => setDivisionDrafts((current) => ({ ...current, [key]: event.target.value }))} />
                                           </div>
                                           <button className="settings-form-action" disabled={!String(divisionDrafts[key] || "").trim() || savingSection === "association-competitions"} type="submit">Add Division</button>
                                         </form>
-                                        {divisions.length === 0 ? <div className="dashboard-empty">No divisions added yet.</div> : null}
+                                      ) : null}
+                                      {divisions.length === 0 ? <div className="dashboard-empty">No divisions added yet.</div> : null}
                                         {divisions.map((division) => {
                                           const currentDivisionKey = divisionKey(competition, division);
                                           const divisionDomKey = currentDivisionKey.replace(/[^a-zA-Z0-9_-]+/g, "-");
@@ -1258,22 +1296,47 @@ export default function OrganisationSettingsPage() {
                                                   <span><strong>{division.name}</strong><small>{(division.fixtures || []).length} game{(division.fixtures || []).length === 1 ? "" : "s"}</small></span>
                                                   <span className={`settings-expand-icon${divisionOpen ? " settings-expand-icon--open" : ""}`} aria-hidden="true" />
                                                 </button>
-                                                {division.url ? (
-                                                  <a aria-label={`Open ${division.name} tables or fixtures`} className="settings-league-action-button settings-division-link-button" href={division.url} rel="noreferrer noopener" target="_blank" title="Open tables or fixtures">
-                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
-                                                  </a>
-                                                ) : (
-                                                  <button aria-label={`Add link for ${division.name}`} className="settings-league-action-button settings-division-link-button" title="Add tables or fixtures link" type="button" onClick={() => {
+                                                <span className="settings-division-card__actions">
+                                                  {division.url ? (
+                                                    <a aria-label={`Open ${division.name} tables or fixtures`} className="settings-league-action-button settings-division-link-button" href={division.url} rel="noreferrer noopener" target="_blank" title="Open tables or fixtures">
+                                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
+                                                    </a>
+                                                  ) : (
+                                                    <button aria-label={`Add link for ${division.name}`} className="settings-league-action-button settings-division-link-button" title="Add tables or fixtures link" type="button" onClick={() => {
+                                                      setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: true }));
+                                                      setEditingDivisionLink(currentDivisionKey);
+                                                      setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: "" }));
+                                                    }}>
+                                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
+                                                    </button>
+                                                  )}
+                                                  <button aria-label={`Edit ${division.name}`} className="settings-league-action-button settings-division-link-button" title="Edit division name" type="button" onClick={() => {
                                                     setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: true }));
-                                                    setEditingDivisionLink(currentDivisionKey);
-                                                    setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: "" }));
+                                                    setEditingDivision(currentDivisionKey);
+                                                    setDivisionRenameDrafts((current) => ({ ...current, [currentDivisionKey]: division.name }));
                                                   }}>
-                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
+                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></svg>
                                                   </button>
-                                                )}
+                                                  <button aria-label={`Delete ${division.name}`} className="settings-league-action-button settings-league-action-button--delete settings-division-link-button" title="Delete division" type="button" onClick={() => {
+                                                    setPendingDivisionDelete({ competition, division });
+                                                    setDivisionDeleteConfirmation("");
+                                                  }}>
+                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 10v7M14 10v7" /></svg>
+                                                  </button>
+                                                </span>
                                               </div>
                                               {divisionOpen ? (
                                                 <div className="settings-division-card__games stack compact">
+                                                  {editingDivision === currentDivisionKey ? (
+                                                    <form className="settings-league-rename-form" onSubmit={(event) => handleDivisionRename(event, competition, division)}>
+                                                      <div className="field">
+                                                        <label htmlFor={`${divisionDomKey}-rename`}>Division name</label>
+                                                        <input id={`${divisionDomKey}-rename`} value={divisionRenameDrafts[currentDivisionKey] || ""} onChange={(event) => setDivisionRenameDrafts((current) => ({ ...current, [currentDivisionKey]: event.target.value }))} />
+                                                      </div>
+                                                      <button className="settings-form-action" disabled={!String(divisionRenameDrafts[currentDivisionKey] || "").trim() || savingSection === "association-competitions"} type="submit">Save Division</button>
+                                                      <button className="secondary" type="button" onClick={() => setEditingDivision("")}>Cancel</button>
+                                                    </form>
+                                                  ) : null}
                                                   <div className="settings-division-link-row">
                                                     <span className="helper-text">{division.url ? "External tables or fixtures link saved." : "Add an optional external link for tables or fixtures."}</span>
                                                     <button className="text-button" type="button" onClick={() => {
@@ -1325,8 +1388,7 @@ export default function OrganisationSettingsPage() {
                                             </section>
                                           );
                                         })}
-                                      </div>
-                                    )}
+                                    </div>
                                   </div>
                                 ) : null}
                               </article>
@@ -1968,6 +2030,42 @@ export default function OrganisationSettingsPage() {
                 onClick={() => {
                   setPendingCompetitionDelete(null);
                   setCompetitionDeleteConfirmation("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {pendingDivisionDelete ? (
+        <div className="overlay-backdrop" role="presentation">
+          <section aria-labelledby="delete-division-title" aria-modal="true" className="overlay-panel overlay-panel--match-confirm stack" role="dialog">
+            <div className="panel-heading">
+              <h2 id="delete-division-title">Delete {pendingDivisionDelete.division.name}?</h2>
+              <p className="helper-text">This removes the division, its external link, and every saved game within it. The league remains available.</p>
+            </div>
+            <div className="field">
+              <label htmlFor="delete-division-confirmation">Type DELETE to confirm</label>
+              <input autoComplete="off" id="delete-division-confirmation" value={divisionDeleteConfirmation} onChange={(event) => setDivisionDeleteConfirmation(event.target.value)} />
+            </div>
+            <div className="button-row">
+              <button
+                className="danger"
+                disabled={divisionDeleteConfirmation !== "DELETE" || savingSection === "association-competitions"}
+                type="button"
+                onClick={() => handleDivisionRemove(pendingDivisionDelete.competition, pendingDivisionDelete.division)}
+              >
+                {savingSection === "association-competitions" ? "Deleting..." : "Delete Division"}
+              </button>
+              <button
+                className="secondary"
+                disabled={savingSection === "association-competitions"}
+                type="button"
+                onClick={() => {
+                  setPendingDivisionDelete(null);
+                  setDivisionDeleteConfirmation("");
                 }}
               >
                 Cancel

@@ -234,8 +234,13 @@ leagues, inspect `organization.association_competitions` in
 for the selected club organisation rather than the Personal workspace.
 
 Legacy flat `fixtures` are preserved inside a `General` division on the next save and default to a Home venue.
-If an old league appears to have no games, expand the divisions icon and then the
+If an old league appears to have no games, select the league-name row and then the
 General division before investigating the stored JSON.
+
+Selecting the league-name row now reveals its divisions directly. The circular `+`
+inside that expanded league controls the add-division form. Division removal is a
+separate exact-`DELETE` operation and must leave the parent league and its other
+divisions untouched.
 
 Division table/fixture links must be complete `http://` or `https://` URLs. The web
 form rejects other schemes, and the backend discards malformed or non-web links

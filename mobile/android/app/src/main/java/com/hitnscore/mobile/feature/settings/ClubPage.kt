@@ -1,19 +1,13 @@
 package com.hitnscore.mobile.feature.settings
 
-import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,14 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hitnscore.mobile.R
@@ -101,10 +93,11 @@ fun ClubPage(club: AccountContext, onOpenPage: (SettingsPage, Int) -> Unit) {
                 ProfileRow(R.string.club_sports, organization.enabledSports.joinToString(", ") { MatchFormatting.sportName(it) })
             }
             val address = listOf(organization.organizationName, organization.address, organization.postcode).filter { it.isNotBlank() }.joinToString(", ")
-                        if (organization.address.isNotBlank() || organization.postcode.isNotBlank()) {
+            if (organization.address.isNotBlank() || organization.postcode.isNotBlank()) {
                 EditorCard(stringResource(R.string.club_venue_map), iconRes = R.drawable.ic_map) {
                     EditorNote(stringResource(R.string.club_venue_map_body))
                     ClubMap(address = organization.address, postcode = organization.postcode)
+                    OpenInMapsButton(address)
                 }
             }
             // Social profiles under the map, as the web; admins add them from Edit Profile.
@@ -134,59 +127,17 @@ private fun CompactRow(label: String, value: String) {
     }
 }
 
-/**
- * Map preview of the club's saved address, as the web: Google Maps' embed page (no API key)
- * in a small WebView. The preview itself isn't interactive (it would fight the page scroll);
- * tapping it, or Open in Maps, opens the address in the phone's maps app.
- */
-@SuppressLint("SetJavaScriptEnabled") // Google's embed page needs JavaScript; it loads nothing else.
+/** Opens the club's address in the phone's maps app (or the web when there is none). */
 @Composable
-private fun VenueMap(address: String) {
+private fun OpenInMapsButton(address: String) {
     val context = LocalContext.current
-    val openMaps = {
-        val uri = Uri.parse("geo:0,0?q=" + Uri.encode(address))
+    TextButton(onClick = {
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=" + Uri.encode(address))))
         } catch (noMapsApp: ActivityNotFoundException) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=" + Uri.encode(address))))
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/search?query=" + Uri.encode(address))))
         }
-    }
-    // Google only serves the embed page inside an iframe (as the web page does), so the
-    // WebView loads a tiny page that holds the map iframe.
-    val url = "https://maps.google.com/maps?q=" + Uri.encode(address) + "&z=15&output=embed"
-    val html = """
-        <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style>
-        </head><body><iframe src="$url" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></body></html>
-    """.trimIndent()
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(18.dp)),
-    ) {
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    webViewClient = WebViewClient()
-                    tag = url
-                    loadDataWithBaseURL("https://app.hitnscore.com/", html, "text/html", "utf-8", null)
-                }
-            },
-            update = { view ->
-                if (view.tag != url) {
-                    view.tag = url
-                    view.loadDataWithBaseURL("https://app.hitnscore.com/", html, "text/html", "utf-8", null)
-                }
-            },
-            modifier = Modifier.matchParentSize(),
-        )
-        // Catches taps so the map opens in the maps app instead of scrolling inside the page.
-        Box(Modifier.matchParentSize().clickable(onClickLabel = stringResource(R.string.club_open_in_maps), onClick = openMaps))
-    }
-    TextButton(onClick = openMaps) {
+    }) {
         Icon(painterResource(R.drawable.ic_map), contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
         Text(stringResource(R.string.club_open_in_maps))
