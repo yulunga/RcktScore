@@ -390,7 +390,8 @@ struct DashboardView: View {
             subscriptionStatus: current.subscriptionStatus,
             subscriptionExpiresAt: current.subscriptionExpiresAt,
             subscriptionAutoRenewEnabled: current.subscriptionAutoRenewEnabled,
-            subscriptionLastRenewedAt: current.subscriptionLastRenewedAt
+            subscriptionLastRenewedAt: current.subscriptionLastRenewedAt,
+            subscriptionAccessEnabled: current.subscriptionAccessEnabled
         )]
     }
     private var availableSportOptions: [MatchSport] {
@@ -419,6 +420,9 @@ struct DashboardView: View {
     }
     private var personalSettingsItems: [SettingsMenuItem] {
         [.about, .profile, .subscription, .gameSettings]
+    }
+    private var subscriptionAccessEnabled: Bool {
+        session?.subscriptionAccessEnabled != false
     }
     private var singleClubMembership: UserMembership? {
         clubMemberships.count == 1 ? clubMemberships.first : nil
@@ -1454,7 +1458,7 @@ struct DashboardView: View {
     }
 
     private func settingsMenuRow(_ item: SettingsMenuItem, isLast: Bool) -> some View {
-        let isUnavailable = item == .reporting
+        let isUnavailable = item == .reporting || (item == .subscription && !subscriptionAccessEnabled)
         return Button {
             guard !isUnavailable else { return }
             openSettingsMenuItem(item)
@@ -1483,11 +1487,13 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .disabled(isUnavailable)
+        .accessibilityHint(item == .subscription && !subscriptionAccessEnabled ? "Subscriptions are temporarily unavailable." : "")
         .opacity(isUnavailable ? 0.45 : 1)
         .accessibilityIdentifier("settings.menu.\(item.rawValue)")
     }
 
     private func openSettingsMenuItem(_ item: SettingsMenuItem) {
+        guard item != .subscription || subscriptionAccessEnabled else { return }
         let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .racketSports, .tournament, .data]
         if directClubItems.contains(item),
            let membership = singleClubMembership,
@@ -1535,7 +1541,15 @@ struct DashboardView: View {
     private func settingsDetailContent(for section: SettingsSection) -> some View {
         switch section {
         case .subscription:
-            subscriptionSettingsCard
+            if subscriptionAccessEnabled {
+                subscriptionSettingsCard
+            } else {
+                dashboardInnerCard {
+                    Text("Subscriptions are temporarily unavailable.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         case .profile:
             profileSettingsCard
         case .association:
@@ -6634,7 +6648,8 @@ struct DashboardView: View {
                 subscriptionStatus: membership.subscriptionStatus,
                 subscriptionExpiresAt: membership.subscriptionExpiresAt,
                 subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
-                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt
+                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
+                subscriptionAccessEnabled: membership.subscriptionAccessEnabled
             )
         }
 
@@ -6660,6 +6675,7 @@ struct DashboardView: View {
             subscriptionExpiresAt: currentSession.subscriptionExpiresAt,
             subscriptionAutoRenewEnabled: currentSession.subscriptionAutoRenewEnabled,
             subscriptionLastRenewedAt: currentSession.subscriptionLastRenewedAt,
+            subscriptionAccessEnabled: currentSession.subscriptionAccessEnabled,
             availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)
@@ -6697,7 +6713,8 @@ struct DashboardView: View {
                 subscriptionStatus: membership.subscriptionStatus,
                 subscriptionExpiresAt: membership.subscriptionExpiresAt,
                 subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
-                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt
+                subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
+                subscriptionAccessEnabled: membership.subscriptionAccessEnabled
             )
         }
 
@@ -6723,6 +6740,7 @@ struct DashboardView: View {
             subscriptionExpiresAt: currentSession.subscriptionExpiresAt,
             subscriptionAutoRenewEnabled: currentSession.subscriptionAutoRenewEnabled,
             subscriptionLastRenewedAt: currentSession.subscriptionLastRenewedAt,
+            subscriptionAccessEnabled: currentSession.subscriptionAccessEnabled,
             availableMemberships: updatedMemberships
         )
         container.sessionStore.save(updatedSession)

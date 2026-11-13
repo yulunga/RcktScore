@@ -43,6 +43,7 @@ data class UserMembership(
     @SerialName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
     @SerialName("subscription_auto_renew_enabled") val subscriptionAutoRenewEnabled: Boolean? = null,
     @SerialName("subscription_last_renewed_at") val subscriptionLastRenewedAt: String? = null,
+    @SerialName("subscription_access_enabled") val subscriptionAccessEnabled: Boolean? = null,
 ) {
     val isPersonal: Boolean
         get() = organizationType?.lowercase() == "personal" || organizationId >= PERSONAL_ORGANIZATION_ID_FLOOR
@@ -75,6 +76,7 @@ data class LoginSessionPayload(
     @SerialName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
     @SerialName("subscription_auto_renew_enabled") val subscriptionAutoRenewEnabled: Boolean? = null,
     @SerialName("subscription_last_renewed_at") val subscriptionLastRenewedAt: String? = null,
+    @SerialName("subscription_access_enabled") val subscriptionAccessEnabled: Boolean? = null,
     @SerialName("session_token") val sessionToken: String? = null,
     @SerialName("session_expires_at") val sessionExpiresAt: String? = null,
     @SerialName("available_memberships") val availableMemberships: List<UserMembership>? = null,
@@ -99,6 +101,7 @@ data class LoginSessionPayload(
         subscriptionExpiresAt = subscriptionExpiresAt,
         subscriptionAutoRenewEnabled = subscriptionAutoRenewEnabled,
         subscriptionLastRenewedAt = subscriptionLastRenewedAt,
+        subscriptionAccessEnabled = subscriptionAccessEnabled,
     )
 }
 

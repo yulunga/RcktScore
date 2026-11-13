@@ -416,6 +416,9 @@ def _get_membership_row(connection, username, organization_id):
                 u.enabled_sports_ios,
                 platform.enabled_sports_web AS platform_enabled_sports_web,
                 platform.enabled_sports_ios AS platform_enabled_sports_ios,
+                (COALESCE(platform.subscriptions_enabled, true)
+                    OR COALESCE(platform.subscription_exception_emails, '[]'::jsonb) ? LOWER(u.clubusername))
+                    AS subscription_access_enabled,
                 o.organization_name,
                 to_jsonb(u) AS user_json
             FROM "SkwshOrgUsers" AS u

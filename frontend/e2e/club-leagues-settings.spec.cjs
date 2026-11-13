@@ -135,19 +135,26 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await page.getByRole("button", { name: /Club leagues/ }).click();
   await page.getByRole("button", { name: "Add Club leagues" }).click();
   await page.getByLabel("League name").fill("County League");
-  await page.getByRole("button", { name: "Save league" }).click();
+  await page.getByRole("button", { name: "Save League" }).click();
   await expect(page.getByRole("button", { name: "Hide County League" })).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "Hide divisions for County League" })).toBeVisible();
+  await page.getByLabel("Division name").fill("Division 1");
+  await page.getByRole("button", { name: "Add Division" }).click();
 
   await page.getByLabel("Game date").fill("2027-02-12");
   await page.getByLabel("Opposition").fill("North Club");
-  await page.getByRole("button", { name: "Add game" }).click();
+  await page.getByRole("button", { name: "Add Game" }).click();
   await expect(page.getByText("12 Feb 2027")).toBeVisible();
   await expect(page.getByText("North Club")).toBeVisible();
   expect(updates.at(-1).association_competitions).toEqual([
     {
       name: "County League",
       type: "league",
-      fixtures: [{ date: "2027-02-12", opposition: "North Club" }],
+      divisions: [{
+        name: "Division 1",
+        fixtures: [{ date: "2027-02-12", opposition: "North Club" }],
+      }],
     },
   ]);
 
@@ -183,5 +190,27 @@ test("Club Management opens the only administered club directly @club-settings",
   await menu.getByRole("button", { name: "Club Management" }).click();
   await expect(page).toHaveURL(/club=1.*organizationId=42.*tab=organisation/);
   await expect(page.getByRole("heading", { name: "Organisation Details" })).toBeVisible();
+});
+
+test("disabled subscriptions stay visible but cannot be opened @club-settings", async ({ page }) => {
+  const disabledSession = {
+    ...session,
+    subscription_access_enabled: false,
+    available_memberships: session.available_memberships.map((membership) => ({
+      ...membership,
+      subscription_access_enabled: false,
+    })),
+  };
+  await page.unroute("**/session/status");
+  await page.route("**/session/status", (route) => route.fulfill({
+    json: envelope({ session: { ...disabledSession, csrf_token: "playwright-club-admin-csrf" } }),
+  }));
+
+  await page.goto("/settings?section=subscription");
+  const subscription = page.getByRole("button", { name: "Subscription" });
+  await expect(subscription).toBeVisible();
+  await expect(subscription).toBeDisabled();
+  await expect(page).toHaveURL(/section=subscription/);
+  await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
 });
 

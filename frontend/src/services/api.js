@@ -706,6 +706,17 @@ export function updateRegistrationSettings(settings) {
   });
 }
 
+export function getRootAdminServices({ signal } = {}) {
+  return apiRequest("/root_admin/services", { signal });
+}
+
+export function updateRootAdminServices(settings) {
+  return apiRequest("/root_admin/services", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+}
+
 export function submitRegistrationInterest(payload) {
   return apiRequest("/registration/interest", {
     method: "POST",

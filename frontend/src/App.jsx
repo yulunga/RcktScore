@@ -107,6 +107,10 @@ export default function App() {
         element={<RootAdminProtectedRoute><RootAdminRegistrationPage /></RootAdminProtectedRoute>}
       />
       <Route
+        path="/rckscoreAdmin/services"
+        element={<RootAdminProtectedRoute><RootAdminRegistrationPage /></RootAdminProtectedRoute>}
+      />
+      <Route
         path="/rckscoreAdmin/racket-sports"
         element={(
           <RootAdminProtectedRoute>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
-import { getRegistrationStatus, updateRegistrationSettings } from "../services/api";
+import { getRootAdminServices, updateRootAdminServices } from "../services/api";
 
 export default function RootAdminRegistrationPage() {
   const [savedSettings, setSavedSettings] = useState(null);
@@ -11,7 +11,7 @@ export default function RootAdminRegistrationPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    getRegistrationStatus({ signal: controller.signal }).then((settings) => {
+    getRootAdminServices({ signal: controller.signal }).then((settings) => {
       setSavedSettings(settings);
       setDraft(settings);
     }).catch((requestError) => {
@@ -26,10 +26,10 @@ export default function RootAdminRegistrationPage() {
     setError("");
     setMessage("");
     try {
-      const settings = await updateRegistrationSettings(draft);
+      const settings = await updateRootAdminServices(draft);
       setSavedSettings(settings);
       setDraft(settings);
-      setMessage("Registration settings saved.");
+      setMessage("Service settings saved.");
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -39,38 +39,67 @@ export default function RootAdminRegistrationPage() {
 
   return (
     <main className="page-shell stack">
-      <RootAdminSessionBar registrationEnabled={savedSettings?.enabled ?? null} />
+      <RootAdminSessionBar serviceStatus={savedSettings?.status} />
       <section className="panel stack">
-        <h1>Public Registration</h1>
+        <h1>Services</h1>
+        <p className="helper-text">Control customer-facing services across HitnScore clients. The traffic light is green when all services are enabled, orange when one is disabled and red when all are disabled.</p>
         {error && <div className="notice error" role="alert">{error}</div>}
         {message && <div className="notice settings-success" role="status">{message}</div>}
         {draft ? (
-          <form className="stack" onSubmit={save}>
-            <label className="registration-switch">
+          <form className="stack services-settings" onSubmit={save}>
+            <section className="settings-collapsible-card stack compact">
+              <div className="panel-heading"><h2>Public Registration</h2><p className="helper-text">Allow new users to create accounts.</p></div>
+              <label className="registration-switch">
               <input
                 type="checkbox"
                 role="switch"
-                checked={draft.enabled}
+                checked={draft.services.public_registration.enabled}
                 disabled={saving}
-                onChange={(event) => setDraft({ ...draft, enabled: event.target.checked })}
+                onChange={(event) => setDraft({ ...draft, services: { ...draft.services, public_registration: { ...draft.services.public_registration, enabled: event.target.checked } } })}
               />
               Enable new users
-            </label>
-            <div className="field">
+              </label>
+              <div className="field">
               <label htmlFor="registration-message">Message when registration is paused</label>
               <textarea
                 id="registration-message"
-                value={draft.message}
+                value={draft.services.public_registration.message}
                 maxLength={1000}
                 rows={4}
                 required
                 disabled={saving}
-                onChange={(event) => setDraft({ ...draft, message: event.target.value })}
+                onChange={(event) => setDraft({ ...draft, services: { ...draft.services, public_registration: { ...draft.services.public_registration, message: event.target.value } } })}
               />
-            </div>
+              </div>
+            </section>
+            <section className="settings-collapsible-card stack compact">
+              <div className="panel-heading"><h2>Subscriptions</h2><p className="helper-text">Grey out subscription menus on web, iOS and Android while retaining access for listed test identities.</p></div>
+              <label className="registration-switch">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={draft.services.subscriptions.enabled}
+                  disabled={saving}
+                  onChange={(event) => setDraft({ ...draft, services: { ...draft.services, subscriptions: { ...draft.services.subscriptions, enabled: event.target.checked } } })}
+                />
+                Enable subscription menus
+              </label>
+              <div className="field">
+                <label htmlFor="subscription-exceptions">Subscription access exceptions</label>
+                <textarea
+                  id="subscription-exceptions"
+                  rows={6}
+                  disabled={saving}
+                  placeholder="tester@example.com\nsecond.tester@example.com"
+                  value={(draft.services.subscriptions.exceptions || []).join("\n")}
+                  onChange={(event) => setDraft({ ...draft, services: { ...draft.services, subscriptions: { ...draft.services.subscriptions, exceptions: event.target.value.split(/\r?\n/) } } })}
+                />
+                <small>Enter one registered email address per line. Exceptions apply only while subscriptions are disabled.</small>
+              </div>
+            </section>
             <div className="button-row">
-              <button type="submit" disabled={saving || !draft.message.trim()}>
-                {saving ? "Saving…" : "Save"}
+              <button type="submit" disabled={saving || !draft.services.public_registration.message.trim()}>
+                {saving ? "Saving…" : "Save Services"}
               </button>
             </div>
           </form>

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -98,6 +99,7 @@ fun SettingsScreen(
         SettingsPage.Subscription,
         SettingsPage.GameSettings,
     )
+    val subscriptionAccessEnabled = session.memberships.firstOrNull()?.subscriptionAccessEnabled != false
     // Club Settings (as iOS): one club → its admin pages here (admins), or the club itself;
     // more than one club → Association, which lists them to manage.
     val clubs = session.availableContexts.filter { it.type == AccountContextType.Club }
@@ -137,7 +139,14 @@ fun SettingsScreen(
                 )
             }
         }
-        item { MenuSection(stringResource(R.string.settings_account), accountPages, onOpenPage) }
+        item {
+            MenuSection(
+                stringResource(R.string.settings_account),
+                accountPages,
+                onOpenPage,
+                disabledPages = if (subscriptionAccessEnabled) emptySet() else setOf(SettingsPage.Subscription),
+            )
+        }
         if (clubPages.isNotEmpty()) {
             item {
                 MenuSection(stringResource(R.string.settings_club), clubPages) { page ->
@@ -170,14 +179,20 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun MenuSection(title: String, pages: List<SettingsPage>, onOpenPage: (SettingsPage) -> Unit) {
+private fun MenuSection(
+    title: String,
+    pages: List<SettingsPage>,
+    onOpenPage: (SettingsPage) -> Unit,
+    disabledPages: Set<SettingsPage> = emptySet(),
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp))
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
             Column {
                 pages.forEachIndexed { index, page ->
-                    Surface(onClick = { onOpenPage(page) }, color = MaterialTheme.colorScheme.surface) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val disabled = page in disabledPages
+                    Surface(onClick = { if (!disabled) onOpenPage(page) }, color = MaterialTheme.colorScheme.surface) {
+                        Row(Modifier.fillMaxWidth().alpha(if (disabled) 0.42f else 1f).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(stringResource(page.title), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                             Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         }
@@ -243,8 +258,12 @@ fun SettingsPageScreen(
                 }
                 SettingsPage.Subscription -> item(key = "subscription") {
                     // The dashboard's plan is the freshest for the active Personal account.
-                    val activePersonal = session.activeContext.type == AccountContextType.Personal
-                    SubscriptionPage(session, personalPlusOverride = state.planCode?.takeIf { activePersonal }?.let { it == "personal_plus" })
+                    if (session.memberships.firstOrNull()?.subscriptionAccessEnabled == false) {
+                        Note("Subscriptions are temporarily unavailable.")
+                    } else {
+                        val activePersonal = session.activeContext.type == AccountContextType.Personal
+                        SubscriptionPage(session, personalPlusOverride = state.planCode?.takeIf { activePersonal }?.let { it == "personal_plus" })
+                    }
                 }
                 // Only the clubs you belong to, with your role; tap one for its club page.
                 SettingsPage.Association -> {

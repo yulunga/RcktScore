@@ -45,22 +45,10 @@ def normalize_timed_break_defaults(value):
 
 
 def normalize_association_competitions(value):
-    normalized = []
-    seen = set()
-    for item in value if isinstance(value, list) else []:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "").strip()
-        competition_type = str(item.get("type") or "league").strip().lower()
-        if not name or competition_type not in {"league", "interclub"}:
-            continue
-        key = name.casefold()
-        if key in seen:
-            continue
-        seen.add(key)
+    def normalize_fixtures(source):
         fixtures = []
         fixture_seen = set()
-        for fixture in item.get("fixtures") if isinstance(item.get("fixtures"), list) else []:
+        for fixture in source if isinstance(source, list) else []:
             if not isinstance(fixture, dict):
                 continue
             game_date = str(fixture.get("date") or "").strip()
@@ -77,7 +65,39 @@ def normalize_association_competitions(value):
             fixture_seen.add(fixture_key)
             fixtures.append({"date": game_date, "opposition": opposition[:120]})
         fixtures.sort(key=lambda fixture: (fixture["date"], fixture["opposition"].casefold()))
-        normalized.append({"name": name[:120], "type": competition_type, "fixtures": fixtures[:100]})
+        return fixtures[:100]
+
+    normalized = []
+    seen = set()
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        competition_type = str(item.get("type") or "league").strip().lower()
+        if not name or competition_type not in {"league", "interclub"}:
+            continue
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        divisions = []
+        division_seen = set()
+        raw_divisions = item.get("divisions") if isinstance(item.get("divisions"), list) else []
+        if not raw_divisions and isinstance(item.get("fixtures"), list):
+            raw_divisions = [{"name": "General", "fixtures": item.get("fixtures")}]
+        for division in raw_divisions:
+            if not isinstance(division, dict):
+                continue
+            division_name = str(division.get("name") or "").strip()
+            division_key = division_name.casefold()
+            if not division_name or division_key in division_seen:
+                continue
+            division_seen.add(division_key)
+            divisions.append({
+                "name": division_name[:120],
+                "fixtures": normalize_fixtures(division.get("fixtures")),
+            })
+        normalized.append({"name": name[:120], "type": competition_type, "divisions": divisions[:50]})
     return normalized
 
 

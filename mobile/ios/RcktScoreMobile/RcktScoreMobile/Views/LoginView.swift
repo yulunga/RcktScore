@@ -1036,6 +1036,7 @@ struct LoginView: View {
             subscriptionExpiresAt: membership.subscriptionExpiresAt,
             subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
             subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
+            subscriptionAccessEnabled: membership.subscriptionAccessEnabled,
             availableMemberships: selection.memberships
         )
 

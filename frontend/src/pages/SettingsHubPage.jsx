@@ -109,6 +109,7 @@ export default function SettingsHubPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { session, setSession, logout } = useAuth();
+  const subscriptionAccessEnabled = session?.subscription_access_enabled !== false;
   const [settings, setSettings] = useState(null);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [editing, setEditing] = useState(false);
@@ -134,7 +135,10 @@ export default function SettingsHubPage() {
   const clubMemberships = memberships.filter((membership) => membership.organization_type === "club");
   const adminClubMemberships = clubMemberships.filter((membership) => membership.role === "admin");
   const settingsMenu = SETTINGS_MENU.filter((item) => !item.requiresClubAdmin || adminClubMemberships.length > 0);
-  const activeSection = settingsMenu.some((item) => item.id === requestedSection) ? requestedSection : "profile";
+  const activeSection = settingsMenu.some((item) => item.id === requestedSection)
+    && (requestedSection !== "subscription" || subscriptionAccessEnabled)
+    ? requestedSection
+    : "profile";
   const identityMembership = memberships.find((membership) => membership.organization_type === "personal") || session;
   const organizationId = identityMembership?.organization_id;
 
@@ -221,6 +225,7 @@ export default function SettingsHubPage() {
   }
 
   function selectSection(section) {
+    if (section === "subscription" && !subscriptionAccessEnabled) return;
     if (section === "club-management" && adminClubMemberships.length === 1) {
       const membership = adminClubMemberships[0];
       navigate(`/settings?club=1&organizationId=${encodeURIComponent(membership.organization_id)}&tab=organisation`);
@@ -353,9 +358,12 @@ export default function SettingsHubPage() {
         >
           {settingsMenu.map((item) => (
             <button
-              className={activeSection === item.id ? "active" : ""}
+              aria-disabled={item.id === "subscription" && !subscriptionAccessEnabled}
+              className={`${activeSection === item.id ? "active" : ""}${item.id === "subscription" && !subscriptionAccessEnabled ? " settings-menu-disabled" : ""}`}
               data-settings-section={item.id}
+              disabled={item.id === "subscription" && !subscriptionAccessEnabled}
               key={item.id}
+              title={item.id === "subscription" && !subscriptionAccessEnabled ? "Subscriptions are temporarily unavailable." : undefined}
               type="button"
               onClick={() => selectSection(item.id)}
             >

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { useRootAdmin } from "../hooks/useRootAdmin";
 
-import { getRegistrationStatus } from "../services/api";
+import { getRootAdminServices } from "../services/api";
 
 const CONTROL_PANEL_LINKS = [
   { route: "dashboard", label: "Home", icon: "m3 10 9-7 9 7v10h-6v-6H9v6H3z" },
@@ -14,23 +14,23 @@ const CONTROL_PANEL_LINKS = [
   { route: "racket-sports", label: "Settings", icon: "M9.7 3.1h4.6l.6 2.2 1.3.7 2.1-.6 2.3 4-1.6 1.6v2l1.6 1.6-2.3 4-2.1-.6-1.3.7-.6 2.2H9.7l-.6-2.2-1.3-.7-2.1.6-2.3-4L5 13v-2L3.4 9.4l2.3-4 2.1.6 1.3-.7zM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" },
 ];
 
-export default function RootAdminSessionBar({ registrationEnabled }) {
+export default function RootAdminSessionBar({ serviceStatus }) {
   const navigate = useNavigate();
   const { session, logout } = useRootAdmin();
 
-  const [publicRegistrationEnabled, setPublicRegistrationEnabled] = useState(null);
+  const [platformServiceStatus, setPlatformServiceStatus] = useState(null);
   useEffect(() => {
-    if (registrationEnabled !== undefined) return undefined;
+    if (serviceStatus !== undefined) return undefined;
     const controller = new AbortController();
-    getRegistrationStatus({ signal: controller.signal })
-      .then(({ enabled }) => setPublicRegistrationEnabled(enabled))
+    getRootAdminServices({ signal: controller.signal })
+      .then((response) => setPlatformServiceStatus(response?.status || null))
       .catch(() => {});
     return () => controller.abort();
-  }, [registrationEnabled]);
-  const enabled = registrationEnabled ?? publicRegistrationEnabled;
-  const flagLabel = enabled === null
-    ? "Public registration"
-    : (enabled ? "Public registration open" : "Public registration paused");
+  }, [serviceStatus]);
+  const status = serviceStatus ?? platformServiceStatus;
+  const serviceLabel = status === "green"
+    ? "Services: all enabled"
+    : (status === "orange" ? "Services: partly disabled" : (status === "red" ? "Services: all disabled" : "Services"));
 
   return (
     <section className="session-bar">
@@ -69,15 +69,17 @@ export default function RootAdminSessionBar({ registrationEnabled }) {
             </NavLink>
           ))}
           <NavLink
-            to="/rckscoreAdmin/registration"
-            className="session-link-button root-admin-dashboard-link registration-flag"
-            data-enabled={enabled}
-            aria-label={flagLabel}
-            title={flagLabel}
+            to="/rckscoreAdmin/services"
+            className="session-link-button root-admin-dashboard-link services-traffic-light"
+            data-status={status || "unknown"}
+            aria-label={serviceLabel}
+            title={serviceLabel}
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path d="M5 22V3" fill="none" />
-              <path d="M5 3c5-5 9 5 15 0v11c-6 5-10-5-15 0z" fill="currentColor" />
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <rect x="7" y="2" width="10" height="20" rx="4" />
+              <circle className="services-traffic-light__red" cx="12" cy="7" r="2.1" />
+              <circle className="services-traffic-light__orange" cx="12" cy="12" r="2.1" />
+              <circle className="services-traffic-light__green" cx="12" cy="17" r="2.1" />
             </svg>
           </NavLink>
         </nav>

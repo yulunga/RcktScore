@@ -8634,6 +8634,41 @@ textarea {
   color: #b4233f;
 }
 
+.settings-league-action-button.active {
+  border-color: #0b74d1;
+  background: #e8f3ff;
+}
+
+.settings-form-action {
+  min-height: 46px;
+  padding: 10px 18px;
+  border: 1px solid #0b74d1;
+  border-radius: 999px;
+  background: #0b74d1;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.settings-form-action:hover:not(:disabled) {
+  background: #075da9;
+}
+
+.settings-form-action:disabled {
+  border-color: #c8d3df;
+  background: #edf2f7;
+  color: #7d8da0;
+}
+
+.settings-category-switch button.settings-menu-disabled,
+.settings-category-switch button.settings-menu-disabled:hover {
+  opacity: 0.42;
+  background: transparent;
+  color: #63788e;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .settings-league-card__fixtures {
   padding: 14px;
   border-top: 1px solid #d7e3f0;
@@ -8649,6 +8684,53 @@ textarea {
 
 .settings-league-fixture-form > button {
   min-height: 46px;
+}
+
+.settings-division-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.settings-division-card {
+  overflow: hidden;
+  border: 1px solid #c8daec;
+  border-radius: 13px;
+  background: #f7faff;
+}
+
+.settings-division-card__toggle {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #102a43;
+  text-align: left;
+  box-shadow: none;
+}
+
+.settings-division-card__toggle > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-division-card__toggle small {
+  color: #486581;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.settings-division-card__games {
+  padding: 12px;
+  border-top: 1px solid #d7e3f0;
+  background: #fff;
 }
 
 .settings-league-fixture-list {
@@ -8694,6 +8776,10 @@ textarea {
   }
 
   .settings-league-fixture-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-division-add-form {
     grid-template-columns: 1fr;
   }
 }
@@ -13735,12 +13821,30 @@ textarea {
   height: 16px;
 }
 
-.registration-flag[data-enabled="true"] {
-  color: #15803d;
+.services-traffic-light svg rect {
+  fill: #183b56;
+  stroke: #183b56;
 }
 
-.registration-flag[data-enabled="false"] {
-  color: #c52a42;
+.services-traffic-light svg circle {
+  fill: #8ca0b3;
+  stroke: none;
+}
+
+.services-traffic-light[data-status="green"] .services-traffic-light__green {
+  fill: #22c55e;
+}
+
+.services-traffic-light[data-status="orange"] .services-traffic-light__orange {
+  fill: #f59e0b;
+}
+
+.services-traffic-light[data-status="red"] .services-traffic-light__red {
+  fill: #ef4444;
+}
+
+.services-settings > .settings-collapsible-card {
+  padding: 18px;
 }
 
 .registration-switch {

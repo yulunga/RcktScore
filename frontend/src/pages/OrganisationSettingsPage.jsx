@@ -79,6 +79,18 @@ function competitionKey(competition) {
   return `${competition.type}:${competition.name}`;
 }
 
+function divisionKey(competition, division) {
+  return `${competitionKey(competition)}:${division.name}`;
+}
+
+function competitionDivisions(competition) {
+  if (Array.isArray(competition?.divisions)) return competition.divisions;
+  if (Array.isArray(competition?.fixtures) && competition.fixtures.length) {
+    return [{ name: "General", fixtures: competition.fixtures }];
+  }
+  return [];
+}
+
 function formatUserDisplayName(user) {
   return [user?.first_name, user?.surname].filter(Boolean).join(" ").trim() || "";
 }
@@ -131,6 +143,9 @@ export default function OrganisationSettingsPage() {
   const [leagueGroupsOpen, setLeagueGroupsOpen] = useState({ league: false, interclub: false });
   const [addLeagueOpen, setAddLeagueOpen] = useState({ league: false, interclub: false });
   const [expandedCompetition, setExpandedCompetition] = useState("");
+  const [divisionPanelsOpen, setDivisionPanelsOpen] = useState({});
+  const [expandedDivisions, setExpandedDivisions] = useState({});
+  const [divisionDrafts, setDivisionDrafts] = useState({});
   const [fixtureDrafts, setFixtureDrafts] = useState({});
   const [pendingCompetitionDelete, setPendingCompetitionDelete] = useState(null);
   const [competitionDeleteConfirmation, setCompetitionDeleteConfirmation] = useState("");
@@ -310,7 +325,10 @@ export default function OrganisationSettingsPage() {
       ...EMPTY_TIMED_BREAK_DEFAULTS,
       ...(nextSettings?.organization?.timed_break_defaults || {}),
     });
-    setAssociationCompetitions(nextSettings?.organization?.association_competitions || []);
+    setAssociationCompetitions((nextSettings?.organization?.association_competitions || []).map((competition) => ({
+      ...competition,
+      divisions: competitionDivisions(competition),
+    })));
   }, []);
 
   const loadSettings = useCallback(async () => {
@@ -471,13 +489,14 @@ export default function OrganisationSettingsPage() {
     event.preventDefault();
     const name = competitionDrafts[competitionType].trim();
     if (!name || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
-    const nextCompetition = { name, type: competitionType, fixtures: [] };
+    const nextCompetition = { name, type: competitionType, divisions: [] };
     const nextCompetitions = [...associationCompetitions, nextCompetition];
     const saved = await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
     if (saved) {
       setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
       setAddLeagueOpen((current) => ({ ...current, [competitionType]: false }));
       setExpandedCompetition(competitionKey(nextCompetition));
+      setDivisionPanelsOpen((current) => ({ ...current, [competitionKey(nextCompetition)]: true }));
     }
   }
 
@@ -493,16 +512,40 @@ export default function OrganisationSettingsPage() {
     }
   }
 
-  async function handleFixtureAdd(event, competition) {
+  async function handleDivisionAdd(event, competition) {
     event.preventDefault();
     const key = competitionKey(competition);
+    const name = (divisionDrafts[key] || "").trim();
+    if (!name || competitionDivisions(competition).some((division) => division.name.toLowerCase() === name.toLowerCase())) return;
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === key
+        ? { ...item, divisions: [...competitionDivisions(item), { name, fixtures: [] }] }
+        : item
+    ));
+    const saved = await saveAssociationCompetitions(nextCompetitions, "League division added.");
+    if (saved) {
+      setDivisionDrafts((current) => ({ ...current, [key]: "" }));
+      setExpandedDivisions((current) => ({ ...current, [divisionKey(competition, { name })]: true }));
+    }
+  }
+
+  async function handleFixtureAdd(event, competition, division) {
+    event.preventDefault();
+    const key = divisionKey(competition, division);
     const draft = fixtureDrafts[key] || { date: "", opposition: "" };
     const date = draft.date.trim();
     const opposition = draft.opposition.trim();
     if (!date || !opposition) return;
     const nextCompetitions = associationCompetitions.map((item) => (
-      competitionKey(item) === key
-        ? { ...item, fixtures: [...(item.fixtures || []), { date, opposition }] }
+      competitionKey(item) === competitionKey(competition)
+        ? {
+          ...item,
+          divisions: competitionDivisions(item).map((itemDivision) => (
+            itemDivision.name === division.name
+              ? { ...itemDivision, fixtures: [...(itemDivision.fixtures || []), { date, opposition }] }
+              : itemDivision
+          )),
+        }
         : item
     ));
     const saved = await saveAssociationCompetitions(nextCompetitions, "League game added.");
@@ -511,11 +554,17 @@ export default function OrganisationSettingsPage() {
     }
   }
 
-  async function handleFixtureRemove(competition, fixtureIndex) {
-    const key = competitionKey(competition);
+  async function handleFixtureRemove(competition, division, fixtureIndex) {
     const nextCompetitions = associationCompetitions.map((item) => (
-      competitionKey(item) === key
-        ? { ...item, fixtures: (item.fixtures || []).filter((_, index) => index !== fixtureIndex) }
+      competitionKey(item) === competitionKey(competition)
+        ? {
+          ...item,
+          divisions: competitionDivisions(item).map((itemDivision) => (
+            itemDivision.name === division.name
+              ? { ...itemDivision, fixtures: (itemDivision.fixtures || []).filter((_, index) => index !== fixtureIndex) }
+              : itemDivision
+          )),
+        }
         : item
     ));
     await saveAssociationCompetitions(nextCompetitions, "League game removed.");
@@ -1049,7 +1098,7 @@ export default function OrganisationSettingsPage() {
                                   .map((item) => <option key={`${item.type}-${item.name}`} value={item.name} />)}
                               </datalist>
                             </div>
-                            <button disabled={!competitionDrafts[group.type].trim() || savingSection === "association-competitions"} type="submit">Save league</button>
+                            <button className="settings-form-action" disabled={!competitionDrafts[group.type].trim() || savingSection === "association-competitions"} type="submit">Save League</button>
                           </form>
                         ) : null}
                         {competitions.length === 0 ? <div className="dashboard-empty">No {group.title.toLowerCase()} added.</div> : null}
@@ -1058,11 +1107,13 @@ export default function OrganisationSettingsPage() {
                             const key = competitionKey(competition);
                             const domKey = key.replace(/[^a-zA-Z0-9_-]+/g, "-");
                             const competitionOpen = expandedCompetition === key;
-                            const fixtureDraft = fixtureDrafts[key] || { date: "", opposition: "" };
+                            const divisionsOpen = Boolean(divisionPanelsOpen[key]);
+                            const divisions = competitionDivisions(competition);
+                            const gameCount = divisions.reduce((total, division) => total + (division.fixtures || []).length, 0);
                             return (
                               <article className={`settings-league-card${competitionOpen ? " settings-league-card--open" : ""}`} key={key}>
                                 <div className="settings-league-card__heading">
-                                  <span className="settings-league-card__summary"><strong>{competition.name}</strong><small>{(competition.fixtures || []).length} game date{(competition.fixtures || []).length === 1 ? "" : "s"}</small></span>
+                                  <span className="settings-league-card__summary"><strong>{competition.name}</strong><small>{divisions.length} division{divisions.length === 1 ? "" : "s"} · {gameCount} game{gameCount === 1 ? "" : "s"}</small></span>
                                   <span className="settings-league-card__actions">
                                     <button
                                       aria-expanded={competitionOpen}
@@ -1073,6 +1124,19 @@ export default function OrganisationSettingsPage() {
                                       onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
                                     >
                                       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.8" /></svg>
+                                    </button>
+                                    <button
+                                      aria-expanded={divisionsOpen}
+                                      aria-label={`${divisionsOpen ? "Hide" : "Show"} divisions for ${competition.name}`}
+                                      className={`settings-league-action-button${divisionsOpen ? " active" : ""}`}
+                                      title={`${divisionsOpen ? "Hide" : "Show"} divisions`}
+                                      type="button"
+                                      onClick={() => {
+                                        setExpandedCompetition(key);
+                                        setDivisionPanelsOpen((current) => ({ ...current, [key]: !current[key] }));
+                                      }}
+                                    >
+                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>
                                     </button>
                                     <button
                                       aria-label={`Delete ${competition.name}`}
@@ -1090,25 +1154,55 @@ export default function OrganisationSettingsPage() {
                                 </div>
                                 {competitionOpen ? (
                                   <div className="settings-league-card__fixtures stack compact">
-                                    <form className="settings-league-fixture-form" onSubmit={(event) => handleFixtureAdd(event, competition)}>
-                                      <div className="field">
-                                        <label htmlFor={`${domKey}-date`}>Game date</label>
-                                        <input id={`${domKey}-date`} type="date" value={fixtureDraft.date} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [key]: { ...fixtureDraft, date: event.target.value } }))} />
-                                      </div>
-                                      <div className="field">
-                                        <label htmlFor={`${domKey}-opposition`}>Opposition</label>
-                                        <input id={`${domKey}-opposition`} placeholder="Opposition club or team" value={fixtureDraft.opposition} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [key]: { ...fixtureDraft, opposition: event.target.value } }))} />
-                                      </div>
-                                      <button disabled={!fixtureDraft.date || !fixtureDraft.opposition.trim() || savingSection === "association-competitions"} type="submit">Add game</button>
-                                    </form>
-                                    {(competition.fixtures || []).length === 0 ? <div className="dashboard-empty">No game dates assigned yet.</div> : (
-                                      <div className="settings-league-fixture-list">
-                                        {(competition.fixtures || []).map((fixture, fixtureIndex) => (
-                                          <div className="settings-league-fixture-row" key={`${fixture.date}-${fixture.opposition}-${fixtureIndex}`}>
-                                            <div><strong>{formatFixtureDate(fixture.date)}</strong><span>{fixture.opposition}</span></div>
-                                            <button aria-label={`Remove ${fixture.opposition} on ${fixture.date}`} className="settings-edit-button danger" type="button" onClick={() => handleFixtureRemove(competition, fixtureIndex)}>×</button>
+                                    {!divisionsOpen ? <p className="helper-text">Use the divisions control to organise this league and view its games.</p> : (
+                                      <div className="settings-league-divisions stack compact">
+                                        <form className="settings-division-add-form" onSubmit={(event) => handleDivisionAdd(event, competition)}>
+                                          <div className="field">
+                                            <label htmlFor={`${domKey}-division-name`}>Division name</label>
+                                            <input id={`${domKey}-division-name`} placeholder="For example: Division 1" value={divisionDrafts[key] || ""} onChange={(event) => setDivisionDrafts((current) => ({ ...current, [key]: event.target.value }))} />
                                           </div>
-                                        ))}
+                                          <button className="settings-form-action" disabled={!String(divisionDrafts[key] || "").trim() || savingSection === "association-competitions"} type="submit">Add Division</button>
+                                        </form>
+                                        {divisions.length === 0 ? <div className="dashboard-empty">No divisions added yet.</div> : null}
+                                        {divisions.map((division) => {
+                                          const currentDivisionKey = divisionKey(competition, division);
+                                          const divisionDomKey = currentDivisionKey.replace(/[^a-zA-Z0-9_-]+/g, "-");
+                                          const divisionOpen = Boolean(expandedDivisions[currentDivisionKey]);
+                                          const fixtureDraft = fixtureDrafts[currentDivisionKey] || { date: "", opposition: "" };
+                                          return (
+                                            <section className="settings-division-card" key={currentDivisionKey}>
+                                              <button className="settings-division-card__toggle" aria-expanded={divisionOpen} type="button" onClick={() => setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: !current[currentDivisionKey] }))}>
+                                                <span><strong>{division.name}</strong><small>{(division.fixtures || []).length} game{(division.fixtures || []).length === 1 ? "" : "s"}</small></span>
+                                                <span className={`settings-expand-icon${divisionOpen ? " settings-expand-icon--open" : ""}`} aria-hidden="true" />
+                                              </button>
+                                              {divisionOpen ? (
+                                                <div className="settings-division-card__games stack compact">
+                                                  <form className="settings-league-fixture-form" onSubmit={(event) => handleFixtureAdd(event, competition, division)}>
+                                                    <div className="field">
+                                                      <label htmlFor={`${divisionDomKey}-date`}>Game date</label>
+                                                      <input id={`${divisionDomKey}-date`} type="date" value={fixtureDraft.date} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [currentDivisionKey]: { ...fixtureDraft, date: event.target.value } }))} />
+                                                    </div>
+                                                    <div className="field">
+                                                      <label htmlFor={`${divisionDomKey}-opposition`}>Opposition</label>
+                                                      <input id={`${divisionDomKey}-opposition`} placeholder="Opposition club or team" value={fixtureDraft.opposition} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [currentDivisionKey]: { ...fixtureDraft, opposition: event.target.value } }))} />
+                                                    </div>
+                                                    <button className="settings-form-action" disabled={!fixtureDraft.date || !fixtureDraft.opposition.trim() || savingSection === "association-competitions"} type="submit">Add Game</button>
+                                                  </form>
+                                                  {(division.fixtures || []).length === 0 ? <div className="dashboard-empty">No games assigned to this division yet.</div> : (
+                                                    <div className="settings-league-fixture-list">
+                                                      {(division.fixtures || []).map((fixture, fixtureIndex) => (
+                                                        <div className="settings-league-fixture-row" key={`${fixture.date}-${fixture.opposition}-${fixtureIndex}`}>
+                                                          <div><strong>{formatFixtureDate(fixture.date)}</strong><span>{fixture.opposition}</span></div>
+                                                          <button aria-label={`Remove ${fixture.opposition} on ${fixture.date}`} className="settings-edit-button danger" type="button" onClick={() => handleFixtureRemove(competition, division, fixtureIndex)}>×</button>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ) : null}
+                                            </section>
+                                          );
+                                        })}
                                       </div>
                                     )}
                                   </div>

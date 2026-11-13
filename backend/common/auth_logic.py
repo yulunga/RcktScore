@@ -97,6 +97,7 @@ def _serialize_org_user(user_row, client_type="web_app"):
             if user_row.get("subscription_last_renewed_at")
             else None
         ),
+        "subscription_access_enabled": bool(user_row.get("subscription_access_enabled", True)),
     }
 
 
@@ -129,6 +130,9 @@ def get_org_users(connection, username, for_update=True):
                 u.enabled_sports_ios,
                 platform.enabled_sports_web AS platform_enabled_sports_web,
                 platform.enabled_sports_ios AS platform_enabled_sports_ios,
+                (COALESCE(platform.subscriptions_enabled, true)
+                    OR COALESCE(platform.subscription_exception_emails, '[]'::jsonb) ? LOWER(u.clubusername))
+                    AS subscription_access_enabled,
                 o.organization_name,
                 subscription.provider AS subscription_provider,
                 subscription.status AS subscription_status,

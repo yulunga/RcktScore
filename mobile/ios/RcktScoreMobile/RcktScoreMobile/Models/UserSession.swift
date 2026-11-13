@@ -20,6 +20,7 @@ struct UserMembership: Codable, Identifiable, Hashable {
     let subscriptionExpiresAt: String?
     let subscriptionAutoRenewEnabled: Bool?
     let subscriptionLastRenewedAt: String?
+    let subscriptionAccessEnabled: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -41,6 +42,7 @@ struct UserMembership: Codable, Identifiable, Hashable {
         case subscriptionExpiresAt = "subscription_expires_at"
         case subscriptionAutoRenewEnabled = "subscription_auto_renew_enabled"
         case subscriptionLastRenewedAt = "subscription_last_renewed_at"
+        case subscriptionAccessEnabled = "subscription_access_enabled"
     }
 
     init(
@@ -62,7 +64,8 @@ struct UserMembership: Codable, Identifiable, Hashable {
         subscriptionStatus: String? = nil,
         subscriptionExpiresAt: String? = nil,
         subscriptionAutoRenewEnabled: Bool? = nil,
-        subscriptionLastRenewedAt: String? = nil
+        subscriptionLastRenewedAt: String? = nil,
+        subscriptionAccessEnabled: Bool? = nil
     ) {
         self.id = id
         self.username = username
@@ -83,6 +86,7 @@ struct UserMembership: Codable, Identifiable, Hashable {
         self.subscriptionExpiresAt = subscriptionExpiresAt
         self.subscriptionAutoRenewEnabled = subscriptionAutoRenewEnabled
         self.subscriptionLastRenewedAt = subscriptionLastRenewedAt
+        self.subscriptionAccessEnabled = subscriptionAccessEnabled
     }
 }
 
@@ -108,6 +112,7 @@ struct UserSession: Codable, Equatable {
     let subscriptionExpiresAt: String?
     let subscriptionAutoRenewEnabled: Bool?
     let subscriptionLastRenewedAt: String?
+    let subscriptionAccessEnabled: Bool?
     let availableMemberships: [UserMembership]?
 
     enum CodingKeys: String, CodingKey {
@@ -132,6 +137,7 @@ struct UserSession: Codable, Equatable {
         case subscriptionExpiresAt = "subscription_expires_at"
         case subscriptionAutoRenewEnabled = "subscription_auto_renew_enabled"
         case subscriptionLastRenewedAt = "subscription_last_renewed_at"
+        case subscriptionAccessEnabled = "subscription_access_enabled"
         case availableMemberships = "available_memberships"
     }
 
@@ -157,6 +163,7 @@ struct UserSession: Codable, Equatable {
         subscriptionExpiresAt: String? = nil,
         subscriptionAutoRenewEnabled: Bool? = nil,
         subscriptionLastRenewedAt: String? = nil,
+        subscriptionAccessEnabled: Bool? = nil,
         availableMemberships: [UserMembership]?
     ) {
         self.id = id
@@ -180,6 +187,7 @@ struct UserSession: Codable, Equatable {
         self.subscriptionExpiresAt = subscriptionExpiresAt
         self.subscriptionAutoRenewEnabled = subscriptionAutoRenewEnabled
         self.subscriptionLastRenewedAt = subscriptionLastRenewedAt
+        self.subscriptionAccessEnabled = subscriptionAccessEnabled
         self.availableMemberships = availableMemberships
     }
 }
@@ -253,6 +261,7 @@ extension UserSession {
             subscriptionExpiresAt: membership.subscriptionExpiresAt,
             subscriptionAutoRenewEnabled: membership.subscriptionAutoRenewEnabled,
             subscriptionLastRenewedAt: membership.subscriptionLastRenewedAt,
+            subscriptionAccessEnabled: membership.subscriptionAccessEnabled,
             availableMemberships: refreshedMemberships ?? availableMemberships
         )
     }

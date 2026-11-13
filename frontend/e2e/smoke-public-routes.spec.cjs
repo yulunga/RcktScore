@@ -138,31 +138,41 @@ test("paused Want In registers interest and keeps sign-in available @smoke", asy
   await expect(page.getByText(/Thanks for registering your interest/)).toBeVisible();
 });
 
-test("Ground Control saves the registration switch and pause message @smoke", async ({ page }) => {
+test("Ground Control saves Services and shows the traffic-light status @smoke", async ({ page }) => {
   await page.route("**/root_admin/session/status", (route) => route.fulfill({
     json: { success: true, data: { rootAdminSession: { username: "Admin", csrf_token: "test-csrf" } } },
   }));
-  await page.route("**/registration/status", (route) => route.fulfill({
-    json: { success: true, data: { enabled: true, message: "Please register your interest." } },
-  }));
-  await page.route("**/root_admin/registration", (route) => route.fulfill({
-    json: { success: true, data: route.request().postDataJSON() },
+  await page.route("**/root_admin/services", (route) => route.fulfill({
+    json: { success: true, data: route.request().method() === "GET" ? {
+      status: "green",
+      services: {
+        public_registration: { enabled: true, message: "Please register your interest." },
+        subscriptions: { enabled: true, exceptions: [] },
+      },
+    } : { ...route.request().postDataJSON(), status: "orange" } },
   }));
 
-  await page.goto("/rckscoreAdmin/registration");
+  await page.goto("/rckscoreAdmin/services");
   await page.getByRole("button", { name: "Essential only" }).click();
-  const flag = page.getByRole("link", { name: "Public registration open" });
-  await expect(flag).toHaveAttribute("data-enabled", "true");
+  const light = page.getByRole("link", { name: "Services: all enabled" });
+  await expect(light).toHaveAttribute("data-status", "green");
   await expect(page.locator(".root-admin-session-nav a").nth(-2)).toHaveAccessibleName("Settings");
 
-  await page.getByRole("switch", { name: "Enable new users" }).uncheck();
   await page.getByLabel("Message when registration is paused").fill("Join our waiting list.");
-  const requestPromise = page.waitForRequest("**/root_admin/registration");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("switch", { name: "Enable subscription menus" }).uncheck();
+  await page.getByLabel("Subscription access exceptions").fill("tester@example.com");
+  const requestPromise = page.waitForRequest("**/root_admin/services");
+  await page.getByRole("button", { name: "Save Services", exact: true }).click();
   const request = await requestPromise;
-  expect(request.postDataJSON()).toEqual({ enabled: false, message: "Join our waiting list." });
+  expect(request.postDataJSON()).toEqual({
+    status: "green",
+    services: {
+      public_registration: { enabled: true, message: "Join our waiting list." },
+      subscriptions: { enabled: false, exceptions: ["tester@example.com"] },
+    },
+  });
   expect(request.headers()["x-csrf-token"]).toBe("test-csrf");
-  await expect(page.getByRole("link", { name: "Public registration paused" })).toHaveAttribute("data-enabled", "false");
+  await expect(page.getByRole("link", { name: "Services: partly disabled" })).toHaveAttribute("data-status", "orange");
 });
 
 test("email confirmation validates its link and enforces the password checklist @smoke", async ({ page }) => {

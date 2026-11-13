@@ -858,6 +858,24 @@ Resources:
             Path: /root_admin/registration
             Method: PUT
 
+  PlatformServicesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/platform_services/handler.lambda_handler
+      Events:
+        GetPlatformServices:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/services
+            Method: GET
+        UpdatePlatformServices:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/services
+            Method: PUT
+
   SendFeedbackFunction:
     Type: AWS::Serverless::Function
     Properties:

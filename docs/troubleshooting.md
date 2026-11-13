@@ -211,9 +211,9 @@ its Club Profile directly; two or more display a club chooser. If the menu is
 missing, inspect `available_memberships` and confirm the intended club role is
 `admin`. The club workspace must then include Leagues between Club Profile and
 Courts. Its Club leagues and Inter-club leagues groups expand independently, and
-selecting a saved league reveals its date/opposition fixtures. If names save but
-fixtures disappear, confirm the deployed `normalize_association_competitions`
-accepts the `fixtures` array and that `PUT /organization_details/{organization_id}`
+selecting a saved league and its divisions reveals dated opposition games. If names save but
+games disappear, confirm the deployed `normalize_association_competitions`
+accepts the nested `divisions[].fixtures` arrays and that `PUT /organization_details/{organization_id}`
 is authorizing the selected club rather than the active scoring context.
 
 The league group row should show a chevron rather than an add symbol. Its circular
@@ -224,6 +224,10 @@ list. If a deleted league reappears, inspect the `PUT /organization_details/{org
 response and verify the subsequent settings reload returns the updated JSON rather
 than a stale cached response. No match create, schedule or scoring request should
 contain league fields at this stage.
+
+Legacy flat `fixtures` are preserved inside a `General` division on the next save.
+If an old league appears to have no games, expand the divisions icon and then the
+General division before investigating the stored JSON.
 
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
@@ -592,12 +596,14 @@ If the display is stale:
 - treat WebSocket behavior as optional/partial until the infra is completed
 - check `VITE_WEBSOCKET_URL`, `WEBSOCKET_DOMAIN_NAME`, and `WEBSOCKET_STAGE`
 
-## Public registration flag
+## Services traffic light and subscription access
 
 - If the flag is unavailable or Want In cannot check availability, verify migration `059_public_registration.sql` and the backend deployment, then check `GET https://api.hitnscore.com/registration/status`.
 - If the app sees the saved setting and the landing page does not, check `GET https://www.hitnscore.com/registration/status`. It should return the same setting. The landing CloudFront stack must route that exact path to the API without caching. If the check fails, Start Scoring opens the normal login page and the backend still enforces the signup pause.
 - If the interest form reports an expired or used question, answer the new question displayed in the form. For email errors, check the Public Registration Lambda logs and the configured SES sender and recipient. A failed SES send rolls back the interest record so the visitor can retry.
-- A red flag leaves login and invitation acceptance available. Use Ground Control's Public Registration page to reopen public signup.
+- The traffic light is green when registration and subscriptions are enabled, orange when one is disabled, and red when both are disabled. If Services reports missing columns, apply migration `061_platform_service_controls.sql` and redeploy the Platform Services Lambda/routes.
+- Disabled subscriptions remain visible but greyed out on web, iOS and Android. If an exception user is still blocked, save the normalized sign-in email one per line, then foreground or refresh the client so its `/session/status` refresh receives `subscription_access_enabled: true`.
+- Paused registration leaves login and invitation acceptance available. Use Ground Control's Services page to reopen public signup.
 
 ## 6. Email Flow Issues
 
