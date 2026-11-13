@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.components.CardRow
@@ -157,7 +158,7 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                 }
 
                 MatchesCategory.Scheduled -> item(key = "scheduled") {
-                    SectionCard(title = stringResource(R.string.section_scheduled_matches), iconRes = R.drawable.ic_tab_matches) {
+                    SectionCard(title = stringResource(R.string.section_scheduled_matches), iconRes = R.drawable.ic_calendar_clock) {
                         if (isPersonal && !isPersonalPlus) {
                             UpgradePrompt(
                                 title = stringResource(R.string.scheduling_upgrade_title),
@@ -189,7 +190,7 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                                         value = search,
                                         onValueChange = { search = it },
                                         modifier = Modifier.weight(1f),
-                                        placeholder = { Text(stringResource(R.string.history_search)) },
+                                        placeholder = { Text(stringResource(R.string.history_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                         leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
                                         trailingIcon = {
                                             if (search.isNotEmpty()) {

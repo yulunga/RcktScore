@@ -54,7 +54,8 @@ class AppNavigationSmokeTest {
         composeRule.onNodeWithText("Ping Us").assertIsDisplayed()
         composeRule.onNodeWithText("Guides").assertIsDisplayed()
         composeRule.onNodeWithText("Password Reset").performClick()
-        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.onNodeWithText("Send reset link").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Close").performClick()
     }
 
     @Test

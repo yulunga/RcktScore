@@ -8508,8 +8508,7 @@ textarea {
   background: #f8fbff;
 }
 
-.settings-league-group__toggle,
-.settings-league-card__select {
+.settings-league-group__toggle {
   display: flex;
   width: 100%;
   align-items: center;
@@ -8528,24 +8527,31 @@ textarea {
 }
 
 .settings-league-group__toggle > span:first-child,
-.settings-league-card__select > span:first-child {
+.settings-league-card__summary {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
 .settings-league-group__toggle small,
-.settings-league-card__select small {
+.settings-league-card__summary small {
   color: #486581;
   font-size: 0.78rem;
   font-weight: 500;
 }
 
-.settings-league-group__toggle > span:last-child,
-.settings-league-card__select > span:last-child {
-  color: #0b74d1;
-  font-size: 1.35rem;
-  font-weight: 800;
+.settings-expand-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-right: 3px solid #0b74d1;
+  border-bottom: 3px solid #0b74d1;
+  transform: rotate(45deg) translate(-2px, 2px);
+  transition: transform 160ms ease;
+}
+
+.settings-expand-icon--open {
+  transform: rotate(225deg) translate(-2px, 2px);
 }
 
 .settings-league-group__content {
@@ -8557,6 +8563,18 @@ textarea {
 .settings-league-group__content .settings-competition-search {
   grid-template-columns: minmax(0, 1fr) auto;
   padding-top: 14px;
+}
+
+.settings-league-group__content-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.settings-league-group__content-heading + .settings-collapsible-card {
+  margin-top: 0;
 }
 
 .settings-league-card {
@@ -8576,12 +8594,44 @@ textarea {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding-right: 10px;
+  min-height: 64px;
+  padding: 10px 12px;
 }
 
-.settings-league-card__select {
-  min-height: 60px;
-  padding: 10px 12px;
+.settings-league-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-league-action-button {
+  display: grid;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 8px;
+  place-items: center;
+  border: 1px solid #b9cee3;
+  border-radius: 50%;
+  background: #fff;
+  color: #0b74d1;
+  box-shadow: none;
+}
+
+.settings-league-action-button svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.settings-league-action-button--delete {
+  border-color: rgba(201, 47, 85, 0.34);
+  color: #b4233f;
 }
 
 .settings-league-card__fixtures {

@@ -217,7 +217,18 @@ fun SettingsPageScreen(
                 SettingsPage.Profile -> item(key = "profile-${session.username}") {
                     val viewModel: ProfileViewModel = viewModel(key = "profile-${session.username}", factory = ProfileViewModel.Factory)
                     val ui by viewModel.uiState.collectAsStateWithLifecycle()
-                    ProfileEditor(ui, viewModel)
+                    val personal = session.availableContexts.firstOrNull { it.type == AccountContextType.Personal }
+                    ProfileEditor(ui, viewModel) {
+                        // As iOS Settings › Profile: the photo and Personal tier above the fields.
+                        ProfilePhotoHeader(
+                            username = session.username,
+                            personalOrganizationId = personal?.organizationId,
+                            displayName = personName(session),
+                            email = session.username,
+                            tier = personal?.let { contextTitle(it) },
+                            showName = false,
+                        )
+                    }
                     Note(stringResource(R.string.settings_role_line, session.activeContext.name, roleName(session.activeContext.role)))
                 }
                 SettingsPage.Subscription -> item(key = "subscription") {

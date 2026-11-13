@@ -96,7 +96,7 @@
     <string name="locked_title">Unlock your full match history</string>
     <string name="locked_body">Older matches are kept with Personal Plus.</string>
     <string name="offline_history">Historic matches are only available when the app is online.</string>
-    <string name="history_search">Search player, score or date</string>
+    <string name="history_search">Search player or date</string>
     <string name="history_clear_search">Clear search</string>
     <string name="history_all_sports">All sports</string>
     <string name="history_date_any">Any date</string>
@@ -141,9 +141,9 @@
     <string name="analytics_personal">Personal</string>
     <string name="analytics_stats">Stats</string>
     <string name="analytics_personal_title">Personal Analytics</string>
-    <string name="analytics_personal_subtitle">Your results, court time, serving and progress across your sports.</string>
+    <string name="analytics_personal_subtitle">Your app usage and, with Personal Plus, game and player performance.</string>
     <string name="analytics_stats_subtitle">A summary of the matches scored in this app.</string>
-    <string name="analytics_free_note">Personal Free stats use the completed matches available in your plan. Personal Plus adds win, serve, opponent and progress analytics.</string>
+    <string name="analytics_free_note">Personal includes basic app-usage and setup analytics. Upgrade for player, game, serve, opponent, progress and export reporting.</string>
     <string name="analytics_no_data">No completed matches are available for performance reporting yet.</string>
     <string name="analytics_unclassified">%1$d matches could not be assigned to your profile because the recorded player name differs from your registered name.</string>
 
@@ -374,20 +374,20 @@
     <string name="settings_court_saved">Court saved.</string>
     <string name="settings_court_removed">Court removed.</string>
     <string name="settings_display_code_issued">New display code issued. Update the court screen with it.</string>
-    <string name="settings_email_change_note">Your email is also your sign-in name. Saving a new email signs you out on every device.</string>
+    <string name="settings_email_change_note">Changing your email changes your sign-in username and signs you out so the new address can be verified.</string>
     <string name="settings_city">City / location</string>
     <string name="settings_save_profile">Save Profile</string>
     <string name="settings_password">Password</string>
     <string name="settings_password_body">We\'ll email you a secure link to set a new password.</string>
     <string name="settings_send_reset">Send password reset email</string>
     <string name="settings_delete_title">Delete account</string>
-    <string name="settings_delete_body">Permanently deletes your Personal account, its matches and your club memberships. Matches owned by clubs stay with the clubs.</string>
+    <string name="settings_delete_body">Permanently deletes your Personal account, its matches and your club memberships after the retention period. Matches owned by clubs stay with the clubs.</string>
     <string name="settings_delete_button">Delete my account</string>
     <string name="settings_delete_confirm_1_title">Delete your account?</string>
-    <string name="settings_delete_confirm_1_body">Your Personal matches, history and memberships will be removed. This can\'t be undone.</string>
+    <string name="settings_delete_confirm_1_body">This immediately disables your account and signs out every device. Your Personal matches and scoring history are retained in delete-pending state for 12 months, then permanently cleared. Club-owned match records remain with their clubs.</string>
     <string name="settings_continue">Continue</string>
-    <string name="settings_delete_confirm_2_title">Are you really sure?</string>
-    <string name="settings_delete_confirm_2_body">Your account will be deleted permanently and you\'ll be signed out.</string>
+    <string name="settings_delete_confirm_2_title">Confirm account deletion</string>
+    <string name="settings_delete_confirm_2_body">This cannot be undone from the app. Type DELETE to confirm that this identity, its Personal account and all club memberships should be disabled now and scheduled for permanent clearing.</string>
     <string name="settings_delete_permanently">Delete Permanently</string>
     <string name="settings_org_profile">Organisation profile</string>
     <string name="settings_org_location">Location</string>
@@ -667,4 +667,11 @@
     <string name="scorer_lock_takeover_action">Take Over Scoring</string>
     <string name="scorer_lock_takeover_title">Take over this match?</string>
     <string name="scorer_lock_takeover_confirm">The current scorer will immediately lose permission to change this match. Continue?</string>
+    <string name="tab_tournament">Tournament</string>
+    <string name="analytics_club">Club</string>
+    <string name="analytics_club_title">Club Analytics</string>
+    <string name="analytics_club_subtitle">A summary of the matches scored for %1$s.</string>
+    <string name="analytics_period">Reporting period</string>
+    <string name="settings_yes">Yes</string>
+    <string name="settings_deleting">Deleting account…</string>
 </resources>

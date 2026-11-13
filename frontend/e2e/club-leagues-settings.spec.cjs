@@ -98,15 +98,16 @@ test("club admins choose a managed club and assign league fixtures @club-setting
     42: clubSettings(42, "Alpha Club"),
     43: clubSettings(43, "Beta Club", "club_pro"),
   };
-  let lastUpdate = null;
+  const updates = [];
 
   await page.route(/\/organization_settings\/(42|43)$/, (route) => {
     const id = Number(route.request().url().split("/").at(-1));
     return route.fulfill({ json: envelope({ organizationSettings: settingsByClub[id] }) });
   });
   await page.route("**/organization_details/42", async (route) => {
-    lastUpdate = route.request().postDataJSON();
-    settingsByClub[42].organization.association_competitions = lastUpdate.association_competitions;
+    const update = route.request().postDataJSON();
+    updates.push(update);
+    settingsByClub[42].organization.association_competitions = update.association_competitions;
     await route.fulfill({ json: envelope({ organizationSettings: settingsByClub[42] }) });
   });
 
@@ -128,23 +129,37 @@ test("club admins choose a managed club and assign league fixtures @club-setting
 
   await page.getByRole("button", { name: /Leagues/ }).click();
   await expect(page).toHaveURL(/tab=leagues/);
+  await expect(page.locator(".settings-league-group__toggle .settings-expand-icon")).toHaveCount(2);
+  await page.getByRole("button", { name: /Inter-club leagues/ }).click();
+  await expect(page.getByRole("button", { name: "Add Inter-club leagues" })).toBeVisible();
   await page.getByRole("button", { name: /Club leagues/ }).click();
+  await page.getByRole("button", { name: "Add Club leagues" }).click();
   await page.getByLabel("League name").fill("County League");
-  await page.getByRole("button", { name: "Add league" }).click();
-  await expect(page.getByRole("button", { name: /^County League/ })).toBeVisible();
+  await page.getByRole("button", { name: "Save league" }).click();
+  await expect(page.getByRole("button", { name: "Hide County League" })).toBeVisible();
 
   await page.getByLabel("Game date").fill("2027-02-12");
   await page.getByLabel("Opposition").fill("North Club");
   await page.getByRole("button", { name: "Add game" }).click();
   await expect(page.getByText("12 Feb 2027")).toBeVisible();
   await expect(page.getByText("North Club")).toBeVisible();
-  expect(lastUpdate.association_competitions).toEqual([
+  expect(updates.at(-1).association_competitions).toEqual([
     {
       name: "County League",
       type: "league",
       fixtures: [{ date: "2027-02-12", opposition: "North Club" }],
     },
   ]);
+
+  await page.getByRole("button", { name: "Delete County League" }).click();
+  const deleteDialog = page.getByRole("dialog", { name: "Delete County League?" });
+  await expect(deleteDialog).toBeVisible();
+  await expect(deleteDialog.getByRole("button", { name: "Delete League" })).toBeDisabled();
+  await deleteDialog.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await deleteDialog.getByRole("button", { name: "Delete League" }).click();
+  await expect(deleteDialog).toHaveCount(0);
+  await expect(page.getByText("County League", { exact: true })).toHaveCount(0);
+  expect(updates.at(-1).association_competitions).toEqual([]);
 });
 
 test("Club Management opens the only administered club directly @club-settings", async ({ page }) => {

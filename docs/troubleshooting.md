@@ -216,6 +216,15 @@ fixtures disappear, confirm the deployed `normalize_association_competitions`
 accepts the `fixtures` array and that `PUT /organization_details/{organization_id}`
 is authorizing the selected club rather than the active scoring context.
 
+The league group row should show a chevron rather than an add symbol. Its circular
+add control appears only after expanding the group. Saved league rows expose a view
+icon and a delete icon; delete remains disabled until the confirmation field equals
+uppercase `DELETE`, then submits the complete remaining `association_competitions`
+list. If a deleted league reappears, inspect the `PUT /organization_details/{organization_id}`
+response and verify the subsequent settings reload returns the updated JSON rather
+than a stale cached response. No match create, schedule or scoring request should
+contain league fields at this stage.
+
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
 should therefore return `data.session` with all approved choices in
@@ -482,6 +491,9 @@ If a root-admin issue appears:
 - if Personal or Personal Plus is missing from the web or iOS `Score this match for` choices, inspect `available_memberships` in a fresh login response and confirm that the normalized email has an approved personal membership; the chooser cannot manufacture a personal account that is not returned by login
 - if optional birth month/year fail to load or save in iOS Profile, apply `054_optional_birth_month_year.sql`, confirm `GET /organization_settings/{personal_organization_id}` returns `birth_month`/`birth_year`, and verify `PUT /personal_profile/{personal_organization_id}` is sent to the Personal organisation even when the active scoring context is a club
 - iOS Profile fields should be disabled until Edit is tapped. Subscription and Game Settings must resolve the retained Personal membership rather than the active club; a scorer/read-only Association hub must expose only read-only Profile and Courts, never Users or Club Settings
+- iOS Profile must also expose Delete my account when the active context is a club: the destination organisation comes from the retained Personal membership, not `session.organizationID`. The first destructive warning should lead to a second sheet whose action stays disabled until the exact text `DELETE` is entered. The API still sends its established `DELETE MY ACCOUNT` value and verifies Personal ownership server-side
+- iOS Matches History sport choices come from the active membership's implemented `enabled_sports`; switching context clears sport/date filters. If a valid sport is absent, inspect the refreshed session membership rather than hard-coding the list from match history. The optional date filter compares the completed or updated timestamp using the device calendar day
+- Club CSV export is intentionally absent from iOS Club Analytics. For an admin it appears under the active club Settings → Data and Association → club → Data, using the same `analytics.read` backend route. Non-admin association hubs must not expose Data
 - if only one user is affected, inspect `SkwshOrgUsers.enabled_sports_web` and `enabled_sports_ios` for each of their memberships; access changes intentionally revoke active sessions
 - saving Platform RacketSports availability alone must not enable the sport for existing users or clubs; enable the required client from the User Account page for personal users, or enable the club first and then select the club membership's client access
 - if the affected-user preview fails, verify `POST /root_admin/platform_sports/preview` is deployed and the root-admin session is still valid; the preview is read-only and must not alter sport access
@@ -513,6 +525,7 @@ Common symptoms:
 - Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
+- the first online score updates visually but the next scoring tap feels blocked while a cold Lambda responds
 - an early-ended match records the wrong winner or cannot be recorded as a draw
 
 What to check:
@@ -529,6 +542,9 @@ What to check:
 - court conflict behavior
 - latest `match_events` entries
 - the matching `match_action_receipts.client_action_id` row when investigating a replayed iOS mutation
+- for a slow first iOS point, confirm the current build releases `isMutating` after the 150 ms debounce instead of awaiting `OfflineMatchStore.sync(...)`. The optimistic action should remain visible and subsequent taps should append to the same ordered queue while the first request is in flight
+- when an operable online match opens, confirm three authenticated POSTs reach `/score_point`, `/event_action`, and `/undo_action` with `{ "match_id": "...", "warm": true }` and each returns `data.warmed = true`. These requests deliberately open the database/authorization path but must not append `match_events`, create `match_action_receipts`, or claim an unowned club match. HTTP 401/403 indicates the retained session or `match.manage` capability is wrong; Lambda initialization or database latency should be investigated in CloudWatch if the warm calls themselves remain slow
+- warm-up failure is intentionally silent in the native UI and never removes queued actions. The first real mutation remains the authoritative error path and its original UUID must stay queued for retry
 - when two devices or taps appear to collide, verify the deployed `common/match_logic.py` acquires `SELECT ... FOR UPDATE` before dispatching to the sport engine; event, summary, receipt, and tournament-result writes should appear together or not at all
 - check for transaction errors or lock waits before repairing summary columns manually. A failed current mutation rolls back, and a later mutation rebuilds from the committed event stream
 - if Undo appears ineffective after a winning point, inspect `match_events` and `match_event_compensations`: the backend should append an `undo` event, link the preceding effective `score_point`/`stroke` and later completion `timer`, reset the duration summary, and return the match to active state in one transaction without deleting audit rows

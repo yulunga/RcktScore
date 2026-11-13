@@ -15,6 +15,34 @@ data class Dashboard(
     @SerialName("recent_matches") val recentMatches: List<MatchSummary> = emptyList(),
     @SerialName("viewed_matches") val viewedMatches: List<MatchSummary> = emptyList(),
     val performance: PersonalPerformance? = null,
+    /** App usage for the reporting period (extended fields only when `analytics_period_days` is sent). */
+    @SerialName("app_analytics") val appAnalytics: AppAnalytics? = null,
+)
+
+/** As iOS `AppAnalyticsSummary`. Rates are percentages (0–100). */
+@Serializable
+data class AppAnalytics(
+    @SerialName("period_days") val periodDays: Int = 30,
+    @SerialName("matches_scored") val matchesScored: Int = 0,
+    @SerialName("completed_matches") val completedMatches: Int = 0,
+    @SerialName("completed_match_rate") val completedMatchRate: Double? = null,
+    @SerialName("average_match_duration_seconds") val averageMatchDurationSeconds: Int? = null,
+    @SerialName("matches_by_sport") val matchesBySport: List<AnalyticsSportCount> = emptyList(),
+    @SerialName("setup_completion") val setupCompletion: SetupCompletion? = null,
+    @SerialName("active_days") val activeDays: Int? = null,
+    @SerialName("returning_usage_weeks") val returningUsageWeeks: Int? = null,
+)
+
+@Serializable
+data class AnalyticsSportCount(val sport: String = "", val count: Int = 0)
+
+@Serializable
+data class SetupCompletion(
+    val tracked: Boolean = false,
+    val started: Int? = null,
+    val completed: Int? = null,
+    val abandoned: Int? = null,
+    @SerialName("abandonment_rate") val abandonmentRate: Double? = null,
 )
 
 @Serializable

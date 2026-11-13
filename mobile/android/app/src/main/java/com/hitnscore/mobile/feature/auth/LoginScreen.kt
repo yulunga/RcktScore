@@ -424,6 +424,7 @@ private fun AccountChoiceDialog(
     )
 }
 
+/** Password Reset in the same white overlay as Ping Us, closed with the round × (as iOS). */
 @Composable
 private fun PasswordResetDialog(
     state: PasswordResetUiState,
@@ -435,71 +436,44 @@ private fun PasswordResetDialog(
     var pastedLink by rememberSaveable { mutableStateOf("") }
     var linkInvalid by rememberSaveable { mutableStateOf(false) }
     var showPaste by rememberSaveable { mutableStateOf(false) }
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text(stringResource(R.string.reset_title)) },
-        text = {
-            Column {
-                if (state.sent) {
-                    Text(stringResource(R.string.reset_sent))
-                } else {
-                    Text(stringResource(R.string.reset_body), style = MaterialTheme.typography.bodyMedium)
-                    OutlinedTextField(
-                        value = state.email,
-                        onValueChange = onEmailChange,
-                        modifier = Modifier
-                            .padding(top = 12.dp)
-                            .fillMaxWidth(),
-                        label = { Text(stringResource(R.string.reset_email)) },
-                        singleLine = true,
-                        enabled = !state.isSending,
-                        keyboardOptions = KeyboardOptions(
-                            autoCorrectEnabled = false,
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Send,
-                        ),
-                        keyboardActions = KeyboardActions(onSend = { onSend() }),
-                    )
-                    state.errorMessage?.let {
-                        Text(
-                            it,
-                            modifier = Modifier.padding(top = 8.dp),
-                            color = HitNScoreTheme.colors.brandPink,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-                if (showPaste) {
-                    Spacer(Modifier.height(12.dp))
-                    PasteLinkField(
-                        value = pastedLink,
-                        onValueChange = {
-                            pastedLink = it
-                            linkInvalid = false
-                        },
-                        onOpen = { linkInvalid = !onOpenLink(pastedLink) },
-                        invalid = linkInvalid,
-                    )
-                } else {
-                    TextButton(onClick = { showPaste = true }, modifier = Modifier.padding(top = 4.dp)) {
-                        Text(stringResource(R.string.password_have_link))
-                    }
-                }
+    LoginOverlay(onClose = onClose, closeEnabled = !state.isSending, title = stringResource(R.string.reset_title)) {
+        if (state.sent) {
+            Text(stringResource(R.string.reset_sent), style = MaterialTheme.typography.bodyLarge)
+        } else {
+            Text(stringResource(R.string.reset_body), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OverlayField(
+                value = state.email,
+                onValueChange = onEmailChange,
+                placeholder = stringResource(R.string.reset_email),
+                enabled = !state.isSending,
+                keyboardType = KeyboardType.Email,
+            )
+            state.errorMessage?.let {
+                Text(it, color = HitNScoreTheme.colors.brandPink, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             }
-        },
-        confirmButton = {
-            if (!state.sent) {
-                TextButton(onClick = onSend, enabled = !state.isSending && '@' in state.email) {
-                    Text(stringResource(R.string.reset_send))
-                }
+            OverlayPrimaryButton(
+                stringResource(R.string.reset_send),
+                enabled = '@' in state.email,
+                busy = state.isSending,
+                onClick = onSend,
+            )
+        }
+        if (showPaste) {
+            PasteLinkField(
+                value = pastedLink,
+                onValueChange = {
+                    pastedLink = it
+                    linkInvalid = false
+                },
+                onOpen = { linkInvalid = !onOpenLink(pastedLink) },
+                invalid = linkInvalid,
+            )
+        } else {
+            TextButton(onClick = { showPaste = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(stringResource(R.string.password_have_link))
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onClose) {
-                Text(stringResource(if (state.sent) R.string.close else R.string.cancel), textAlign = TextAlign.Center)
-            }
-        },
-    )
+        }
+    }
 }
 
 object TestTags {

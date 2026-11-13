@@ -129,8 +129,11 @@ export default function OrganisationSettingsPage() {
   const [associationCompetitions, setAssociationCompetitions] = useState([]);
   const [competitionDrafts, setCompetitionDrafts] = useState({ league: "", interclub: "" });
   const [leagueGroupsOpen, setLeagueGroupsOpen] = useState({ league: false, interclub: false });
+  const [addLeagueOpen, setAddLeagueOpen] = useState({ league: false, interclub: false });
   const [expandedCompetition, setExpandedCompetition] = useState("");
   const [fixtureDrafts, setFixtureDrafts] = useState({});
+  const [pendingCompetitionDelete, setPendingCompetitionDelete] = useState(null);
+  const [competitionDeleteConfirmation, setCompetitionDeleteConfirmation] = useState("");
   const settingsTabRefs = useRef({});
   const initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(
@@ -365,8 +368,10 @@ export default function OrganisationSettingsPage() {
       await task();
       await loadSettings();
       setMessage(successMessage);
+      return true;
     } catch (requestError) {
       setError(requestError.message || "Request failed.");
+      return false;
     } finally {
       setSavingSection("");
     }
@@ -455,7 +460,7 @@ export default function OrganisationSettingsPage() {
   }
 
   async function saveAssociationCompetitions(nextCompetitions, successMessage) {
-    await runMutation(
+    return runMutation(
       "association-competitions",
       () => updateOrganizationDetails(organizationId, { association_competitions: nextCompetitions }),
       successMessage,
@@ -468,16 +473,24 @@ export default function OrganisationSettingsPage() {
     if (!name || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
     const nextCompetition = { name, type: competitionType, fixtures: [] };
     const nextCompetitions = [...associationCompetitions, nextCompetition];
-    setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
-    setExpandedCompetition(competitionKey(nextCompetition));
-    await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
+    const saved = await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
+    if (saved) {
+      setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
+      setAddLeagueOpen((current) => ({ ...current, [competitionType]: false }));
+      setExpandedCompetition(competitionKey(nextCompetition));
+    }
   }
 
   async function handleCompetitionRemove(name) {
-    await saveAssociationCompetitions(
+    const saved = await saveAssociationCompetitions(
       associationCompetitions.filter((item) => item.name !== name),
       "Club competition removed.",
     );
+    if (saved) {
+      setPendingCompetitionDelete(null);
+      setCompetitionDeleteConfirmation("");
+      setExpandedCompetition("");
+    }
   }
 
   async function handleFixtureAdd(event, competition) {
@@ -492,8 +505,10 @@ export default function OrganisationSettingsPage() {
         ? { ...item, fixtures: [...(item.fixtures || []), { date, opposition }] }
         : item
     ));
-    setFixtureDrafts((current) => ({ ...current, [key]: { date: "", opposition: "" } }));
-    await saveAssociationCompetitions(nextCompetitions, "League game added.");
+    const saved = await saveAssociationCompetitions(nextCompetitions, "League game added.");
+    if (saved) {
+      setFixtureDrafts((current) => ({ ...current, [key]: { date: "", opposition: "" } }));
+    }
   }
 
   async function handleFixtureRemove(competition, fixtureIndex) {
@@ -1001,28 +1016,42 @@ export default function OrganisationSettingsPage() {
                       onClick={() => setLeagueGroupsOpen((current) => ({ ...current, [group.type]: !current[group.type] }))}
                     >
                       <span><strong>{group.title}</strong><small>{group.description}</small></span>
-                      <span aria-hidden="true">{groupOpen ? "−" : "+"}</span>
+                      <span className={`settings-expand-icon${groupOpen ? " settings-expand-icon--open" : ""}`} aria-hidden="true" />
                     </button>
                     {groupOpen ? (
                       <div className="settings-league-group__content stack compact">
-                        <form className="settings-competition-search" onSubmit={(event) => handleCompetitionAdd(event, group.type)}>
-                          <div className="field">
-                            <label htmlFor={`${group.type}-competition-name`}>League name</label>
-                            <input
-                              id={`${group.type}-competition-name`}
-                              list={`${group.type}-competition-catalog`}
-                              placeholder="Search or enter a league name"
-                              value={competitionDrafts[group.type]}
-                              onChange={(event) => setCompetitionDrafts((current) => ({ ...current, [group.type]: event.target.value }))}
-                            />
-                            <datalist id={`${group.type}-competition-catalog`}>
-                              {(settings?.competition_catalog || [])
-                                .filter((item) => item.type === group.type)
-                                .map((item) => <option key={`${item.type}-${item.name}`} value={item.name} />)}
-                            </datalist>
-                          </div>
-                          <button disabled={!competitionDrafts[group.type].trim() || savingSection === "association-competitions"} type="submit">Add league</button>
-                        </form>
+                        <div className="settings-league-group__content-heading">
+                          <strong>{group.title}</strong>
+                          <button
+                            aria-expanded={addLeagueOpen[group.type]}
+                            aria-label={addLeagueOpen[group.type] ? `Close add ${group.title} form` : `Add ${group.title}`}
+                            className="settings-add-button"
+                            type="button"
+                            onClick={() => setAddLeagueOpen((current) => ({ ...current, [group.type]: !current[group.type] }))}
+                          >
+                            {addLeagueOpen[group.type] ? "×" : "+"}
+                          </button>
+                        </div>
+                        {addLeagueOpen[group.type] ? (
+                          <form className="settings-competition-search settings-collapsible-card" onSubmit={(event) => handleCompetitionAdd(event, group.type)}>
+                            <div className="field">
+                              <label htmlFor={`${group.type}-competition-name`}>League name</label>
+                              <input
+                                id={`${group.type}-competition-name`}
+                                list={`${group.type}-competition-catalog`}
+                                placeholder="Search or enter a league name"
+                                value={competitionDrafts[group.type]}
+                                onChange={(event) => setCompetitionDrafts((current) => ({ ...current, [group.type]: event.target.value }))}
+                              />
+                              <datalist id={`${group.type}-competition-catalog`}>
+                                {(settings?.competition_catalog || [])
+                                  .filter((item) => item.type === group.type)
+                                  .map((item) => <option key={`${item.type}-${item.name}`} value={item.name} />)}
+                              </datalist>
+                            </div>
+                            <button disabled={!competitionDrafts[group.type].trim() || savingSection === "association-competitions"} type="submit">Save league</button>
+                          </form>
+                        ) : null}
                         {competitions.length === 0 ? <div className="dashboard-empty">No {group.title.toLowerCase()} added.</div> : null}
                         <div className="settings-compact-list">
                           {competitions.map((competition) => {
@@ -1033,16 +1062,31 @@ export default function OrganisationSettingsPage() {
                             return (
                               <article className={`settings-league-card${competitionOpen ? " settings-league-card--open" : ""}`} key={key}>
                                 <div className="settings-league-card__heading">
-                                  <button
-                                    aria-expanded={competitionOpen}
-                                    className="settings-league-card__select"
-                                    type="button"
-                                    onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
-                                  >
-                                    <span><strong>{competition.name}</strong><small>{(competition.fixtures || []).length} game date{(competition.fixtures || []).length === 1 ? "" : "s"}</small></span>
-                                    <span aria-hidden="true">{competitionOpen ? "−" : "+"}</span>
-                                  </button>
-                                  <button aria-label={`Remove ${competition.name}`} className="settings-edit-button danger" type="button" onClick={() => handleCompetitionRemove(competition.name)}>×</button>
+                                  <span className="settings-league-card__summary"><strong>{competition.name}</strong><small>{(competition.fixtures || []).length} game date{(competition.fixtures || []).length === 1 ? "" : "s"}</small></span>
+                                  <span className="settings-league-card__actions">
+                                    <button
+                                      aria-expanded={competitionOpen}
+                                      aria-label={`${competitionOpen ? "Hide" : "View"} ${competition.name}`}
+                                      className="settings-league-action-button"
+                                      title={`${competitionOpen ? "Hide" : "View"} league`}
+                                      type="button"
+                                      onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
+                                    >
+                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.8" /></svg>
+                                    </button>
+                                    <button
+                                      aria-label={`Delete ${competition.name}`}
+                                      className="settings-league-action-button settings-league-action-button--delete"
+                                      title="Delete league"
+                                      type="button"
+                                      onClick={() => {
+                                        setPendingCompetitionDelete(competition);
+                                        setCompetitionDeleteConfirmation("");
+                                      }}
+                                    >
+                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 10v7M14 10v7" /></svg>
+                                    </button>
+                                  </span>
                                 </div>
                                 {competitionOpen ? (
                                   <div className="settings-league-card__fixtures stack compact">
@@ -1680,6 +1724,42 @@ export default function OrganisationSettingsPage() {
           ) : null}
         </>
       )}
+
+      {pendingCompetitionDelete ? (
+        <div className="overlay-backdrop" role="presentation">
+          <section aria-labelledby="delete-league-title" aria-modal="true" className="overlay-panel overlay-panel--match-confirm stack" role="dialog">
+            <div className="panel-heading">
+              <h2 id="delete-league-title">Delete {pendingCompetitionDelete.name}?</h2>
+              <p className="helper-text">This removes the entire league and every saved game date and opposition entry for this club.</p>
+            </div>
+            <div className="field">
+              <label htmlFor="delete-league-confirmation">Type DELETE to confirm</label>
+              <input autoComplete="off" id="delete-league-confirmation" value={competitionDeleteConfirmation} onChange={(event) => setCompetitionDeleteConfirmation(event.target.value)} />
+            </div>
+            <div className="button-row">
+              <button
+                className="danger"
+                disabled={competitionDeleteConfirmation !== "DELETE" || savingSection === "association-competitions"}
+                type="button"
+                onClick={() => handleCompetitionRemove(pendingCompetitionDelete.name)}
+              >
+                {savingSection === "association-competitions" ? "Deleting..." : "Delete League"}
+              </button>
+              <button
+                className="secondary"
+                disabled={savingSection === "association-competitions"}
+                type="button"
+                onClick={() => {
+                  setPendingCompetitionDelete(null);
+                  setCompetitionDeleteConfirmation("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <AppFooter />
     </main>

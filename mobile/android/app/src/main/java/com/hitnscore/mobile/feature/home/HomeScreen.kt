@@ -89,7 +89,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
             item(key = "active") {
                 SectionCard(
                     title = stringResource(R.string.section_active_matches),
-                    iconRes = R.drawable.ic_tab_analytics,
+                    iconRes = R.drawable.ic_live_stream,
                     onTitleClick = { actions.onShowMatches(MatchesCategory.Current) },
                 ) {
                     MatchSection(
@@ -103,7 +103,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                 item(key = "scheduled") {
                     SectionCard(
                         title = stringResource(R.string.section_scheduled_matches),
-                        iconRes = R.drawable.ic_tab_matches,
+                        iconRes = R.drawable.ic_calendar_clock,
                         onTitleClick = { actions.onShowMatches(MatchesCategory.Scheduled) },
                     ) {
                         MatchSection(

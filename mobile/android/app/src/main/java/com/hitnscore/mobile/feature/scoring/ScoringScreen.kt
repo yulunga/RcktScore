@@ -925,7 +925,7 @@ private fun KeepScreenOnAndPortrait() {
         if (isPhone) activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onDispose {
             view.keepScreenOn = false
-            if (isPhone && previous != null) activity?.requestedOrientation = previous
+            if (isPhone && previous != null) activity.requestedOrientation = previous
         }
     }
 }

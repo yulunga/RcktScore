@@ -243,6 +243,16 @@ private struct ProfileImageCompleteRequest: Encodable {
 }
 private struct ProfileImageDeleteResponseData: Decodable { let deleted: Bool }
 private struct EmptyRequest: Encodable {}
+private struct ScoringWarmRequest: Encodable {
+    let matchID: String
+    let warm = true
+
+    enum CodingKeys: String, CodingKey {
+        case matchID = "match_id"
+        case warm
+    }
+}
+private struct ScoringWarmResponseData: Decodable { let warmed: Bool }
 
 private struct AnalyticsExportResponseData: Decodable { let export: AnalyticsExportPayload }
 private struct MatchSetupAnalyticsRequest: Encodable { let sport: String }
@@ -1568,6 +1578,31 @@ final class APIClient {
             body: ScorePointRequest(matchID: matchID, scorer: scorer, clientActionID: clientActionID)
         )
         return try await unwrapMatchResponse(request)
+    }
+
+    /// Starts the independently deployed scoring Lambdas while the scorer is
+    /// reading the match or completing warm-up. Each request authorizes the
+    /// match and opens its database path, but does not create an event.
+    func warmScoringAPIs(matchID: String) async {
+        async let scorePointWarmup: Void = warmScoringAPI(path: "/score_point", matchID: matchID)
+        async let eventActionWarmup: Void = warmScoringAPI(path: "/event_action", matchID: matchID)
+        async let undoActionWarmup: Void = warmScoringAPI(path: "/undo_action", matchID: matchID)
+
+        _ = await (scorePointWarmup, eventActionWarmup, undoActionWarmup)
+    }
+
+    private func warmScoringAPI(path: String, matchID: String) async {
+        do {
+            let request = try makeRequest(
+                path: path,
+                method: "POST",
+                body: ScoringWarmRequest(matchID: matchID)
+            )
+            let _: APIEnvelope<ScoringWarmResponseData> = try await send(request)
+        } catch {
+            // Warm-up is opportunistic. The normal queued mutation path still
+            // handles connectivity, authorization and retry reporting.
+        }
     }
 
     func awardStroke(matchID: String, playerSide: String, clientActionID: String = UUID().uuidString) async throws -> MatchDetail {

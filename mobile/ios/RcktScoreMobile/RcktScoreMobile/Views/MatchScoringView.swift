@@ -4,6 +4,7 @@ import SwiftUI
 private let defaultWarmupSeconds = 60
 private let intervalSeconds = 90
 private let tennisSetIntervalSeconds = 120
+private let scoringTapDebounceMilliseconds = 150
 private let matchTimerStorageKeyPrefix = "rcktscore.matchTimer"
 private let squashScoreTypeOptions = [11, 15]
 private let tennisScoreTypeOptions = [6]
@@ -3307,6 +3308,7 @@ struct MatchScoringView: View {
     }
 
     private func handleMatchIdentityTask() async {
+        warmScoringAPIsIfNeeded()
         await loadDisplayAccessIfNeeded()
         await MainActor.run {
             autoOpenSettingsIfNeeded()
@@ -3331,33 +3333,59 @@ struct MatchScoringView: View {
             return
         }
 
-        if isOnline {
+        // The offline store has already projected the optimistic state and
+        // persists every action in order. Do not keep score controls locked
+        // while a cold Lambda or database connection catches up.
+        synchroniseQueuedMutationsInBackground()
+
+        try? await Task.sleep(for: .milliseconds(scoringTapDebounceMilliseconds))
+        isMutating = false
+    }
+
+    private func synchroniseQueuedMutationsInBackground() {
+        guard isOnline else {
+            return
+        }
+
+        Task {
             await container.offlineMatchStore.sync(
                 using: container.apiClient,
                 session: container.sessionStore.session
             )
+
+            if let cached = container.offlineMatchStore.cachedMatch(
+                matchID: matchID,
+                session: container.sessionStore.session
+            ) {
+                match = cached
+            }
+
+            // Reconcile interval state directly after the server response
+            // settles. The onChange observer remains useful for
+            // external/offline updates, but a fast online sync can coalesce
+            // those renders and otherwise miss the completed-game transition.
+            syncIntervalState()
+            syncTennisBreakState()
+
+            if container.offlineMatchStore.pendingActionCount > 0 {
+                errorMessage = container.offlineMatchStore.lastSyncErrorMessage
+                    ?? container.offlineMatchStore.syncMessage
+                    ?? "Scoring changes are still waiting to synchronise."
+            }
+        }
+    }
+
+    private func warmScoringAPIsIfNeeded() {
+        guard let match,
+              isOnline,
+              canScoreThisMatch,
+              match.status.lowercased() != "completed" else {
+            return
         }
 
-        if let cached = container.offlineMatchStore.cachedMatch(
-            matchID: matchID,
-            session: container.sessionStore.session
-        ) {
-            match = cached
+        Task {
+            await container.apiClient.warmScoringAPIs(matchID: matchID)
         }
-
-        // Reconcile interval state directly after the optimistic action and
-        // server response settle. The onChange observer remains useful for
-        // external/offline updates, but a fast online sync can coalesce those
-        // renders and otherwise miss the completed-game transition.
-        syncIntervalState()
-        syncTennisBreakState()
-
-        if isOnline, container.offlineMatchStore.pendingActionCount > 0 {
-            errorMessage = container.offlineMatchStore.lastSyncErrorMessage
-                ?? container.offlineMatchStore.syncMessage
-                ?? "Scoring changes are still waiting to synchronise."
-        }
-        isMutating = false
     }
 
     private func performMutation(_ operation: @escaping () async throws -> MatchDetail) async {

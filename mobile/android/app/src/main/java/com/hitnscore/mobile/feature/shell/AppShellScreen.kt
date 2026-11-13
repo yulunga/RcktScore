@@ -11,6 +11,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -30,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.hitnscore.mobile.R
+import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.app.navigation.AppDestination
 import com.hitnscore.mobile.app.navigation.HitNScoreTabNavHost
 import com.hitnscore.mobile.app.navigation.ShellRoutes
@@ -107,6 +110,7 @@ fun AppShellScreen(
                         PlayItem(onClick = { navController.navigate(ShellRoutes.NEW_MATCH) { launchSingleTop = true } })
                     }
                     NavigationBarItem(
+                        colors = tabColors(),
                         selected = currentRoute?.startsWith(destination.route) == true,
                         onClick = { navController.navigateToTab(destination) },
                         icon = { Icon(painterResource(destination.iconRes), contentDescription = null) },
@@ -141,27 +145,34 @@ fun AppShellScreen(
     }
 }
 
-/**
- * The Play button in the bottom bar: a filled brand circle the same 24 dp as the tab icons,
- * so its label lines up with the others.
- */
+/** As iOS: grey icons and labels, the selected tab in brand blue, no highlight pill. */
+@Composable
+private fun tabColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = MaterialTheme.colorScheme.primary,
+    selectedTextColor = MaterialTheme.colorScheme.primary,
+    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    indicatorColor = Color.Transparent,
+)
+
+/** The Play button in the bottom bar: a grey circle with a pink play triangle (as iOS). */
 @Composable
 private fun RowScope.PlayItem(onClick: () -> Unit) {
     NavigationBarItem(
         selected = false,
         onClick = onClick,
+        colors = tabColors(),
         icon = {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    painterResource(R.drawable.ic_tab_play),
+                    painterResource(R.drawable.ic_play_ring),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Icon(
+                    painterResource(R.drawable.ic_play_triangle),
+                    contentDescription = null,
+                    tint = HitNScoreTheme.colors.brandPink,
                 )
             }
         },

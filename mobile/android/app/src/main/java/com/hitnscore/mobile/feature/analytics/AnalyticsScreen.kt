@@ -1,6 +1,26 @@
 package com.hitnscore.mobile.feature.analytics
 
 import androidx.compose.foundation.layout.Arrangement
+import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
+import com.hitnscore.mobile.data.model.AppAnalytics
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +39,9 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,17 +68,62 @@ import com.hitnscore.mobile.feature.shell.ShellUiState
 
 private data class Stat(val title: String, val value: String, val detail: String)
 
-/** Analytics tab: Personal Plus performance report, or basic stats from available history. */
+/**
+ * Analytics tab. A Personal / Club switch (as iOS) when the user has both kinds of account:
+ * Personal Analytics shows the Personal Plus performance report (or basic stats on Personal
+ * Free); Club Analytics shows the club's match summary. The other account's figures are
+ * fetched without changing the active account.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(session: SessionState.SignedIn, state: ShellUiState, isPersonalPlus: Boolean, actions: ShellActions) {
-    var showPersonal by rememberSaveable { mutableStateOf(true) }
-    val personalView = isPersonalPlus && showPersonal
-    val performance = state.dashboard?.performance
-    val recent = state.dashboard?.recentMatches.orEmpty()
-    val isPersonalAccount = session.activeContext.type == AccountContextType.Personal
+fun AnalyticsScreen(
+    session: SessionState.SignedIn,
+    state: ShellUiState,
+    isPersonalPlus: Boolean,
+    actions: ShellActions,
+    analyticsViewModel: AnalyticsViewModel = viewModel(factory = AnalyticsViewModel.Factory),
+) {
+    val extra by analyticsViewModel.uiState.collectAsStateWithLifecycle()
+    val active = session.activeContext
+    val personalContext = session.availableContexts.firstOrNull { it.type == AccountContextType.Personal }
+    // The active club, or the first club when a Personal account is active.
+    val clubContext = active.takeIf { it.type == AccountContextType.Club }
+        ?: session.availableContexts.firstOrNull { it.type == AccountContextType.Club }
+    val hasBoth = personalContext != null && clubContext != null
+    var showPersonal by rememberSaveable(active.organizationId) { mutableStateOf(active.type == AccountContextType.Personal) }
+    if (personalContext == null) showPersonal = false
+    if (clubContext == null) showPersonal = true
 
-    PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = actions.onRefresh, modifier = Modifier.fillMaxSize()) {
+    val target = if (showPersonal) personalContext else clubContext
+    val targetId = target?.organizationId
+    val isActiveTarget = targetId == active.organizationId
+    LaunchedEffect(targetId, isActiveTarget, state.isOnline) {
+        if (targetId != null && !isActiveTarget && state.isOnline) analyticsViewModel.load(targetId)
+    }
+    val dashboard = if (isActiveTarget) state.dashboard else targetId?.let { extra.dashboards[it] }
+    val loading = if (isActiveTarget) state.isLoading && state.dashboard == null else targetId != null && targetId in extra.loading
+    val loadError = if (isActiveTarget) null else targetId?.let { extra.errors[it] }
+
+    val plus = isPersonalPlus || personalContext?.plan == "Personal Plus"
+    val personalId = personalContext?.organizationId
+    LaunchedEffect(personalId, extra.periodDays, showPersonal, state.isOnline) {
+        if (showPersonal && personalId != null && state.isOnline) analyticsViewModel.loadAppUsage(personalId)
+    }
+    val usageKey = personalId?.let { it to extra.periodDays }
+    val appUsage = usageKey?.let { extra.appUsage[it] }
+    val usageLoading = usageKey != null && usageKey in extra.appUsageLoading
+    val performance = dashboard?.performance
+    val recent = dashboard?.recentMatches.orEmpty()
+
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = {
+            actions.onRefresh()
+            if (targetId != null && !isActiveTarget) analyticsViewModel.load(targetId, force = true)
+            if (showPersonal && personalId != null) analyticsViewModel.loadAppUsage(personalId, force = true)
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -71,40 +139,52 @@ fun AnalyticsScreen(session: SessionState.SignedIn, state: ShellUiState, isPerso
                     onSignOut = actions.onSignOut,
                 )
             }
-            if (isPersonalPlus) {
+            if (hasBoth) {
                 item {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = showPersonal,
-                            onClick = { showPersonal = true },
-                            shape = SegmentedButtonDefaults.itemShape(0, 2),
-                        ) { Text(stringResource(R.string.analytics_personal)) }
-                        SegmentedButton(
-                            selected = !showPersonal,
-                            onClick = { showPersonal = false },
-                            shape = SegmentedButtonDefaults.itemShape(1, 2),
-                        ) { Text(stringResource(R.string.analytics_stats)) }
-                    }
+                    SegmentedSwitch(
+                        options = listOf(stringResource(R.string.analytics_personal), stringResource(R.string.analytics_club)),
+                        selectedIndex = if (showPersonal) 0 else 1,
+                        onSelect = { showPersonal = it == 0 },
+                    )
                 }
             }
             item {
                 SectionCard(
-                    title = stringResource(if (personalView) R.string.analytics_personal_title else R.string.analytics_stats),
+                    title = stringResource(if (showPersonal) R.string.analytics_personal_title else R.string.analytics_club_title),
                     iconRes = R.drawable.ic_tab_analytics,
-                    subtitle = stringResource(if (personalView) R.string.analytics_personal_subtitle else R.string.analytics_stats_subtitle),
+                    subtitle = when {
+                        showPersonal -> stringResource(R.string.analytics_personal_subtitle)
+                        else -> stringResource(R.string.analytics_club_subtitle, target?.name.orEmpty())
+                    },
                 ) {
-                    when {
-                        state.isLoading && state.dashboard == null -> SkeletonRows(2, height = 112)
-                        personalView && performance == null -> EmptyState(stringResource(R.string.analytics_no_data))
-                        personalView && performance != null -> PersonalReport(performance)
-                        else -> BasicStats(recent, state.dashboard?.organization?.completedMatchCount)
-                    }
-                    if (!isPersonalPlus && isPersonalAccount) {
-                        Text(
-                            stringResource(R.string.analytics_free_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    if (showPersonal) {
+                        // As iOS: reporting period, app usage, then the Personal Plus report.
+                        PeriodRow(extra.periodDays, analyticsViewModel::selectPeriod)
+                        when {
+                            appUsage != null -> AppUsage(appUsage)
+                            usageLoading -> SkeletonRows(2, height = 112)
+                            else -> AppUsage(AppAnalytics())
+                        }
+                        if (plus) {
+                            when {
+                                loadError != null -> Text(loadError, color = MaterialTheme.colorScheme.error)
+                                loading -> SkeletonRows(2, height = 112)
+                                performance == null -> EmptyState(stringResource(R.string.analytics_no_data))
+                                else -> PersonalReport(performance)
+                            }
+                        } else {
+                            Text(
+                                stringResource(R.string.analytics_free_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        when {
+                            loadError != null -> Text(loadError, color = MaterialTheme.colorScheme.error)
+                            loading -> SkeletonRows(2, height = 112)
+                            else -> BasicStats(recent, dashboard?.organization?.completedMatchCount)
+                        }
                     }
                 }
             }
@@ -164,6 +244,112 @@ private fun PersonalReport(p: PersonalPerformance) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/** "Reporting period" with a drop-down (7 days … All time), as iOS. */
+@Composable
+private fun PeriodRow(days: Int, onSelect: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val label = AnalyticsViewModel.PERIODS.firstOrNull { it.first == days }?.second ?: "$days days"
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.analytics_period), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Box {
+            TextButton(onClick = { open = true }) {
+                Text(label, style = MaterialTheme.typography.titleMedium)
+                Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                AnalyticsViewModel.PERIODS.forEach { (value, text) ->
+                    DropdownMenuItem(text = { Text(text) }, onClick = {
+                        open = false
+                        onSelect(value)
+                    })
+                }
+            }
+        }
+    }
+}
+
+/** Matches scored, completion, duration, active days and match setup (iOS Personal Analytics). */
+@Composable
+private fun AppUsage(a: AppAnalytics) {
+    val setup = a.setupCompletion
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StatGrid(
+            listOf(
+                Stat("Matches scored", "${a.matchesScored}", "${a.completedMatches} completed"),
+                Stat("Completion rate", MatchFormatting.percentage(a.completedMatchRate), "Recorded matches"),
+                Stat("Average duration", a.averageMatchDurationSeconds?.let(MatchFormatting::duration) ?: "—", "Completed matches"),
+                Stat("Active days", "${a.activeDays ?: 0}", "${a.returningUsageWeeks ?: 0} active weeks"),
+                Stat("Setups started", "${setup?.started ?: 0}", "${setup?.completed ?: 0} completed"),
+                Stat("Setup abandonment", MatchFormatting.percentage(setup?.abandonmentRate), "${setup?.abandoned ?: 0} abandoned"),
+            ),
+        )
+        val sports = a.matchesBySport.filter { it.count > 0 }
+        if (sports.isNotEmpty()) {
+            Group("Scoring by sport") {
+                sports.forEachIndexed { index, sport ->
+                    Line(MatchFormatting.sportName(sport.sport), "${sport.count}", "matches scored")
+                    if (index < sports.size - 1) HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * iOS-style segmented control: a white card holding a light grey track, with the chosen
+ * option on a white raised pill that slides between options.
+ */
+@Composable
+private fun SegmentedSwitch(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = HitNScoreTheme.colors.card,
+        shadowElevation = 1.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        BoxWithConstraints(
+            Modifier
+                .padding(6.dp)
+                .fillMaxWidth()
+                .height(40.dp)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+                .padding(3.dp),
+        ) {
+            val segment = maxWidth / options.size
+            val offset by animateDpAsState(segment * selectedIndex, animationSpec = tween(220), label = "segment")
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = HitNScoreTheme.colors.card,
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .offset(x = offset)
+                    .width(segment)
+                    .fillMaxHeight(),
+            ) {}
+            Row(Modifier.fillMaxSize()) {
+                options.forEachIndexed { index, label ->
+                    val selected = index == selectedIndex
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(10.dp))
+                            .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) }),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
         }
     }
 }

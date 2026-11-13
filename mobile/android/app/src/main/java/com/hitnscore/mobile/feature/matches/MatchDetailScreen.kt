@@ -125,17 +125,39 @@ private fun SummaryCard(match: MatchDetail) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            ScoreRow(MatchFormatting.fullName(match.player1Name, match.player1Surname), match.state?.player1GamesWon ?: 0)
-            ScoreRow(MatchFormatting.fullName(match.player2Name, match.player2Surname), match.state?.player2GamesWon ?: 0)
+            val p1 = match.state?.player1GamesWon ?: 0
+            val p2 = match.state?.player2GamesWon ?: 0
+            // The winner of a finished match is shown in brand pink (name and score).
+            val finished = match.status.equals("completed", ignoreCase = true)
+            val winner = when {
+                !finished -> 0
+                p1 > p2 -> 1
+                p2 > p1 -> 2
+                else -> when ((match.state?.winnerName ?: "").trim().lowercase()) {
+                    "" -> 0
+                    MatchFormatting.fullName(match.player1Name, match.player1Surname).lowercase(), match.player1Name.lowercase() -> 1
+                    MatchFormatting.fullName(match.player2Name, match.player2Surname).lowercase(), match.player2Name.lowercase() -> 2
+                    else -> 0
+                }
+            }
+            ScoreRow(MatchFormatting.fullName(match.player1Name, match.player1Surname), p1, isWinner = winner == 1)
+            ScoreRow(MatchFormatting.fullName(match.player2Name, match.player2Surname), p2, isWinner = winner == 2)
         }
     }
 }
 
 @Composable
-private fun ScoreRow(name: String, games: Int) {
+private fun ScoreRow(name: String, games: Int, isWinner: Boolean) {
+    val color = if (isWinner) HitNScoreTheme.colors.brandPink else MaterialTheme.colorScheme.primary
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        Text("$games", style = ScoreTextStyles.Medium.copy(fontSize = 30.sp), color = MaterialTheme.colorScheme.primary)
+        Text(
+            name,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = if (isWinner) FontWeight.Bold else null,
+            color = if (isWinner) color else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text("$games", style = ScoreTextStyles.Medium.copy(fontSize = 30.sp), color = color)
     }
 }
 
@@ -156,8 +178,8 @@ internal fun InformationCard(match: MatchDetail, tennis: Boolean) {
                 val startedAt = MatchFormatting.parseInstant(started)
                 InfoRow(stringResource(R.string.info_sport), MatchFormatting.sportName(match.sport))
                 InfoRow(stringResource(R.string.info_game_details), gameDetails(match, tennis))
-                InfoRow(stringResource(R.string.info_date), MatchFormatting.dateOnly(startedAt))
-                InfoRow(stringResource(R.string.info_started), MatchFormatting.timeOnly(startedAt))
+                InfoRow(stringResource(R.string.info_date), MatchFormatting.isoDate(startedAt))
+                InfoRow(stringResource(R.string.info_started), MatchFormatting.time24(startedAt))
                 InfoRow(stringResource(R.string.info_court), courtName(match))
                 InfoRow(stringResource(R.string.info_referee), match.refereeName ?: stringResource(R.string.not_added))
             }

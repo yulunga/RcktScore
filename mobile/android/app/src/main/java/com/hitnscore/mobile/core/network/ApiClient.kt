@@ -84,6 +84,8 @@ class ApiClient(
                 parser.parse(response.code, response.body.string(), deserializer)
             }
         } catch (e: IOException) {
+            // Visible in Android Studio › Logcat (tag HitnScoreApi) to diagnose a device.
+            runCatching { android.util.Log.w("HitnScoreApi", "${request.method} ${request.url.encodedPath} failed", e) }
             ApiResult.Failure(ApiError.Network(e))
         }
         if (reportSessionInvalidation && result is ApiResult.Failure && result.error is ApiError.SessionInvalid) {

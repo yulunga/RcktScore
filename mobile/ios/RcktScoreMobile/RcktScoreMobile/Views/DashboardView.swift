@@ -68,6 +68,10 @@ struct DashboardView: View {
     @State private var timedBreakDefaultsDraft: [String: Bool] = [:]
     @State private var savingSettingsKey: String?
     @State private var historySearch = ""
+    @State private var historySportFilter = "all"
+    @State private var historyDateFilterEnabled = false
+    @State private var historyDateFilter = Date()
+    @State private var showsHistoryFilters = false
     @State private var feedbackName = ""
     @State private var feedbackEmail = ""
     @State private var feedbackCategory = "feedback"
@@ -85,6 +89,8 @@ struct DashboardView: View {
     @State private var profileImageBusy = false
     @State private var isUpdatingBiometricUnlock = false
     @State private var accountDeletionPrompt: AccountDeletionPrompt?
+    @State private var showsAccountDeletionConfirmation = false
+    @State private var accountDeletionConfirmationText = ""
     @State private var isDeletingAccount = false
     @State private var showsNotifications = false
     @State private var notifications: [AppNotification] = []
@@ -220,11 +226,15 @@ struct DashboardView: View {
     }
     private var filteredRecentMatches: [MatchSummary] {
         let query = historySearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else {
-            return recentMatches
-        }
-
         return recentMatches.filter { match in
+            let matchesSport = historySportFilter == "all"
+                || (match.sport ?? "squash").lowercased() == historySportFilter
+            let matchesDate: Bool = {
+                guard historyDateFilterEnabled else { return true }
+                let rawDate = match.completedAt ?? match.updatedAt ?? ""
+                guard let date = parsedISODate(rawDate) else { return false }
+                return Calendar.current.isDate(date, inSameDayAs: historyDateFilter)
+            }()
             let fields = [
                 match.player1Name,
                 match.player1Surname ?? "",
@@ -237,8 +247,21 @@ struct DashboardView: View {
             .joined(separator: " ")
             .lowercased()
 
-            return fields.contains(query)
+            return matchesSport && matchesDate && (query.isEmpty || fields.contains(query))
         }
+    }
+    private var historyFilterSports: [String] {
+        let enabled = (session?.enabledSports ?? [])
+            .map { $0.lowercased() }
+            .filter { sport in MatchSport.allCases.contains { $0.rawValue == sport && $0.isImplementedToday } }
+        if !enabled.isEmpty {
+            return Array(Set(enabled)).sorted { sportDisplayName($0) < sportDisplayName($1) }
+        }
+        return Array(Set(recentMatches.compactMap { $0.sport?.lowercased() }))
+            .sorted { sportDisplayName($0) < sportDisplayName($1) }
+    }
+    private var hasActiveHistoryFilters: Bool {
+        historySportFilter != "all" || historyDateFilterEnabled
     }
     private var settingsPlanLine: String {
         organizationSummary?.plan.flatMap { planDisplayName(for: $0) } ?? headerPlanLine
@@ -415,7 +438,7 @@ struct DashboardView: View {
 
         var sections = [SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems)]
         if isAdmin {
-            sections.append(SettingsMenuSectionDescriptor(title: "Club", items: [.organisation, .users, .courts, .racketSports]))
+            sections.append(SettingsMenuSectionDescriptor(title: "Club", items: [.organisation, .users, .courts, .racketSports, .data]))
         }
         return sections
     }
@@ -534,6 +557,11 @@ struct DashboardView: View {
                         onCancel: { activeSheet = nil }
                     )
                 }
+            }
+            .sheet(isPresented: $showsAccountDeletionConfirmation) {
+                accountDeletionConfirmationSheet
+                    .presentationDetents([.medium])
+                    .interactiveDismissDisabled(isDeletingAccount)
             }
             .toolbar {
                 ToolbarItem(placement: .principal) { EmptyView() }
@@ -845,17 +873,40 @@ struct DashboardView: View {
             ) {
                 if isOnline {
                     VStack(spacing: 14) {
-                        dashboardTextField(
-                            title: "Search history",
-                            placeholder: "Search player or date",
-                            text: $historySearch
-                        )
+                        HStack(alignment: .bottom, spacing: 10) {
+                            dashboardTextField(
+                                title: "Search history",
+                                placeholder: "Search player, score or date",
+                                text: $historySearch
+                            )
+
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showsHistoryFilters.toggle()
+                                }
+                            } label: {
+                                Image(systemName: hasActiveHistoryFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 48, height: 48)
+                                    .background(Color.dashboardAccentPink)
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Filter match history")
+                            .accessibilityIdentifier("matches.history.filterButton")
+                        }
+
+                        if showsHistoryFilters {
+                            historyFiltersPanel
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
 
                         recentMatchesContent(
                             matches: filteredRecentMatches,
-                            emptyMessage: historySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            emptyMessage: historySearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !hasActiveHistoryFilters
                                 ? "No recent matches"
-                                : "No completed matches match that search."
+                                : "No completed matches match those filters."
                         )
                     }
                 } else {
@@ -863,6 +914,54 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private var historyFiltersPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Picker("Racket sport", selection: $historySportFilter) {
+                    Text("All sports").tag("all")
+                    ForEach(historyFilterSports, id: \.self) { sport in
+                        Text(sportDisplayName(sport)).tag(sport)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+                .padding(.horizontal, 10)
+                .background(Color.dashboardInputBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Toggle("Date", isOn: $historyDateFilterEnabled)
+                    .toggleStyle(SwitchToggleStyle(tint: Color.dashboardAccentPink))
+                    .fixedSize()
+            }
+
+            if historyDateFilterEnabled {
+                DatePicker(
+                    "Match date",
+                    selection: $historyDateFilter,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.compact)
+            }
+
+            if hasActiveHistoryFilters {
+                Button("Clear filters") {
+                    historySportFilter = "all"
+                    historyDateFilterEnabled = false
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.dashboardAccentPink)
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private var performanceContent: some View {
@@ -899,7 +998,9 @@ struct DashboardView: View {
                     .pickerStyle(.menu)
                 }
 
-                analyticsExportControls
+                if selectedAnalyticsCategory == .personal {
+                    analyticsExportControls(category: .personal)
+                }
 
                 if let analyticsExportError {
                     Text(analyticsExportError)
@@ -1079,13 +1180,13 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var analyticsExportControls: some View {
-        let canExport = selectedAnalyticsCategory == .club || personalAnalyticsIsPlus
+    private func analyticsExportControls(category: AnalyticsCategory) -> some View {
+        let canExport = category == .club || personalAnalyticsIsPlus
         if canExport {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Button {
-                        Task { await prepareAnalyticsExport() }
+                        Task { await prepareAnalyticsExport(category: category) }
                     } label: {
                         if isExportingAnalytics {
                             ProgressView()
@@ -1104,7 +1205,7 @@ struct DashboardView: View {
                     }
                 }
 
-                if selectedAnalyticsCategory == .club {
+                if category == .club {
                     Text("Club reports contain aggregate club, court and match-use data only. They do not include player names, member names, usernames or email addresses.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1112,6 +1213,46 @@ struct DashboardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var clubDataSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Club Data")
+                .font(.headline.weight(.bold))
+            Text("Download an aggregate report for club, court and match usage. Reports do not include player or member names, usernames or email addresses.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text("Reporting period")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Picker("Reporting period", selection: $analyticsPeriodDays) {
+                    Text("7 days").tag(7)
+                    Text("30 days").tag(30)
+                    Text("90 days").tag(90)
+                    Text("12 months").tag(365)
+                    Text("All time").tag(0)
+                }
+                .pickerStyle(.menu)
+            }
+
+            analyticsExportControls(category: .club)
+
+            if let analyticsExportError {
+                Text(analyticsExportError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
     }
 
     private var upgradePerformanceCard: some View {
@@ -1269,12 +1410,6 @@ struct DashboardView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .background(
-            colorScheme == .dark
-                ? Color.dashboardInnerCardBackground.opacity(0.05)
-                : Color.dashboardInnerCardBackground
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var settingsMenuSectionsList: some View {
@@ -1282,12 +1417,6 @@ struct DashboardView: View {
             ForEach(settingsMenuSections) { section in
                 settingsMenuSection(section)
             }
-
-            Text("Signed in as \(personalIdentityUsername)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 6)
 
             signOutMenuSection
         }
@@ -1422,6 +1551,8 @@ struct DashboardView: View {
             organizationUsersCard
         case .courts:
             organizationCourtsCard
+        case .data:
+            clubDataSettingsCard
         }
     }
 
@@ -1495,6 +1626,7 @@ struct DashboardView: View {
                     clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
                     if membership.role.lowercased() == "admin" {
                         clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
+                        clubManagementLink(title: "Data", icon: "arrow.down.doc", item: .data)
                     }
                 }
 
@@ -2120,36 +2252,51 @@ struct DashboardView: View {
             .opacity((isRequestingPasswordReset || personalProfileDraft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0.7 : 1)
             .accessibilityIdentifier("settings.profile.passwordResetButton")
 
-            if isPersonalAccount {
-                Button {
-                    accountDeletionPrompt = .first
-                } label: {
-                    HStack {
-                        if isDeletingAccount {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Image(systemName: "trash")
-                        }
-                        Text(isDeletingAccount ? "Deleting Account…" : "Delete Account")
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .background(Color.red)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(isDeletingAccount || !isOnline)
-                .opacity(isDeletingAccount || !isOnline ? 0.65 : 1)
-                .accessibilityIdentifier("settings.profile.deleteAccountButton")
-
-                if !isOnline {
-                    Text("Connect to the internet to delete your account permanently.")
+            if personalProfileOrganizationID != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Delete account")
+                        .font(.headline.weight(.bold))
+                    Text("Permanently deletes your Personal account, its matches and your club memberships after the retention period. Matches owned by clubs stay with the clubs.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    Button {
+                        accountDeletionPrompt = .first
+                    } label: {
+                        HStack {
+                            if isDeletingAccount {
+                                ProgressView()
+                                    .tint(Color.dashboardAccentPink)
+                            }
+                            Text(isDeletingAccount ? "Deleting account…" : "Delete my account")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(Color.dashboardAccentPink)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.dashboardAccentPink, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isDeletingAccount || !isOnline)
+                    .opacity(isDeletingAccount || !isOnline ? 0.65 : 1)
+                    .accessibilityIdentifier("settings.profile.deleteAccountButton")
+
+                    if !isOnline {
+                        Text("Connect to the internet to delete your account.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .padding(16)
+                .background(Color.dashboardInnerCardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.dashboardBorder, lineWidth: 1)
+                )
             }
 
             if let resetErrorMessage {
@@ -3592,34 +3739,75 @@ struct DashboardView: View {
             return Alert(
                 title: Text("Delete your account?"),
                 message: Text("This immediately disables your account and signs out every device. Your Personal matches and scoring history are retained in delete-pending state for 12 months, then permanently cleared. Club-owned match records remain with their clubs."),
-                primaryButton: .destructive(Text("Continue")) {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        accountDeletionPrompt = .final
+                primaryButton: .destructive(Text("Yes")) {
+                    accountDeletionConfirmationText = ""
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showsAccountDeletionConfirmation = true
                     }
-                },
-                secondaryButton: .cancel()
-            )
-        case .final:
-            return Alert(
-                title: Text("Are you really sure?"),
-                message: Text("Your account will no longer be accessible. The scheduled clearing date will be 12 months from today."),
-                primaryButton: .destructive(Text("Request Deletion")) {
-                    deletePersonalAccount()
                 },
                 secondaryButton: .cancel()
             )
         }
     }
 
+    private var accountDeletionConfirmationSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("This cannot be undone from the app. Type DELETE to confirm that this identity, its Personal account and all club memberships should be disabled now and scheduled for permanent clearing.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                TextField("DELETE", text: $accountDeletionConfirmationText)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("settings.profile.deleteConfirmationField")
+
+                Button {
+                    deletePersonalAccount()
+                } label: {
+                    HStack {
+                        if isDeletingAccount { ProgressView().tint(.white) }
+                        Text(isDeletingAccount ? "Deleting account…" : "Delete my account")
+                            .font(.headline.weight(.bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.red)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(accountDeletionConfirmationText != "DELETE" || isDeletingAccount)
+                .opacity(accountDeletionConfirmationText == "DELETE" && !isDeletingAccount ? 1 : 0.5)
+                .accessibilityIdentifier("settings.profile.confirmDeleteAccountButton")
+
+                Spacer()
+            }
+            .padding(20)
+            .navigationTitle("Confirm account deletion")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        showsAccountDeletionConfirmation = false
+                        accountDeletionConfirmationText = ""
+                    }
+                    .disabled(isDeletingAccount)
+                }
+            }
+        }
+    }
+
     private func deletePersonalAccount() {
-        guard let organizationID = session?.organizationID,
-              isPersonalAccount,
+        guard let organizationID = personalProfileOrganizationID,
               isOnline,
               !isDeletingAccount else {
             return
         }
 
         isDeletingAccount = true
+        showsAccountDeletionConfirmation = false
         settingsErrorMessage = nil
         settingsSuccessMessage = nil
 
@@ -4957,14 +5145,14 @@ struct DashboardView: View {
         }
     }
 
-    private func prepareAnalyticsExport() async {
+    private func prepareAnalyticsExport(category: AnalyticsCategory) async {
         guard isOnline else {
             await MainActor.run { analyticsExportError = "Connect to the internet to export analytics." }
             return
         }
 
         let organizationID: Int?
-        if selectedAnalyticsCategory == .club {
+        if category == .club {
             organizationID = isPersonalAccount ? nil : session?.organizationID
         } else {
             organizationID = personalMembership?.organizationID ?? (isPersonalAccount ? session?.organizationID : nil)
@@ -5881,6 +6069,10 @@ struct DashboardView: View {
         activeMatches = []
         scheduledMatches = []
         recentMatches = []
+        historySportFilter = "all"
+        historyDateFilterEnabled = false
+        analyticsExportURL = nil
+        analyticsExportError = nil
         settingsErrorMessage = nil
         settingsSuccessMessage = nil
         settingsNavigationItem = nil
@@ -6779,13 +6971,13 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case orgSettings
     case users
     case courts
+    case data
 
     var id: String { rawValue }
 }
 
 private enum AccountDeletionPrompt: String, Identifiable {
     case first
-    case final
 
     var id: String { rawValue }
 }
@@ -6803,6 +6995,7 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case orgSettings
     case users
     case courts
+    case data
 
     var id: String { rawValue }
 
@@ -6832,6 +7025,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Users"
         case .courts:
             return "Courts"
+        case .data:
+            return "Data"
         }
     }
 
@@ -6861,6 +7056,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "person.3"
         case .courts:
             return "square.grid.2x2"
+        case .data:
+            return "arrow.down.doc"
         }
     }
 
@@ -6890,6 +7087,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .users
         case .courts:
             return .courts
+        case .data:
+            return .data
         }
     }
 }

@@ -94,6 +94,8 @@ fun ProfilePhotoHeader(
     displayName: String,
     email: String?,
     tier: String? = null,
+    /** False on Settings › Profile, where the fields below already show the name and email. */
+    showName: Boolean = true,
 ) {
     val context = LocalContext.current
     val container = remember(context) { (context.applicationContext as HitNScoreApplication).container }
@@ -185,14 +187,16 @@ fun ProfilePhotoHeader(
                 )
             }
         }
-        Text(
-            displayName.ifBlank { username },
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
+        if (showName) {
+            Text(
+                displayName.ifBlank { username },
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
         // The sign-in name only when it isn't already the heading.
-        if (!email.isNullOrBlank() && !email.equals(displayName.ifBlank { username }, ignoreCase = true)) {
+        if (showName && !email.isNullOrBlank() && !email.equals(displayName.ifBlank { username }, ignoreCase = true)) {
             Text(email, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
         if (!tier.isNullOrBlank()) {

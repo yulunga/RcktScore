@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -224,35 +225,34 @@ internal fun ConfirmDialog(title: String, body: String, confirm: String, onConfi
 // Profile -------------------------------------------------------------------
 
 @Composable
-fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
+fun ProfileEditor(
+    state: ProfileUiState,
+    viewModel: ProfileViewModel,
+    /** The profile photo, shown at the top of the card (as iOS Settings › Profile). */
+    header: @Composable () -> Unit = {},
+) {
+    // 1 = "Delete your account?", 2 = type DELETE to confirm (as iOS).
     var confirmDelete by rememberSaveable { mutableStateOf(0) }
-    // Read only until Edit is tapped; a successful save returns to read only.
+    // Read only until Edit is tapped; Edit then becomes Save. A successful save returns to read only.
     var editing by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.saved) { if (state.saved) editing = false }
     val form = state.form
     val busy = state.isSaving || state.isDeleting
     val locked = !editing || busy
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        EditorCard(
-            title = stringResource(R.string.settings_profile),
-            iconRes = R.drawable.ic_person,
-            action = {
-                if (editing) {
-                    TextButton(onClick = {
-                        viewModel.discardChanges()
-                        editing = false
-                    }, enabled = !busy) { Text(stringResource(R.string.cancel)) }
-                } else {
-                    FilledTonalButton(onClick = { editing = true }) { Text(stringResource(R.string.settings_edit)) }
-                }
-            },
-        ) {
-            EditorNote(stringResource(R.string.settings_profile_body))
-            EditorField(stringResource(R.string.setup_first_name), form.firstName, { v -> viewModel.update { it.copy(firstName = v) } }, readOnly = locked, isError = form.firstName.isBlank())
+        EditorCard {
+            header()
+            EditorField(stringResource(R.string.setup_first_name), form.firstName, { v -> viewModel.update { it.copy(firstName = v) } }, readOnly = locked, isError = editing && form.firstName.isBlank())
             EditorField(stringResource(R.string.setup_surname), form.surname, { v -> viewModel.update { it.copy(surname = v) } }, readOnly = locked)
             EditorField(stringResource(R.string.settings_email), form.email, { v -> viewModel.update { it.copy(email = v) } }, readOnly = locked, keyboardType = KeyboardType.Email)
-            if (state.emailChanged) {
-                Text(stringResource(R.string.settings_email_change_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (editing) {
+                // Shown while editing, as iOS: a new email becomes the sign-in name.
+                Text(
+                    stringResource(R.string.settings_email_change_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
             EditorField(stringResource(R.string.settings_telephone), form.telephone, { v -> viewModel.update { it.copy(telephone = v) } }, readOnly = locked, keyboardType = KeyboardType.Phone)
             EditorField(stringResource(R.string.settings_city), form.cityLocation, { v -> viewModel.update { it.copy(cityLocation = v) } }, readOnly = locked)
@@ -280,8 +280,30 @@ fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
                 ) { v -> viewModel.update { it.copy(birthYear = v) } }
             }
             StatusLine(if (state.saved) SettingsNotice.Saved else if (state.resetSent) SettingsNotice.ResetSent else null, state.errorMessage)
-            if (editing) {
-                SaveButton(stringResource(R.string.settings_save_profile), enabled = state.canSave, busy = state.isSaving, onClick = viewModel::save)
+            // One pill button, as iOS: Edit, then Save. Cancel puts the saved details back.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (editing) {
+                    TextButton(onClick = {
+                        viewModel.discardChanges()
+                        editing = false
+                    }, enabled = !busy) { Text(stringResource(R.string.cancel)) }
+                }
+                Button(
+                    onClick = { if (editing) viewModel.save() else editing = true },
+                    enabled = if (editing) state.canSave else !busy,
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp),
+                ) {
+                    if (state.isSaving) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text(stringResource(if (editing) R.string.save else R.string.settings_edit), fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
         EditorCard(stringResource(R.string.settings_password)) {
@@ -301,6 +323,8 @@ fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
                 ) {
                     if (state.isDeleting) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.settings_deleting), color = HitNScoreTheme.colors.completedStatus)
                     } else {
                         Text(stringResource(R.string.settings_delete_button), color = HitNScoreTheme.colors.completedStatus)
                     }
@@ -308,25 +332,43 @@ fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
             }
         }
     }
-    // Two steps, as iOS: "Delete your account?" then "Are you really sure?".
     when (confirmDelete) {
-        1 -> ConfirmDialog(
-            title = stringResource(R.string.settings_delete_confirm_1_title),
-            body = stringResource(R.string.settings_delete_confirm_1_body),
-            confirm = stringResource(R.string.settings_continue),
-            onConfirm = { confirmDelete = 2 },
-            onDismiss = { confirmDelete = 0 },
-        )
-        2 -> ConfirmDialog(
-            title = stringResource(R.string.settings_delete_confirm_2_title),
-            body = stringResource(R.string.settings_delete_confirm_2_body),
-            confirm = stringResource(R.string.settings_delete_permanently),
-            onConfirm = {
-                confirmDelete = 0
-                viewModel.deleteAccount()
+        1 -> AlertDialog(
+            onDismissRequest = { confirmDelete = 0 },
+            title = { Text(stringResource(R.string.settings_delete_confirm_1_title)) },
+            text = { Text(stringResource(R.string.settings_delete_confirm_1_body)) },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = 2 }) {
+                    Text(stringResource(R.string.settings_yes), color = HitNScoreTheme.colors.completedStatus, fontWeight = FontWeight.Bold)
+                }
             },
-            onDismiss = { confirmDelete = 0 },
+            dismissButton = { TextButton(onClick = { confirmDelete = 0 }) { Text(stringResource(R.string.cancel)) } },
         )
+        2 -> {
+            var typed by rememberSaveable { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { if (!state.isDeleting) confirmDelete = 0 },
+                title = { Text(stringResource(R.string.settings_delete_confirm_2_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.settings_delete_confirm_2_body), style = MaterialTheme.typography.bodyMedium)
+                        EditorField("DELETE", typed, { typed = it }, capitalization = KeyboardCapitalization.Characters)
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            confirmDelete = 0
+                            viewModel.deleteAccount()
+                        },
+                        // Exactly "DELETE", as iOS.
+                        enabled = typed.trim() == "DELETE" && !state.isDeleting,
+                        colors = ButtonDefaults.buttonColors(containerColor = HitNScoreTheme.colors.completedStatus),
+                    ) { Text(stringResource(R.string.settings_delete_button)) }
+                },
+                dismissButton = { TextButton(onClick = { confirmDelete = 0 }) { Text(stringResource(R.string.cancel)) } },
+            )
+        }
     }
 }
 
@@ -763,7 +805,7 @@ private fun UserDialog(
 @Composable
 fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel) {
     val courts = state.settings?.courts ?: return
-    val enabledSports = state.settings?.organization?.enabledSports.orEmpty().map { it.lowercase() }
+    val enabledSports = state.settings.organization.enabledSports.map { it.lowercase() }
     var editing by remember { mutableStateOf<CourtSummary?>(null) }
     var adding by rememberSaveable { mutableStateOf(false) }
     // Filter: only court types the club has courts for and plays (squash covers racketball).
@@ -882,7 +924,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
             dismissButton = { TextButton(onClick = { pasting = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
-    val courtNumberLimit = CourtTypes.numberLimit(state.settings?.organization?.plan)
+    val courtNumberLimit = CourtTypes.numberLimit(state.settings.organization.plan)
     if (adding) {
         CourtDialog(court = null, types = CourtTypes.available(enabledSports), courts = courts, numberLimit = courtNumberLimit, busy = state.isSaving, onDismiss = { adding = false }, onSave = { name, alias, sport ->
             adding = false

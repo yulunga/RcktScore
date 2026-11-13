@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calendar with a clock (scheduled matches and the Matches tab), as iOS calendar.badge.clock. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white" android:fillType="evenOdd"
+        android:pathData="M5,4h1V2h2v2h8V2h2v2h1c1.1,0 2,0.9 2,2v5h-2V9H5v10h6v2H5c-1.1,0 -2,-0.9 -2,-2V6c0,-1.1 0.9,-2 2,-2zM17.5,12a5.5,5.5 0 1,0 0,11a5.5,5.5 0 1,0 0,-11zM17.5,21a3.5,3.5 0 1,1 0,-7a3.5,3.5 0 1,1 0,7zM16.75,14.75h1.5v2.3l1.7,1.05 -0.78,1.28 -2.42,-1.5z" />
+</vector>

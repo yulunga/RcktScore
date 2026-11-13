@@ -11,11 +11,11 @@ sealed class AppDestination(
     @param:DrawableRes val iconRes: Int,
 ) {
     data object Home : AppDestination("home", R.string.tab_home, R.drawable.ic_tab_home)
-    data object Matches : AppDestination("matches", R.string.tab_matches, R.drawable.ic_tab_matches)
+    data object Matches : AppDestination("matches", R.string.tab_matches, R.drawable.ic_calendar_clock)
     data object Analytics : AppDestination("analytics", R.string.tab_analytics, R.drawable.ic_tab_analytics)
-    data object Settings : AppDestination("settings", R.string.tab_settings, R.drawable.ic_tab_settings)
+    data object Settings : AppDestination("settings", R.string.tab_settings, R.drawable.ic_settings_outline)
     data object Help : AppDestination("help", R.string.tab_help, R.drawable.ic_tab_help)
-    data object Tournaments : AppDestination("tournaments", R.string.tab_tournaments, R.drawable.ic_tab_tournament)
+    data object Tournaments : AppDestination("tournaments", R.string.tab_tournament, R.drawable.ic_trophy_outline)
 
     companion object {
         // Lazy: an eager list here can capture a null object during sealed-class initialisation.

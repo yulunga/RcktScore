@@ -13,7 +13,9 @@ logger = Logger(service="score_point")
 
 def lambda_handler(event, context):
     payload = parse_body(event)
-    missing_fields = require_fields(payload, ["match_id", "scorer"])
+    warm_requested = payload.get("warm") is True
+    required_fields = ["match_id"] if warm_requested else ["match_id", "scorer"]
+    missing_fields = require_fields(payload, required_fields)
     if missing_fields:
         return error_response(400, "VALIDATION_ERROR", "Missing required fields", {"fields": missing_fields})
 
@@ -22,6 +24,9 @@ def lambda_handler(event, context):
             auth_context = authorize_match_session(
                 connection, event, payload["match_id"], required_capability=CAPABILITY_MATCH_MANAGE
             )
+            if warm_requested:
+                logger.info("Warmed score point path for match %s", payload["match_id"])
+                return success_response(200, {"warmed": True})
             try:
                 claimed = claim_match_action(
                     connection,

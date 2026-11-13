@@ -83,6 +83,14 @@ object MatchFormatting {
         instant?.let { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(it.atZone(ZoneId.systemDefault())) }
             ?: ""
 
+    /** `2026-11-12`, as the iOS match information. */
+    fun isoDate(instant: Instant?): String =
+        instant?.let { DateTimeFormatter.ISO_LOCAL_DATE.format(it.atZone(ZoneId.systemDefault())) } ?: "Not available"
+
+    /** `21:09` (24-hour), as the iOS match information. */
+    fun time24(instant: Instant?): String =
+        instant?.let { DateTimeFormatter.ofPattern("HH:mm", Locale.UK).format(it.atZone(ZoneId.systemDefault())) } ?: ""
+
     /** `MM:SS`, as the iOS historic view. */
     fun clock(seconds: Int): String {
         val value = seconds.coerceAtLeast(0)
