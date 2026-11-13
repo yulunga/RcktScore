@@ -147,6 +147,10 @@ export default function OrganisationSettingsPage() {
   const [expandedDivisions, setExpandedDivisions] = useState({});
   const [divisionDrafts, setDivisionDrafts] = useState({});
   const [fixtureDrafts, setFixtureDrafts] = useState({});
+  const [editingCompetition, setEditingCompetition] = useState("");
+  const [competitionRenameDrafts, setCompetitionRenameDrafts] = useState({});
+  const [editingDivisionLink, setEditingDivisionLink] = useState("");
+  const [divisionLinkDrafts, setDivisionLinkDrafts] = useState({});
   const [pendingCompetitionDelete, setPendingCompetitionDelete] = useState(null);
   const [competitionDeleteConfirmation, setCompetitionDeleteConfirmation] = useState("");
   const settingsTabRefs = useRef({});
@@ -496,7 +500,31 @@ export default function OrganisationSettingsPage() {
       setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
       setAddLeagueOpen((current) => ({ ...current, [competitionType]: false }));
       setExpandedCompetition(competitionKey(nextCompetition));
-      setDivisionPanelsOpen((current) => ({ ...current, [competitionKey(nextCompetition)]: true }));
+    }
+  }
+
+  async function handleCompetitionRename(event, competition) {
+    event.preventDefault();
+    const oldKey = competitionKey(competition);
+    const name = String(competitionRenameDrafts[oldKey] || "").trim();
+    if (!name || associationCompetitions.some((item) => (
+      competitionKey(item) !== oldKey && item.name.toLowerCase() === name.toLowerCase()
+    ))) return;
+    const renamedCompetition = { ...competition, name };
+    const newKey = competitionKey(renamedCompetition);
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === oldKey ? renamedCompetition : item
+    ));
+    const saved = await saveAssociationCompetitions(nextCompetitions, "League name updated.");
+    if (saved) {
+      setEditingCompetition("");
+      setExpandedCompetition(newKey);
+      setDivisionPanelsOpen((current) => {
+        const next = { ...current, [newKey]: current[oldKey] };
+        delete next[oldKey];
+        return next;
+      });
+      setExpandedDivisions({});
     }
   }
 
@@ -519,7 +547,7 @@ export default function OrganisationSettingsPage() {
     if (!name || competitionDivisions(competition).some((division) => division.name.toLowerCase() === name.toLowerCase())) return;
     const nextCompetitions = associationCompetitions.map((item) => (
       competitionKey(item) === key
-        ? { ...item, divisions: [...competitionDivisions(item), { name, fixtures: [] }] }
+        ? { ...item, divisions: [...competitionDivisions(item), { name, url: "", fixtures: [] }] }
         : item
     ));
     const saved = await saveAssociationCompetitions(nextCompetitions, "League division added.");
@@ -532,9 +560,10 @@ export default function OrganisationSettingsPage() {
   async function handleFixtureAdd(event, competition, division) {
     event.preventDefault();
     const key = divisionKey(competition, division);
-    const draft = fixtureDrafts[key] || { date: "", opposition: "" };
+    const draft = fixtureDrafts[key] || { date: "", opposition: "", venue: "home" };
     const date = draft.date.trim();
     const opposition = draft.opposition.trim();
+    const venue = draft.venue === "away" ? "away" : "home";
     if (!date || !opposition) return;
     const nextCompetitions = associationCompetitions.map((item) => (
       competitionKey(item) === competitionKey(competition)
@@ -542,7 +571,7 @@ export default function OrganisationSettingsPage() {
           ...item,
           divisions: competitionDivisions(item).map((itemDivision) => (
             itemDivision.name === division.name
-              ? { ...itemDivision, fixtures: [...(itemDivision.fixtures || []), { date, opposition }] }
+              ? { ...itemDivision, fixtures: [...(itemDivision.fixtures || []), { date, opposition, venue }] }
               : itemDivision
           )),
         }
@@ -550,8 +579,40 @@ export default function OrganisationSettingsPage() {
     ));
     const saved = await saveAssociationCompetitions(nextCompetitions, "League game added.");
     if (saved) {
-      setFixtureDrafts((current) => ({ ...current, [key]: { date: "", opposition: "" } }));
+      setFixtureDrafts((current) => ({ ...current, [key]: { date: "", opposition: "", venue: "home" } }));
     }
+  }
+
+  async function saveDivisionLink(competition, division, url) {
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === competitionKey(competition)
+        ? {
+          ...item,
+          divisions: competitionDivisions(item).map((itemDivision) => (
+            itemDivision.name === division.name ? { ...itemDivision, url } : itemDivision
+          )),
+        }
+        : item
+    ));
+    const saved = await saveAssociationCompetitions(nextCompetitions, url ? "Division link updated." : "Division link removed.");
+    if (saved) setEditingDivisionLink("");
+  }
+
+  async function handleDivisionLinkSave(event, competition, division) {
+    event.preventDefault();
+    const key = divisionKey(competition, division);
+    const url = String(divisionLinkDrafts[key] ?? division.url ?? "").trim();
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Unsupported protocol");
+      } catch {
+        setMessage("");
+        setError("Enter a complete http:// or https:// link for the division.");
+        return;
+      }
+    }
+    await saveDivisionLink(competition, division, url);
   }
 
   async function handleFixtureRemove(competition, division, fixtureIndex) {
@@ -1113,17 +1174,27 @@ export default function OrganisationSettingsPage() {
                             return (
                               <article className={`settings-league-card${competitionOpen ? " settings-league-card--open" : ""}`} key={key}>
                                 <div className="settings-league-card__heading">
-                                  <span className="settings-league-card__summary"><strong>{competition.name}</strong><small>{divisions.length} division{divisions.length === 1 ? "" : "s"} · {gameCount} game{gameCount === 1 ? "" : "s"}</small></span>
+                                  <button
+                                    aria-expanded={competitionOpen}
+                                    className="settings-league-card__summary settings-league-card__summary-button"
+                                    type="button"
+                                    onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
+                                  >
+                                    <strong>{competition.name}</strong><small>{divisions.length} division{divisions.length === 1 ? "" : "s"} · {gameCount} game{gameCount === 1 ? "" : "s"}</small>
+                                  </button>
                                   <span className="settings-league-card__actions">
                                     <button
-                                      aria-expanded={competitionOpen}
-                                      aria-label={`${competitionOpen ? "Hide" : "View"} ${competition.name}`}
+                                      aria-label={`Edit ${competition.name}`}
                                       className="settings-league-action-button"
-                                      title={`${competitionOpen ? "Hide" : "View"} league`}
+                                      title="Edit league name"
                                       type="button"
-                                      onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
+                                      onClick={() => {
+                                        setExpandedCompetition(key);
+                                        setEditingCompetition(key);
+                                        setCompetitionRenameDrafts((current) => ({ ...current, [key]: competition.name }));
+                                      }}
                                     >
-                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.8" /></svg>
+                                      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></svg>
                                     </button>
                                     <button
                                       aria-expanded={divisionsOpen}
@@ -1154,6 +1225,16 @@ export default function OrganisationSettingsPage() {
                                 </div>
                                 {competitionOpen ? (
                                   <div className="settings-league-card__fixtures stack compact">
+                                    {editingCompetition === key ? (
+                                      <form className="settings-league-rename-form" onSubmit={(event) => handleCompetitionRename(event, competition)}>
+                                        <div className="field">
+                                          <label htmlFor={`${domKey}-rename`}>League name</label>
+                                          <input id={`${domKey}-rename`} value={competitionRenameDrafts[key] || ""} onChange={(event) => setCompetitionRenameDrafts((current) => ({ ...current, [key]: event.target.value }))} />
+                                        </div>
+                                        <button className="settings-form-action" disabled={!String(competitionRenameDrafts[key] || "").trim() || savingSection === "association-competitions"} type="submit">Save Name</button>
+                                        <button className="secondary" type="button" onClick={() => setEditingCompetition("")}>Cancel</button>
+                                      </form>
+                                    ) : null}
                                     {!divisionsOpen ? <p className="helper-text">Use the divisions control to organise this league and view its games.</p> : (
                                       <div className="settings-league-divisions stack compact">
                                         <form className="settings-division-add-form" onSubmit={(event) => handleDivisionAdd(event, competition)}>
@@ -1168,15 +1249,48 @@ export default function OrganisationSettingsPage() {
                                           const currentDivisionKey = divisionKey(competition, division);
                                           const divisionDomKey = currentDivisionKey.replace(/[^a-zA-Z0-9_-]+/g, "-");
                                           const divisionOpen = Boolean(expandedDivisions[currentDivisionKey]);
-                                          const fixtureDraft = fixtureDrafts[currentDivisionKey] || { date: "", opposition: "" };
+                                          const fixtureDraft = fixtureDrafts[currentDivisionKey] || { date: "", opposition: "", venue: "home" };
+                                          const linkEditorOpen = editingDivisionLink === currentDivisionKey;
                                           return (
                                             <section className="settings-division-card" key={currentDivisionKey}>
-                                              <button className="settings-division-card__toggle" aria-expanded={divisionOpen} type="button" onClick={() => setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: !current[currentDivisionKey] }))}>
-                                                <span><strong>{division.name}</strong><small>{(division.fixtures || []).length} game{(division.fixtures || []).length === 1 ? "" : "s"}</small></span>
-                                                <span className={`settings-expand-icon${divisionOpen ? " settings-expand-icon--open" : ""}`} aria-hidden="true" />
-                                              </button>
+                                              <div className="settings-division-card__heading">
+                                                <button className="settings-division-card__toggle" aria-expanded={divisionOpen} type="button" onClick={() => setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: !current[currentDivisionKey] }))}>
+                                                  <span><strong>{division.name}</strong><small>{(division.fixtures || []).length} game{(division.fixtures || []).length === 1 ? "" : "s"}</small></span>
+                                                  <span className={`settings-expand-icon${divisionOpen ? " settings-expand-icon--open" : ""}`} aria-hidden="true" />
+                                                </button>
+                                                {division.url ? (
+                                                  <a aria-label={`Open ${division.name} tables or fixtures`} className="settings-league-action-button settings-division-link-button" href={division.url} rel="noreferrer noopener" target="_blank" title="Open tables or fixtures">
+                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
+                                                  </a>
+                                                ) : (
+                                                  <button aria-label={`Add link for ${division.name}`} className="settings-league-action-button settings-division-link-button" title="Add tables or fixtures link" type="button" onClick={() => {
+                                                    setExpandedDivisions((current) => ({ ...current, [currentDivisionKey]: true }));
+                                                    setEditingDivisionLink(currentDivisionKey);
+                                                    setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: "" }));
+                                                  }}>
+                                                    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1" /></svg>
+                                                  </button>
+                                                )}
+                                              </div>
                                               {divisionOpen ? (
                                                 <div className="settings-division-card__games stack compact">
+                                                  <div className="settings-division-link-row">
+                                                    <span className="helper-text">{division.url ? "External tables or fixtures link saved." : "Add an optional external link for tables or fixtures."}</span>
+                                                    <button className="text-button" type="button" onClick={() => {
+                                                      setEditingDivisionLink(linkEditorOpen ? "" : currentDivisionKey);
+                                                      setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: division.url || "" }));
+                                                    }}>{linkEditorOpen ? "Close link editor" : division.url ? "Edit division link" : "Add division link"}</button>
+                                                  </div>
+                                                  {linkEditorOpen ? (
+                                                    <form className="settings-division-link-form" onSubmit={(event) => handleDivisionLinkSave(event, competition, division)}>
+                                                      <div className="field">
+                                                        <label htmlFor={`${divisionDomKey}-link`}>Tables or fixtures link</label>
+                                                        <input id={`${divisionDomKey}-link`} inputMode="url" placeholder="https://league.example.com/division" type="url" value={divisionLinkDrafts[currentDivisionKey] ?? division.url ?? ""} onChange={(event) => setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: event.target.value }))} />
+                                                      </div>
+                                                      <button className="settings-form-action" disabled={savingSection === "association-competitions"} type="submit">{division.url ? "Save Link" : "Add Link"}</button>
+                                                      {division.url ? <button className="secondary" type="button" onClick={() => saveDivisionLink(competition, division, "")}>Remove Link</button> : null}
+                                                    </form>
+                                                  ) : null}
                                                   <form className="settings-league-fixture-form" onSubmit={(event) => handleFixtureAdd(event, competition, division)}>
                                                     <div className="field">
                                                       <label htmlFor={`${divisionDomKey}-date`}>Game date</label>
@@ -1186,6 +1300,13 @@ export default function OrganisationSettingsPage() {
                                                       <label htmlFor={`${divisionDomKey}-opposition`}>Opposition</label>
                                                       <input id={`${divisionDomKey}-opposition`} placeholder="Opposition club or team" value={fixtureDraft.opposition} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [currentDivisionKey]: { ...fixtureDraft, opposition: event.target.value } }))} />
                                                     </div>
+                                                    <div className="field">
+                                                      <label htmlFor={`${divisionDomKey}-venue`}>Home / Away</label>
+                                                      <select id={`${divisionDomKey}-venue`} value={fixtureDraft.venue || "home"} onChange={(event) => setFixtureDrafts((current) => ({ ...current, [currentDivisionKey]: { ...fixtureDraft, venue: event.target.value } }))}>
+                                                        <option value="home">Home</option>
+                                                        <option value="away">Away</option>
+                                                      </select>
+                                                    </div>
                                                     <button className="settings-form-action" disabled={!fixtureDraft.date || !fixtureDraft.opposition.trim() || savingSection === "association-competitions"} type="submit">Add Game</button>
                                                   </form>
                                                   {(division.fixtures || []).length === 0 ? <div className="dashboard-empty">No games assigned to this division yet.</div> : (
@@ -1193,6 +1314,7 @@ export default function OrganisationSettingsPage() {
                                                       {(division.fixtures || []).map((fixture, fixtureIndex) => (
                                                         <div className="settings-league-fixture-row" key={`${fixture.date}-${fixture.opposition}-${fixtureIndex}`}>
                                                           <div><strong>{formatFixtureDate(fixture.date)}</strong><span>{fixture.opposition}</span></div>
+                                                          <span className={`settings-fixture-venue settings-fixture-venue--${fixture.venue === "away" ? "away" : "home"}`}>{fixture.venue === "away" ? "Away" : "Home"}</span>
                                                           <button aria-label={`Remove ${fixture.opposition} on ${fixture.date}`} className="settings-edit-button danger" type="button" onClick={() => handleFixtureRemove(competition, division, fixtureIndex)}>×</button>
                                                         </div>
                                                       ))}

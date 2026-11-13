@@ -36,6 +36,7 @@ struct OrganizationProfile: Decodable {
     let entitlements: PersonalPlanEntitlements?
     let availablePlanEntitlements: [String: PersonalPlanEntitlements]
     let features: OrganizationFeatures
+    let associationCompetitions: [AssociationCompetition]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -54,6 +55,7 @@ struct OrganizationProfile: Decodable {
         case entitlements
         case availablePlanEntitlements = "available_plan_entitlements"
         case features
+        case associationCompetitions = "association_competitions"
     }
 
     init(from decoder: Decoder) throws {
@@ -74,7 +76,68 @@ struct OrganizationProfile: Decodable {
         entitlements = try container.decodeIfPresent(PersonalPlanEntitlements.self, forKey: .entitlements)
         availablePlanEntitlements = try container.decodeIfPresent([String: PersonalPlanEntitlements].self, forKey: .availablePlanEntitlements) ?? [:]
         features = try container.decodeIfPresent(OrganizationFeatures.self, forKey: .features) ?? OrganizationFeatures()
+        associationCompetitions = try container.decodeIfPresent([AssociationCompetition].self, forKey: .associationCompetitions) ?? []
     }
+}
+
+struct AssociationCompetition: Decodable, Identifiable, Hashable {
+    let name: String
+    let type: String
+    let divisions: [AssociationCompetitionDivision]
+
+    var id: String { "\(type.lowercased()):\(name.lowercased())" }
+
+    enum CodingKeys: String, CodingKey {
+        case name, type, divisions, fixtures
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        type = try container.decodeIfPresent(String.self, forKey: .type) ?? "league"
+        let decodedDivisions = try container.decodeIfPresent([AssociationCompetitionDivision].self, forKey: .divisions) ?? []
+        if decodedDivisions.isEmpty,
+           let legacyFixtures = try container.decodeIfPresent([AssociationCompetitionFixture].self, forKey: .fixtures),
+           !legacyFixtures.isEmpty {
+            divisions = [AssociationCompetitionDivision(name: "General", url: nil, fixtures: legacyFixtures)]
+        } else {
+            divisions = decodedDivisions
+        }
+    }
+}
+
+struct AssociationCompetitionDivision: Decodable, Identifiable, Hashable {
+    let name: String
+    let url: String?
+    let fixtures: [AssociationCompetitionFixture]
+
+    var id: String { name.lowercased() }
+
+    init(name: String, url: String?, fixtures: [AssociationCompetitionFixture]) {
+        self.name = name
+        self.url = url
+        self.fixtures = fixtures
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case name, url, fixtures
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        let decodedURL = try container.decodeIfPresent(String.self, forKey: .url)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        url = decodedURL?.isEmpty == false ? decodedURL : nil
+        fixtures = try container.decodeIfPresent([AssociationCompetitionFixture].self, forKey: .fixtures) ?? []
+    }
+}
+
+struct AssociationCompetitionFixture: Decodable, Identifiable, Hashable {
+    let date: String
+    let opposition: String
+    let venue: String
+
+    var id: String { "\(date):\(opposition.lowercased()):\(venue.lowercased())" }
 }
 
 struct OrganizationFeatures: Decodable {

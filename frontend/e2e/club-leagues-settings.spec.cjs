@@ -136,36 +136,52 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await page.getByRole("button", { name: "Add Club leagues" }).click();
   await page.getByLabel("League name").fill("County League");
   await page.getByRole("button", { name: "Save League" }).click();
-  await expect(page.getByRole("button", { name: "Hide County League" })).toBeVisible();
-
-  await expect(page.getByRole("button", { name: "Hide divisions for County League" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show divisions for County League" })).toBeVisible();
+  await expect(page.getByLabel("Division name")).toHaveCount(0);
+  await page.getByRole("button", { name: "Show divisions for County League" }).click();
   await page.getByLabel("Division name").fill("Division 1");
   await page.getByRole("button", { name: "Add Division" }).click();
 
+  await page.getByRole("button", { name: "Add link for Division 1" }).click();
+  await page.getByLabel("Tables or fixtures link").fill("https://league.example.com/division-1");
+  await page.getByRole("button", { name: "Add Link", exact: true }).click();
+  const externalLink = page.getByRole("link", { name: "Open Division 1 tables or fixtures" });
+  await expect(externalLink).toHaveAttribute("href", "https://league.example.com/division-1");
+  await expect(externalLink).toHaveAttribute("target", "_blank");
+
   await page.getByLabel("Game date").fill("2027-02-12");
   await page.getByLabel("Opposition").fill("North Club");
+  await page.getByLabel("Home / Away").selectOption("away");
   await page.getByRole("button", { name: "Add Game" }).click();
   await expect(page.getByText("12 Feb 2027")).toBeVisible();
   await expect(page.getByText("North Club")).toBeVisible();
+  await expect(page.locator(".settings-fixture-venue", { hasText: "Away" })).toBeVisible();
   expect(updates.at(-1).association_competitions).toEqual([
     {
       name: "County League",
       type: "league",
       divisions: [{
         name: "Division 1",
-        fixtures: [{ date: "2027-02-12", opposition: "North Club" }],
+        url: "https://league.example.com/division-1",
+        fixtures: [{ date: "2027-02-12", opposition: "North Club", venue: "away" }],
       }],
     },
   ]);
 
-  await page.getByRole("button", { name: "Delete County League" }).click();
-  const deleteDialog = page.getByRole("dialog", { name: "Delete County League?" });
+  await page.getByRole("button", { name: "Edit County League" }).click();
+  await page.getByLabel("League name").fill("County Winter League");
+  await page.getByRole("button", { name: "Save Name" }).click();
+  await expect(page.getByText("County Winter League", { exact: true })).toBeVisible();
+  expect(updates.at(-1).association_competitions[0].name).toBe("County Winter League");
+
+  await page.getByRole("button", { name: "Delete County Winter League" }).click();
+  const deleteDialog = page.getByRole("dialog", { name: "Delete County Winter League?" });
   await expect(deleteDialog).toBeVisible();
   await expect(deleteDialog.getByRole("button", { name: "Delete League" })).toBeDisabled();
   await deleteDialog.getByLabel("Type DELETE to confirm").fill("DELETE");
   await deleteDialog.getByRole("button", { name: "Delete League" }).click();
   await expect(deleteDialog).toHaveCount(0);
-  await expect(page.getByText("County League", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("County Winter League", { exact: true })).toHaveCount(0);
   expect(updates.at(-1).association_competitions).toEqual([]);
 });
 

@@ -435,7 +435,7 @@ struct DashboardView: View {
             return [.association]
         }
 
-        var items: [SettingsMenuItem] = [.organisation, .users, .courts, .racketSports]
+        var items: [SettingsMenuItem] = [.organisation, .users, .courts, .leagues, .racketSports]
         if isTournamentEnabled(for: membership) {
             items.append(.tournament)
         }
@@ -1494,7 +1494,7 @@ struct DashboardView: View {
 
     private func openSettingsMenuItem(_ item: SettingsMenuItem) {
         guard item != .subscription || subscriptionAccessEnabled else { return }
-        let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .racketSports, .tournament, .data]
+        let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .leagues, .racketSports, .tournament, .data]
         if directClubItems.contains(item),
            let membership = singleClubMembership,
            membership.role.lowercased() == "admin",
@@ -1544,11 +1544,16 @@ struct DashboardView: View {
             if subscriptionAccessEnabled {
                 subscriptionSettingsCard
             } else {
-                dashboardInnerCard {
-                    Text("Subscriptions are temporarily unavailable.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text("Subscriptions are temporarily unavailable.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(Color.dashboardInnerCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(Color.dashboardBorder, lineWidth: 1)
+                    )
             }
         case .profile:
             profileSettingsCard
@@ -1585,6 +1590,8 @@ struct DashboardView: View {
             organizationUsersCard
         case .courts:
             organizationCourtsCard
+        case .leagues:
+            organizationLeaguesCard
         case .data:
             clubDataSettingsCard
         case .tournament:
@@ -1660,6 +1667,7 @@ struct DashboardView: View {
                         clubManagementLink(title: "Users", icon: "person.2.fill", item: .users)
                     }
                     clubManagementLink(title: "Courts", icon: "sportscourt.fill", item: .courts)
+                    clubManagementLink(title: "Leagues", icon: "list.bullet.rectangle.portrait", item: .leagues)
                     if membership.role.lowercased() == "admin" {
                         clubManagementLink(title: "Club Settings", icon: "slider.horizontal.3", item: .racketSports)
                         if isTournamentEnabled(for: membership) {
@@ -1735,6 +1743,159 @@ struct DashboardView: View {
 
     private func isTournamentEnabled(for membership: UserMembership) -> Bool {
         tournamentClubs.contains { $0.id == membership.organizationID }
+    }
+
+    private var organizationLeaguesCard: some View {
+        let competitions = (organizationSettings?.organization.associationCompetitions ?? [])
+            .sorted { lhs, rhs in
+                if lhs.type.lowercased() != rhs.type.lowercased() {
+                    return lhs.type.lowercased() < rhs.type.lowercased()
+                }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Label("Leagues", systemImage: "list.bullet.rectangle.portrait")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Color.dashboardBrand)
+
+            Text("Select a league and division to view its matches. League information is read-only in the iOS app.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if isLoadingSettings && organizationSettings == nil {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading leagues…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else if competitions.isEmpty {
+                emptyState("No leagues have been added to this club.")
+            } else {
+                ForEach(["league", "interclub"], id: \.self) { type in
+                    let group = competitions.filter { $0.type.lowercased() == type }
+                    if !group.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(type == "interclub" ? "Inter-club leagues" : "Club leagues")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(.secondary)
+
+                            ForEach(group) { competition in
+                                associationLeagueDisclosure(competition)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.dashboardBorder, lineWidth: 1)
+        )
+    }
+
+    private func associationLeagueDisclosure(_ competition: AssociationCompetition) -> some View {
+        let matchCount = competition.divisions.reduce(0) { $0 + $1.fixtures.count }
+
+        return DisclosureGroup {
+            VStack(spacing: 10) {
+                if competition.divisions.isEmpty {
+                    emptyState("No divisions have been added to this league.")
+                } else {
+                    ForEach(competition.divisions) { division in
+                        associationDivisionDisclosure(division)
+                    }
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(competition.name)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.primary)
+                Text("\(competition.divisions.count) \(competition.divisions.count == 1 ? "division" : "divisions") · \(matchCount) \(matchCount == 1 ? "match" : "matches")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .tint(Color.dashboardBrand)
+        .padding(14)
+        .background(Color.dashboardInputBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func associationDivisionDisclosure(_ division: AssociationCompetitionDivision) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 8) {
+                if let value = division.url,
+                   let url = URL(string: value),
+                   let scheme = url.scheme?.lowercased(),
+                   scheme == "http" || scheme == "https" {
+                    Link(destination: url) {
+                        Label("Open tables or fixtures", systemImage: "arrow.up.right.square")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
+
+                if division.fixtures.isEmpty {
+                    Text("No matches assigned to this division.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(division.fixtures) { fixture in
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(displayTournamentDate(fixture.date))
+                                    .font(.caption.weight(.bold))
+                                Text(fixture.opposition)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Text(fixture.venue.lowercased() == "away" ? "Away" : "Home")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(fixture.venue.lowercased() == "away" ? Color.dashboardAccentPink : Color.dashboardBrand)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    (fixture.venue.lowercased() == "away" ? Color.dashboardAccentPink : Color.dashboardBrand)
+                                        .opacity(0.12)
+                                )
+                                .clipShape(Capsule())
+                        }
+                        .padding(10)
+                        .background(Color.dashboardInnerCardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(division.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text("\(division.fixtures.count) \(division.fixtures.count == 1 ? "match" : "matches")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .tint(Color.dashboardBrand)
+        .padding(12)
+        .background(Color.dashboardInnerCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.dashboardBorder.opacity(0.8), lineWidth: 1)
+        )
     }
 
     private func tournamentSettingsCard(organizationID: Int?) -> some View {
@@ -7074,6 +7235,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case orgSettings
     case users
     case courts
+    case leagues
     case data
     case tournament
 
@@ -7099,6 +7261,7 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
     case orgSettings
     case users
     case courts
+    case leagues
     case data
     case tournament
 
@@ -7130,6 +7293,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "Users"
         case .courts:
             return "Courts"
+        case .leagues:
+            return "Leagues"
         case .data:
             return "Data"
         case .tournament:
@@ -7163,6 +7328,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return "person.3"
         case .courts:
             return "square.grid.2x2"
+        case .leagues:
+            return "list.bullet.rectangle.portrait"
         case .data:
             return "arrow.down.doc"
         case .tournament:
@@ -7196,6 +7363,8 @@ private enum SettingsMenuItem: String, CaseIterable, Identifiable {
             return .users
         case .courts:
             return .courts
+        case .leagues:
+            return .leagues
         case .data:
             return .data
         case .tournament:

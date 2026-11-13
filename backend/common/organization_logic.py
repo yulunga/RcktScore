@@ -2,6 +2,7 @@ import re
 import secrets
 from calendar import monthrange
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from psycopg.types.json import Jsonb
 
@@ -59,12 +60,15 @@ def normalize_association_competitions(value):
                 continue
             if not opposition:
                 continue
-            fixture_key = (game_date, opposition.casefold())
+            venue = str(fixture.get("venue") or fixture.get("home_away") or "home").strip().lower()
+            if venue not in {"home", "away"}:
+                venue = "home"
+            fixture_key = (game_date, opposition.casefold(), venue)
             if fixture_key in fixture_seen:
                 continue
             fixture_seen.add(fixture_key)
-            fixtures.append({"date": game_date, "opposition": opposition[:120]})
-        fixtures.sort(key=lambda fixture: (fixture["date"], fixture["opposition"].casefold()))
+            fixtures.append({"date": game_date, "opposition": opposition[:120], "venue": venue})
+        fixtures.sort(key=lambda fixture: (fixture["date"], fixture["opposition"].casefold(), fixture["venue"]))
         return fixtures[:100]
 
     normalized = []
@@ -93,8 +97,13 @@ def normalize_association_competitions(value):
             if not division_name or division_key in division_seen:
                 continue
             division_seen.add(division_key)
+            external_url = str(division.get("url") or "").strip()[:2048]
+            parsed_url = urlparse(external_url)
+            if external_url and (parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc):
+                external_url = ""
             divisions.append({
                 "name": division_name[:120],
+                "url": external_url,
                 "fixtures": normalize_fixtures(division.get("fixtures")),
             })
         normalized.append({"name": name[:120], "type": competition_type, "divisions": divisions[:50]})

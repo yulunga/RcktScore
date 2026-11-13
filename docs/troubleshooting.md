@@ -225,9 +225,23 @@ response and verify the subsequent settings reload returns the updated JSON rath
 than a stale cached response. No match create, schedule or scoring request should
 contain league fields at this stage.
 
-Legacy flat `fixtures` are preserved inside a `General` division on the next save.
+On native iOS, open Settings > Club Settings (single administered club) or
+Settings > Association > club > Leagues. Admin, scorer and read-only club roles
+all receive the same read-only League > Division > Match disclosures; only the web
+admin surface currently edits this data. If the iOS page is empty while web shows
+leagues, inspect `organization.association_competitions` in
+`GET /organization_settings/{organization_id}` and confirm the app loaded settings
+for the selected club organisation rather than the Personal workspace.
+
+Legacy flat `fixtures` are preserved inside a `General` division on the next save and default to a Home venue.
 If an old league appears to have no games, expand the divisions icon and then the
 General division before investigating the stored JSON.
+
+Division table/fixture links must be complete `http://` or `https://` URLs. The web
+form rejects other schemes, and the backend discards malformed or non-web links
+during normalization. If Home/Away disappears after saving, confirm the deployed
+normalizer retains `divisions[].fixtures[].venue` and that the full normalized
+competition list is returned by `GET /organization_settings/{organization_id}`.
 
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login

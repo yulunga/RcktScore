@@ -8604,6 +8604,23 @@ textarea {
   gap: 8px;
 }
 
+.settings-league-card__summary-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #102a43;
+  text-align: left;
+  box-shadow: none;
+}
+
+.settings-league-card__summary-button:hover {
+  background: #eef6ff;
+  color: #102a43;
+}
+
 .settings-league-action-button {
   display: grid;
   width: 40px;
@@ -8675,9 +8692,17 @@ textarea {
   background: #fff;
 }
 
+.settings-league-rename-form,
+.settings-division-link-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: 10px;
+}
+
 .settings-league-fixture-form {
   display: grid;
-  grid-template-columns: minmax(160px, 0.35fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(160px, 0.35fr) minmax(0, 1fr) minmax(120px, 0.25fr) auto;
   align-items: end;
   gap: 10px;
 }
@@ -8698,6 +8723,14 @@ textarea {
   border: 1px solid #c8daec;
   border-radius: 13px;
   background: #f7faff;
+}
+
+.settings-division-card__heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding-right: 10px;
 }
 
 .settings-division-card__toggle {
@@ -8733,6 +8766,25 @@ textarea {
   background: #fff;
 }
 
+.settings-division-link-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 7px;
+}
+
+.settings-division-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-division-link-row .helper-text {
+  margin: 0;
+}
+
 .settings-league-fixture-list {
   display: grid;
   gap: 8px;
@@ -8751,6 +8803,22 @@ textarea {
 .settings-league-fixture-row > div {
   display: grid;
   gap: 2px;
+}
+
+.settings-fixture-venue {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.settings-fixture-venue--home {
+  background: #e2f4e9;
+  color: #176b3a !important;
+}
+
+.settings-fixture-venue--away {
+  background: #e8f3ff;
+  color: #075da9 !important;
 }
 
 .settings-league-fixture-row span {
@@ -8780,6 +8848,11 @@ textarea {
   }
 
   .settings-division-add-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-league-rename-form,
+  .settings-division-link-form {
     grid-template-columns: 1fr;
   }
 }
