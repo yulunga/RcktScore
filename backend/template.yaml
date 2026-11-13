@@ -261,6 +261,18 @@ Resources:
             Path: /start_scheduled_match
             Method: POST
 
+  TakeOverMatchScoringFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/take_over_match_scoring/handler.lambda_handler
+      Events:
+        TakeOverMatchScoring:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /matches/{match_id}/scorer-lock/takeover
+            Method: POST
+
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1771,6 +1783,7 @@ Resources:
         - !Ref HealthFunction
         - !Ref StartMatchFunction
         - !Ref StartScheduledMatchFunction
+        - !Ref TakeOverMatchScoringFunction
         - !Ref LoginFunction
         - !Ref LogoutFunction
         - !Ref GetSessionStatusFunction

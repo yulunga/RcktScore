@@ -487,7 +487,7 @@ Current organisation-settings behavior:
 - `GET /organization_settings/{organization_id}` includes `organization.enabled_sports`
 - authenticated non-admin club members may read the club profile/courts needed for the view-only Settings experience, but `organizationSettings.users` is empty and display codes remain redacted. Only club administrators and personal owners receive the private membership directory; mutation routes remain server-authorized
 - login responses retain the complete approved `available_memberships` list so clients can switch the active account/club context without another sign-in. Each context-scoped request still supplies an organisation ID and is authorized server-side against that username's membership and role. Web Association Settings may inspect another listed club without implicitly switching match context; native iOS activates the selected retained club before opening its mutation-capable management hub. Personal Profile and Subscription select the personal membership when present
-- migration `040_association_competitions.sql` adds the JSONB `association_competitions` list to club settings. `GET /organization_settings/{organization_id}` returns the club list plus a distinct cross-club `competition_catalog`; admin-authorized `PUT /organization_details/{organization_id}` accepts normalized `{name,type}` entries where type is `league` or `interclub`. Root-admin dashboard data includes the combined directory, and `DELETE /root_admin/association-competitions/{competition_name}` removes a named entry from every organisation
+- migration `040_association_competitions.sql` adds the JSONB `association_competitions` list to club settings. `GET /organization_settings/{organization_id}` returns the club list plus a distinct cross-club `competition_catalog`; admin-authorized `PUT /organization_details/{organization_id}` accepts normalized `{name,type,fixtures}` entries where type is `league` or `interclub` and each fixture contains a valid ISO `YYYY-MM-DD` date plus a non-empty opposition name. The server deduplicates fixtures, sorts them by date, limits each league to 100 fixtures and continues to re-authorize the requested club admin membership. Root-admin dashboard data includes the combined directory, and `DELETE /root_admin/association-competitions/{competition_name}` removes a named entry and its fixtures from every organisation
 - organisation user objects expose the login identity as both `username` and `email`; the current schema uses the email address as the login username, so those values are intentionally the same until a distinct public username is stored
 - organisation court objects include nullable `sport`; create/update accept an implemented sport ID, while a null legacy court remains usable for every sport. Migration `037_court_sports.sql` adds the field and its validation/index. Match creation rejects a sport-assigned court when it does not match the requested match sport
 - `PUT /organization_details/{organization_id}` can persist `enabled_sports` alongside the existing organisation detail fields
@@ -745,10 +745,15 @@ Current behavior:
 - event action: [functions/event_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/event_action/handler.py)
 - undo: [functions/undo_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/undo_action/handler.py)
 - end: [functions/end_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/end_match/handler.py)
+- admin scorer takeover: [functions/take_over_match_scoring/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/take_over_match_scoring/handler.py)
 
 Current behavior:
 
 - these routes are backend-authorized against the match tenant through `authorize_match_session(...)`
+- an active club match is assigned to the membership that creates or activates it. Match responses include `scoring_access` with `locked`, `is_owner`, `can_score`, and `can_take_over`; a different scorer receives `409 MATCH_SCORER_LOCKED` on every mutation even if an older client still renders enabled controls
+- `POST /matches/{match_id}/scorer-lock/takeover` transfers the lock only for a club `admin`, returns the updated match, and records the previous/new membership in the append-only `match_scorer_lock_audit`. Admins must call this endpoint explicitly before mutating a match owned by another scorer; ordinary scorers cannot transfer the lock
+- migration `060_club_match_scorer_lock.sql` adds the lock and audit. Existing active club matches with no owner are atomically claimed by the first authorised match mutation after deployment; personal matches are not locked
+- `scoring_access` is membership-specific and is never included in the shared WebSocket broadcast payload; each client retains or reloads the access state produced by its own authenticated match request
 - `POST /score_point`, `POST /event_action`, `POST /undo_action`, and `POST /end_match` accept an optional `client_action_id` UUID
 - when a `client_action_id` is supplied, the backend records it in `match_action_receipts`; replaying the same UUID for the same match action returns current match state without applying the action again
 - reuse of a UUID for a different match or action is rejected with `INVALID_INPUT`
@@ -759,7 +764,7 @@ Current behavior:
 - a completed tournament-linked scoring match rejects Undo after bracket progression; this prevents reopening the scoring match without safely reversing its draw result
 - migration `042_append_only_match_events.sql` adds the global database-generated `event_sequence`, optional authenticated `actor_username`, and compensation relation. Effective state and client timelines order by `event_sequence`; `created_at` remains descriptive timing metadata rather than a replay tie-breaker. Dashboard/history match reads catch a missing migration-042 column or relation and retry with legacy `created_at, id` ordering so a staggered deployment does not return HTTP 500, but all scoring and Undo writes still require migration 042
 - native iOS serialises queued scoring requests, preserves any new action appended while a previous request is in flight, and retains failed actions for a safe retry with the same UUID; the client now surfaces the returned API or network error rather than describing every failure as an offline condition
-- native iOS renders Squash/Racketball live scores with enlarged player-score typography and compact point-rail labels. Its current service marker uses an outlined, lightly tinted pair instead of filling both the service-side and score pills; this is client presentation only and does not alter scoring events or the `serve_side` contract
+- native iOS renders Squash/Racketball live scores with enlarged player-score typography and compact point-rail labels. Its current service marker uses an outlined, lightly tinted pair instead of filling both the service-side and score pills. Phone landscape uses a compact-height board and suppresses the timer/action dock while opening-server, warm-up or interval prompts are active; these are client presentation changes only and do not alter scoring events or the `serve_side` contract
 - the native scorer labels stroke choices as `Stroke Against <player>` but continues to send the opposite player as the awarded `player_side`; let choices include the selected player's name and retain the existing optional `player_side` request behavior
 - personal accounts can only have one active match at a time
 - clubs can auto-schedule a match if the chosen court already has an active match
@@ -792,6 +797,12 @@ Current behavior:
 - Apply migration `059_public_registration.sql` before deploying the updated handlers. It defaults the setting to green.
 
 ### Interest requests and feedback
+
+The browser login presents Want In and Need Help as 15-second idle overlays over
+the login card. This is frontend-only behaviour: it does not add an API or alter
+the registration, feedback, Guides or password-reset contracts described below.
+An edited Want In form is not dismissed automatically, preventing loss of draft
+registration details.
 
 - register interest: [functions/register_interest/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/register_interest/handler.py)
 - feedback: [functions/send_feedback/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/send_feedback/handler.py)

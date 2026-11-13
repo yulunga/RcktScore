@@ -2,7 +2,7 @@ from aws_lambda_powertools import Logger
 
 from common.dashboard_logic import personal_can_access_completed_match
 from common.match_logic import get_match, websocket_payload
-from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
+from common.session_logic import SessionAuthError, attach_match_scoring_access, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, path_parameter, success_response
 
@@ -19,6 +19,7 @@ def lambda_handler(event, context):
         with get_db_connection() as connection:
             auth_context = authorize_match_session(connection, event, match_id)
             match = get_match(connection, match_id)
+            match = attach_match_scoring_access(match, auth_context)
             membership = auth_context.get("membership") or {}
             if (
                 match

@@ -72,6 +72,7 @@ class ShellViewModelTest {
         override suspend fun match(matchId: String): ApiResult<MatchDetail> = error("unused")
         override suspend fun notifications(organizationId: Int): ApiResult<List<AppNotification>> =
             ApiResult.Success(listOf(AppNotification(id = "n$organizationId", title = "Welcome")))
+        override suspend fun dismissNotification(notificationId: String, organizationId: Int): ApiResult<Boolean> = ApiResult.Success(true)
         override suspend fun markNotificationRead(notificationId: String, organizationId: Int): ApiResult<Boolean> {
             readCalls += notificationId
             return ApiResult.Success(true)
@@ -80,6 +81,7 @@ class ShellViewModelTest {
         override suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups> = error("unused")
         override suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> = error("unused")
+        override suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail> = error("unused")
         override suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun undo(request: MatchIdRequest): ApiResult<MatchDetail> = error("unused")

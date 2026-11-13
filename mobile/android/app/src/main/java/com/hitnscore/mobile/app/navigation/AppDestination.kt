@@ -15,9 +15,13 @@ sealed class AppDestination(
     data object Analytics : AppDestination("analytics", R.string.tab_analytics, R.drawable.ic_tab_analytics)
     data object Settings : AppDestination("settings", R.string.tab_settings, R.drawable.ic_tab_settings)
     data object Help : AppDestination("help", R.string.tab_help, R.drawable.ic_tab_help)
+    data object Tournaments : AppDestination("tournaments", R.string.tab_tournaments, R.drawable.ic_tab_tournament)
 
     companion object {
         // Lazy: an eager list here can capture a null object during sealed-class initialisation.
         val topLevel: List<AppDestination> by lazy { listOf(Home, Matches, Analytics, Settings, Help) }
+
+        /** As iOS: Tournaments takes Help's place when a club has Tournament Manager on. */
+        val withTournaments: List<AppDestination> by lazy { listOf(Home, Matches, Analytics, Tournaments, Settings) }
     }
 }

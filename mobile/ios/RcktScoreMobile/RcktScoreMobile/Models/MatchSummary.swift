@@ -93,6 +93,7 @@ struct MatchDetail: Codable, Identifiable {
     let completedAt: String?
     let matchDurationSeconds: Int?
     let state: MatchState?
+    let scoringAccess: MatchScoringAccess?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -124,6 +125,21 @@ struct MatchDetail: Codable, Identifiable {
         case completedAt = "completed_at"
         case matchDurationSeconds = "match_duration_seconds"
         case state
+        case scoringAccess = "scoring_access"
+    }
+}
+
+struct MatchScoringAccess: Codable {
+    let locked: Bool
+    let isOwner: Bool
+    let canScore: Bool
+    let canTakeOver: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case locked
+        case isOwner = "is_owner"
+        case canScore = "can_score"
+        case canTakeOver = "can_take_over"
     }
 }
 

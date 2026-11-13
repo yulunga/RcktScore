@@ -50,17 +50,20 @@ class AppNavigationSmokeTest {
         composeRule.onNodeWithContentDescription("Show password").performClick()
         composeRule.onNodeWithContentDescription("Hide password").assertIsDisplayed()
 
-        composeRule.onNodeWithText("Need Help?").performClick()
-        composeRule.onNodeWithText("Password Reset").assertIsDisplayed()
+        composeRule.onNodeWithText("Need Help").performClick()
+        composeRule.onNodeWithText("Ping Us").assertIsDisplayed()
+        composeRule.onNodeWithText("Guides").assertIsDisplayed()
+        composeRule.onNodeWithText("Password Reset").performClick()
         composeRule.onNodeWithText("Cancel").performClick()
     }
 
     @Test
     fun wantInOpensRegistration() {
         composeRule.onNodeWithTag(TestTags.WANT_IN).performClick()
-        composeRule.onNodeWithText("Join Hit n Score").assertIsDisplayed()
-        composeRule.onNodeWithText("Create Personal Account").assertIsDisplayed()
+        composeRule.onNodeWithText("Welcome to HitnScore racketsport app").assertIsDisplayed()
+        composeRule.onNodeWithText("Create a account to start scoring").assertIsDisplayed()
         composeRule.onNodeWithText("Club").performClick()
-        composeRule.onNodeWithText("Register Club Interest").assertIsDisplayed()
+        composeRule.onNodeWithText("Club name").assertIsDisplayed()
+        composeRule.onNodeWithText("Create Account").assertIsDisplayed()
     }
 }

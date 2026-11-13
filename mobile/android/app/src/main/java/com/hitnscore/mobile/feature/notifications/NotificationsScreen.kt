@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +24,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,8 +48,14 @@ fun NotificationsScreen(
     notifications: List<AppNotification>,
     onOpen: (String) -> Unit,
     onBack: () -> Unit,
+    /** Deletes the given messages (the × on a card, or "Delete selected"). */
+    onDismiss: (Set<String>) -> Unit = {},
+    errorMessage: String? = null,
 ) {
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf(setOf<String>()) }
+    // Drop selections for messages that are gone.
+    val visibleSelection = selected.intersect(notifications.map { it.id }.toSet())
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -66,14 +75,43 @@ fun NotificationsScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
+            errorMessage?.let { item { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) } }
             if (notifications.isEmpty()) item { EmptyState(stringResource(R.string.notifications_empty)) }
+            if (notifications.isNotEmpty()) item(key = "selection-bar") {
+                val allSelected = visibleSelection.size == notifications.size
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { selected = if (allSelected) emptySet() else notifications.map { it.id }.toSet() }) {
+                        Text(stringResource(if (allSelected) R.string.notifications_clear_selection else R.string.notifications_select_all))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (visibleSelection.isNotEmpty()) {
+                        TextButton(onClick = {
+                            onDismiss(visibleSelection)
+                            selected = emptySet()
+                        }) {
+                            Text(
+                                stringResource(R.string.notifications_delete_selected, visibleSelection.size),
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
             items(notifications, key = { it.id }) { notification ->
                 val expanded = expandedId == notification.id
+                val isSelected = notification.id in visibleSelection
                 InnerCard(onClick = {
                     expandedId = if (expanded) null else notification.id
                     onOpen(notification.id)
                 }) {
-                    Column(Modifier.padding(16.dp).animateContentSize()) {
+                    Row(Modifier.padding(start = 4.dp), verticalAlignment = Alignment.Top) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { selected = if (it) selected + notification.id else selected - notification.id },
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Column(Modifier.weight(1f).padding(top = 16.dp, bottom = 16.dp, end = 4.dp).animateContentSize()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (!notification.isRead) {
                                 StatusDot(HitNScoreTheme.colors.brandPink)
@@ -98,6 +136,14 @@ fun NotificationsScreen(
                             maxLines = if (expanded) Int.MAX_VALUE else 2,
                             modifier = Modifier.padding(top = 6.dp),
                         )
+                    }
+                    IconButton(onClick = { onDismiss(setOf(notification.id)) }) {
+                        Icon(
+                            painterResource(R.drawable.ic_close),
+                            contentDescription = stringResource(R.string.notifications_delete_one, notification.title),
+                            tint = HitNScoreTheme.colors.brandPink,
+                        )
+                    }
                     }
                 }
             }

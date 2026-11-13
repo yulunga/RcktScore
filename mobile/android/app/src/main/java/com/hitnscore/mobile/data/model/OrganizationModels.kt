@@ -34,7 +34,16 @@ data class OrganizationProfile(
     @SerialName("timed_break_defaults") val timedBreakDefaults: Map<String, Boolean> = emptyMap(),
     /** Facebook, Instagram, X, YouTube links (empty until the backend stores them). */
     @SerialName("social_profiles") val socialProfiles: Map<String, String> = emptyMap(),
+    val features: OrganizationFeatures = OrganizationFeatures(),
 )
+
+@Serializable
+data class OrganizationFeatures(
+    @SerialName("tournament_manager") val tournamentManager: TournamentManagerFeature = TournamentManagerFeature(),
+)
+
+@Serializable
+data class TournamentManagerFeature(@SerialName("web_enabled") val webEnabled: Boolean = false)
 
 @Serializable
 data class OrganizationUser(
@@ -50,6 +59,8 @@ data class OrganizationUser(
     val country: String = "",
     val telephone: String = "",
     @SerialName("city_location") val cityLocation: String = "",
+    @SerialName("birth_month") val birthMonth: Int? = null,
+    @SerialName("birth_year") val birthYear: Int? = null,
 )
 
 @Serializable
@@ -61,6 +72,7 @@ data class CourtSummary(
     @SerialName("display_code_enabled") val displayCodeEnabled: Boolean = false,
     /** The scoreboard screen code. Sent to club admins only. */
     @SerialName("display_code") val displayCode: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
 )
 
 /** Club roles, as `backend/common/access_control.py`. */
@@ -90,6 +102,9 @@ data class PersonalProfileRequest(
     val telephone: String,
     val country: String,
     @SerialName("city_location") val cityLocation: String,
+    /** Optional; left out of the JSON when not set (as iOS). */
+    @SerialName("birth_month") val birthMonth: Int? = null,
+    @SerialName("birth_year") val birthYear: Int? = null,
 )
 
 /** `PUT /organization_details/{organization_id}` (club admins). */

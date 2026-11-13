@@ -117,7 +117,8 @@ enum RacketServiceSideUITestFixture {
             updatedAt: "2026-10-02T10:00:00Z",
             completedAt: nil,
             matchDurationSeconds: 300,
-            state: state
+            state: state,
+            scoringAccess: nil
         )
 
         return (session, match)

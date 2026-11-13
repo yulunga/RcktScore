@@ -36,6 +36,18 @@ Use this checklist after UI changes and before releases.
 - End the match
 - Confirm the history/result feels correct to a real scorer
 
+## Club match scorer lock
+
+- On web, iOS and Android, sign in as club Scorer A, start a club match and confirm normal scoring, timer, settings, Undo and end actions work
+- Open the same match as club Scorer B and confirm the score remains visible but point, timer, settings, Undo and end controls cannot mutate it
+- Attempt a direct scoring request as Scorer B and confirm the backend returns `409 MATCH_SCORER_LOCKED`; confirm a stale or older client also cannot bypass the lock
+- Sign in as a club admin, open the match and confirm scoring remains disabled until Take Over Scoring is explicitly selected and confirmed
+- Complete the takeover, confirm the admin can score immediately, and confirm Scorer A becomes read-only on its next refresh or rejected mutation
+- Confirm an ordinary scorer never sees a takeover action and cannot call the takeover endpoint successfully
+- Create a scheduled club match, activate it as Scorer A and repeat the ownership checks; also confirm Personal Free and Personal Plus matches remain unaffected
+- Test an active club match created before migration 060 and confirm the first authorised post-deployment mutation claims it once without duplicate audit rows
+- On iOS and Android, open a match while online, then lose connectivity; confirm a non-owner device cannot queue new local points after it has received the locked state and that server reconciliation rejects any stale queued mutation
+
 ## Club admin flow
 
 - Check court management

@@ -5,6 +5,7 @@ import com.hitnscore.mobile.data.model.DashboardResponseData
 import com.hitnscore.mobile.data.model.MatchDetail
 import com.hitnscore.mobile.data.model.MatchResponseData
 import com.hitnscore.mobile.data.model.NotificationListResponseData
+import com.hitnscore.mobile.data.model.NotificationDismissResponseData
 import com.hitnscore.mobile.data.model.NotificationReadRequest
 import com.hitnscore.mobile.data.model.NotificationReadResponseData
 import com.hitnscore.mobile.data.model.OrganizationSettings
@@ -27,12 +28,15 @@ interface HitNScoreApi {
     suspend fun match(matchId: String): ApiResult<MatchDetail>
     suspend fun notifications(organizationId: Int): ApiResult<List<AppNotification>>
     suspend fun markNotificationRead(notificationId: String, organizationId: Int): ApiResult<Boolean>
+    /** DELETE /notifications/{id}: removes the message from this user's inbox (as iOS). */
+    suspend fun dismissNotification(notificationId: String, organizationId: Int): ApiResult<Boolean>
     suspend fun organizationSettings(organizationId: Int): ApiResult<OrganizationSettings>
 
     // Match setup and scoring (M3). Every call returns the server's updated match.
     suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups>
     suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail>
     suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail>
+    suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail>
     suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail>
     suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail>
     suspend fun undo(request: MatchIdRequest): ApiResult<MatchDetail>
@@ -63,6 +67,14 @@ class RemoteHitNScoreApi(private val client: ApiClient) : HitNScoreApi {
             deserializer = NotificationReadResponseData.serializer(),
         ).map { it.read }
 
+    override suspend fun dismissNotification(notificationId: String, organizationId: Int): ApiResult<Boolean> =
+        client.delete(
+            path = "notifications/$notificationId",
+            body = NotificationReadRequest(organizationId),
+            bodySerializer = NotificationReadRequest.serializer(),
+            deserializer = NotificationDismissResponseData.serializer(),
+        ).map { it.dismissed }
+
     override suspend fun organizationSettings(organizationId: Int): ApiResult<OrganizationSettings> =
         client.get("organization_settings/$organizationId", OrganizationSettingsResponseData.serializer())
             .map { it.organizationSettings }
@@ -79,6 +91,14 @@ class RemoteHitNScoreApi(private val client: ApiClient) : HitNScoreApi {
     override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> =
         client.post("start_scheduled_match", MatchIdRequest(matchId), MatchIdRequest.serializer(), MatchResponseData.serializer())
             .map { it.match }
+
+    override suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail> =
+        client.post(
+            "matches/$matchId/scorer-lock/takeover",
+            MatchIdRequest(matchId),
+            MatchIdRequest.serializer(),
+            MatchResponseData.serializer(),
+        ).map { it.match }
 
     override suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail> =
         client.post("score_point", request, ScorePointRequest.serializer(), MatchResponseData.serializer()).map { it.match }

@@ -1,9 +1,11 @@
 from aws_lambda_powertools import Logger
 
 from common.access_control import CAPABILITY_MATCH_MANAGE
-from common.match_logic import create_match, is_personal_tenant, websocket_payload
+from common.match_logic import create_match, get_match, is_personal_tenant, websocket_payload
 from common.session_logic import (
     SessionAuthError,
+    assign_match_scoring_owner,
+    attach_match_scoring_access,
     authorize_organization_session,
     session_error_response,
 )
@@ -54,6 +56,12 @@ def lambda_handler(event, context):
                     payload,
                     source=auth_context["session"].get("login_source") or "web_app",
                 )
+                if match and match.get("status") == "active":
+                    assign_match_scoring_owner(connection, match["id"], auth_context, action="started")
+                    match = attach_match_scoring_access(
+                        get_match(connection, match["id"]),
+                        auth_context,
+                    )
             except ValueError as exc:
                 return error_response(400, "INVALID_INPUT", str(exc))
     except SessionAuthError as auth_error:

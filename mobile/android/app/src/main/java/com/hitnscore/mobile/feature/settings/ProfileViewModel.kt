@@ -30,6 +30,8 @@ data class ProfileForm(
     val telephone: String = "",
     val country: String = "",
     val cityLocation: String = "",
+    val birthMonth: Int? = null,
+    val birthYear: Int? = null,
 )
 
 data class ProfileUiState(
@@ -101,6 +103,8 @@ class ProfileViewModel(
                     telephone = me.telephone.ifBlank { state.form.telephone },
                     country = me.country.ifBlank { state.form.country },
                     cityLocation = me.cityLocation,
+                    birthMonth = me.birthMonth,
+                    birthYear = me.birthYear,
                 )
                 state.copy(form = form, original = form)
             }
@@ -129,6 +133,8 @@ class ProfileViewModel(
                     telephone = form.telephone.trim(),
                     country = form.country.trim(),
                     cityLocation = form.cityLocation.trim(),
+                    birthMonth = form.birthMonth,
+                    birthYear = form.birthYear,
                 ),
             )
             when (result) {

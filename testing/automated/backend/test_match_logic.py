@@ -18,6 +18,17 @@ from common.squash_match_logic import (
 )
 
 
+def test_websocket_payload_never_broadcasts_membership_specific_scoring_access():
+    payload = squash_match_logic.websocket_payload({
+        "id": "match-1",
+        "status": "active",
+        "scoring_access": {"can_score": True, "is_owner": True},
+    })
+
+    assert payload["match"]["id"] == "match-1"
+    assert "scoring_access" not in payload["match"]
+
+
 class _RecordingCursor:
     def __init__(self, connection):
         self.connection = connection

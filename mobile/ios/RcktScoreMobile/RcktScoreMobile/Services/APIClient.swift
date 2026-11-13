@@ -1541,6 +1541,15 @@ final class APIClient {
         return match
     }
 
+    func takeOverMatchScoring(matchID: String) async throws -> MatchDetail {
+        let request = try makeRequest(
+            path: "/matches/\(matchID)/scorer-lock/takeover",
+            method: "POST",
+            body: EmptyRequest()
+        )
+        return try await unwrapMatchResponse(request)
+    }
+
     func getMatchDisplayAccess(matchID: String) async throws -> MatchDisplayAccess {
         let request = try makeRequest(path: "/match_display_access/\(matchID)", method: "GET")
         let envelope: APIEnvelope<MatchDisplayAccessResponseData> = try await send(request)

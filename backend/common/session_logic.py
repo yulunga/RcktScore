@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 from common.auth_logic import _serialize_org_user
 from common.access_control import (
     CAPABILITY_MATCH_READ,
+    CAPABILITY_MATCH_MANAGE,
+    ROLE_ADMIN,
+    normalize_membership_role,
     membership_has_capability,
 )
 from common.organization_logic import USER_STATUS_APPROVED, normalize_email_address
@@ -485,7 +488,7 @@ def _get_match_access_context(connection, match_id):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT tenant_id, sport
+            SELECT tenant_id, sport, status, scoring_owner_membership_id, scoring_locked_at
             FROM matches
             WHERE id = %(match_id)s
             LIMIT 1
@@ -495,6 +498,178 @@ def _get_match_access_context(connection, match_id):
         row = cursor.fetchone()
 
     return row
+
+
+def _record_match_scorer_lock(
+    connection,
+    match_id,
+    tenant_id,
+    previous_membership_id,
+    new_membership_id,
+    action,
+):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO match_scorer_lock_audit (
+                match_id,
+                tenant_id,
+                previous_membership_id,
+                new_membership_id,
+                action,
+                created_at
+            ) VALUES (
+                %(match_id)s,
+                %(tenant_id)s,
+                %(previous_membership_id)s,
+                %(new_membership_id)s,
+                %(action)s,
+                %(created_at)s
+            )
+            """,
+            {
+                "match_id": match_id,
+                "tenant_id": int(tenant_id),
+                "previous_membership_id": previous_membership_id,
+                "new_membership_id": int(new_membership_id),
+                "action": action,
+                "created_at": _utcnow(),
+            },
+        )
+
+
+def _claim_unowned_club_match(connection, match_id, tenant_id, membership_id, action="claimed"):
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE matches
+            SET scoring_owner_membership_id = %(membership_id)s,
+                scoring_locked_at = %(locked_at)s
+            WHERE id = %(match_id)s
+              AND tenant_id = %(tenant_id)s
+              AND scoring_owner_membership_id IS NULL
+              AND status IN ('active', 'scheduled')
+            RETURNING scoring_owner_membership_id, scoring_locked_at
+            """,
+            {
+                "match_id": match_id,
+                "tenant_id": int(tenant_id),
+                "membership_id": int(membership_id),
+                "locked_at": now,
+            },
+        )
+        claimed = cursor.fetchone()
+    if claimed:
+        _record_match_scorer_lock(
+            connection,
+            match_id,
+            tenant_id,
+            None,
+            membership_id,
+            action,
+        )
+    return claimed
+
+
+def _match_scoring_access(match_context, membership):
+    membership_id = (membership or {}).get("id")
+    owner_id = (match_context or {}).get("scoring_owner_membership_id")
+    is_personal = (membership or {}).get("organization_type") == "personal"
+    is_admin = normalize_membership_role((membership or {}).get("role")) == ROLE_ADMIN
+    is_owner = bool(owner_id and membership_id and int(owner_id) == int(membership_id))
+    locked = bool(owner_id) and not is_personal
+    can_score = is_personal or not locked or is_owner
+    return {
+        "locked": locked,
+        "is_owner": is_owner,
+        "can_score": can_score,
+        "can_take_over": bool(is_admin and locked and not is_owner),
+    }
+
+
+def attach_match_scoring_access(match, auth_context):
+    if match is not None:
+        match["scoring_access"] = dict((auth_context or {}).get("scoring_access") or {})
+    return match
+
+
+def assign_match_scoring_owner(connection, match_id, auth_context, action="started"):
+    membership = (auth_context or {}).get("membership") or {}
+    if membership.get("organization_type") == "personal":
+        auth_context["scoring_access"] = _match_scoring_access({}, membership)
+        return False
+    match_context = _get_match_access_context(connection, match_id)
+    if not match_context:
+        raise SessionAuthError(404, "MATCH_NOT_FOUND", "Match not found")
+    claimed = _claim_unowned_club_match(
+        connection,
+        match_id,
+        match_context["tenant_id"],
+        membership["id"],
+        action=action,
+    )
+    if claimed:
+        connection.commit()
+        match_context = _get_match_access_context(connection, match_id)
+    auth_context["scoring_access"] = _match_scoring_access(match_context, membership)
+    return bool(claimed)
+
+
+def take_over_match_scoring(connection, match_id, auth_context):
+    membership = (auth_context or {}).get("membership") or {}
+    if membership.get("organization_type") != "club" or normalize_membership_role(membership.get("role")) != ROLE_ADMIN:
+        raise SessionAuthError(
+            403,
+            "SESSION_ADMIN_REQUIRED",
+            "A club administrator is required to take over match scoring.",
+        )
+    now = _utcnow()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT tenant_id, status, scoring_owner_membership_id
+            FROM matches
+            WHERE id = %(match_id)s
+              AND COALESCE(is_archived, false) = false
+            FOR UPDATE
+            """,
+            {"match_id": match_id},
+        )
+        match_context = cursor.fetchone()
+        if not match_context:
+            raise SessionAuthError(404, "MATCH_NOT_FOUND", "Match not found")
+        if int(match_context["tenant_id"]) != int(membership["organization_id"]):
+            raise SessionAuthError(403, "SESSION_FORBIDDEN", "You do not have access to this match.")
+        if match_context.get("status") == "completed":
+            raise SessionAuthError(409, "MATCH_ALREADY_COMPLETE", "A completed match cannot be taken over.")
+        previous_membership_id = match_context.get("scoring_owner_membership_id")
+        cursor.execute(
+            """
+            UPDATE matches
+            SET scoring_owner_membership_id = %(membership_id)s,
+                scoring_locked_at = %(locked_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "match_id": match_id,
+                "membership_id": int(membership["id"]),
+                "locked_at": now,
+            },
+        )
+    if previous_membership_id != membership["id"]:
+        _record_match_scorer_lock(
+            connection,
+            match_id,
+            match_context["tenant_id"],
+            previous_membership_id,
+            membership["id"],
+            "admin_takeover",
+        )
+    connection.commit()
+    refreshed = _get_match_access_context(connection, match_id)
+    auth_context["scoring_access"] = _match_scoring_access(refreshed, membership)
+    return auth_context["scoring_access"]
 
 
 def authorize_match_session(connection, event, match_id, required_capability=CAPABILITY_MATCH_READ):
@@ -517,6 +692,32 @@ def authorize_match_session(connection, event, match_id, required_capability=CAP
             "SPORT_CLIENT_ACCESS_DENIED",
             "This racket sport is not enabled for your account on this client.",
         )
+    if required_capability == CAPABILITY_MATCH_MANAGE:
+        membership = auth_context["membership"]
+        if membership.get("organization_type") == "club" and not match_context.get("scoring_owner_membership_id"):
+            _claim_unowned_club_match(
+                connection,
+                match_id,
+                tenant_id,
+                membership["id"],
+                action="claimed",
+            )
+            match_context = _get_match_access_context(connection, match_id)
+        scoring_access = _match_scoring_access(match_context, membership)
+        if not scoring_access["can_score"]:
+            raise SessionAuthError(
+                409,
+                "MATCH_SCORER_LOCKED",
+                (
+                    "Another club scorer controls this match. Take over scoring before making changes."
+                    if scoring_access["can_take_over"]
+                    else "This match is currently controlled by another club scorer."
+                ),
+                {"can_take_over": scoring_access["can_take_over"]},
+            )
+        auth_context["scoring_access"] = scoring_access
+    else:
+        auth_context["scoring_access"] = _match_scoring_access(match_context, auth_context["membership"])
     auth_context["tenant_id"] = tenant_id
     auth_context["sport"] = sport
     return auth_context

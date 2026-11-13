@@ -217,6 +217,7 @@ export default function MatchScreen() {
     endMatch,
     scorePoint,
     sendEventAction,
+    takeOverMatchScoring,
     undoLastAction,
   } = useMatch();
   const navigate = useNavigate();
@@ -253,6 +254,9 @@ export default function MatchScreen() {
   const gameHistory = live.game_history || [];
   const serviceSide = live.service_side || "Right";
   const matchComplete = currentMatch?.state?.match_complete || currentMatch?.status === "completed";
+  const scoringAccess = currentMatch?.scoring_access;
+  const scoringAllowed = matchManagementEnabled && scoringAccess?.can_score !== false;
+  const canTakeOverScoring = scoringAccess?.can_take_over === true;
   const completedAtTimestamp = currentMatch?.completed_at ? new Date(currentMatch.completed_at).getTime() : NaN;
   const undoLocked = matchComplete
     && Number.isFinite(completedAtTimestamp)
@@ -1154,6 +1158,36 @@ export default function MatchScreen() {
 
       <div className="match-top-grid">
         <div className="stack match-primary-column">
+          {scoringAccess?.locked && !scoringAllowed && !canTakeOverScoring ? (
+            <section className="panel stack compact match-scorer-lock" aria-live="polite">
+              <div className="panel-heading">
+                <h2>Match scoring is locked</h2>
+                <p className="helper-text">Another club scorer is controlling this match. You can view the live score, but scoring controls are disabled.</p>
+              </div>
+            </section>
+          ) : null}
+          {canTakeOverScoring ? (
+            <section className="panel stack compact match-scorer-lock" aria-live="polite">
+              <div className="panel-heading">
+                <h2>Another scorer controls this match</h2>
+                <p className="helper-text">As a club administrator, you can transfer scoring control to this account. The previous scorer will be locked out.</p>
+              </div>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  const confirmed = globalThis.confirm(
+                    "Take over this match? The current scorer will immediately lose permission to make changes.",
+                  );
+                  if (confirmed) {
+                    takeOverMatchScoring(matchId);
+                  }
+                }}
+              >
+                {loading ? "Taking over…" : "Take Over Scoring"}
+              </button>
+            </section>
+          ) : null}
           {needsPadelGoldenPointReceiver ? (
             <section className="panel stack compact padel-receiver-choice" data-testid="padel-receiver-choice">
               <div className="panel-heading">
@@ -1172,12 +1206,12 @@ export default function MatchScreen() {
           ) : null}
           {isTennisMatch ? (
             <TennisScoreboard
-              disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !matchManagementEnabled}
+              disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !scoringAllowed}
               match={currentMatch}
               onScorePoint={(scorer) => scorePoint(matchId, scorer)}
             >
               <MatchControls
-                disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !matchManagementEnabled}
+                disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !scoringAllowed}
                 match={currentMatch}
                 showRacketActions={false}
                 undoDisabled={undoLocked}
@@ -1191,7 +1225,7 @@ export default function MatchScreen() {
             </TennisScoreboard>
           ) : (
             <Scoreboard
-              disabled={!currentMatch || loading || !matchManagementEnabled}
+              disabled={!currentMatch || loading || !scoringAllowed}
               match={currentMatch}
               onScorePoint={(scorer) => scorePoint(matchId, scorer)}
               onToggleServeSide={() =>
@@ -1201,7 +1235,7 @@ export default function MatchScreen() {
               }
             >
             <MatchControls
-              disabled={!currentMatch || loading || !matchManagementEnabled}
+              disabled={!currentMatch || loading || !scoringAllowed}
               match={currentMatch}
               undoDisabled={undoLocked}
               onEventAction={(actionType, payload) =>
@@ -1214,7 +1248,7 @@ export default function MatchScreen() {
             </Scoreboard>
           )}
           <Timer
-            disabled={matchComplete}
+            disabled={matchComplete || !scoringAllowed}
             helperText={timerHelperText}
             label={timerLabel}
             onSkip={timerSkipLabel ? handleSkipTimedPhase : undefined}

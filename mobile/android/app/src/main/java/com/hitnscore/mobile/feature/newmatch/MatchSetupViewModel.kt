@@ -13,6 +13,8 @@ import com.hitnscore.mobile.data.model.CreateMatchRequest
 import com.hitnscore.mobile.data.model.MatchSummary
 import com.hitnscore.mobile.data.model.PlayerLookup
 import com.hitnscore.mobile.data.remote.HitNScoreApi
+import com.hitnscore.mobile.data.remote.SetupAnalyticsApi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -147,14 +149,43 @@ data class MatchSetupUiState(
 class MatchSetupViewModel(
     args: SetupArgs,
     private val api: HitNScoreApi,
+    /** Setup funnel analytics (as iOS); null in tests. */
+    private val setupAnalytics: SetupAnalyticsApi? = null,
+    /** Outlives this screen so an "abandoned" outcome is still sent after it closes. */
+    private val backgroundScope: CoroutineScope? = null,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(MatchSetupUiState(args))
     val uiState: StateFlow<MatchSetupUiState> = mutableState.asStateFlow()
     private var lookupJob: Job? = null
+    private var setupAnalyticsId: String? = null
+    private var setupAnalyticsFinished = false
 
     init {
+        beginSetupAnalytics()
         load()
+    }
+
+    private fun beginSetupAnalytics() {
+        val analytics = setupAnalytics ?: return
+        val args = mutableState.value.args
+        viewModelScope.launch {
+            (analytics.begin(args.organizationId, args.sport) as? ApiResult.Success)?.let { setupAnalyticsId = it.value }
+        }
+    }
+
+    private fun finishSetupAnalytics(outcome: String, matchId: String? = null) {
+        val analytics = setupAnalytics ?: return
+        val id = setupAnalyticsId ?: return
+        if (setupAnalyticsFinished) return
+        setupAnalyticsFinished = true
+        val organizationId = mutableState.value.args.organizationId
+        (backgroundScope ?: viewModelScope).launch { analytics.finish(organizationId, id, outcome, matchId) }
+    }
+
+    override fun onCleared() {
+        finishSetupAnalytics("abandoned")
+        super.onCleared()
     }
 
     fun load() {
@@ -328,6 +359,7 @@ class MatchSetupViewModel(
             when (val result = api.createMatch(request)) {
                 is ApiResult.Success -> {
                     val match = result.value
+                    finishSetupAnalytics("completed", match.id)
                     val scheduled = match.status.equals("scheduled", ignoreCase = true) || match.autoScheduled == true
                     mutableState.update {
                         it.copy(isSubmitting = false, result = if (scheduled) SetupResult.Scheduled(match.autoScheduleReason) else SetupResult.Open(match.id))
@@ -433,7 +465,7 @@ class MatchSetupViewModel(
         fun factory(args: SetupArgs): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as HitNScoreApplication).container
-                MatchSetupViewModel(args, container.api)
+                MatchSetupViewModel(args, container.api, container.setupAnalyticsApi, container.applicationScope)
             }
         }
     }

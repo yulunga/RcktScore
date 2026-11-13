@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,6 +35,8 @@ import com.hitnscore.mobile.app.navigation.HitNScoreTabNavHost
 import com.hitnscore.mobile.app.navigation.ShellRoutes
 import com.hitnscore.mobile.app.navigation.navigateToTab
 import com.hitnscore.mobile.core.session.AccountContext
+import com.hitnscore.mobile.core.session.AccountContextType
+import com.hitnscore.mobile.feature.tournaments.TournamentsViewModel
 import com.hitnscore.mobile.core.session.SessionState
 import com.hitnscore.mobile.data.model.ClubRoles
 import com.hitnscore.mobile.feature.settings.SettingsPage
@@ -54,6 +57,15 @@ fun AppShellScreen(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val shellState by shellViewModel.uiState.collectAsStateWithLifecycle()
+    val tournamentsViewModel: TournamentsViewModel = viewModel(factory = TournamentsViewModel.Factory)
+    val tournamentsState by tournamentsViewModel.uiState.collectAsStateWithLifecycle()
+    val clubKeys = session.availableContexts
+        .filter { it.type == AccountContextType.Club }
+        .map { it.organizationId to it.name }
+    LaunchedEffect(clubKeys, shellState.isOnline) {
+        if (shellState.isOnline) tournamentsViewModel.load(clubKeys)
+    }
+    val tabs = if (tournamentsState.hasTournamentClubs) AppDestination.withTournaments else AppDestination.topLevel
     val currentRoute = backStackEntry?.destination?.route
     // Read-only club members can follow matches but not score them (B18, as iOS and web).
     val canManageMatches = ClubRoles.canManageMatches(session.activeContext.role)
@@ -88,7 +100,7 @@ fun AppShellScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (!fullScreen) NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                AppDestination.topLevel.forEach { destination ->
+                tabs.forEach { destination ->
                     // Play sits between Home and Matches and starts a new match (replaces the
                     // floating Start button). Read-only club members can't start matches (B18).
                     if (destination == AppDestination.Matches && canManageMatches) {
@@ -118,6 +130,8 @@ fun AppShellScreen(
             biometricUnlockEnabled = biometricUnlockEnabled,
             onBiometricUnlockChange = onBiometricUnlockChange,
             onMarkNotificationRead = shellViewModel::markNotificationRead,
+            tournamentsState = tournamentsState,
+            onDismissNotifications = shellViewModel::dismissNotifications,
             onContextSelected = onContextSelected,
             onSignOut = onSignOut,
             modifier = Modifier

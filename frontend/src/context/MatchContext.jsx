@@ -14,6 +14,7 @@ import {
   sendEventAction as sendEventActionRequest,
   startScheduledMatch as startScheduledMatchRequest,
   startMatch as startMatchRequest,
+  takeOverMatchScoring as takeOverMatchScoringRequest,
   undoAction as undoActionRequest,
 } from "../services/api";
 import { createScoreSocket } from "../services/websocket";
@@ -145,6 +146,10 @@ export function MatchProvider({ children }) {
     }
   }, []);
 
+  const takeOverMatchScoring = useCallback(async (matchId) => {
+    return runMatchMutation(() => takeOverMatchScoringRequest(matchId));
+  }, [runMatchMutation]);
+
   const connectRealtime = useCallback((matchId) => {
     if (socketRef.current) {
       socketRef.current();
@@ -153,7 +158,12 @@ export function MatchProvider({ children }) {
     socketRef.current = createScoreSocket(matchId, {
       onMessage(payload) {
         if (payload?.match) {
-          setCurrentMatch((current) => mergeMatchPayload(current, payload.match));
+          // scoring_access is membership-specific and is deliberately absent
+          // from broadcasts; retain the value from this user's authenticated load.
+          setCurrentMatch((current) => mergeMatchPayload(current, {
+            ...payload.match,
+            scoring_access: current?.scoring_access,
+          }));
         }
       },
       onError() {
@@ -179,6 +189,7 @@ export function MatchProvider({ children }) {
       undoLastAction,
       endMatch,
       startScheduledMatch,
+      takeOverMatchScoring,
       connectRealtime,
     }),
     [
@@ -191,6 +202,7 @@ export function MatchProvider({ children }) {
       sendEventAction,
       startMatch,
       startScheduledMatch,
+      takeOverMatchScoring,
       undoLastAction,
       endMatch,
     ],

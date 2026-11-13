@@ -22,3 +22,6 @@ data class NotificationReadRequest(@SerialName("organization_id") val organizati
 
 @Serializable
 data class NotificationReadResponseData(val read: Boolean = false)
+
+@Serializable
+data class NotificationDismissResponseData(val dismissed: Boolean = false)

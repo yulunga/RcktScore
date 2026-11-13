@@ -51,8 +51,11 @@ data class ScoringUiState(
     /** Padel Golden Point: points wait until the receiving team picks its receiver. */
     val requiresReceiverChoice: Boolean get() = TennisRules.requiresReceiverChoice(match)
 
+    val scoringAllowed: Boolean get() = match?.scoringAccess?.canScore != false
+    val canTakeOverScoring: Boolean get() = match?.scoringAccess?.canTakeOver == true
+
     val canPlay: Boolean
-        get() = match != null && !isMutating && !isComplete && !isScheduled && timer.phase == TimerPhase.MatchLive
+        get() = match != null && scoringAllowed && !isMutating && !isComplete && !isScheduled && timer.phase == TimerPhase.MatchLive
     val canScore: Boolean get() = canPlay && !requiresReceiverChoice
 
     /** Undo stays available for five minutes after the match ends, as iOS. */
@@ -179,7 +182,7 @@ class ScoringViewModel(
 
     fun chooseFirstServer(side: String) {
         val match = mutableState.value.match ?: return
-        if (mutableState.value.isMutating) return
+        if (!mutableState.value.scoringAllowed || mutableState.value.isMutating) return
         val name = if (side == "player2") match.player2Name else match.player1Name
         enqueue(
             action(
@@ -198,7 +201,7 @@ class ScoringViewModel(
      */
     fun chooseTennisOpening(serverId: String, receiverId: String) {
         val match = mutableState.value.match ?: return
-        if (mutableState.value.isMutating) return
+        if (!mutableState.value.scoringAllowed || mutableState.value.isMutating) return
         val serverSide = TennisRules.sideOf(serverId)
         val receiverSide = TennisRules.sideOf(receiverId)
         if (serverSide == receiverSide) return
@@ -233,7 +236,7 @@ class ScoringViewModel(
      */
     fun undo() {
         val state = mutableState.value
-        if (state.match == null || state.undoLocked) return
+        if (state.match == null || !state.scoringAllowed || state.undoLocked) return
         if (offlineStore.undoLastQueued(matchId)) {
             offlineStore.projectedMatch(matchId, owner())?.let { apply(it, bootstrap = false) }
             return
@@ -247,7 +250,7 @@ class ScoringViewModel(
 
     fun endEarly() {
         val state = mutableState.value
-        if (state.match == null || state.isComplete || state.isScheduled) return
+        if (state.match == null || !state.scoringAllowed || state.isComplete || state.isScheduled) return
         val duration = state.timer.matchDurationSeconds
         mutableState.update { it.copy(timer = it.timer.stopped(duration)) }
         durationRecorded = true
@@ -256,7 +259,7 @@ class ScoringViewModel(
 
     /** Starting a scheduled match changes the court's schedule, so it needs a connection. */
     fun startScheduled() {
-        if (!mutableState.value.isScheduled || mutableState.value.isMutating) return
+        if (!mutableState.value.scoringAllowed || !mutableState.value.isScheduled || mutableState.value.isMutating) return
         if (!isOnline.value) {
             mutableState.update { it.copy(errorMessage = START_NEEDS_CONNECTION) }
             return
@@ -278,6 +281,7 @@ class ScoringViewModel(
     }
 
     fun saveSettings(scoreType: Int, bestOf: Int, player1Shirt: String, player2Shirt: String) {
+        if (!mutableState.value.scoringAllowed) return
         enqueue(
             action(
                 OfflineActionKind.MatchSettings,
@@ -303,14 +307,34 @@ class ScoringViewModel(
     // Clock ---------------------------------------------------------------
 
     fun toggleTimer() {
-        if (mutableState.value.isComplete || mutableState.value.isScheduled) return
+        if (!mutableState.value.scoringAllowed || mutableState.value.isComplete || mutableState.value.isScheduled) return
         mutableState.update { it.copy(timer = it.timer.togglePause()) }
         persistTimer()
     }
 
     fun skipTimedPhase() {
+        if (!mutableState.value.scoringAllowed) return
         mutableState.update { it.copy(timer = it.timer.skip()) }
         persistTimer()
+    }
+
+    fun takeOverScoring() {
+        val state = mutableState.value
+        if (!state.canTakeOverScoring || state.isMutating || !isOnline.value) {
+            if (!isOnline.value) mutableState.update { it.copy(errorMessage = TAKEOVER_NEEDS_CONNECTION) }
+            return
+        }
+        mutableState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = api.takeOverMatchScoring(matchId)) {
+                is ApiResult.Success -> {
+                    owner()?.let { offlineStore.cache(result.value, it) }
+                    apply(result.value, bootstrap = false)
+                }
+                is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
+            }
+            mutableState.update { it.copy(isMutating = false) }
+        }
     }
 
     // Internals ------------------------------------------------------------
@@ -457,6 +481,7 @@ class ScoringViewModel(
         const val NOT_HELD = "This match isn't available for offline scoring on this phone. Reload it while online."
         const val UNDO_NEEDS_CONNECTION = "Only points scored on this phone while offline can be undone until you reconnect."
         const val START_NEEDS_CONNECTION = "Connect to the internet to start a scheduled match."
+        const val TAKEOVER_NEEDS_CONNECTION = "Connect to the internet before taking over match scoring."
 
         fun factory(matchId: String): ViewModelProvider.Factory = viewModelFactory {
             initializer {

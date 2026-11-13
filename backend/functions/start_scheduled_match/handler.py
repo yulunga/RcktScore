@@ -2,7 +2,7 @@ from aws_lambda_powertools import Logger
 
 from common.access_control import CAPABILITY_MATCH_MANAGE
 from common.match_logic import activate_scheduled_match, websocket_payload
-from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
+from common.session_logic import SessionAuthError, attach_match_scoring_access, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, success_response
 
@@ -18,11 +18,12 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
-            authorize_match_session(
+            auth_context = authorize_match_session(
                 connection, event, match_id, required_capability=CAPABILITY_MATCH_MANAGE
             )
             try:
                 match = activate_scheduled_match(connection, match_id)
+                match = attach_match_scoring_access(match, auth_context)
             except ValueError as exc:
                 return error_response(409, "ACTIVE_MATCH_EXISTS", str(exc))
     except SessionAuthError as auth_error:

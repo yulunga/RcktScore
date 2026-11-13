@@ -4,6 +4,29 @@ final class RacketServiceSideTimelineUITests: HitnScoreBaseUITest {
     private let scenario = "racket-service-side-timeline"
 
     @MainActor
+    func testLandscapeScoringKeepsScoresAndControlsVisible() {
+        launchApp(lightMode: true, scenario: scenario)
+        rotateLandscapeLeft()
+
+        let scoring = ScoringScreen(app: app)
+        scoring.verifyLoaded()
+
+        XCTAssertTrue(scoring.player1ScoreCard.isHittable)
+        XCTAssertTrue(scoring.player2ScoreCard.isHittable)
+        XCTAssertTrue(scoring.timerButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(scoring.timerButton.isHittable)
+        XCTAssertTrue(scoring.actionButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(scoring.actionButton.isHittable)
+
+        XCTAssertLessThan(
+            scoring.player1ScoreCard.frame.maxY,
+            scoring.timerButton.frame.minY,
+            "The landscape timer dock must not cover the player score controls."
+        )
+        captureScreenshot("Racket-Service-Side-Landscape-Scoring")
+    }
+
+    @MainActor
     func testManualLeftServeReplacesR2AndPersistsWhenServerScores() {
         launchApp(lightMode: false, scenario: scenario)
         rotatePortrait()

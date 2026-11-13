@@ -104,6 +104,13 @@ export function startScheduledMatch(payload) {
   });
 }
 
+export function takeOverMatchScoring(matchId) {
+  return apiRequest(`/matches/${matchId}/scorer-lock/takeover`, {
+    method: "POST",
+    body: "{}",
+  });
+}
+
 export function login(payload) {
   return apiRequest("/login", {
     method: "POST",

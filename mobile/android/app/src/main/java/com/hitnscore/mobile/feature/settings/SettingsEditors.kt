@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -256,6 +257,28 @@ fun ProfileEditor(state: ProfileUiState, viewModel: ProfileViewModel) {
             EditorField(stringResource(R.string.settings_telephone), form.telephone, { v -> viewModel.update { it.copy(telephone = v) } }, readOnly = locked, keyboardType = KeyboardType.Phone)
             EditorField(stringResource(R.string.settings_city), form.cityLocation, { v -> viewModel.update { it.copy(cityLocation = v) } }, readOnly = locked)
             EditorField(stringResource(R.string.settings_country_origin), form.country, { v -> viewModel.update { it.copy(country = v) } }, readOnly = locked)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val notSet = stringResource(R.string.settings_not_set)
+                val months = remember { java.text.DateFormatSymbols(java.util.Locale.UK).months.take(12) }
+                OptionalNumberPicker(
+                    label = stringResource(R.string.settings_birth_month),
+                    options = (1..12).toList(),
+                    selected = form.birthMonth,
+                    display = { months[it - 1] },
+                    notSet = notSet,
+                    enabled = !locked,
+                    modifier = Modifier.weight(1f),
+                ) { v -> viewModel.update { it.copy(birthMonth = v) } }
+                OptionalNumberPicker(
+                    label = stringResource(R.string.settings_birth_year),
+                    options = (java.time.Year.now().value downTo 1900).toList(),
+                    selected = form.birthYear,
+                    display = { it.toString() },
+                    notSet = notSet,
+                    enabled = !locked,
+                    modifier = Modifier.weight(1f),
+                ) { v -> viewModel.update { it.copy(birthYear = v) } }
+            }
             StatusLine(if (state.saved) SettingsNotice.Saved else if (state.resetSent) SettingsNotice.ResetSent else null, state.errorMessage)
             if (editing) {
                 SaveButton(stringResource(R.string.settings_save_profile), enabled = state.canSave, busy = state.isSaving, onClick = viewModel::save)
@@ -538,8 +561,11 @@ fun UsersEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSetti
     var adding by rememberSaveable { mutableStateOf(false) }
     // Role filter, as Courts: null = everyone.
     var roleFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var search by rememberSaveable { mutableStateOf("") }
+    val query = search.trim().lowercase()
     val shown = users
         .filter { roleFilter == null || ClubRoles.normalize(it.role) == roleFilter }
+        .filter { query.isEmpty() || "${it.firstName} ${it.surname} ${it.username}".lowercase().contains(query) }
         .sortedWith(compareBy({ it.firstName.ifBlank { it.username }.lowercase() }, { it.surname.lowercase() }))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusLine(state.notice, state.actionError)
@@ -553,7 +579,15 @@ fun UsersEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSetti
             onSelect = { roleFilter = it },
             count = pluralStringResource(R.plurals.settings_member_count, shown.size, shown.size),
         )
-        if (shown.isEmpty()) EditorNote(stringResource(R.string.settings_members_empty))
+        EditorField(
+            stringResource(R.string.settings_search_users),
+            search,
+            { search = it },
+            capitalization = KeyboardCapitalization.None,
+        )
+        if (shown.isEmpty()) {
+            EditorNote(stringResource(if (users.isEmpty()) R.string.settings_members_empty else R.string.settings_members_no_match))
+        }
         CardGrid(shown) { user ->
             EditorCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -657,9 +691,14 @@ private fun UserDialog(
         title = { Text(stringResource(if (user == null) R.string.settings_add_user else R.string.settings_edit_user)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                EditorField(stringResource(R.string.setup_first_name), first, { first = it }, enabled = !busy)
-                EditorField(stringResource(R.string.setup_surname), last, { last = it }, enabled = !busy)
-                EditorField(stringResource(R.string.settings_email), email, { email = it }, enabled = !busy, keyboardType = KeyboardType.Email)
+                // Existing members manage their own name and email from their Personal profile (as iOS).
+                val identityLocked = user != null
+                EditorField(stringResource(R.string.setup_first_name), first, { first = it }, enabled = !busy, readOnly = identityLocked)
+                EditorField(stringResource(R.string.setup_surname), last, { last = it }, enabled = !busy, readOnly = identityLocked)
+                EditorField(stringResource(R.string.settings_email), email, { email = it }, enabled = !busy, keyboardType = KeyboardType.Email, readOnly = identityLocked)
+                if (identityLocked) {
+                    Text(stringResource(R.string.settings_user_identity_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Text(stringResource(R.string.settings_role), style = MaterialTheme.typography.labelLarge)
                 Choice(roles.indices.toList(), roles.indexOf(role), enabled = !busy && !isSelf, label = { labels[it] }) { role = roles[it] }
                 Text(
@@ -693,15 +732,28 @@ private fun UserDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
     if (confirmRemove && user != null) {
-        ConfirmDialog(
-            title = stringResource(R.string.settings_remove_user_title),
-            body = stringResource(R.string.settings_remove_user_body, MatchFormatting.fullName(user.firstName.ifBlank { user.username }, user.surname)),
-            confirm = stringResource(R.string.settings_remove),
-            onConfirm = {
-                confirmRemove = false
-                onRemove()
+        // Typed confirmation, as iOS: the word "delete".
+        var typed by rememberSaveable { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.settings_remove_user_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(MatchFormatting.fullName(user.firstName.ifBlank { user.username }, user.surname), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_remove_user_type_delete), style = MaterialTheme.typography.bodyMedium)
+                    EditorField("delete", typed, { typed = it }, capitalization = KeyboardCapitalization.None)
+                }
             },
-            onDismiss = { confirmRemove = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmRemove = false
+                        onRemove()
+                    },
+                    enabled = typed.trim().equals("delete", ignoreCase = true),
+                ) { Text(stringResource(R.string.settings_remove_user), color = HitNScoreTheme.colors.completedStatus) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -717,6 +769,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
     // Filter: only court types the club has courts for and plays (squash covers racketball).
     var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var scannerError by remember { mutableStateOf<String?>(null) }
+    var pasting by remember { mutableStateOf<CourtSummary?>(null) }
     val invalidQrMessage = stringResource(R.string.settings_scoreboard_qr_invalid)
     val scanFailedMessage = stringResource(R.string.settings_scoreboard_qr_scan_failed)
     val scannerContext = LocalContext.current
@@ -796,11 +849,42 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                 ) {
                     Text(stringResource(R.string.settings_scan_scoreboard_qr))
                 }
+                TextButton(onClick = { pasting = court }, enabled = !state.isSaving, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_paste_scoreboard_link))
+                }
             }
         }
     }
+    pasting?.let { court ->
+        var link by rememberSaveable { mutableStateOf("") }
+        val token = scoreboardPairingToken(link)
+        AlertDialog(
+            onDismissRequest = { pasting = null },
+            title = { Text(stringResource(R.string.settings_paste_scoreboard_link)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.settings_paste_scoreboard_body, court.courtName), style = MaterialTheme.typography.bodyMedium)
+                    EditorField(stringResource(R.string.settings_paste_scoreboard_field), link, { link = it }, capitalization = KeyboardCapitalization.None, isError = link.isNotBlank() && token == null)
+                    if (link.isNotBlank() && token == null) {
+                        Text(invalidQrMessage, style = MaterialTheme.typography.bodySmall, color = HitNScoreTheme.colors.brandPink)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pasting = null
+                        token?.let { viewModel.approveScoreboardPairing(court.id, it) }
+                    },
+                    enabled = token != null && !state.isSaving,
+                ) { Text(stringResource(R.string.settings_pair_scoreboard)) }
+            },
+            dismissButton = { TextButton(onClick = { pasting = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+    val courtNumberLimit = CourtTypes.numberLimit(state.settings?.organization?.plan)
     if (adding) {
-        CourtDialog(court = null, types = CourtTypes.available(enabledSports), busy = state.isSaving, onDismiss = { adding = false }, onSave = { name, alias, sport ->
+        CourtDialog(court = null, types = CourtTypes.available(enabledSports), courts = courts, numberLimit = courtNumberLimit, busy = state.isSaving, onDismiss = { adding = false }, onSave = { name, alias, sport ->
             adding = false
             viewModel.saveCourt(null, name, alias, sport)
         })
@@ -809,6 +893,8 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
         CourtDialog(
             court = court,
             types = CourtTypes.available(enabledSports),
+            courts = courts,
+            numberLimit = courtNumberLimit,
             busy = state.isSaving,
             onDismiss = { editing = null },
             onSave = { name, alias, sport ->
@@ -845,6 +931,9 @@ internal fun scoreboardPairingToken(rawValue: String): String? {
 private fun CourtDialog(
     court: CourtSummary?,
     types: List<String>,
+    courts: List<CourtSummary>,
+    /** Club Essentials 5, Club Pro 25: the number is then picked from the unused ones (as iOS). */
+    numberLimit: Int?,
     busy: Boolean,
     onDismiss: () -> Unit,
     onSave: (String, String, String?) -> Unit,
@@ -857,19 +946,52 @@ private fun CourtDialog(
     var type by rememberSaveable { mutableStateOf(types.firstOrNull()) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     var confirmCode by rememberSaveable { mutableStateOf(false) }
+    val sportForNumbers = court?.sport ?: type
+    val numberOptions = numberLimit?.let { CourtTypes.numberOptions(courts, it, sportForNumbers, court?.id, name) }
+    // A new court starts on the first free number.
+    if (court == null && name.isBlank() && !numberOptions.isNullOrEmpty()) {
+        name = numberOptions.first()
+        if (alias.isBlank()) alias = name
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (court == null) R.string.settings_add_court else R.string.settings_edit_court)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                EditorField(stringResource(R.string.settings_court_name), name, { name = it }, enabled = !busy)
+                if (numberOptions == null) {
+                    EditorField(stringResource(R.string.settings_court_name), name, { name = it }, enabled = !busy)
+                } else {
+                    Text(stringResource(R.string.settings_court_number), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (numberOptions.isEmpty()) {
+                        Text(stringResource(R.string.settings_court_number_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    } else {
+                        CourtNumberPicker(numberOptions, name, enabled = !busy) { picked ->
+                            if (alias.isBlank() || alias == name) alias = picked
+                            name = picked
+                        }
+                    }
+                }
                 EditorField(stringResource(R.string.settings_court_alias), alias, { alias = it }, enabled = !busy)
+                court?.createdAt?.let { created ->
+                    Text(
+                        stringResource(R.string.settings_court_created, MatchFormatting.dateOnly(MatchFormatting.parseInstant(created))),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(stringResource(R.string.settings_court_type), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (court == null) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         types.forEach { option ->
                             Surface(
-                                onClick = { type = option },
+                                onClick = {
+                                    if (type != option && numberLimit != null) {
+                                        val next = CourtTypes.numberOptions(courts, numberLimit, option, null, "").firstOrNull().orEmpty()
+                                        if (alias.isBlank() || alias == name) alias = next
+                                        name = next
+                                    }
+                                    type = option
+                                },
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (type == option) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier.fillMaxWidth(),
@@ -947,7 +1069,80 @@ private val EMAIL_REGEX = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
  * Court types. Squash and racketball share the same courts, so both are a "Squash court";
  * tennis and Padel have their own. Stored as the backend's sport code.
  */
+/** A "Not set" or value drop-down (birth month and year), as the iOS menu pickers. */
+@Composable
+private fun OptionalNumberPicker(
+    label: String,
+    options: List<Int>,
+    selected: Int?,
+    display: (Int) -> String,
+    notSet: String,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onSelect: (Int?) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            OutlinedButton(onClick = { open = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+                Text(selected?.let(display) ?: notSet, modifier = Modifier.weight(1f), maxLines = 1)
+                if (enabled) Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 320.dp)) {
+                DropdownMenuItem(text = { Text(notSet) }, onClick = {
+                    open = false
+                    onSelect(null)
+                })
+                options.forEach { option ->
+                    DropdownMenuItem(text = { Text(display(option)) }, onClick = {
+                        open = false
+                        onSelect(option)
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CourtNumberPicker(options: List<String>, selected: String, enabled: Boolean, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            Text(selected.ifBlank { options.first() }, modifier = Modifier.weight(1f))
+            Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(text = { Text(option) }, onClick = {
+                    open = false
+                    onSelect(option)
+                })
+            }
+        }
+    }
+}
+
 internal object CourtTypes {
+    /** Court numbers a plan allows (iOS `clubCourtNumberLimit`); null means free text. */
+    fun numberLimit(plan: String?): Int? = when (plan?.lowercase()) {
+        "club_essentials" -> 5
+        "club_pro" -> 25
+        else -> null
+    }
+
+    /** Unused "Court-N" numbers for this court type, keeping the court's current number first. */
+    fun numberOptions(courts: List<CourtSummary>, limit: Int, sport: String?, existingCourtId: Int?, current: String): List<String> {
+        val used = courts
+            .filter { it.id != existingCourtId && of(it.sport) == of(sport) }
+            .map { it.courtName.lowercase() }
+            .toSet()
+        val values = (1..limit).map { "Court-$it" }.filterNot { it.lowercase() in used }.toMutableList()
+        if (current.isNotBlank() && values.none { it.equals(current, ignoreCase = true) }) values.add(0, current)
+        return values
+    }
+
     const val SQUASH = "squash"
     const val TENNIS = "tennis"
     const val PADEL = "padel"

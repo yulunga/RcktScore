@@ -9,6 +9,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import com.hitnscore.mobile.core.designsystem.components.InnerCard
+import com.hitnscore.mobile.feature.auth.GUIDES_URL
 import androidx.compose.ui.unit.dp
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.components.SectionCard
@@ -38,6 +44,13 @@ fun HelpScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
         item {
             SectionCard(title = stringResource(R.string.tab_help), iconRes = R.drawable.ic_tab_help) {
                 Text(stringResource(R.string.help_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val uriHandler = LocalUriHandler.current
+                InnerCard(onClick = { uriHandler.openUri(GUIDES_URL) }) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text(stringResource(R.string.guides), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.guides_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }

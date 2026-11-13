@@ -22,6 +22,7 @@ import OrganisationSettingsPage from "./OrganisationSettingsPage";
 const SETTINGS_MENU = [
   { id: "profile", label: "Profile" },
   { id: "associations", label: "Association" },
+  { id: "club-management", label: "Club Management", requiresClubAdmin: true },
   { id: "subscription", label: "Subscription" },
   { id: "app", label: "App Settings" },
 ];
@@ -124,7 +125,6 @@ export default function SettingsHubPage() {
   const settingsMenuRef = useRef(null);
   const [settingsMenuScroll, setSettingsMenuScroll] = useState({ left: false, right: false });
   const requestedSection = searchParams.get("section");
-  const activeSection = SETTINGS_MENU.some((item) => item.id === requestedSection) ? requestedSection : "profile";
   const showClubWorkspace = searchParams.get("club") === "1";
 
   const memberships = useMemo(() => {
@@ -132,6 +132,9 @@ export default function SettingsHubPage() {
     return available.filter(Boolean);
   }, [session]);
   const clubMemberships = memberships.filter((membership) => membership.organization_type === "club");
+  const adminClubMemberships = clubMemberships.filter((membership) => membership.role === "admin");
+  const settingsMenu = SETTINGS_MENU.filter((item) => !item.requiresClubAdmin || adminClubMemberships.length > 0);
+  const activeSection = settingsMenu.some((item) => item.id === requestedSection) ? requestedSection : "profile";
   const identityMembership = memberships.find((membership) => membership.organization_type === "personal") || session;
   const organizationId = identityMembership?.organization_id;
 
@@ -218,6 +221,11 @@ export default function SettingsHubPage() {
   }
 
   function selectSection(section) {
+    if (section === "club-management" && adminClubMemberships.length === 1) {
+      const membership = adminClubMemberships[0];
+      navigate(`/settings?club=1&organizationId=${encodeURIComponent(membership.organization_id)}&tab=organisation`);
+      return;
+    }
     setSearchParams(section === "profile" ? {} : { section }, { replace: true });
   }
 
@@ -343,7 +351,7 @@ export default function SettingsHubPage() {
           ref={settingsMenuRef}
           onScroll={updateSettingsMenuScroll}
         >
-          {SETTINGS_MENU.map((item) => (
+          {settingsMenu.map((item) => (
             <button
               className={activeSection === item.id ? "active" : ""}
               data-settings-section={item.id}
@@ -498,6 +506,33 @@ export default function SettingsHubPage() {
                 </div>
               </article>;
             })}
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && activeSection === "club-management" ? (
+        <section className="panel stack">
+          <div className="panel-heading">
+            <h2>Club Management</h2>
+            <p className="helper-text">Choose the club you want to administer.</p>
+          </div>
+          <div className="settings-association-grid">
+            {adminClubMemberships.map((membership) => (
+              <article className="settings-association-card" key={membership.organization_id}>
+                <div>
+                  <span className="status-pill">Club administrator</span>
+                  <h3>{membership.organization_name}</h3>
+                  <div className="dashboard-item-meta">
+                    <span><strong>Subscription:</strong> {planLabel(membership.plan)}</span>
+                  </div>
+                </div>
+                <div className="button-row">
+                  <button type="button" onClick={() => navigate(`/settings?club=1&organizationId=${encodeURIComponent(membership.organization_id)}&tab=organisation`)}>
+                    Open Club Management
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       ) : null}

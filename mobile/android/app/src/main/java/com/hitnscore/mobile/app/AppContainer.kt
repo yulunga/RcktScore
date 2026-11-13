@@ -10,6 +10,8 @@ import com.hitnscore.mobile.core.auth.RegistrationService
 import com.hitnscore.mobile.core.auth.RemotePasswordResetService
 import com.hitnscore.mobile.core.auth.RemoteAuthService
 import com.hitnscore.mobile.core.auth.RemoteRegistrationService
+import com.hitnscore.mobile.core.auth.FeedbackService
+import com.hitnscore.mobile.core.auth.RemoteFeedbackService
 import com.hitnscore.mobile.core.auth.SharedSessionPreferences
 import com.hitnscore.mobile.core.config.AppEnvironment
 import com.hitnscore.mobile.core.connectivity.AndroidConnectivityMonitor
@@ -22,6 +24,10 @@ import com.hitnscore.mobile.data.remote.RemoteHitNScoreApi
 import com.hitnscore.mobile.data.remote.RemoteSettingsApi
 import com.hitnscore.mobile.data.remote.MatchWatchApi
 import com.hitnscore.mobile.data.remote.RemoteMatchWatchApi
+import com.hitnscore.mobile.data.remote.RemoteTournamentApi
+import com.hitnscore.mobile.data.remote.RemoteSetupAnalyticsApi
+import com.hitnscore.mobile.data.remote.SetupAnalyticsApi
+import com.hitnscore.mobile.data.remote.TournamentApi
 import com.hitnscore.mobile.data.remote.SettingsApi
 import com.hitnscore.mobile.core.network.ApiClient
 import com.hitnscore.mobile.core.profile.ProfilePhotoStore
@@ -83,6 +89,7 @@ class AppContainer(context: Context) {
     val authService: AuthService by lazy { RemoteAuthService(apiClient) }
 
     val registrationService: RegistrationService by lazy { RemoteRegistrationService(apiClient) }
+    val feedbackService: FeedbackService by lazy { RemoteFeedbackService(apiClient) }
 
     val passwordResetService: PasswordResetService by lazy { RemotePasswordResetService(apiClient) }
 
@@ -104,6 +111,8 @@ class AppContainer(context: Context) {
 
     /** Score Stream: share a live match's viewing code, and watch one by code (Personal Plus). */
     val matchWatchApi: MatchWatchApi by lazy { RemoteMatchWatchApi(apiClient) }
+    val tournamentApi: TournamentApi by lazy { RemoteTournamentApi(apiClient) }
+    val setupAnalyticsApi: SetupAnalyticsApi by lazy { RemoteSetupAnalyticsApi(apiClient) }
 
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 

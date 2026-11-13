@@ -38,6 +38,7 @@ def list_user_notifications(connection, username, plan):
 
 
 def mark_notification_read(connection, notification_id, username, plan):
+    username = str(username or "").strip().lower()
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -49,7 +50,7 @@ def mark_notification_read(connection, notification_id, username, plan):
               )
             LIMIT 1
             """,
-            {"notification_id": notification_id, "plan": plan},
+            {"notification_id": notification_id, "plan": plan, "username": username},
         )
         if not cursor.fetchone():
             return False

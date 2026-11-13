@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -76,6 +77,11 @@ fun LoginScreen(
     val focusManager = LocalFocusManager.current
     val registrationViewModel: RegistrationViewModel = viewModel(factory = RegistrationViewModel.Factory)
     var showRegistration by rememberSaveable { mutableStateOf(false) }
+    var showNeedHelp by rememberSaveable { mutableStateOf(false) }
+    var showPingUs by rememberSaveable { mutableStateOf(false) }
+    val pingUsViewModel: PingUsViewModel = viewModel(factory = PingUsViewModel.Factory)
+    val pingUsState by pingUsViewModel.uiState.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
 
     Box(
         modifier = Modifier
@@ -209,19 +215,14 @@ fun LoginScreen(
                         }
                     }
 
+                    // "Want In | Need Help", centred under Sign in (as iOS).
                     Row(
                         modifier = Modifier
-                            .padding(top = 8.dp)
+                            .padding(top = 12.dp)
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        TextButton(onClick = viewModel::openPasswordReset) {
-                            Text(
-                                text = stringResource(R.string.login_need_help),
-                                color = HitNScoreTheme.colors.brandPink,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
                         TextButton(
                             onClick = {
                                 registrationViewModel.reset(state.username)
@@ -232,7 +233,17 @@ fun LoginScreen(
                             Text(
                                 text = stringResource(R.string.login_want_in),
                                 color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Text("|", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleSmall)
+                        TextButton(onClick = { showNeedHelp = true }) {
+                            Text(
+                                text = stringResource(R.string.login_need_help),
+                                color = HitNScoreTheme.colors.brandPink,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
@@ -276,6 +287,29 @@ fun LoginScreen(
 
     if (showRegistration) {
         RegistrationSheet(onDismiss = { showRegistration = false }, viewModel = registrationViewModel)
+    }
+
+    if (showNeedHelp) {
+        NeedHelpOverlay(
+            onPingUs = {
+                showNeedHelp = false
+                pingUsViewModel.reset(state.username)
+                showPingUs = true
+            },
+            onGuides = {
+                showNeedHelp = false
+                uriHandler.openUri(GUIDES_URL)
+            },
+            onPasswordReset = {
+                showNeedHelp = false
+                viewModel.openPasswordReset()
+            },
+            onClose = { showNeedHelp = false },
+        )
+    }
+
+    if (showPingUs) {
+        PingUsOverlay(pingUsState, pingUsViewModel, onClose = { showPingUs = false })
     }
 
     val context = LocalContext.current
@@ -475,3 +509,6 @@ object TestTags {
     const val MESSAGE = "login.message"
     const val WANT_IN = "login.wantIn"
 }
+
+/** HitnScore help and scoring guides (shared with iOS and the web). */
+const val GUIDES_URL = "https://app.hitnscore.com/help"

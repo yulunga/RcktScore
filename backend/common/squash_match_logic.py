@@ -1681,7 +1681,11 @@ def end_match(
 
 
 def websocket_payload(match):
+    # scoring_access is derived for one authenticated membership and must never
+    # be replayed to every subscriber as though they share that membership.
+    broadcast_match = dict(match or {})
+    broadcast_match.pop("scoring_access", None)
     return {
         "type": "match.updated",
-        "match": match,
+        "match": broadcast_match,
     }

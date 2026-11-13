@@ -31,7 +31,7 @@ for (const viewportSize of [
       page.getByLabel("Password"),
       page.getByRole("button", { name: "Sign In" }),
       page.getByRole("button", { name: "Want In" }),
-      page.getByRole("link", { name: "Need help?" }),
+      page.getByRole("button", { name: "Need Help" }),
     ];
 
     for (const control of controls) {
@@ -59,6 +59,46 @@ test("registration and privacy copy use the public product wording @smoke", asyn
   )).toBeVisible();
   await expect(page.locator(".cookie-consent")).toContainText("Optional Analytics");
   await expect(page.locator(".cookie-consent")).not.toContainText("Google Analytics");
+});
+
+test("Want In and Need Help use timed login-card overlays @smoke", async ({ page }) => {
+  await page.route("**/registration/status?challenge=1", (route) => route.fulfill({
+    json: { success: true, data: { enabled: true } },
+  }));
+  await page.setViewportSize({ width: 402, height: 874 });
+  await page.goto("/login");
+
+  const entryLinks = page.locator(".login-help-link");
+  const [wantInBox, helpBox] = await Promise.all([
+    entryLinks.getByRole("button", { name: "Want In" }).boundingBox(),
+    entryLinks.getByRole("button", { name: "Need Help" }).boundingBox(),
+  ]);
+  expect(Math.abs(wantInBox.y - helpBox.y)).toBeLessThanOrEqual(1);
+
+  await entryLinks.getByRole("button", { name: "Want In" }).click();
+  const wantInDialog = page.getByRole("dialog", { name: "Want In" });
+  await expect(wantInDialog).toBeVisible();
+  await expect(page.getByRole("button", { name: "Close Want In" })).toBeVisible();
+  await page.getByRole("button", { name: "Close Want In" }).click();
+  await expect(wantInDialog).toHaveCount(0);
+
+  await page.clock.install();
+  await entryLinks.getByRole("button", { name: "Need Help" }).click();
+  const helpDialog = page.getByRole("dialog", { name: "Need Help?" });
+  await expect(helpDialog).toBeVisible();
+  await expect(helpDialog.getByRole("button")).toHaveCount(4);
+  await expect(helpDialog.getByRole("button", { name: "Ping Us" })).toBeVisible();
+  await expect(helpDialog.getByRole("button", { name: "Guides" })).toBeVisible();
+  await expect(helpDialog.getByRole("button", { name: "Password Reset" })).toBeVisible();
+  await page.clock.fastForward(15001);
+  await expect(helpDialog).toHaveCount(0);
+
+  await entryLinks.getByRole("button", { name: "Want In" }).click();
+  await expect(wantInDialog).toBeVisible();
+  await expect(wantInDialog.getByRole("heading", { name: "Join Hit n Score" })).toBeVisible();
+  await page.clock.runFor(1);
+  await page.clock.fastForward(15001);
+  await expect(wantInDialog).toHaveCount(0);
 });
 
 test("paused Want In registers interest and keeps sign-in available @smoke", async ({ page }) => {

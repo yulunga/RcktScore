@@ -106,6 +106,10 @@ fun ScoringScreen(
     isOnline: Boolean,
     onBack: () -> Unit,
     onOpenMatchView: (String) -> Unit,
+    /** Personal accounts need Personal Plus for remote viewing (as iOS). */
+    isPersonalAccount: Boolean = false,
+    /** Personal Plus on any membership: completed serve metrics and ST/L Help. */
+    isPersonalPlus: Boolean = false,
     viewModel: ScoringViewModel = viewModel(key = "score-$matchId", factory = ScoringViewModel.factory(matchId)),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,6 +121,11 @@ fun ScoringScreen(
     var showShare by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var confirmEnd by rememberSaveable { mutableStateOf(false) }
+    var confirmTakeover by rememberSaveable { mutableStateOf(false) }
+    val appContext = LocalContext.current
+    val strokeLetHelp = remember(showActions) {
+        ScoringPreferences.strokeLetHelpEnabled(appContext) && (isPersonalPlus || !isPersonalAccount)
+    }
 
     KeepScreenOnAndPortrait()
     LiveNotification(match, active = match != null && !state.isComplete && !state.isScheduled)
@@ -167,7 +176,7 @@ fun ScoringScreen(
                 },
                 actions = {
                     if (match != null && !state.isComplete) {
-                        IconButton(onClick = { showSettings = true }) {
+                        IconButton(onClick = { showSettings = true }, enabled = state.scoringAllowed) {
                             Icon(painterResource(R.drawable.ic_tab_settings), contentDescription = stringResource(R.string.match_settings))
                         }
                     }
@@ -180,6 +189,7 @@ fun ScoringScreen(
                 BottomDock(
                     timer = state.timer,
                     isScheduled = state.isScheduled,
+                    enabled = state.scoringAllowed,
                     onToggleTimer = viewModel::toggleTimer,
                     onSkip = viewModel::skipTimedPhase,
                     onAction = { showActions = true },
@@ -210,7 +220,7 @@ fun ScoringScreen(
                             onDiscard = viewModel::discardPending,
                         )
                     }
-                    CompletedCard(match, state, onOpenMatchView = { onOpenMatchView(match.id) }, onUndo = viewModel::undo)
+                    CompletedCard(match, state, isPersonalPlus, onOpenMatchView = { onOpenMatchView(match.id) }, onUndo = viewModel::undo)
                 }
                 else -> Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SyncBanner(
@@ -221,8 +231,15 @@ fun ScoringScreen(
                         onRetry = viewModel::retrySync,
                         onDiscard = viewModel::discardPending,
                     )
+                    if (!state.scoringAllowed) {
+                        ScorerLockBanner(
+                            canTakeOver = state.canTakeOverScoring,
+                            isMutating = state.isMutating,
+                            onTakeOver = { confirmTakeover = true },
+                        )
+                    }
                     if (state.isScheduled) {
-                        ScheduledBanner(isMutating = state.isMutating, onStart = viewModel::startScheduled)
+                        ScheduledBanner(isMutating = state.isMutating || !state.scoringAllowed, onStart = viewModel::startScheduled)
                     }
                     if (state.isTennis) {
                         TennisScoreboard(
@@ -246,7 +263,7 @@ fun ScoringScreen(
                 }
             }
 
-            if (match != null && !state.isComplete && !state.isScheduled) {
+            if (match != null && state.scoringAllowed && !state.isComplete && !state.isScheduled) {
                 when (state.timer.phase) {
                     TimerPhase.WarmupReady, TimerPhase.WarmupSideOne, TimerPhase.WarmupSideTwo ->
                         WarmupOverlay(state.timer, state.isTennis, viewModel::toggleTimer, viewModel::skipTimedPhase)
@@ -263,7 +280,7 @@ fun ScoringScreen(
         }
     }
 
-    if (showActions && match != null) {
+    if (showActions && match != null && state.scoringAllowed) {
         MatchActionsSheet(
             match = match,
             state = state,
@@ -274,9 +291,10 @@ fun ScoringScreen(
             onUndo = viewModel::undo,
             onEndEarly = { confirmEnd = true },
             onShareLiveScore = { showShare = true },
+            showStrokeLetHelp = strokeLetHelp && !state.isTennis,
         )
     }
-    if (showSettings && match != null) {
+    if (showSettings && match != null && state.scoringAllowed) {
         GameSettingsSheet(
             match = match,
             isTennis = state.isTennis,
@@ -291,6 +309,7 @@ fun ScoringScreen(
             matchTitle = "${MatchFormatting.fullName(match.player1Name, match.player1Surname)} ${stringResource(R.string.versus)} " +
                 MatchFormatting.fullName(match.player2Name, match.player2Surname),
             isOnline = isOnline,
+            upgradeRequired = isPersonalAccount && !isPersonalPlus,
             onDismiss = { showShare = false },
         )
     }
@@ -307,6 +326,51 @@ fun ScoringScreen(
             },
             dismissButton = { TextButton(onClick = { confirmEnd = false }) { Text(stringResource(R.string.cancel)) } },
         )
+    }
+    if (confirmTakeover) {
+        AlertDialog(
+            onDismissRequest = { confirmTakeover = false },
+            title = { Text(stringResource(R.string.scorer_lock_takeover_title)) },
+            text = { Text(stringResource(R.string.scorer_lock_takeover_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmTakeover = false
+                    viewModel.takeOverScoring()
+                }) { Text(stringResource(R.string.scorer_lock_takeover_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmTakeover = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun ScorerLockBanner(
+    canTakeOver: Boolean,
+    isMutating: Boolean,
+    onTakeOver: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(stringResource(R.string.scorer_lock_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(if (canTakeOver) R.string.scorer_lock_admin_body else R.string.scorer_lock_scorer_body),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (canTakeOver) {
+                Button(onClick = onTakeOver, enabled = !isMutating) {
+                    Text(stringResource(R.string.scorer_lock_takeover_action))
+                }
+            }
+        }
     }
 }
 
@@ -526,6 +590,7 @@ private fun RailMarkers(entry: RailEntry, accent: Color) {
 private fun BottomDock(
     timer: MatchTimer,
     isScheduled: Boolean,
+    enabled: Boolean,
     onToggleTimer: () -> Unit,
     onSkip: () -> Unit,
     onAction: () -> Unit,
@@ -533,10 +598,10 @@ private fun BottomDock(
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TimerChip(timer, enabled = !isScheduled && timer.phase != TimerPhase.FirstServer, onClick = onToggleTimer, modifier = Modifier.weight(1f))
+                TimerChip(timer, enabled = enabled && !isScheduled && timer.phase != TimerPhase.FirstServer, onClick = onToggleTimer, modifier = Modifier.weight(1f))
                 Button(
                     onClick = onAction,
-                    enabled = !isScheduled,
+                    enabled = enabled && !isScheduled,
                     shape = RoundedCornerShape(22.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = Slate),
                     modifier = Modifier.height(52.dp).widthIn(min = 124.dp),
@@ -551,7 +616,7 @@ private fun BottomDock(
                 TimerPhase.Interval -> R.string.skip_break
                 else -> null
             }
-            if (skipLabel != null) TextButton(onClick = onSkip) { Text(stringResource(skipLabel)) }
+            if (skipLabel != null) TextButton(onClick = onSkip, enabled = enabled) { Text(stringResource(skipLabel)) }
         }
     }
 }
@@ -793,7 +858,7 @@ private fun ScheduledBanner(isMutating: Boolean, onStart: () -> Unit) {
 }
 
 @Composable
-private fun CompletedCard(match: MatchDetail, state: ScoringUiState, onOpenMatchView: () -> Unit, onUndo: () -> Unit) {
+private fun CompletedCard(match: MatchDetail, state: ScoringUiState, isPersonalPlus: Boolean, onOpenMatchView: () -> Unit, onUndo: () -> Unit) {
     val live = match.state
     val p1 = MatchFormatting.fullName(match.player1Name, match.player1Surname)
     val p2 = MatchFormatting.fullName(match.player2Name, match.player2Surname)
@@ -819,6 +884,21 @@ private fun CompletedCard(match: MatchDetail, state: ScoringUiState, onOpenMatch
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(stringResource(R.string.completed_time, MatchFormatting.clock(state.timer.matchDurationSeconds)), style = MaterialTheme.typography.bodyMedium)
+                if (isPersonalPlus) {
+                    val metrics = remember(live?.events) { completedActionMetrics(live?.events.orEmpty()) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ServeMetricTile(shortName(match.player1Name, match.player1Surname), metrics.player1ServeWon, metrics.player1ServeLost, Modifier.weight(1f))
+                        ServeMetricTile(shortName(match.player2Name, match.player2Surname), metrics.player2ServeWon, metrics.player2ServeLost, Modifier.weight(1f))
+                    }
+                    if (!state.isTennis) {
+                        Text(
+                            stringResource(R.string.completed_strokes_lets, metrics.strokes, metrics.lets),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                    }
+                }
             }
         }
         Button(onClick = onOpenMatchView, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(18.dp)) {
@@ -868,6 +948,10 @@ private fun LiveNotification(match: MatchDetail?, active: Boolean) {
     }
     DisposableEffect(notifier) { onDispose { notifier.cancel() } }
 }
+
+/** "Glenn M" style, as iOS `shortDisplayName`. */
+private fun shortName(first: String, surname: String?): String =
+    surname?.trim()?.firstOrNull()?.let { "$first $it" } ?: first
 
 private fun initials(name: String?): String =
     name?.split(" ")?.filter { it.isNotBlank() }?.take(2)?.joinToString("") { it.first().uppercase() }.orEmpty()

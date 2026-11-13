@@ -127,6 +127,16 @@ In place:
   Settings with iOS-style sport cards (switches save straight away) and
   **Automatic Match Timing** (per-sport timer defaults that pre-select timed
   warm-up and breaks in match setup)
+- **iOS parity pass (12 Nov)**: ST/L Help (Game Settings › Game Attributes switch,
+  Personal Plus or club; opens the Stroke / Let flow chart from Match Actions);
+  Personal Plus completed-match Serves Won/Lost and Strokes • Lets; remote viewing
+  code gated to Personal Plus for personal accounts; notification delete (× and
+  multi-select "Delete selected"); Users search, "All roles", read-only name/email
+  and typed "delete" removal; Court Number picker for Club Essentials (5) and Club
+  Pro (25), created date, "Paste link or token" scoreboard pairing; Subscription
+  club section as iOS ("Register another club"); Tournaments tab (replaces Help
+  when a club has Tournament Manager on); birth month/year in Profile; match
+  setup funnel analytics (`/analytics/setup`); Guides links; iOS sign-up wording
 - club roles `admin`, `scorer` and `read_only`: read-only members get no Start
   button and open matches in the read-only match view (B18)
 - ongoing "match in progress" notification, screen kept on, phones held in
@@ -137,7 +147,7 @@ In place:
   HTTPS-only, no cloud backup or device transfer of app data
 - unit tests (login decoding, session repository, API parsing, navigation,
   match clock, squash point rail, tennis/Padel rules, offline reducers and
-  queue, registration, password links and rules, set-password screen, profile photo store, referee selection, Score Stream viewer and share code) and Compose sign-in and Want In smoke tests
+  queue, registration, password links and rules, set-password screen, profile photo store, referee selection, Score Stream viewer and share code, completed-match metrics, court numbers, tournaments) and Compose sign-in and Want In smoke tests
 - a GitHub Actions workflow template in `ci/`
 
 Not yet built: the rest of the scorer Match Details panel, Help & Feedback

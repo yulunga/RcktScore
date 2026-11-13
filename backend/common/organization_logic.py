@@ -58,7 +58,26 @@ def normalize_association_competitions(value):
         if key in seen:
             continue
         seen.add(key)
-        normalized.append({"name": name[:120], "type": competition_type})
+        fixtures = []
+        fixture_seen = set()
+        for fixture in item.get("fixtures") if isinstance(item.get("fixtures"), list) else []:
+            if not isinstance(fixture, dict):
+                continue
+            game_date = str(fixture.get("date") or "").strip()
+            opposition = str(fixture.get("opposition") or "").strip()
+            try:
+                datetime.strptime(game_date, "%Y-%m-%d")
+            except (TypeError, ValueError):
+                continue
+            if not opposition:
+                continue
+            fixture_key = (game_date, opposition.casefold())
+            if fixture_key in fixture_seen:
+                continue
+            fixture_seen.add(fixture_key)
+            fixtures.append({"date": game_date, "opposition": opposition[:120]})
+        fixtures.sort(key=lambda fixture: (fixture["date"], fixture["opposition"].casefold()))
+        normalized.append({"name": name[:120], "type": competition_type, "fixtures": fixtures[:100]})
     return normalized
 
 

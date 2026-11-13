@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  System splash icon (Android 12+). The system shows only a circle 2/3 the size of the
+  icon area, so the logo is inset to keep the racket tip inside it. splash_logo itself
+  stays unpadded for the sign-in screen.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_logo"
+    android:inset="9%" />

@@ -205,6 +205,17 @@ search requires migration `040_association_competitions.sql`; if the Settings or
 root-admin dashboard request reports a missing `association_competitions` column,
 apply that migration before deploying the corresponding backend.
 
+Club Management appears between Association and Subscription only when the retained
+membership list contains at least one club-admin role. One administered club opens
+its Club Profile directly; two or more display a club chooser. If the menu is
+missing, inspect `available_memberships` and confirm the intended club role is
+`admin`. The club workspace must then include Leagues between Club Profile and
+Courts. Its Club leagues and Inter-club leagues groups expand independently, and
+selecting a saved league reveals its date/opposition fixtures. If names save but
+fixtures disappear, confirm the deployed `normalize_association_competitions`
+accepts the `fixtures` array and that `PUT /organization_details/{organization_id}`
+is authorizing the selected club rather than the active scoring context.
+
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
 should therefore return `data.session` with all approved choices in
@@ -628,6 +639,8 @@ On iOS, Want In is deliberately non-scrolling and centred on both iPhone and iPa
 
 On the web, package version/build details are intentionally absent from both the standard login and `Want In` registration states. If they still appear at `/` or `/login?interest=1#want-in`, deploy the current frontend bundle; no backend change is required.
 
+On the web, Want In and Need Help should remain side by side and open over the login card. An untouched overlay closes after 15 seconds; typing in Want In keeps it open so draft registration data is not lost. Need Help must list Ping Us, Guides and Password Reset, which continue to use `/ping`, `/help` and `/help?mode=reset`. If the login layout jumps or the card replaces the page in phone landscape, verify `LoginPage.jsx` still uses `login-panel-overlay` and that the phone-landscape rules in `styles.css` no longer switch layouts through `:has(.interest-panel)`.
+
 The login logo and HitnScore wordmark should link to `https://www.hitnscore.com/`. If they do not, verify the `.login-branding` anchor in `LoginPage.jsx` and deploy the current frontend bundle.
 
 The app route `/help` is the authoritative public Help Centre. The landing site should not serve `help.html`: its Help & feedback link targets `/help`, Privacy & terms targets `/help?section=privacy`, and Cookie settings targets `/help?section=cookies`. The complete Help Centre footer comes from `frontend/src/components/PublicSiteFooter.jsx`; update that component rather than adding page-specific footer markup. The guide catalogue and article content come from `frontend/src/content/helpGuides.jsx`, while `HelpPage.jsx` owns routing, recovery and legal sections. The overview intentionally has no search field and requires no backend search service. If a landing link still opens the removed static page, deploy the current `weblanding/` bundle or clear the hosting/CDN cache. If a direct guide opens the overview instead, verify that its `section` value is included in `HELP_GUIDE_IDS`; legal values remain `terms`, `privacy`, and `cookies`.
@@ -690,9 +703,11 @@ If behavior seems impossible:
   baseline insert must not be rerun
 - confirm the expected migration actually exists in the target database
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
+- if iPhone landscape scoring clips the score cards or places the timer/action dock over the opening-server prompt, confirm `MatchScoringView` is receiving compact vertical size class, that its phone-landscape score/header/rail dimensions are active, and that the dock is omitted while an opening-server, warm-up or interval overlay is visible. Run `RacketServiceSideTimelineUITests.testLandscapeScoringKeepsScoresAndControlsVisible` on an iPhone 16-class simulator; it verifies both score cards remain tappable above the timer control and retains a landscape screenshot in the result bundle
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
 - if match creation fails with an `UndefinedColumn` error for `tennis_timed_breaks`, apply migration `039_match_timed_breaks.sql`; migration `029_timed_break_defaults.sql` only adds the organisation-level setup default and does not add the per-match column
 - if scoring or Undo fails on a missing `event_sequence`, `actor_username`, or `match_event_compensations` relation, apply migration `042_append_only_match_events.sql` before deploying the matching backend code. Current dashboard/history reads retry using legacy event ordering when this schema is absent, preventing a club with existing matches from receiving HTTP 500 during a staggered rollout; that fallback does not make scoring safe without the migration
+- if a second club scorer sees `MATCH_SCORER_LOCKED`, this is expected: the match belongs to the membership that started it. Confirm `GET /get_score/{match_id}` returns `scoring_access.can_score=false`; an ordinary scorer must remain view-only. A club admin should use the visible Take Over Scoring action, which calls `POST /matches/{match_id}/scorer-lock/takeover`; confirm an `admin_takeover` row was appended to `match_scorer_lock_audit`. If the columns or audit table are missing, apply migration `060_club_match_scorer_lock.sql` before deploying these handlers. Do not clear the owner column manually except as part of a reviewed recovery operation
 - confirm column names match the code path you are debugging
 - remember that some handlers intentionally tolerate missing match tables by returning empty lists
 
@@ -762,6 +777,7 @@ What to check:
 - whether the local Xcode install actually has usable iPhone simulator runtimes when CLI builds fail in `actool`
 - whether migrations `023_system_notifications.sql`, `057_direct_user_notifications.sql`, and `058_notification_dismissals.sql` were applied and `GET /notifications/{organization_id}` returns the expected `all`, plan-specific, or direct-email audience minus that identity's dismissals; without `057`, a Club selection can store its enquiry but cannot safely publish its private controlled-release confirmation, and without `058` native delete requests cannot persist
 - whether `POST /notifications/{notification_id}/read` succeeds with the current organisation-user session, including CSRF/Origin for web or bearer authorization for native
+- if that read route returns HTTP 500 with `query parameter missing: username`, deploy the corrected notification logic that supplies the normalized session username to both the visibility check and read-receipt insert
 - whether `DELETE /notifications/{notification_id}` succeeds and writes the normalized username plus notification ID to `system_notification_dismissals`
 - whether account deletion used a personal-owner session, had connectivity, sent the exact confirmation value, and deployed the `DELETE /personal_account/{organization_id}` Lambda route
 - whether migration `049_personal_account_deletion_retention.sql` is applied; without its timestamp columns the deletion request cannot enter Delete Pending

@@ -28,6 +28,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,11 +62,14 @@ fun MatchActionsSheet(
     showStrokeAndLet: Boolean = true,
     /** Score Stream: share the viewing code with Personal Plus players. */
     onShareLiveScore: (() -> Unit)? = null,
+    /** ST/L Help is switched on in Game Settings and the account may use it (Personal Plus or club). */
+    showStrokeLetHelp: Boolean = false,
 ) {
     var pending by rememberSaveable { mutableStateOf<PendingAction?>(null) }
+    var helpOpen by rememberSaveable { mutableStateOf(false) }
     val p1 = MatchFormatting.fullName(match.player1Name, match.player1Surname)
     val p2 = MatchFormatting.fullName(match.player2Name, match.player2Surname)
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier
                 .padding(horizontal = 22.dp)
@@ -73,6 +77,11 @@ fun MatchActionsSheet(
                 .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (helpOpen) {
+                Text(stringResource(R.string.stl_help_title), style = MaterialTheme.typography.headlineSmall)
+                StrokeLetHelpGuide(onBack = { helpOpen = false })
+                return@Column
+            }
             Text(stringResource(R.string.match_actions), style = MaterialTheme.typography.headlineSmall)
             Text("$p1 ${stringResource(R.string.versus)} $p2", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when (pending) {
@@ -86,6 +95,9 @@ fun MatchActionsSheet(
                     if (showStrokeAndLet) {
                         ActionRow(stringResource(R.string.action_stroke), enabled = state.canScore) { pending = PendingAction.Stroke }
                         ActionRow(stringResource(R.string.action_let), enabled = state.canScore) { pending = PendingAction.Let }
+                    }
+                    if (showStrokeLetHelp) {
+                        ActionRow(stringResource(R.string.stl_help), enabled = true) { helpOpen = true }
                     }
                     ActionRow(stringResource(R.string.action_undo), enabled = !state.isMutating && !state.undoLocked) {
                         onDismiss()

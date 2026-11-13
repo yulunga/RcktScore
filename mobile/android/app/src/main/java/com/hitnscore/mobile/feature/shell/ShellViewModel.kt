@@ -38,6 +38,8 @@ data class ShellUiState(
     val errorMessage: String? = null,
     val dashboard: Dashboard? = null,
     val notifications: List<AppNotification> = emptyList(),
+    /** A delete in Notifications failed; the messages are back in the list. */
+    val notificationError: String? = null,
     val matchesCategory: MatchesCategory = MatchesCategory.Current,
 ) {
     val hasUnreadNotifications: Boolean
@@ -97,6 +99,28 @@ class ShellViewModel(
                 mutableState.update { state ->
                     if (state.organizationId != organizationId) return@update state
                     state.copy(notifications = state.notifications.map { if (it.id == notificationId) target else it })
+                }
+            }
+        }
+    }
+
+    /** Deletes one or more messages (iOS × and "Delete selected"); failures come back with a note. */
+    fun dismissNotifications(ids: Set<String>) {
+        val organizationId = mutableState.value.organizationId ?: return
+        val removed = mutableState.value.notifications.filter { it.id in ids }
+        if (removed.isEmpty()) return
+        mutableState.update { state ->
+            state.copy(notifications = state.notifications.filterNot { it.id in ids }, notificationError = null)
+        }
+        viewModelScope.launch {
+            val failed = removed.filter { api.dismissNotification(it.id, organizationId) !is ApiResult.Success }
+            if (failed.isNotEmpty()) {
+                mutableState.update { state ->
+                    if (state.organizationId != organizationId) return@update state
+                    state.copy(
+                        notifications = (state.notifications + failed).sortedByDescending { it.createdAt.orEmpty() },
+                        notificationError = "Some notifications could not be deleted. Try again.",
+                    )
                 }
             }
         }

@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showInterestForm, setShowInterestForm] = useState(false);
+  const [showHelpOptions, setShowHelpOptions] = useState(false);
   const [registration, setRegistration] = useState(null);
   const [registrationError, setRegistrationError] = useState("");
   const [registrationRefresh, setRegistrationRefresh] = useState(0);
@@ -150,6 +151,12 @@ export default function LoginPage() {
     return () => window.clearTimeout(timeoutId);
   }, [hasInterestDraft, registration?.enabled, showInterestForm, shouldOpenInterestFormFromUrl]);
 
+  useEffect(() => {
+    if (!showHelpOptions) return undefined;
+    const timeoutId = window.setTimeout(() => setShowHelpOptions(false), 15000);
+    return () => window.clearTimeout(timeoutId);
+  }, [showHelpOptions]);
+
   if (restoringSession) {
     return <SessionLoadingScreen />;
   }
@@ -198,6 +205,30 @@ export default function LoginPage() {
     }
 
     navigate(redirectTo, { replace: true });
+  }
+
+  function closeInterestForm() {
+    setShowInterestForm(false);
+    setInterestError("");
+    setInterestMessage("");
+    setInterestCaptcha(createCaptchaChallenge());
+    setInterestAnswer("");
+    if (shouldOpenInterestFormFromUrl) navigate("/", { replace: true });
+  }
+
+  function openInterestForm() {
+    setShowHelpOptions(false);
+    if (!showInterestForm) refreshRegistration();
+    setShowInterestForm(true);
+    setInterestError("");
+    setInterestMessage("");
+    setInterestCaptcha(createCaptchaChallenge());
+    setInterestAnswer("");
+  }
+
+  function openHelpOptions() {
+    setShowInterestForm(false);
+    setShowHelpOptions(true);
   }
 
   async function handleInterestSubmit(event) {
@@ -398,27 +429,14 @@ export default function LoginPage() {
                   <button disabled={loading} type="submit">
                     {loading ? "Signing In..." : "Sign In"}
                   </button>
-                  <button
-                    className="text-link-button login-inline-link"
-                    type="button"
-                    onClick={() => {
-                      if (!showInterestForm) refreshRegistration();
-                      setShowInterestForm((current) => !current);
-                      setInterestError("");
-                      setInterestMessage("");
-                      setInterestCaptcha(createCaptchaChallenge());
-                      setInterestAnswer("");
-                    }}
-                  >
-                    Want In
-                  </button>
                 </div>
               </form>
             )}
 
             <div className="stack compact">
               {showInterestForm && !registration ? (
-                <div ref={interestPanelRef} className="interest-panel stack compact">
+                <div ref={interestPanelRef} className="interest-panel login-panel-overlay stack compact" role="dialog" aria-modal="true" aria-label="Want In">
+                  <button aria-label="Close Want In" className="help-close-button login-panel-overlay__close" type="button" onClick={closeInterestForm}>&times;</button>
                   {registrationError ? (
                     <>
                       <p role="alert">{registrationError}</p>
@@ -428,10 +446,13 @@ export default function LoginPage() {
                 </div>
               ) : null}
               {showInterestForm && registration ? (
-                <form ref={interestPanelRef} className="interest-panel stack compact" onSubmit={handleInterestSubmit}>
-                  <h2 className="interest-panel__heading">
-                    {registrationPaused ? "Register your interest" : "Join Hit n Score"}
-                  </h2>
+                <form ref={interestPanelRef} className="interest-panel login-panel-overlay stack compact" role="dialog" aria-modal="true" aria-label="Want In" onSubmit={handleInterestSubmit}>
+                  <div className="interest-panel__header">
+                    <h2 className="interest-panel__heading">
+                      {registrationPaused ? "Register your interest" : "Join Hit n Score"}
+                    </h2>
+                    <button aria-label="Close Want In" className="help-close-button login-panel-overlay__close" type="button" onClick={closeInterestForm}>&times;</button>
+                  </div>
                   {registrationPaused ? (
                     <p className="helper-text interest-copy registration-message">{registration.message}</p>
                   ) : <p className="helper-text interest-copy">
@@ -585,10 +606,26 @@ export default function LoginPage() {
                   </div>
                 </form>
               ) : null}
+              {showHelpOptions ? (
+                <section className="login-panel-overlay login-help-options stack compact" role="dialog" aria-modal="true" aria-labelledby="login-help-options-title">
+                  <div className="interest-panel__header">
+                    <h2 id="login-help-options-title">Need Help?</h2>
+                    <button aria-label="Close Need Help" className="help-close-button login-panel-overlay__close" type="button" onClick={() => setShowHelpOptions(false)}>&times;</button>
+                  </div>
+                  <p className="helper-text">Choose an option below.</p>
+                  <div className="login-help-options__actions">
+                    <button type="button" onClick={() => navigate("/ping")}>Ping Us</button>
+                    <button className="secondary" type="button" onClick={() => navigate("/help")}>Guides</button>
+                    <button className="secondary" type="button" onClick={() => navigate("/help?mode=reset")}>Password Reset</button>
+                  </div>
+                </section>
+              ) : null}
             </div>
 
             <div className="login-help-link">
-              <Link to="/help">Need help?</Link>
+              <button type="button" onClick={openInterestForm}>Want In</button>
+              <span aria-hidden="true">|</span>
+              <button type="button" onClick={openHelpOptions}>Need Help</button>
             </div>
           </section>
         </div>

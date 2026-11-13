@@ -64,6 +64,15 @@ data class MatchDetail(
     @SerialName("completed_at") val completedAt: String? = null,
     @SerialName("match_duration_seconds") val matchDurationSeconds: Int? = null,
     val state: MatchState? = null,
+    @SerialName("scoring_access") val scoringAccess: MatchScoringAccess? = null,
+)
+
+@Serializable
+data class MatchScoringAccess(
+    val locked: Boolean = false,
+    @SerialName("is_owner") val isOwner: Boolean = false,
+    @SerialName("can_score") val canScore: Boolean = true,
+    @SerialName("can_take_over") val canTakeOver: Boolean = false,
 )
 
 @Serializable
@@ -156,6 +165,8 @@ data class MatchEventPayload(
     @SerialName("player2_set_games") val player2SetGames: Int? = null,
     @SerialName("player_side") val playerSide: String? = null,
     @SerialName("current_server_side") val currentServerSide: String? = null,
+    /** Who served the point (set on score_point/stroke events); falls back to [currentServerSide]. */
+    @SerialName("point_server_side") val pointServerSide: String? = null,
     @SerialName("service_side") val serviceSide: String? = null,
     @SerialName("game_completed") val gameCompleted: Boolean? = null,
     @SerialName("match_completed") val matchCompleted: Boolean? = null,

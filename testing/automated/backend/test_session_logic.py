@@ -46,6 +46,52 @@ class RecordingConnection:
         self.commits += 1
 
 
+class ScorerTakeoverCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.result = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def execute(self, statement, parameters=None):
+        parameters = parameters or {}
+        normalized = " ".join(statement.split())
+        self.connection.statements.append((normalized, parameters))
+        if "SELECT tenant_id, status, scoring_owner_membership_id" in normalized:
+            self.result = dict(self.connection.match)
+        elif normalized.startswith("UPDATE matches"):
+            self.connection.match["scoring_owner_membership_id"] = parameters["membership_id"]
+            self.connection.match["scoring_locked_at"] = parameters["locked_at"]
+        elif "SELECT tenant_id, sport, status, scoring_owner_membership_id" in normalized:
+            self.result = dict(self.connection.match)
+
+    def fetchone(self):
+        return self.result
+
+
+class ScorerTakeoverConnection:
+    def __init__(self):
+        self.match = {
+            "tenant_id": 12,
+            "sport": "squash",
+            "status": "active",
+            "scoring_owner_membership_id": 101,
+            "scoring_locked_at": datetime.now(timezone.utc),
+        }
+        self.statements = []
+        self.commits = 0
+
+    def cursor(self):
+        return ScorerTakeoverCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+
 def test_normalize_login_source_defaults_to_web_app():
     assert normalize_login_source("") == "web_app"
     assert normalize_login_source(None) == "web_app"
@@ -205,3 +251,151 @@ def test_read_only_membership_is_rejected_for_match_management(monkeypatch):
         )
 
     assert error.value.code == "SESSION_CAPABILITY_REQUIRED"
+
+
+def test_club_scorer_cannot_mutate_a_match_owned_by_another_membership(monkeypatch):
+    monkeypatch.setattr(
+        session_logic,
+        "_get_match_access_context",
+        lambda *_args: {
+            "tenant_id": 12,
+            "sport": "squash",
+            "status": "active",
+            "scoring_owner_membership_id": 101,
+            "scoring_locked_at": datetime.now(timezone.utc),
+        },
+    )
+    monkeypatch.setattr(
+        session_logic,
+        "authorize_organization_session",
+        lambda *_args, **_kwargs: {
+            "membership": {
+                "id": 202,
+                "organization_id": 12,
+                "organization_type": "club",
+                "role": "scorer",
+                "enabled_sports": ["squash"],
+            }
+        },
+    )
+
+    with pytest.raises(SessionAuthError) as error:
+        session_logic.authorize_match_session(
+            object(),
+            {},
+            "match-1",
+            required_capability=CAPABILITY_MATCH_MANAGE,
+        )
+
+    assert error.value.code == "MATCH_SCORER_LOCKED"
+    assert error.value.details == {"can_take_over": False}
+
+
+def test_club_admin_must_explicitly_take_over_a_locked_match(monkeypatch):
+    monkeypatch.setattr(
+        session_logic,
+        "_get_match_access_context",
+        lambda *_args: {
+            "tenant_id": 12,
+            "sport": "squash",
+            "status": "active",
+            "scoring_owner_membership_id": 101,
+            "scoring_locked_at": datetime.now(timezone.utc),
+        },
+    )
+    monkeypatch.setattr(
+        session_logic,
+        "authorize_organization_session",
+        lambda *_args, **_kwargs: {
+            "membership": {
+                "id": 303,
+                "organization_id": 12,
+                "organization_type": "club",
+                "role": "admin",
+                "enabled_sports": ["squash"],
+            }
+        },
+    )
+
+    with pytest.raises(SessionAuthError) as error:
+        session_logic.authorize_match_session(
+            object(),
+            {},
+            "match-1",
+            required_capability=CAPABILITY_MATCH_MANAGE,
+        )
+
+    assert error.value.code == "MATCH_SCORER_LOCKED"
+    assert error.value.details == {"can_take_over": True}
+
+
+def test_match_owner_keeps_mutation_access(monkeypatch):
+    monkeypatch.setattr(
+        session_logic,
+        "_get_match_access_context",
+        lambda *_args: {
+            "tenant_id": 12,
+            "sport": "squash",
+            "status": "active",
+            "scoring_owner_membership_id": 101,
+            "scoring_locked_at": datetime.now(timezone.utc),
+        },
+    )
+    monkeypatch.setattr(
+        session_logic,
+        "authorize_organization_session",
+        lambda *_args, **_kwargs: {
+            "membership": {
+                "id": 101,
+                "organization_id": 12,
+                "organization_type": "club",
+                "role": "scorer",
+                "enabled_sports": ["squash"],
+            }
+        },
+    )
+
+    context = session_logic.authorize_match_session(
+        object(),
+        {},
+        "match-1",
+        required_capability=CAPABILITY_MATCH_MANAGE,
+    )
+
+    assert context["scoring_access"] == {
+        "locked": True,
+        "is_owner": True,
+        "can_score": True,
+        "can_take_over": False,
+    }
+
+
+def test_club_admin_takeover_transfers_owner_and_appends_audit():
+    connection = ScorerTakeoverConnection()
+    context = {
+        "membership": {
+            "id": 303,
+            "organization_id": 12,
+            "organization_type": "club",
+            "role": "admin",
+        }
+    }
+
+    access = session_logic.take_over_match_scoring(connection, "match-1", context)
+
+    assert connection.match["scoring_owner_membership_id"] == 303
+    assert connection.commits == 1
+    audit_parameters = next(
+        parameters
+        for statement, parameters in connection.statements
+        if statement.startswith("INSERT INTO match_scorer_lock_audit")
+    )
+    assert audit_parameters["previous_membership_id"] == 101
+    assert audit_parameters["new_membership_id"] == 303
+    assert audit_parameters["action"] == "admin_takeover"
+    assert access == {
+        "locked": True,
+        "is_owner": True,
+        "can_score": True,
+        "can_take_over": False,
+    }

@@ -2,7 +2,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from common.notification_center_logic import create_direct_notification, create_notification, dismiss_notification
+from common.notification_center_logic import (
+    create_direct_notification,
+    create_notification,
+    dismiss_notification,
+    mark_notification_read,
+)
 
 
 class _Cursor:
@@ -81,6 +86,19 @@ def test_user_can_dismiss_visible_notification_without_deleting_publication():
     connection = _Connection()
 
     assert dismiss_notification(
+        connection,
+        "notification-id",
+        " Player@Example.COM ",
+        "personal_free",
+    ) is True
+    assert connection.committed is True
+    assert connection.test_cursor.params["username"] == "player@example.com"
+
+
+def test_user_can_open_notification_and_mark_it_read():
+    connection = _Connection()
+
+    assert mark_notification_read(
         connection,
         "notification-id",
         " Player@Example.COM ",

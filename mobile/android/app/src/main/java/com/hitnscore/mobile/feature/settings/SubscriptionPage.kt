@@ -101,16 +101,27 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
                 SubscriptionSourceLine(personal)
             }
 
+            // As iOS: each club's current plan, then "Register another club" with the two plans.
             Kicker(stringResource(R.string.plan_section_club))
             if (clubs.isEmpty()) {
-                ClubPlans(current = null) { plan -> enquiry.open(plan, "") }
+                EditorNote(stringResource(R.string.plan_no_club))
             } else {
                 clubs.forEach { club ->
-                    Text(club.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    ClubPlans(current = PlanCodes.of(club)) { plan -> enquiry.open(plan, club.name) }
+                    PlanOptionCard(
+                        title = club.name,
+                        subtitle = stringResource(planNameRes(PlanCodes.of(club))),
+                        status = PlanStatus.Current,
+                    )
                     SubscriptionSourceLine(club)
                 }
             }
+            Text(
+                stringResource(R.string.plan_register_another_club),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ClubPlans(current = null) { plan -> enquiry.open(plan, "") }
             EditorNote(stringResource(R.string.plan_annual_only))
         }
         enquiryState.sent?.let { (plan, club) ->

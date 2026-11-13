@@ -1,5 +1,7 @@
 package com.hitnscore.mobile.feature.settings
 
+import com.hitnscore.mobile.feature.scoring.StrokeLetHelpSetting
+import com.hitnscore.mobile.feature.scoring.canUseStrokeLetHelp
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -227,6 +229,9 @@ fun SettingsPageScreen(
                 SettingsPage.Association -> {
                     val clubs = session.availableContexts.filter { it.type == AccountContextType.Club }
                     if (clubs.isEmpty()) item { Note(stringResource(R.string.association_none)) }
+                    if (clubs.any { ClubRoles.normalize(it.role) != ClubRoles.ADMIN }) {
+                        item { Note(stringResource(R.string.association_view_only_note)) }
+                    }
                     items(clubs, key = { it.membershipId }) { club ->
                         InnerCard(onClick = { onOpenPage(SettingsPage.Club, club.organizationId) }, shape = RoundedCornerShape(18.dp)) {
                             Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -252,7 +257,7 @@ fun SettingsPageScreen(
                 SettingsPage.Club -> item(key = "club-${target.organizationId}") {
                     ClubPage(target, onOpenPage = { p, org -> onOpenPage(p, org) })
                 }
-                SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, target)
+                SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, target, canUseStrokeLetHelp = session.canUseStrokeLetHelp())
                 SettingsPage.About -> {
                     item { InfoRow(stringResource(R.string.settings_version), AppEnvironment.versionName) }
                     item { InfoRow(stringResource(R.string.settings_environment), AppEnvironment.environmentName) }
@@ -269,7 +274,12 @@ fun SettingsPageScreen(
  * Personal owner changes their own sports and timer defaults; other club members only
  * see Game Settings, read-only, as on iOS.
  */
-private fun LazyListScope.clubPage(page: SettingsPage, club: AccountContext, signedInUsername: String = "") {
+private fun LazyListScope.clubPage(
+    page: SettingsPage,
+    club: AccountContext,
+    signedInUsername: String = "",
+    canUseStrokeLetHelp: Boolean = false,
+) {
     val isAdmin = club.type == AccountContextType.Club && ClubRoles.normalize(club.role) == ClubRoles.ADMIN
     val isPersonal = club.type == AccountContextType.Personal
     val readOnlyGameSettings = page == SettingsPage.GameSettings && !isAdmin && !isPersonal
@@ -312,6 +322,7 @@ private fun LazyListScope.clubPage(page: SettingsPage, club: AccountContext, sig
                             )
                         }
                         TimerDefaultsEditor(ui, viewModel, canEdit = !readOnlyGameSettings)
+                        EditorCard { StrokeLetHelpSetting(allowed = canUseStrokeLetHelp) }
                     }
                     SettingsPage.Users -> UsersEditor(ui, viewModel, signedInUsername)
                     SettingsPage.Courts -> CourtsEditor(ui, viewModel)

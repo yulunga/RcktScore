@@ -3,7 +3,7 @@ from aws_lambda_powertools import Logger
 from common.access_control import CAPABILITY_MATCH_MANAGE
 from common.match_logic import get_match, undo_last_action, websocket_payload
 from common.offline_action_logic import claim_match_action
-from common.session_logic import SessionAuthError, authorize_match_session, session_error_response
+from common.session_logic import SessionAuthError, attach_match_scoring_access, authorize_match_session, session_error_response
 from common.supabase_client import get_db_connection
 from common.utils import error_response, parse_body, require_fields, success_response
 
@@ -39,6 +39,7 @@ def lambda_handler(event, context):
                     if claimed
                     else get_match(connection, payload["match_id"])
                 )
+                match = attach_match_scoring_access(match, auth_context)
             except ValueError as exc:
                 return error_response(400, "INVALID_INPUT", str(exc))
     except SessionAuthError as auth_error:

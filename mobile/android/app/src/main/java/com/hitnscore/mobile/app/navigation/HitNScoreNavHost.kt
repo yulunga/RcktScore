@@ -30,6 +30,9 @@ import com.hitnscore.mobile.feature.newmatch.enabledSports
 import com.hitnscore.mobile.feature.newmatch.signedInPersonName
 import com.hitnscore.mobile.feature.notifications.NotificationsScreen
 import com.hitnscore.mobile.feature.scoring.ScoringScreen
+import com.hitnscore.mobile.feature.tournaments.TournamentsScreen
+import com.hitnscore.mobile.feature.tournaments.TournamentsUiState
+import com.hitnscore.mobile.feature.scoring.hasPersonalPlus
 import com.hitnscore.mobile.feature.settings.SettingsPage
 import com.hitnscore.mobile.feature.settings.SettingsPageScreen
 import com.hitnscore.mobile.feature.settings.SettingsScreen
@@ -69,6 +72,8 @@ fun HitNScoreTabNavHost(
     biometricUnlockEnabled: Boolean,
     onBiometricUnlockChange: (Boolean) -> Unit,
     onMarkNotificationRead: (String) -> Unit,
+    tournamentsState: TournamentsUiState,
+    onDismissNotifications: (Set<String>) -> Unit,
     onContextSelected: (AccountContext) -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +86,8 @@ fun HitNScoreTabNavHost(
     val currentBiometric by rememberUpdatedState(biometricUnlockEnabled)
     val currentOnBiometricChange by rememberUpdatedState(onBiometricUnlockChange)
     val currentOnMarkRead by rememberUpdatedState(onMarkNotificationRead)
+    val currentOnDismiss by rememberUpdatedState(onDismissNotifications)
+    val currentTournaments by rememberUpdatedState(tournamentsState)
     val currentOnContextSelected by rememberUpdatedState(onContextSelected)
     val currentOnSignOut by rememberUpdatedState(onSignOut)
 
@@ -116,6 +123,9 @@ fun HitNScoreTabNavHost(
         }
         composable(AppDestination.Help.route) {
             HelpScreen(currentSession, currentState, currentActions)
+        }
+        composable(AppDestination.Tournaments.route) {
+            TournamentsScreen(currentSession, currentState, currentTournaments, currentActions)
         }
         composable(ShellRoutes.NEW_MATCH) {
             SportPickerScreen(
@@ -162,6 +172,8 @@ fun HitNScoreTabNavHost(
             ScoringScreen(
                 matchId = matchId,
                 isOnline = currentState.isOnline,
+                isPersonalAccount = currentSession.activeContext.type == AccountContextType.Personal,
+                isPersonalPlus = currentState.isPersonalPlus(currentSession) || currentSession.hasPersonalPlus(),
                 onBack = {
                     currentActions.onRefresh()
                     navController.popBackStack()
@@ -193,6 +205,8 @@ fun HitNScoreTabNavHost(
             NotificationsScreen(
                 notifications = currentState.notifications,
                 onOpen = { currentOnMarkRead(it) },
+                onDismiss = { currentOnDismiss(it) },
+                errorMessage = currentState.notificationError,
                 onBack = { navController.popBackStack() },
             )
         }

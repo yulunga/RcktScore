@@ -64,6 +64,8 @@ fun ShareLiveScoreSheet(
     matchTitle: String,
     isOnline: Boolean,
     onDismiss: () -> Unit,
+    /** Personal Free: no viewing code is requested or shown, only the upgrade note (as iOS). */
+    upgradeRequired: Boolean = false,
     viewModel: ShareLiveScoreViewModel = viewModel(key = "share-$matchId", factory = ShareLiveScoreViewModel.factory(matchId)),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,7 +73,7 @@ fun ShareLiveScoreSheet(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     var copied by remember { mutableStateOf(false) }
-    LaunchedEffect(isOnline) { if (isOnline) viewModel.load() }
+    LaunchedEffect(isOnline, upgradeRequired) { if (isOnline && !upgradeRequired) viewModel.load() }
 
     val code = state.viewerCode
     val shareText = stringResource(R.string.share_live_message, matchTitle, code)
@@ -85,6 +87,11 @@ fun ShareLiveScoreSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(stringResource(R.string.share_live_title), style = MaterialTheme.typography.headlineSmall)
+            if (upgradeRequired) {
+                Text(stringResource(R.string.share_live_plus_only), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.share_live_upgrade), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                return@Column
+            }
             Text(stringResource(R.string.share_live_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when {
                 code.isNotBlank() -> {

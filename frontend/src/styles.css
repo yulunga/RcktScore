@@ -2148,6 +2148,57 @@ textarea {
   box-shadow: inset 0 10px 18px -18px rgba(16, 42, 67, 0.42);
 }
 
+.login-panel-overlay {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 22px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(16, 42, 67, 0.12);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 0 0 100vmax rgba(16, 42, 67, 0.34),
+    0 18px 42px rgba(16, 42, 67, 0.2);
+  clip-path: inset(-100vmax);
+  overscroll-behavior: contain;
+}
+
+.interest-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-panel-overlay__close {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.login-help-options {
+  align-content: start;
+}
+
+.login-help-options h2,
+.login-help-options p {
+  margin: 0;
+}
+
+.login-help-options__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.login-help-options__actions button {
+  width: 100%;
+  min-height: 48px;
+}
+
 .interest-panel__heading {
   margin: 0;
   color: #0b5fb3;
@@ -2202,6 +2253,7 @@ textarea {
 }
 
 .login-help-link a,
+.login-help-link button,
 .help-login-link a,
 .help-login-link button,
 .ping-back-link button {
@@ -2215,6 +2267,7 @@ textarea {
 }
 
 .login-help-link a:hover,
+.login-help-link button:hover,
 .help-login-link a:hover,
 .help-login-link button:hover,
 .ping-back-link button:hover {
@@ -5752,6 +5805,21 @@ textarea {
   line-height: normal;
 }
 
+.login-help-link button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1274d0;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.login-help-link button:last-child {
+  color: #ec5ea8;
+}
+
 .login-action-row .text-link-button:disabled {
   background: transparent;
   color: #7b8794;
@@ -8429,6 +8497,135 @@ textarea {
   font-size: 0.78rem;
 }
 
+.settings-leagues-page {
+  gap: 14px;
+}
+
+.settings-league-group {
+  overflow: hidden;
+  border: 1px solid #b9cee3;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.settings-league-group__toggle,
+.settings-league-card__select {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  background: transparent;
+  color: #102a43;
+  text-align: left;
+  box-shadow: none;
+}
+
+.settings-league-group__toggle {
+  min-height: 72px;
+  padding: 14px 18px;
+}
+
+.settings-league-group__toggle > span:first-child,
+.settings-league-card__select > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-league-group__toggle small,
+.settings-league-card__select small {
+  color: #486581;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.settings-league-group__toggle > span:last-child,
+.settings-league-card__select > span:last-child {
+  color: #0b74d1;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.settings-league-group__content {
+  padding: 0 14px 14px;
+  border-top: 1px solid #d7e3f0;
+  background: #fff;
+}
+
+.settings-league-group__content .settings-competition-search {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-top: 14px;
+}
+
+.settings-league-card {
+  overflow: hidden;
+  border: 1px solid #d7e3f0;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.settings-league-card--open {
+  border-color: #7aa5d8;
+  background: #fff;
+}
+
+.settings-league-card__heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+
+.settings-league-card__select {
+  min-height: 60px;
+  padding: 10px 12px;
+}
+
+.settings-league-card__fixtures {
+  padding: 14px;
+  border-top: 1px solid #d7e3f0;
+  background: #fff;
+}
+
+.settings-league-fixture-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.35fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.settings-league-fixture-form > button {
+  min-height: 46px;
+}
+
+.settings-league-fixture-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-league-fixture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f1f6fc;
+}
+
+.settings-league-fixture-row > div {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-league-fixture-row span {
+  color: #486581;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 760px) {
   .settings-hub-profile__heading {
     grid-template-columns: auto minmax(0, 1fr);
@@ -8443,6 +8640,10 @@ textarea {
   }
 
   .settings-competition-search {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-league-fixture-form {
     grid-template-columns: 1fr;
   }
 }
@@ -12243,15 +12444,15 @@ textarea {
 
 /* Public login on phone landscape: keep the complete sign-in form on screen. */
 @media (min-width: 480px) and (max-width: 956px) and (min-height: 280px) and (max-height: 499px) and (orientation: landscape) {
-  html:has(.login-shell:not(:has(.interest-panel))),
-  body:has(.login-shell:not(:has(.interest-panel))),
-  #root:has(.login-shell:not(:has(.interest-panel))) {
+  html:has(.login-shell),
+  body:has(.login-shell),
+  #root:has(.login-shell) {
     height: 100%;
     min-height: 0;
     overflow: hidden;
   }
 
-  .login-shell:not(:has(.interest-panel)) {
+  .login-shell {
     width: calc(100vw - 8px);
     max-width: none;
     height: 100vh;
@@ -12262,18 +12463,18 @@ textarea {
     overflow: hidden;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-shell__content {
+  .login-shell .login-shell__content {
     min-height: 0;
     align-items: center;
     padding-top: 0;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel-wrap,
-  .login-shell:not(:has(.interest-panel)) .login-panel {
+  .login-shell .login-panel-wrap,
+  .login-shell .login-panel {
     width: min(820px, 100%);
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel {
+  .login-shell .login-panel {
     display: grid;
     grid-template-columns: minmax(120px, 0.6fr) minmax(280px, 1.4fr);
     grid-auto-rows: auto;
@@ -12284,77 +12485,78 @@ textarea {
     border-radius: 16px;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel__top {
+  .login-shell .login-panel__top {
     min-width: 0;
     grid-column: 1;
     grid-row: 1 / span 4;
     align-self: center;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-branding {
+  .login-shell .login-branding {
     gap: 4px;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-branding__logo {
+  .login-shell .login-branding__logo {
     width: clamp(64px, 13vh, 88px);
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-title {
+  .login-shell .login-title {
     padding: 3px 5px;
     border-radius: 10px;
     font-size: clamp(1.15rem, 3vw, 1.55rem);
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel > .notice,
-  .login-shell:not(:has(.interest-panel)) .login-panel > form,
-  .login-shell:not(:has(.interest-panel)) .login-panel > .stack:not(.compact),
-  .login-shell:not(:has(.interest-panel)) .login-help-link {
+  .login-shell .login-panel > .notice,
+  .login-shell .login-panel > form,
+  .login-shell .login-panel > .stack:not(.compact),
+  .login-shell .login-help-link {
     min-width: 0;
     grid-column: 2;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel > form,
-  .login-shell:not(:has(.interest-panel)) .login-panel > .stack:not(.compact) {
+  .login-shell .login-panel > form,
+  .login-shell .login-panel > .stack:not(.compact) {
     gap: 6px;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-panel > .stack.compact {
+  .login-shell .login-panel > .stack.compact:not(:has(.login-panel-overlay)) {
     display: none;
   }
 
-  .login-shell:not(:has(.interest-panel)) .field {
+  .login-shell .field {
     gap: 2px;
   }
 
-  .login-shell:not(:has(.interest-panel)) .field label {
+  .login-shell .field label {
     font-size: 0.68rem;
   }
 
-  .login-shell:not(:has(.interest-panel)) .field input,
-  .login-shell:not(:has(.interest-panel)) .field select {
+  .login-shell .field input,
+  .login-shell .field select {
     min-height: 34px;
     padding: 6px 10px;
     border-radius: 10px;
     font-size: 0.76rem;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-action-row {
+  .login-shell .login-action-row {
     flex-wrap: nowrap;
     gap: 10px;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-action-row button:not(.text-link-button) {
+  .login-shell .login-action-row button:not(.text-link-button) {
     min-height: 34px;
     padding: 6px 14px;
     font-size: 0.76rem;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-inline-link,
-  .login-shell:not(:has(.interest-panel)) .login-help-link a {
+  .login-shell .login-inline-link,
+  .login-shell .login-help-link a,
+  .login-shell .login-help-link button {
     font-size: 0.76rem;
   }
 
-  .login-shell:not(:has(.interest-panel)) .login-help-link {
+  .login-shell .login-help-link {
     padding-top: 0;
   }
 }

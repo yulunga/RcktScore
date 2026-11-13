@@ -119,6 +119,7 @@ struct MatchScoringView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     let matchID: String
     let openSettingsOnLoad: Bool
@@ -149,6 +150,7 @@ struct MatchScoringView: View {
     @State private var showEndMatchConfirmation = false
     @State private var showEventTimeline = false
     @State private var showStrokeLetHelp = false
+    @State private var showTakeOverConfirmation = false
     @AppStorage("hitnscore.strokeLetHelpEnabled") private var strokeLetHelpEnabled = false
 
     private let timerTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -158,6 +160,12 @@ struct MatchScoringView: View {
     }
     private var isOnline: Bool { container.networkMonitor.isOnline }
     private var canManageMatches: Bool { container.sessionStore.session?.canManageMatches ?? false }
+    private var canScoreThisMatch: Bool {
+        canManageMatches && match?.scoringAccess?.canScore != false
+    }
+    private var canTakeOverScoring: Bool {
+        match?.scoringAccess?.canTakeOver == true
+    }
     private var isTennisMatch: Bool {
         ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
             || (live?.scoreDisplayMode ?? "").lowercased() == "tennis"
@@ -375,6 +383,10 @@ struct MatchScoringView: View {
         hasBootstrappedCurrentMatch && timerPhase == .interval && !isMatchComplete
     }
 
+    private var isPhoneLandscapeLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone && verticalSizeClass == .compact
+    }
+
     private var isWarmupCountdownWarning: Bool {
         timerRunning
             && (timerPhase == .warmupSideOne || timerPhase == .warmupSideTwo)
@@ -563,8 +575,8 @@ struct MatchScoringView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
-        .disabled(isMutating || match == nil)
-        .opacity((isMutating || match == nil) ? 0.72 : 1)
+        .disabled(isMutating || match == nil || !canScoreThisMatch)
+        .opacity((isMutating || match == nil || !canScoreThisMatch) ? 0.72 : 1)
         .accessibilityLabel("Game Settings")
         .accessibilityIdentifier("scoring.gameSettingsButton")
     }
@@ -578,6 +590,43 @@ struct MatchScoringView: View {
             scorerSettingsButton
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private var scorerLockBanner: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(canTakeOverScoring ? "Another scorer controls this match" : "Match scoring is locked")
+                .font(.headline.weight(.bold))
+            Text(canTakeOverScoring
+                ? "As a club administrator, you can transfer scoring control to this account. The previous scorer will be locked out."
+                : "Another club scorer is controlling this match. You can view the score, but scoring controls are disabled.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if canTakeOverScoring {
+                Button(isMutating ? "Taking over…" : "Take Over Scoring") {
+                    showTakeOverConfirmation = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isMutating || !isOnline)
+                .confirmationDialog(
+                    "Take over this match?",
+                    isPresented: $showTakeOverConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Take Over Scoring", role: .destructive) {
+                        Task { await takeOverScoring() }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("The current scorer will immediately lose permission to change this match.")
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.rcktBlue.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.rcktBlue.opacity(0.35)))
+        .accessibilityIdentifier("scoring.scorerLockBanner")
     }
 
     private var playerOneActionLabel: String {
@@ -640,13 +689,13 @@ struct MatchScoringView: View {
                             pendingActionSelection = .strokeAgainst
                         }
                         .accessibilityIdentifier("scoring.action.stroke")
-                        .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+                        .disabled(isMutating || !canScoreThisMatch || timerPhase != .matchLive || isMatchComplete)
 
                         matchActionButton(title: "Let", systemImage: "pause.circle.fill") {
                             pendingActionSelection = .letAwarded
                         }
                         .accessibilityIdentifier("scoring.action.let")
-                        .disabled(isMutating || timerPhase != .matchLive || isMatchComplete)
+                        .disabled(isMutating || !canScoreThisMatch || timerPhase != .matchLive || isMatchComplete)
                     }
 
                     if strokeLetHelpEnabled && (isPersonalPlus || !isPersonalAccount) {
@@ -661,7 +710,7 @@ struct MatchScoringView: View {
                         Task { await undoLastAction() }
                     }
                     .accessibilityIdentifier("scoring.action.undo")
-                    .disabled(isMutating || undoLocked)
+                    .disabled(isMutating || !canScoreThisMatch || undoLocked)
 
                     matchActionButton(
                         title: "End Match Early",
@@ -673,7 +722,7 @@ struct MatchScoringView: View {
                         showEndMatchConfirmation = true
                     }
                     .accessibilityIdentifier("scoring.action.endEarly")
-                    .disabled(isMutating || isMatchComplete)
+                    .disabled(isMutating || !canScoreThisMatch || isMatchComplete)
                 } else {
                     Text("Choose the player")
                         .font(.subheadline.weight(.semibold))
@@ -901,12 +950,16 @@ struct MatchScoringView: View {
         bottomDockReservedHeight: CGFloat
     ) -> some View {
         ZStack {
-            VStack(spacing: compactLayout ? 12 : 16) {
+            VStack(spacing: isPhoneLandscapeLayout ? 6 : (compactLayout ? 12 : 16)) {
                 scorerHeaderBar
 
                 if isLoading && match == nil {
                     ProgressView("Loading match…")
                         .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if match?.scoringAccess?.locked == true && !canScoreThisMatch {
+                    scorerLockBanner
                 }
 
                 if let match {
@@ -937,17 +990,17 @@ struct MatchScoringView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, compactLayout ? 12 : 16)
-            .padding(.top, compactLayout ? 10 : 14)
+            .padding(.horizontal, isPhoneLandscapeLayout ? 8 : (compactLayout ? 12 : 16))
+            .padding(.top, isPhoneLandscapeLayout ? 4 : (compactLayout ? 10 : 14))
             .padding(.bottom, bottomDockReservedHeight)
 
-            if showWarmupOverlay {
+            if showWarmupOverlay && canScoreThisMatch {
                 overlayBackdrop {
                     warmupOverlay
                 }
             }
 
-            if showIntervalOverlay {
+            if showIntervalOverlay && canScoreThisMatch {
                 overlayBackdrop {
                     intervalOverlay
                 }
@@ -973,7 +1026,7 @@ struct MatchScoringView: View {
         }
         .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let _ = match {
+            if let _ = match, !showWarmupOverlay, !showIntervalOverlay {
                 dockInsetContent
             }
         }
@@ -1052,6 +1105,7 @@ struct MatchScoringView: View {
             compactLayout: compactLayout,
             isTabletLandscape: isTabletLandscape
         )
+        .disabled(!canScoreThisMatch && !isMatchComplete)
         .padding(.horizontal, compactLayout ? 8 : 14)
         .padding(.top, 2)
         .padding(.bottom, isTabletLandscape ? 2 : 4)
@@ -1253,7 +1307,7 @@ struct MatchScoringView: View {
         landscapeTablet: Bool = false,
         expandsVertically: Bool = false
     ) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 10 : 12) {
+        VStack(alignment: .leading, spacing: isPhoneLandscapeLayout ? 4 : (compact ? 10 : 12)) {
             if !isTennisMatch {
                 scoreSummaryBanner(match, compact: compact)
             }
@@ -1272,8 +1326,8 @@ struct MatchScoringView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
                     .buttonStyle(.plain)
-                    .disabled(isMutating || !canManageMatches)
-                    .opacity((isMutating || !canManageMatches) ? 0.72 : 1)
+                    .disabled(isMutating || !canScoreThisMatch)
+                    .opacity((isMutating || !canScoreThisMatch) ? 0.72 : 1)
                     .accessibilityIdentifier("scoring.startScheduledMatchButton")
 
                     Spacer()
@@ -1287,7 +1341,7 @@ struct MatchScoringView: View {
                     state: live,
                     compact: compact,
                     landscapeTablet: landscapeTablet,
-                    scoringDisabled: isMutating || isMatchComplete || isScheduledMatch || timerPhase != .matchLive,
+                    scoringDisabled: isMutating || !canScoreThisMatch || isMatchComplete || isScheduledMatch || timerPhase != .matchLive,
                     onScore: { side in Task { await addPoint(for: side) } },
                     onChooseReceiverCourt: { side in Task { await chooseNoAdReceiverCourt(side) } }
                 )
@@ -1345,8 +1399,8 @@ struct MatchScoringView: View {
                     )
                     }
                     .padding(.horizontal, landscapeTablet ? 12 : (compact ? 2 : 8))
-                    .padding(.top, landscapeTablet ? 16 : (compact ? 6 : 12))
-                    .padding(.bottom, landscapeTablet ? 18 : (compact ? 12 : 14))
+                    .padding(.top, landscapeTablet ? 16 : (isPhoneLandscapeLayout ? 4 : (compact ? 6 : 12)))
+                    .padding(.bottom, landscapeTablet ? 18 : (isPhoneLandscapeLayout ? 4 : (compact ? 12 : 14)))
                 }
             }
 
@@ -1357,7 +1411,7 @@ struct MatchScoringView: View {
             matchHistoryStrip
                 .padding(.horizontal, compact ? 12 : 16)
         }
-        .padding(.top, compact ? 8 : 10)
+        .padding(.top, isPhoneLandscapeLayout ? 4 : (compact ? 8 : 10))
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.rcktCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -1497,13 +1551,13 @@ struct MatchScoringView: View {
     @ViewBuilder
     private var warmupOverlay: some View {
         if timerPhase == .firstServer, let match {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: isPhoneLandscapeLayout ? 10 : 18) {
                 Text(
                     isTennisMatch
                         ? (isTennisDoublesMatch ? "Serve & Receive" : "Opening Server")
                         : "First Server"
                 )
-                    .font(.title2.weight(.bold))
+                    .font(isPhoneLandscapeLayout ? .headline.weight(.bold) : .title2.weight(.bold))
 
                 Text(
                     isTennisMatch
@@ -1512,47 +1566,48 @@ struct MatchScoringView: View {
                             : "Choose the opening server. The other player will receive automatically.")
                         : "Choose which player starts serving. The match begins after this selection."
                 )
-                    .font(.body)
+                    .font(isPhoneLandscapeLayout ? .caption : .body)
                     .foregroundStyle(.secondary)
 
                 if isTennisMatch {
                     tennisOpeningSelectionOverlay(match)
                 } else {
-                    VStack(spacing: 12) {
-                        Button {
-                            Task { await chooseFirstServer("player1", using: match) }
-                        } label: {
-                            Text(fullName(firstName: match.player1Name, surname: match.player1Surname))
-                                .font(.headline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.rcktBlue)
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    if isPhoneLandscapeLayout {
+                        HStack(spacing: 12) {
+                            firstServerButton(
+                                fullName(firstName: match.player1Name, surname: match.player1Surname),
+                                side: "player1",
+                                color: .rcktBlue,
+                                match: match
+                            )
+                            firstServerButton(
+                                fullName(firstName: match.player2Name, surname: match.player2Surname),
+                                side: "player2",
+                                color: .rcktSlate,
+                                match: match
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isMutating)
-                        .accessibilityIdentifier("scoring.firstServer.player1")
 
-                        Button {
-                            Task { await chooseFirstServer("player2", using: match) }
-                        } label: {
-                            Text(fullName(firstName: match.player2Name, surname: match.player2Surname))
-                                .font(.headline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.rcktSlate)
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    } else {
+                        VStack(spacing: 12) {
+                            firstServerButton(
+                                fullName(firstName: match.player1Name, surname: match.player1Surname),
+                                side: "player1",
+                                color: .rcktBlue,
+                                match: match
+                            )
+                            firstServerButton(
+                                fullName(firstName: match.player2Name, surname: match.player2Surname),
+                                side: "player2",
+                                color: .rcktSlate,
+                                match: match
+                            )
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isMutating)
-                        .accessibilityIdentifier("scoring.firstServer.player2")
                     }
                 }
             }
-            .padding(24)
-            .frame(maxWidth: 420, alignment: .leading)
+            .padding(isPhoneLandscapeLayout ? 16 : 24)
+            .frame(maxWidth: isPhoneLandscapeLayout ? 520 : 420, alignment: .leading)
             .background(Color.rcktCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay(
@@ -1616,6 +1671,30 @@ struct MatchScoringView: View {
                     .stroke(Color.rcktBorder, lineWidth: 1)
             )
         }
+    }
+
+    private func firstServerButton(
+        _ title: String,
+        side: String,
+        color: Color,
+        match: MatchDetail
+    ) -> some View {
+        Button {
+            Task { await chooseFirstServer(side, using: match) }
+        } label: {
+            Text(title)
+                .font((isPhoneLandscapeLayout ? Font.subheadline : Font.headline).weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, isPhoneLandscapeLayout ? 11 : 16)
+                .background(color)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isMutating)
+        .accessibilityIdentifier("scoring.firstServer.\(side)")
     }
 
     private var startWarmupOverlayButton: some View {
@@ -1811,7 +1890,7 @@ struct MatchScoringView: View {
             if isTabletPortrait {
                 return 96
             }
-            return compact ? 64 : 92
+            return isPhoneLandscapeLayout ? 58 : (compact ? 64 : 92)
         }()
         let railHeight: CGFloat = {
             if landscapeTablet {
@@ -1820,12 +1899,12 @@ struct MatchScoringView: View {
             if isTabletPortrait {
                 return 520
             }
-            return compact ? 360 : 420
+            return isPhoneLandscapeLayout ? 122 : (compact ? 360 : 420)
         }()
 
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: landscapeTablet ? 14 : (compact ? 10 : 12)) {
+                VStack(spacing: landscapeTablet ? 14 : (isPhoneLandscapeLayout ? 5 : (compact ? 10 : 12))) {
                     ForEach(pointRailEntries) { entry in
                         HStack(spacing: landscapeTablet ? 16 : 10) {
                             pointRailLane(
@@ -1954,7 +2033,7 @@ struct MatchScoringView: View {
             }
         }
         .padding(.horizontal, compact ? 12 : 14)
-        .padding(.vertical, compact ? 10 : 12)
+        .padding(.vertical, isPhoneLandscapeLayout ? 6 : (compact ? 10 : 12))
         .background(Color.rcktBlue.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .padding(.horizontal, compact ? 4 : 6)
@@ -2148,9 +2227,9 @@ struct MatchScoringView: View {
         landscapeTablet: Bool
     ) -> some View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
-        VStack(spacing: compact ? 8 : 10) {
+        VStack(spacing: isPhoneLandscapeLayout ? 3 : (compact ? 8 : 10)) {
             Text(scoringDisplayName(side: side, firstName: firstName, surname: surname))
-                .font(.system(size: landscapeTablet ? 24 : (compact ? 19 : 21), weight: .bold))
+                .font(.system(size: landscapeTablet ? 24 : (isPhoneLandscapeLayout ? 16 : (compact ? 19 : 21)), weight: .bold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
                 .multilineTextAlignment(.center)
@@ -2166,7 +2245,7 @@ struct MatchScoringView: View {
                             .font(.subheadline.weight(.semibold))
                             .frame(minWidth: compact ? 62 : 68)
                             .padding(.horizontal, compact ? 10 : 12)
-                            .padding(.vertical, compact ? 7 : 8)
+                            .padding(.vertical, isPhoneLandscapeLayout ? 4 : (compact ? 7 : 8))
                             .background(.white)
                             .foregroundStyle(.black)
                             .overlay(
@@ -2176,7 +2255,7 @@ struct MatchScoringView: View {
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(isMutating || isMatchComplete || !canToggleCurrentServeSide)
+                    .disabled(isMutating || !canScoreThisMatch || isMatchComplete || !canToggleCurrentServeSide)
                     .opacity(canToggleCurrentServeSide ? 1 : 0.72)
                     .accessibilityIdentifier("scoring.serveSide.\(side)")
                 } else {
@@ -2188,8 +2267,8 @@ struct MatchScoringView: View {
             }
         }
         .padding(.horizontal, compact ? 14 : 16)
-        .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
-        .frame(maxWidth: .infinity, minHeight: landscapeTablet ? 122 : (compact ? 92 : 102), alignment: .center)
+        .padding(.vertical, landscapeTablet ? 18 : (isPhoneLandscapeLayout ? 5 : (compact ? 12 : 14)))
+        .frame(maxWidth: .infinity, minHeight: landscapeTablet ? 122 : (isPhoneLandscapeLayout ? 62 : (compact ? 92 : 102)), alignment: .center)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(foreground)
     }
@@ -2207,7 +2286,7 @@ struct MatchScoringView: View {
         let foreground = shirtForegroundColor(for: shirtColorValue)
         let usesDarkForeground = isLightShirtColor(shirtColorValue)
         let displayedScore = scoreLabel.isEmpty ? String(score) : scoreLabel
-        let scoreFontSize: CGFloat = landscapeTablet ? 112 : (compact ? 88 : 96)
+        let scoreFontSize: CGFloat = landscapeTablet ? 112 : (isPhoneLandscapeLayout ? 62 : (compact ? 88 : 96))
 
         VStack(spacing: compact ? 8 : 10) {
             playerScoreDisplay(
@@ -2223,9 +2302,9 @@ struct MatchScoringView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(.horizontal, landscapeTablet ? 14 : (compact ? 6 : 12))
-        .padding(.vertical, landscapeTablet ? 18 : (compact ? 12 : 14))
-        .frame(width: landscapeTablet ? 182 : (compact ? 94 : 128))
-        .frame(minHeight: landscapeTablet ? 232 : (compact ? 158 : 170), alignment: .top)
+        .padding(.vertical, landscapeTablet ? 18 : (isPhoneLandscapeLayout ? 6 : (compact ? 12 : 14)))
+        .frame(width: landscapeTablet ? 182 : (isPhoneLandscapeLayout ? 112 : (compact ? 94 : 128)))
+        .frame(minHeight: landscapeTablet ? 232 : (isPhoneLandscapeLayout ? 112 : (compact ? 158 : 170)), alignment: .top)
         .background(shirtFillColor(for: shirtColorValue))
         .foregroundStyle(foreground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -2252,7 +2331,7 @@ struct MatchScoringView: View {
         landscapeTablet: Bool
     ) -> some View {
         let cornerRadius: CGFloat = landscapeTablet ? 22 : 18
-        let verticalPadding: CGFloat = landscapeTablet ? 18 : (compact ? 10 : 12)
+        let verticalPadding: CGFloat = landscapeTablet ? 18 : (isPhoneLandscapeLayout ? 5 : (compact ? 10 : 12))
         let insetFill = usesDarkForeground ? Color.black.opacity(0.06) : Color.white.opacity(0.18)
         let insetStroke = usesDarkForeground ? Color.black.opacity(0.20) : Color.white.opacity(0.24)
 
@@ -2702,8 +2781,8 @@ struct MatchScoringView: View {
     }
 
     private func startScheduledMatchFromScorer() async {
-        guard canManageMatches else {
-            errorMessage = "Your club role has read-only access to this match."
+        guard canScoreThisMatch else {
+            errorMessage = "Another club scorer currently controls this match."
             return
         }
         guard match?.status.lowercased() == "scheduled" else {
@@ -2726,6 +2805,13 @@ struct MatchScoringView: View {
 
         bootstrappedMatchID = nil
         bootstrapTimerIfNeeded(for: updatedMatch)
+    }
+
+    private func takeOverScoring() async {
+        guard canTakeOverScoring, isOnline, !isMutating else { return }
+        await performMutation {
+            try await container.apiClient.takeOverMatchScoring(matchID: matchID)
+        }
     }
 
     private func bootstrapTimerIfNeeded(for match: MatchDetail) {
@@ -3100,7 +3186,7 @@ struct MatchScoringView: View {
     }
 
     private func addPoint(for side: String) async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         guard !(isPadelMatch
             && live?.tennisNoAdScoring == true
             && live?.isTieBreak == false
@@ -3114,7 +3200,7 @@ struct MatchScoringView: View {
     }
 
     private func chooseNoAdReceiverCourt(_ side: String) async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
                 kind: .receiverChoice,
@@ -3125,7 +3211,7 @@ struct MatchScoringView: View {
     }
 
     private func awardStroke(to side: String) async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .stroke, matchID: matchID, playerSide: side)
@@ -3133,7 +3219,7 @@ struct MatchScoringView: View {
     }
 
     private func callLet(awardedTo side: String? = nil) async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(
@@ -3168,7 +3254,7 @@ struct MatchScoringView: View {
     }
 
     private func toggleServeSide(current: String) async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
         let nextSide = current.lowercased() == "left" ? "Right" : "Left"
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .serveSide, matchID: matchID, side: nextSide)
@@ -3176,7 +3262,7 @@ struct MatchScoringView: View {
     }
 
     private func undoLastAction() async {
-        guard canManageMatches, !isMutating, !undoLocked else { return }
+        guard canScoreThisMatch, !isMutating, !undoLocked else { return }
         if container.offlineMatchStore.undoLastQueuedAction(matchID: matchID) {
             errorMessage = nil
             return
@@ -3193,7 +3279,7 @@ struct MatchScoringView: View {
     }
 
     private func endMatchEarly() async {
-        guard canManageMatches, !isMutating, !isMatchComplete, !isScheduledMatch else { return }
+        guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch else { return }
 
         let finalDuration = max(0, resolveMatchDurationSeconds())
         timerRunning = false
