@@ -418,28 +418,31 @@ struct DashboardView: View {
         usesCompactBottomNavigation ? .system(size: 10, weight: .medium) : .caption
     }
     private var personalSettingsItems: [SettingsMenuItem] {
-        var items: [SettingsMenuItem] = [.about, .profile, .subscription]
-        if availableMemberships.count > 1 {
-            items.append(.association)
-        }
-        items.append(.gameSettings)
-        items.append(.helpFeedback)
-        return items
+        [.about, .profile, .subscription, .gameSettings]
     }
-    private var clubSettingsPrimaryItems: [SettingsMenuItem] {
-        personalSettingsItems
+    private var singleClubMembership: UserMembership? {
+        clubMemberships.count == 1 ? clubMemberships.first : nil
     }
-    private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
-        if isPersonalAccount {
-            return [
-                SettingsMenuSectionDescriptor(title: "Account", items: personalSettingsItems)
-            ]
+    private var clubSettingsItems: [SettingsMenuItem] {
+        guard !clubMemberships.isEmpty else { return [] }
+
+        guard let membership = singleClubMembership,
+              membership.role.lowercased() == "admin" else {
+            return [.association]
         }
 
-        var sections = [SettingsMenuSectionDescriptor(title: "Account", items: clubSettingsPrimaryItems)]
-        if isAdmin {
-            sections.append(SettingsMenuSectionDescriptor(title: "Club", items: [.organisation, .users, .courts, .racketSports, .data]))
+        return [.organisation, .users, .courts, .racketSports, .data]
+    }
+    private var settingsMenuSections: [SettingsMenuSectionDescriptor] {
+        var sections = [
+            SettingsMenuSectionDescriptor(title: "Personal Settings", items: personalSettingsItems)
+        ]
+
+        if !clubSettingsItems.isEmpty {
+            sections.append(SettingsMenuSectionDescriptor(title: "Club Settings", items: clubSettingsItems))
         }
+
+        sections.append(SettingsMenuSectionDescriptor(title: "Help", items: [.helpFeedback]))
         return sections
     }
     private var settingsAvailableItems: [SettingsMenuItem] {
@@ -1267,7 +1270,7 @@ struct DashboardView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button("View Personal Plus") {
+            Button("Upgrade") {
                 selectedTab = .settings
                 selectedSettingsSection = .subscription
                 settingsNavigationItem = .subscription
@@ -1449,8 +1452,7 @@ struct DashboardView: View {
         let isUnavailable = item == .reporting
         return Button {
             guard !isUnavailable else { return }
-            selectedSettingsSection = item.section
-            settingsNavigationItem = item
+            openSettingsMenuItem(item)
         } label: {
             HStack(spacing: 12) {
                 Text(item.title)
@@ -1478,6 +1480,19 @@ struct DashboardView: View {
         .disabled(isUnavailable)
         .opacity(isUnavailable ? 0.45 : 1)
         .accessibilityIdentifier("settings.menu.\(item.rawValue)")
+    }
+
+    private func openSettingsMenuItem(_ item: SettingsMenuItem) {
+        let directClubItems: Set<SettingsMenuItem> = [.organisation, .users, .courts, .racketSports, .data]
+        if directClubItems.contains(item),
+           let membership = singleClubMembership,
+           membership.role.lowercased() == "admin",
+           membership.organizationID != session?.organizationID {
+            switchAssociation(to: membership)
+        }
+
+        selectedSettingsSection = item.section
+        settingsNavigationItem = item
     }
 
     private var signOutMenuSection: some View {
