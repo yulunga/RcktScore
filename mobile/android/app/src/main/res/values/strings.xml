@@ -148,8 +148,8 @@
     <string name="analytics_unclassified">%1$d matches could not be assigned to your profile because the recorded player name differs from your registered name.</string>
 
     <!-- Settings -->
-    <string name="settings_account">Account</string>
-    <string name="settings_club">Club</string>
+    <string name="settings_account">Personal Settings</string>
+    <string name="settings_club">Club Settings</string>
     <string name="settings_app">App</string>
     <string name="settings_profile">Profile</string>
     <string name="settings_subscription">Subscription</string>
@@ -674,4 +674,10 @@
     <string name="analytics_period">Reporting period</string>
     <string name="settings_yes">Yes</string>
     <string name="settings_deleting">Deleting account…</string>
+    <string name="settings_help_feedback">Help &amp; Feedback</string>
+    <string name="settings_help_section">Help</string>
+    <string name="settings_help_body">Send feedback or get help without leaving the app.</string>
+    <string name="analytics_upgrade_title">Performance is included with Personal Plus</string>
+    <string name="analytics_upgrade_body">Upgrade to see trends, opponent records, serving results, streaks and weekly or monthly progress.</string>
+    <string name="analytics_upgrade_button">Upgrade</string>
 </resources>

@@ -63,6 +63,8 @@ enum class SettingsPage(val route: String, @StringRes val title: Int, val clubAd
     Organisation("organisation", R.string.settings_organisation, clubAdminOnly = true),
     Users("users", R.string.settings_users, clubAdminOnly = true),
     Courts("courts", R.string.settings_courts, clubAdminOnly = true),
+    /** Ping Us and Guides from Settings (iOS Help & Feedback). */
+    HelpFeedback("help-feedback", R.string.settings_help_feedback),
     /** One club from Association (not in the menus); its title is the club's name. */
     Club("club", R.string.settings_association),
     ;
@@ -90,19 +92,21 @@ fun SettingsScreen(
     /** A club page for a given club (as from Association). */
     onOpenClubPage: (SettingsPage, Int) -> Unit = { page, _ -> onOpenPage(page) },
 ) {
-    val accountPages = listOfNotNull(
+    val accountPages = listOf(
         SettingsPage.About,
         SettingsPage.Profile,
         SettingsPage.Subscription,
-        SettingsPage.Association.takeIf { session.availableContexts.size > 1 },
         SettingsPage.GameSettings,
     )
-    // Club admins: the same pages as Association › club, for the active club. Organisation
-    // opens that club page (profile, map, socials and the manage tiles).
-    val clubPages = if (session.isClubAdmin) {
-        listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.RacketSports)
-    } else {
-        emptyList()
+    // Club Settings (as iOS): one club → its admin pages here (admins), or the club itself;
+    // more than one club → Association, which lists them to manage.
+    val clubs = session.availableContexts.filter { it.type == AccountContextType.Club }
+    val singleClub = clubs.singleOrNull()
+    val singleClubAdmin = singleClub != null && ClubRoles.normalize(singleClub.role) == ClubRoles.ADMIN
+    val clubPages = when {
+        clubs.isEmpty() -> emptyList()
+        singleClubAdmin -> listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.RacketSports)
+        else -> listOf(SettingsPage.Association)
     }
 
     LazyColumn(
@@ -137,10 +141,16 @@ fun SettingsScreen(
         if (clubPages.isNotEmpty()) {
             item {
                 MenuSection(stringResource(R.string.settings_club), clubPages) { page ->
-                    onOpenClubPage(if (page == SettingsPage.Organisation) SettingsPage.Club else page, session.activeContext.organizationId)
+                    if (page == SettingsPage.Association || singleClub == null) {
+                        onOpenPage(page)
+                    } else {
+                        // Organisation opens the club page (profile, map, socials and the manage tiles).
+                        onOpenClubPage(if (page == SettingsPage.Organisation) SettingsPage.Club else page, singleClub.organizationId)
+                    }
                 }
             }
         }
+        item { MenuSection(stringResource(R.string.settings_help_section), listOf(SettingsPage.HelpFeedback), onOpenPage) }
         item {
             QuickUnlockSetting(enabled = biometricUnlockEnabled, onEnabledChange = onBiometricUnlockChange)
         }
@@ -269,6 +279,7 @@ fun SettingsPageScreen(
                     ClubPage(target, onOpenPage = { p, org -> onOpenPage(p, org) })
                 }
                 SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, target, canUseStrokeLetHelp = session.canUseStrokeLetHelp())
+                SettingsPage.HelpFeedback -> item(key = "help-feedback") { HelpFeedbackPage(session) }
                 SettingsPage.About -> {
                     item { InfoRow(stringResource(R.string.settings_version), AppEnvironment.versionName) }
                     item { InfoRow(stringResource(R.string.settings_environment), AppEnvironment.environmentName) }

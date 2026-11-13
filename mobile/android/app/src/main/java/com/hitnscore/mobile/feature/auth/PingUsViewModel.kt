@@ -36,8 +36,8 @@ class PingUsViewModel(private val service: FeedbackService) : ViewModel() {
     private val mutableState = MutableStateFlow(PingUsUiState())
     val uiState: StateFlow<PingUsUiState> = mutableState.asStateFlow()
 
-    fun reset(prefilledEmail: String = "") {
-        mutableState.value = PingUsUiState(email = prefilledEmail.trim().takeIf { '@' in it }.orEmpty())
+    fun reset(prefilledEmail: String = "", prefilledName: String = "") {
+        mutableState.value = PingUsUiState(name = prefilledName.trim(), email = prefilledEmail.trim().takeIf { '@' in it }.orEmpty())
     }
 
     fun update(transform: (PingUsUiState) -> PingUsUiState) =

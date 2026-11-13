@@ -1,6 +1,9 @@
 package com.hitnscore.mobile.feature.analytics
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
@@ -178,6 +181,7 @@ fun AnalyticsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            PerformanceUpgradeCard(onUpgrade = actions.onOpenSubscription)
                         }
                     } else {
                         when {
@@ -349,6 +353,35 @@ private fun SegmentedSwitch(options: List<String>, selectedIndex: Int, onSelect:
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Personal Free: what Personal Plus adds, with an Upgrade button to Subscription (as iOS). */
+@Composable
+private fun PerformanceUpgradeCard(onUpgrade: () -> Unit) {
+    InnerCard(shape = RoundedCornerShape(20.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(painterResource(R.drawable.ic_tab_analytics), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+            Text(
+                stringResource(R.string.analytics_upgrade_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                stringResource(R.string.analytics_upgrade_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Button(onClick = onUpgrade, shape = RoundedCornerShape(12.dp)) {
+                Text(stringResource(R.string.analytics_upgrade_button))
             }
         }
     }
