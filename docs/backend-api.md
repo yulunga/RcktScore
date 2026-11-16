@@ -209,6 +209,12 @@ Routes are defined in [backend/template.yaml](/Users/glennrowe/Development/Proje
 - `POST /feedback`
 
 The public web login and `Want In` presentations omit package-version/build details. Native iOS uses a fitted, non-scrolling Want In card on iPhone and iPad. A public Club selection now creates the identity's required Personal Free base account when missing, retains the club enquiry for controlled release, and creates a private inbox notification for the normalized email.
+An accepted Personal registration also sends a branded internal new-user summary
+to `INTEREST_TO_EMAIL`, which defaults to `hello@hitnscore.com`. The summary
+contains the submitted name/email, Personal workspace ID, email-validation state,
+source page and user agent. Internal notification failure is logged but does not
+change the successful registration response; club enquiries retain their existing
+requester and team email pair.
 
 The login card keeps its public Help entry but no longer links to Tournament Draw. The standalone `weblanding/` footer provides the public Tournament Draw and Scoreboard Display links to `https://app.hitnscore.com/tournament-draw` and `https://app.hitnscore.com/scoreboard`; these are static navigation changes and add no API route.
 
@@ -242,6 +248,8 @@ The desktop and phone-landscape dashboard now use the header `+` as their sole
 new-match entry point, and mutually exclusive desktop/mobile list presentation
 prevents the same dashboard match record from appearing twice. This is a web
 presentation correction and does not change the dashboard or match API.
+Scheduled records use the same compact two-column laptop card system as recent
+matches while retaining their Start and details actions; no response field changes.
 
 ### Root-admin routes
 

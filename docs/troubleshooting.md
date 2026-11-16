@@ -164,6 +164,9 @@ Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with six-card pages over at most 24 records,
 forming three complete two-card desktop rows. Its heading opens Matches → History;
 the Active Matches and Scheduled Matches headings open their corresponding tabs.
+Scheduled Matches should use the same two-column compact card geometry at laptop
+widths, including a date tile and sport rail; if it falls back to full-width rows,
+check `.dashboard-list--scheduled.dashboard-list--desktop` at the 1100px breakpoint.
 On the standalone `/match/new` route, `ClubPageHeader` must receive
 `showMobileMenu={false}` because the page has its own Close action. If a sport
 card is covered at the bottom on a phone or portrait tablet, verify that the
@@ -677,6 +680,7 @@ Common symptoms:
 - personal signup returning `REGISTRATION_FAILED` with a `SkwshOrgSettings_interest_request_id_fkey` error indicates migration `017_platform_enabled_sports.sql` is missing and the old optional-table fallback rolled back the registration insert; apply migration 017 and deploy the current transaction-safe fallback
 - club requests remain pending enquiries and do not create accounts automatically
 - logged-in subscription enquiries require migration `022_club_subscription_enquiries.sql`; if the extended club fields fail to store, apply that migration before deploying the updated `register_interest` and root-admin interest-request functions
+- every accepted Personal signup should generate a `New HitnScore user` email to `INTEREST_TO_EMAIL` (default `hello@hitnscore.com`). If the account and user confirmation email succeed but the team copy is missing, inspect the `register_interest` Lambda log for `New user admin notification email failed`, verify the SES sender/recipient identities and confirm the deployed `INTEREST_TO_EMAIL` value
 - `SESSION_REQUIRED`, `SESSION_INVALID`, or `SESSION_EXPIRED` from a Club Essentials/Club Pro enquiry means the saved mobile session must be refreshed by signing in again
 - password reset link points to the wrong host
 - a setup/reset page that remains on “Checking your secure link” indicates `POST /password_reset/validate` is missing from the deployed backend; an invalid/expired response should offer a fresh reset request

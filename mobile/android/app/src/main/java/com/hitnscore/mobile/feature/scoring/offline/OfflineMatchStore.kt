@@ -154,7 +154,16 @@ class OfflineMatchStore(private val storage: OfflineSnapshotStorage) {
         if (mutableSyncing.value || owner == null) return pendingCount(owner) == 0
         mutableSyncing.value = true
         try {
-            val matchIds = mutableSnapshots.value.filter { it.owner.matches(owner) && it.queuedActions.isNotEmpty() }.map { it.serverMatch.id }
+            // Points queued while a pass is running (e.g. the last point of a match, tapped just
+            // as the previous one was sending) are picked up by another pass, so nothing waits
+            // for the next reconnect. Matches the server refused are left for Retry / Discard.
+            var pass = 0
+            while (pass++ < MAX_SYNC_PASSES) {
+            val refused = mutableSyncFailure.value?.matchId
+            val matchIds = mutableSnapshots.value
+                .filter { it.owner.matches(owner) && it.queuedActions.isNotEmpty() && it.serverMatch.id != refused }
+                .map { it.serverMatch.id }
+            if (matchIds.isEmpty()) break
             for (matchId in matchIds) {
                 while (true) {
                     val current = find(matchId) ?: break
@@ -184,6 +193,7 @@ class OfflineMatchStore(private val storage: OfflineSnapshotStorage) {
                         }
                     }
                 }
+            }
             }
             return pendingCount(owner) == 0
         } finally {
@@ -229,7 +239,9 @@ class OfflineMatchStore(private val storage: OfflineSnapshotStorage) {
     }
 }
 
-/** A held match as a list card, for Home's "Continue offline" section. */
+/** Upper bound on back-to-back sync passes in one call. */
+private const val MAX_SYNC_PASSES = 5
+
 fun MatchDetail.toSummary(): MatchSummary = MatchSummary(
     id = id,
     player1Name = player1Name,
@@ -239,10 +251,12 @@ fun MatchDetail.toSummary(): MatchSummary = MatchSummary(
     courtName = courtName,
     sport = sport,
     status = status,
-    bestOf = state?.bestOf ?: bestOf,
-    scoreType = state?.scoreType ?: scoreType,
+    bestOf = bestOf,
+    scoreType = scoreType,
     updatedAt = updatedAt,
+    completedAt = completedAt,
     matchDurationSeconds = matchDurationSeconds,
     winnerName = state?.winnerName,
     state = state,
+    locked = scoringAccess?.locked ?: false,
 )

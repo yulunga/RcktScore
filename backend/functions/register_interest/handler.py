@@ -265,6 +265,41 @@ def _send_interest_emails(*, payload, destination_email, source_email):
     )
 
 
+def _send_new_user_admin_email(*, payload, personal_signup, destination_email, source_email):
+    organization_id = (personal_signup or {}).get("organization_id")
+    registered_at = _utcnow().strftime("%d %b %Y %H:%M UTC")
+    details = [
+        ("Name", f"{payload['first_name']} {payload['surname']}"),
+        ("Email", payload["email"]),
+        ("Account type", "Personal Free"),
+        ("Email validated", "No"),
+        ("Personal workspace", organization_id or "Created"),
+        ("Registered", registered_at),
+        ("Page URL", payload.get("page_url") or "Unknown"),
+        ("User agent", payload.get("user_agent") or "Unknown"),
+    ]
+    text_body = "\n".join(
+        [
+            "A new HitnScore user has registered.",
+            "",
+            *[f"{label}: {value}" for label, value in details],
+        ]
+    )
+    html_body = render_branded_email(
+        title="New user registration",
+        paragraphs=["A new HitnScore Personal Free user has registered."],
+        detail_rows=details,
+    )
+    send_email_message(
+        source_email=source_email,
+        destination_email=destination_email,
+        reply_to_addresses=[payload["email"]],
+        subject=f"New HitnScore user: {payload['first_name']} {payload['surname']}",
+        text_body=text_body,
+        html_body=html_body,
+    )
+
+
 def lambda_handler(event, context):
     payload = parse_body(event)
     missing_fields = require_fields(payload, ["first_name", "surname", "email", "use_type"])
@@ -436,6 +471,17 @@ def lambda_handler(event, context):
         )
 
     if use_type == "personal":
+        try:
+            _send_new_user_admin_email(
+                payload=request_payload,
+                personal_signup=personal_signup,
+                destination_email=destination_email,
+                source_email=source_email,
+            )
+        except (BotoCoreError, ClientError):
+            logger.exception("New user admin notification email failed")
+        except Exception:
+            logger.exception("New user admin notification email failed unexpectedly")
         logger.info(
             "Personal account signup accepted id=%s email=%s",
             interest_row.get("id"),

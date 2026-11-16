@@ -39,7 +39,10 @@ import com.hitnscore.mobile.feature.shell.ShellUiState
 
 private const val HOME_ITEMS = 3
 
-/** Home: up to three active, scheduled and readable recent matches, plus any locked-history prompt. */
+/** Scheduled and Recent show more on Home (six), as requested; Active stays at three. */
+internal const val HOME_LIST_ITEMS = 6
+
+/** Home: up to three active matches, six scheduled and six readable recent matches, plus any locked-history prompt. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: ShellActions) {
@@ -107,7 +110,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                         onTitleClick = { actions.onShowMatches(MatchesCategory.Scheduled) },
                     ) {
                         MatchSection(
-                            matches = dashboard?.scheduledMatches.orEmpty().take(HOME_ITEMS),
+                            matches = dashboard?.scheduledMatches.orEmpty().take(HOME_LIST_ITEMS),
                             isLoading = state.isLoading,
                             emptyText = stringResource(R.string.empty_scheduled),
                         ) { ScheduledMatchCard(it) }
@@ -142,7 +145,7 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
 }
 
 internal fun homeRecentMatches(matches: List<MatchSummary>): List<MatchSummary> =
-    matches.filterNot { it.locked }.take(HOME_ITEMS) + matches.firstOrNull { it.locked }.let(::listOfNotNull)
+    matches.filterNot { it.locked }.take(HOME_LIST_ITEMS) + matches.firstOrNull { it.locked }.let(::listOfNotNull)
 
 @Composable
 fun MatchSection(

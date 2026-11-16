@@ -35,6 +35,7 @@ def registration_event(use_type):
 def test_personal_registration_creates_account_without_manual_approval(monkeypatch):
     connection = FakeConnection()
     calls = []
+    admin_email_calls = []
 
     @contextmanager
     def fake_connection():
@@ -57,6 +58,7 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
         "_send_interest_emails",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("Personal signup sent club enquiry emails")),
     )
+    monkeypatch.setattr(handler, "_send_new_user_admin_email", lambda **kwargs: admin_email_calls.append(kwargs))
 
     response = handler.lambda_handler(registration_event("personal"), None)
     body = json.loads(response["body"])
@@ -66,6 +68,34 @@ def test_personal_registration_creates_account_without_manual_approval(monkeypat
     assert body["data"]["requires_password_setup"] is True
     assert calls[0][0] == 27
     assert calls[0][1]["source_email"] == "sender@example.com"
+    assert admin_email_calls[0]["destination_email"] == "hello@hitnscore.com"
+    assert admin_email_calls[0]["payload"]["email"] == "player@example.com"
+
+
+def test_personal_registration_admin_email_contains_new_user_details(monkeypatch):
+    messages = []
+    monkeypatch.setattr(handler, "send_email_message", lambda **kwargs: messages.append(kwargs))
+
+    handler._send_new_user_admin_email(
+        payload={
+            "first_name": "Test",
+            "surname": "Player",
+            "email": "player@example.com",
+            "page_url": "https://app.hitnscore.com/",
+            "user_agent": "test-suite",
+        },
+        personal_signup={"organization_id": 50027},
+        destination_email="hello@hitnscore.com",
+        source_email="hello@hitnscore.com",
+    )
+
+    assert len(messages) == 1
+    assert messages[0]["destination_email"] == "hello@hitnscore.com"
+    assert messages[0]["reply_to_addresses"] == ["player@example.com"]
+    assert messages[0]["subject"] == "New HitnScore user: Test Player"
+    assert "Email: player@example.com" in messages[0]["text_body"]
+    assert "Account type: Personal Free" in messages[0]["text_body"]
+    assert "Personal workspace: 50027" in messages[0]["text_body"]
 
 
 def test_personal_registration_rejects_an_existing_personal_account(monkeypatch):

@@ -108,13 +108,24 @@ fun AppShellScreen(
     // paused on the scorer, which has its own live updates.
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentFullScreen by rememberUpdatedState(fullScreen)
-    val hasLiveMatches by rememberUpdatedState(shellState.dashboard?.activeMatches.orEmpty().isNotEmpty())
+    // Live or scheduled matches (which can be added from the web client at any time) refresh faster.
+    val hasLiveMatches by rememberUpdatedState(
+        shellState.dashboard?.let { it.activeMatches.isNotEmpty() || it.scheduledMatches.isNotEmpty() } == true,
+    )
     LaunchedEffect(lifecycleOwner, shellViewModel) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // Coming back to the app: catch up straight away (matches created elsewhere).
+            if (!currentFullScreen) shellViewModel.refreshQuietly()
             while (true) {
                 delay(if (hasLiveMatches) LIVE_REFRESH_MS else IDLE_REFRESH_MS)
                 if (!currentFullScreen) shellViewModel.refreshQuietly()
             }
+        }
+    }
+    // Opening Home or Matches shows the latest matches, including ones scheduled on the web.
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == AppDestination.Home.route || currentRoute?.startsWith(AppDestination.Matches.route) == true) {
+            shellViewModel.refreshQuietly()
         }
     }
 
@@ -200,9 +211,9 @@ private fun RowScope.PlayItem(onClick: () -> Unit) {
     )
 }
 
-/** Dashboard auto-refresh: every 10 s while matches are live, otherwise every 30 s. */
+/** Dashboard auto-refresh: every 10 s while matches are live or scheduled, otherwise every 15 s. */
 private const val LIVE_REFRESH_MS = 10_000L
-private const val IDLE_REFRESH_MS = 30_000L
+private const val IDLE_REFRESH_MS = 15_000L
 
 object ShellTags {
     const val PLAY = "shell_play"

@@ -424,6 +424,49 @@ test("shows each active match once on a laptop dashboard @header", async ({ page
   await expect(page.locator(".dashboard-start-hero")).toHaveCount(0);
 });
 
+test("lays scheduled matches out like recent matches on a laptop dashboard @header", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.unroute("**/dashboard/42*");
+  const scheduledMatches = Array.from({ length: 4 }, (_, index) => ({
+    id: 720 + index,
+    sport: index % 2 === 0 ? "squash" : "tennis",
+    status: "scheduled",
+    court_name: `Court-${index + 1}`,
+    player1_name: `Player${index + 1}`,
+    player1_surname: "One",
+    player2_name: `Opponent${index + 1}`,
+    player2_surname: "Two",
+    best_of: 3,
+    created_at: `2026-11-${String(16 + index).padStart(2, "0")}T10:00:00Z`,
+  }));
+  await page.route("**/dashboard/42*", async (route) => {
+    await route.fulfill({ json: envelope({ dashboard: {
+      organization: { id: 42, name: "Header Test Club", type: "club", plan: "club_essentials" },
+      active_matches: [],
+      scheduled_matches: scheduledMatches,
+      recent_matches: [],
+    } }) });
+  });
+
+  await page.goto("/dashboard");
+
+  const cards = page.locator(".dashboard-list--scheduled.dashboard-list--desktop .dashboard-scheduled-compact-card");
+  await expect(cards).toHaveCount(4);
+  await expect(cards.first().locator(".dashboard-history-card__date-tile")).toBeVisible();
+  await expect(cards.first().locator(".dashboard-history-card__sport")).toHaveText("Squash");
+  await expect(cards.first().getByRole("button", { name: "Start" })).toBeVisible();
+  const [first, second, third] = await cards.evaluateAll((elements) => elements.slice(0, 3).map((element) => {
+    const box = element.getBoundingClientRect();
+    return { x: box.x, y: box.y, width: box.width };
+  }));
+  expect(Math.abs(first.y - second.y)).toBeLessThanOrEqual(1);
+  expect(second.x).toBeGreaterThan(first.x + first.width);
+  expect(third.y).toBeGreaterThan(first.y);
+  await cards.first().getByRole("button", { name: "Show match details" }).click();
+  await expect(cards.first().getByText("Match Format: Best of 3")).toBeVisible();
+  await expect(page.locator(".dashboard-list--scheduled.dashboard-carousel--mobile")).toBeHidden();
+});
+
 test("switches identity context from the header and exposes it on Matches and match creation @header", async ({ page }) => {
   await page.goto("/dashboard");
 

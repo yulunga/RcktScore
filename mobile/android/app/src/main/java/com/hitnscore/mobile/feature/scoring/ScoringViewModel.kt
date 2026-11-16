@@ -90,6 +90,11 @@ class ScoringViewModel(
     private val nowMillis: () -> Long = System::currentTimeMillis,
     /** Wakes the scoring services for this match (as iOS); null in tests. */
     private val warmScoring: (suspend (String) -> Unit)? = null,
+    /**
+     * Sends queued points. Outlives this screen, so the final point of a match still reaches
+     * the server when the scorer moves straight on to View Match (tests use the view model).
+     */
+    private val syncScope: kotlinx.coroutines.CoroutineScope? = null,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(ScoringUiState(isOnline = isOnline.value))
@@ -405,7 +410,7 @@ class ScoringViewModel(
 
     private fun syncNow() {
         if (!isOnline.value) return
-        viewModelScope.launch { offlineStore.sync(api, owner()) }
+        (syncScope ?: viewModelScope).launch { offlineStore.sync(api, owner()) }
     }
 
     private fun apply(match: MatchDetail, bootstrap: Boolean) {
@@ -517,6 +522,7 @@ class ScoringViewModel(
                     isOnline = container.connectivity.isOnline,
                     owner = { container.offlineOwner() },
                     warmScoring = { container.scoringWarmup.warm(it) },
+                    syncScope = container.applicationScope,
                 )
             }
         }

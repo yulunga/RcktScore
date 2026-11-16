@@ -31,7 +31,7 @@ class DashboardModelsTest {
     }
 
     @Test
-    fun homeKeepsLockedPreviewAfterThreeReadableMatches() {
+    fun homeKeepsLockedPreviewAfterSixReadableMatches() {
         val dashboard = (parser.parse(200, DashboardFixtures.dashboard, DashboardResponseData.serializer()) as ApiResult.Success)
             .value.dashboard
         val readable = dashboard.recentMatches.first()
@@ -42,11 +42,17 @@ class DashboardModelsTest {
                 readable.copy(id = "match-2"),
                 readable.copy(id = "match-3"),
                 readable.copy(id = "match-4"),
+                readable.copy(id = "match-5"),
+                readable.copy(id = "match-6"),
+                readable.copy(id = "match-7"),
                 locked,
             ),
         )
 
-        assertEquals(listOf("match-1", "match-2", "match-3", "locked-history-preview"), homeMatches.map { it.id })
+        assertEquals(
+            listOf("match-1", "match-2", "match-3", "match-4", "match-5", "match-6", "locked-history-preview"),
+            homeMatches.map { it.id },
+        )
     }
 
     @Test

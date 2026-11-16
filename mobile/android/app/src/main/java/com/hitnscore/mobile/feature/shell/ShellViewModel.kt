@@ -1,5 +1,6 @@
 package com.hitnscore.mobile.feature.shell
 
+import com.hitnscore.mobile.feature.scoring.ScoringRules
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -58,6 +59,12 @@ class ShellViewModel(
     private val sessionRepository: SessionRepository,
     private val api: HitNScoreApi,
     private val connectivity: ConnectivityMonitor,
+    /** True while queued points are being sent; when it finishes, Home reloads. */
+    private val syncing: StateFlow<Boolean>? = null,
+    /** A match this phone has already finished (even if its last points are still sending). */
+    private val finishedOnThisPhone: (String) -> Boolean = { false },
+    /** Changes to matches held on this phone, to re-check [finishedOnThisPhone]. */
+    private val localMatchChanges: kotlinx.coroutines.flow.Flow<*>? = null,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(ShellUiState(isOnline = connectivity.isOnline.value))
@@ -71,6 +78,25 @@ class ShellViewModel(
                 .map { (it as? SessionState.SignedIn)?.activeContext?.organizationId }
                 .distinctUntilChanged()
                 .collect { onOrganizationChanged(it) }
+        }
+        // A match finished on this phone is only complete on the server once its last points
+        // are sent, so reload as soon as sending finishes (it then leaves Active Matches).
+        // Finished matches leave Active Matches straight away, without waiting for the server.
+        localMatchChanges?.let { changes ->
+            viewModelScope.launch {
+                changes.collect {
+                    mutableState.update { state -> state.copy(dashboard = state.dashboard?.let(::withoutFinished)) }
+                }
+            }
+        }
+        syncing?.let { flow ->
+            viewModelScope.launch {
+                var wasSyncing = flow.value
+                flow.collect { now ->
+                    if (wasSyncing && !now) refreshQuietly()
+                    wasSyncing = now
+                }
+            }
         }
         viewModelScope.launch {
             connectivity.isOnline.collect { online ->
@@ -160,7 +186,7 @@ class ShellViewModel(
                 state.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    dashboard = (dashboard as? ApiResult.Success)?.value ?: state.dashboard,
+                    dashboard = ((dashboard as? ApiResult.Success)?.value ?: state.dashboard)?.let(::withoutFinished),
                     notifications = (notifications as? ApiResult.Success)?.value ?: state.notifications,
                     // Like iOS, connection problems show the offline indicator, not an error banner.
                     errorMessage = (dashboard as? ApiResult.Failure)?.error
@@ -171,11 +197,25 @@ class ShellViewModel(
         }
     }
 
+    private fun withoutFinished(dashboard: Dashboard): Dashboard {
+        val live = dashboard.activeMatches.filterNot { finishedOnThisPhone(it.matchId) }
+        return if (live.size == dashboard.activeMatches.size) dashboard else dashboard.copy(activeMatches = live)
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as HitNScoreApplication).container
-                ShellViewModel(container.sessionRepository, container.api, container.connectivity)
+                ShellViewModel(
+                    sessionRepository = container.sessionRepository,
+                    api = container.api,
+                    connectivity = container.connectivity,
+                    syncing = container.offlineMatchStore.isSyncing,
+                    finishedOnThisPhone = { id ->
+                        container.offlineMatchStore.projectedMatch(id, container.offlineOwner())?.let(ScoringRules::isComplete) == true
+                    },
+                    localMatchChanges = container.offlineMatchStore.snapshots,
+                )
             }
         }
     }

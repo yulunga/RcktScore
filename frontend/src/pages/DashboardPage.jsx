@@ -635,35 +635,54 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
 
   function renderScheduledMatchCard(match) {
     const personalActiveMatchBlocksStart = isPersonalAccount && activeMatches.length > 0;
+    const scheduledDateValue = match.scheduled_at || match.scheduled_for || match.created_at;
+    const scheduledDate = formatHistoryDate(scheduledDateValue);
+    const sportClass = String(match.sport || "squash").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const player1 = splitPlayerName(match.player1_name, match.player1_surname);
+    const player2 = splitPlayerName(match.player2_name, match.player2_surname);
     return (
-      <article className="dashboard-item dashboard-scheduled-card" key={match.id}>
-        <div className="dashboard-scheduled-card__top">
-          <span className="dashboard-scheduled-card__top-spacer" aria-hidden="true" />
-          <span className="dashboard-scheduled-card__status">
-            {personalActiveMatchBlocksStart ? "Finish active match first" : "Ready to start"}
-          </span>
+      <article
+        className={`dashboard-item dashboard-history-card dashboard-scheduled-compact-card dashboard-history-card--${sportClass}`}
+        key={match.id}
+      >
+        <div
+          className="dashboard-history-card__date-tile"
+          aria-label={`${scheduledDate.day} ${scheduledDate.month} at ${scheduledDate.time}`}
+        >
+          <strong>{scheduledDate.day}</strong>
+          <span>{scheduledDate.month}</span>
+          <small>{scheduledDate.time}</small>
         </div>
-
-        <div className="dashboard-scheduled-card__main">
-          <div className="dashboard-scheduled-card__player">
-            <strong>{splitPlayerName(match.player1_name, match.player1_surname).firstName}</strong>
-            <span>{splitPlayerName(match.player1_name, match.player1_surname).surname || "Player 1"}</span>
+        <span className="dashboard-history-card__sport">{formatSportName(match.sport)}</span>
+        <div className="dashboard-history-card__content dashboard-scheduled-compact-card__content">
+          <div className="dashboard-history-card__players">
+            <strong className="dashboard-history-card__player-name">
+              {player1.firstName} {player1.surname || "Player 1"}
+            </strong>
+            <span className="dashboard-history-card__versus">vs</span>
+            <strong className="dashboard-history-card__player-name">
+              {player2.firstName} {player2.surname || "Player 2"}
+            </strong>
           </div>
-
-          <div className="dashboard-scheduled-card__center">
-            {match.tournament_name ? <span className="status-pill status-pill--live">{match.tournament_name}</span> : null}
-            <span className="dashboard-scheduled-card__court-detail">
-              {match.court_alias || match.court_name || "Unassigned Court"}
+          <div className="dashboard-scheduled-compact-card__meta">
+            <span>{match.court_alias || match.court_name || "Unassigned Court"}</span>
+            <span className="dashboard-scheduled-compact-card__status">
+              {personalActiveMatchBlocksStart ? "Finish active match first" : "Ready to start"}
             </span>
+            {match.tournament_name ? <span className="status-pill status-pill--live">{match.tournament_name}</span> : null}
           </div>
-
-          <div className="dashboard-scheduled-card__player dashboard-scheduled-card__player--right">
-            <strong>{splitPlayerName(match.player2_name, match.player2_surname).firstName}</strong>
-            <span>{splitPlayerName(match.player2_name, match.player2_surname).surname || "Player 2"}</span>
-          </div>
-
-          {matchManagementEnabled ? <button
-            className="dashboard-scheduled-card__start"
+          <button
+            aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
+            aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
+            className="dashboard-scheduled-compact-card__details-toggle"
+            type="button"
+            onClick={() => toggleScheduledDetails(match.id)}
+          >
+            {expandedScheduledMatches[match.id] ? "Hide details" : "More details"}
+          </button>
+        </div>
+        {matchManagementEnabled ? <button
+            className="dashboard-scheduled-compact-card__start"
             disabled={personalActiveMatchBlocksStart}
             title={personalActiveMatchBlocksStart ? "End the current personal match before starting this one." : undefined}
             type="button"
@@ -671,22 +690,10 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
           >
             Start
           </button> : null}
-        </div>
-
-        <div className="dashboard-scheduled-card__footer">
-          <button
-            aria-expanded={expandedScheduledMatches[match.id] ? "true" : "false"}
-            aria-label={expandedScheduledMatches[match.id] ? "Hide match details" : "Show match details"}
-            className="dashboard-scheduled-card__details-toggle"
-            type="button"
-            onClick={() => toggleScheduledDetails(match.id)}
-          >
-            {expandedScheduledMatches[match.id] ? "Hide details" : "More details"}
-          </button>
-          {expandedScheduledMatches[match.id] ? (
-            <div className="dashboard-match-details dashboard-match-details--scheduled">
+        {expandedScheduledMatches[match.id] ? (
+            <div className="dashboard-match-details dashboard-match-details--scheduled dashboard-scheduled-compact-card__details">
               <span>{match.best_of ? `Match Format: Best of ${match.best_of}` : "Match Format: Not set"}</span>
-              <span>{`Scheduled: ${formatDate(match.created_at)}`}</span>
+              <span>{`Scheduled: ${formatDate(scheduledDateValue)}`}</span>
               <span>{match.score_type ? `Game Format: ${match.score_type}` : "Game Format: Not set"}</span>
               <span>{match.handicap_match ? "Handicap Match: Yes" : "Handicap Match: No"}</span>
               <span>{match.referee_name ? `Referee: ${match.referee_name}` : "Referee: Not set"}</span>
@@ -702,7 +709,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               </div> : null}
             </div>
           ) : null}
-        </div>
       </article>
     );
   }
@@ -929,20 +935,20 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               <div className="dashboard-empty">No scheduled matches right now.</div>
             ) : (
               <>
-                <div className="dashboard-list dashboard-list--desktop">
+                <div className="dashboard-list dashboard-list--desktop dashboard-list--scheduled">
                   {scheduledMatches.map((match) => renderScheduledMatchCard(match))}
                 </div>
                 {hasScheduledCarousel ? (
                 <div className="dashboard-carousel dashboard-carousel--mobile">
                   <div className="dashboard-carousel__page">
-                    <div className="dashboard-list">
+                    <div className="dashboard-list dashboard-list--scheduled">
                       {visibleScheduledPage.map((match) => renderScheduledMatchCard(match))}
                     </div>
                   </div>
                   {renderPagerDots(scheduledPages.length, scheduledPage, setScheduledPage, "Scheduled match pages")}
                 </div>
                 ) : (
-                  <div className="dashboard-list dashboard-carousel--mobile">
+                  <div className="dashboard-list dashboard-list--scheduled dashboard-carousel--mobile">
                     {scheduledMatches.map((match) => renderScheduledMatchCard(match))}
                   </div>
                 )}
