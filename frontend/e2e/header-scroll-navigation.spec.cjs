@@ -383,8 +383,6 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
     await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
     await page.getByRole("button", { name: "Close match selection" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await startMatch.click();
-    await expect(page.getByRole("dialog", { name: "Personal or Club Match" })).toBeVisible();
   } else {
     await page.evaluate(() => window.scrollTo(0, 0));
     const mobileNavigation = page.getByRole("navigation", { name: "Mobile navigation" });

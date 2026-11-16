@@ -238,6 +238,11 @@ Web and native iOS present the login response's existing `available_memberships`
 
 The public login logo and wordmark also link to the public landing homepage. This is client-only navigation and does not change authentication APIs.
 
+The desktop and phone-landscape dashboard now use the header `+` as their sole
+new-match entry point, and mutually exclusive desktop/mobile list presentation
+prevents the same dashboard match record from appearing twice. This is a web
+presentation correction and does not change the dashboard or match API.
+
 ### Root-admin routes
 
 - `GET /root_admin/dashboard`

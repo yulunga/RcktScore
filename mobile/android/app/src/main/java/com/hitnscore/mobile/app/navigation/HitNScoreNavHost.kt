@@ -237,11 +237,17 @@ fun ShellUiState.isPersonalPlus(session: SessionState.SignedIn): Boolean =
     planCode?.let { it == "personal_plus" } ?: (session.activeContext.plan == "Personal Plus")
 
 /** Standard bottom-navigation behaviour: one copy of each tab, state saved and restored. */
+/**
+ * A bottom-bar tab always opens at its top page. Saved tab stacks are not restored: with
+ * them, Home (the start page) brought back whatever was open above it, e.g. a match view
+ * opened after scoring, so tapping Home seemed to do nothing.
+ */
 fun NavHostController.navigateToTab(destination: AppDestination) {
+    val start = graph.findStartDestination()
+    if (start.route == destination.route && popBackStack(start.id, inclusive = false)) return
     navigate(destination.route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        popUpTo(start.id)
         launchSingleTop = true
-        restoreState = true
     }
 }
 
