@@ -65,6 +65,13 @@ data class MatchDetail(
     @SerialName("match_duration_seconds") val matchDurationSeconds: Int? = null,
     val state: MatchState? = null,
     @SerialName("scoring_access") val scoringAccess: MatchScoringAccess? = null,
+    // League Game: the fixture this match is for (as iOS).
+    @SerialName("association_competition_type") val associationCompetitionType: String? = null,
+    @SerialName("association_competition_name") val associationCompetitionName: String? = null,
+    @SerialName("association_division_name") val associationDivisionName: String? = null,
+    @SerialName("association_fixture_date") val associationFixtureDate: String? = null,
+    @SerialName("association_opposition") val associationOpposition: String? = null,
+    @SerialName("association_venue") val associationVenue: String? = null,
 )
 
 @Serializable

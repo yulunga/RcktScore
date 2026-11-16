@@ -63,9 +63,16 @@ enum class SettingsPage(val route: String, @StringRes val title: Int, val clubAd
     About("about", R.string.settings_about),
     Organisation("organisation", R.string.settings_organisation, clubAdminOnly = true),
     Users("users", R.string.settings_users, clubAdminOnly = true),
-    Courts("courts", R.string.settings_courts, clubAdminOnly = true),
+    /** Everyone sees the club's courts; only admins change them. */
+    Courts("courts", R.string.settings_courts),
+    /** The club's leagues and fixtures, read-only (everyone, as iOS). */
+    Leagues("leagues", R.string.settings_leagues),
+    /** Aggregate CSV report of club usage (admins, as iOS). */
+    Data("data", R.string.settings_data, clubAdminOnly = true),
     /** Ping Us and Guides from Settings (iOS Help & Feedback). */
     HelpFeedback("help-feedback", R.string.settings_help_feedback),
+    /** Privacy policy, opened from Help & Feedback (not in the menus). */
+    Privacy("privacy", R.string.privacy_title),
     /** One club from Association (not in the menus); its title is the club's name. */
     Club("club", R.string.settings_association),
     ;
@@ -107,7 +114,9 @@ fun SettingsScreen(
     val singleClubAdmin = singleClub != null && ClubRoles.normalize(singleClub.role) == ClubRoles.ADMIN
     val clubPages = when {
         clubs.isEmpty() -> emptyList()
-        singleClubAdmin -> listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.RacketSports)
+        singleClubAdmin -> listOf(SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.Leagues, SettingsPage.RacketSports, SettingsPage.Data)
+        // One club as a scorer or viewer: its profile, courts and leagues (read-only), as iOS.
+        singleClub != null -> listOf(SettingsPage.Organisation, SettingsPage.Courts, SettingsPage.Leagues)
         else -> listOf(SettingsPage.Association)
     }
 
@@ -149,14 +158,14 @@ fun SettingsScreen(
         }
         if (clubPages.isNotEmpty()) {
             item {
-                MenuSection(stringResource(R.string.settings_club), clubPages) { page ->
+                MenuSection(stringResource(R.string.settings_club), clubPages, onOpenPage = { page ->
                     if (page == SettingsPage.Association || singleClub == null) {
                         onOpenPage(page)
                     } else {
                         // Organisation opens the club page (profile, map, socials and the manage tiles).
                         onOpenClubPage(if (page == SettingsPage.Organisation) SettingsPage.Club else page, singleClub.organizationId)
                     }
-                }
+                })
             }
         }
         item { MenuSection(stringResource(R.string.settings_help_section), listOf(SettingsPage.HelpFeedback), onOpenPage) }
@@ -298,12 +307,20 @@ fun SettingsPageScreen(
                     ClubPage(target, onOpenPage = { p, org -> onOpenPage(p, org) })
                 }
                 SettingsPage.RacketSports, SettingsPage.GameSettings -> clubPage(page, target, canUseStrokeLetHelp = session.canUseStrokeLetHelp())
-                SettingsPage.HelpFeedback -> item(key = "help-feedback") { HelpFeedbackPage(session) }
+                SettingsPage.HelpFeedback -> item(key = "help-feedback") {
+                    HelpFeedbackPage(session, onOpenPrivacy = { onOpenPage(SettingsPage.Privacy, null) })
+                }
+                SettingsPage.Privacy -> item(key = "privacy") { PrivacyPage() }
                 SettingsPage.About -> {
                     item { InfoRow(stringResource(R.string.settings_version), AppEnvironment.versionName) }
                     item { InfoRow(stringResource(R.string.settings_environment), AppEnvironment.environmentName) }
                 }
-                SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts -> clubPage(page, target, session.username)
+                SettingsPage.Organisation, SettingsPage.Users, SettingsPage.Courts, SettingsPage.Leagues -> clubPage(page, target, session.username)
+                SettingsPage.Data -> if (target.type == AccountContextType.Club && ClubRoles.normalize(target.role) == ClubRoles.ADMIN) {
+                    item(key = "data-${target.organizationId}") { ClubDataPage(target.organizationId) }
+                } else {
+                    item { Note(stringResource(R.string.settings_admin_only)) }
+                }
             }
         }
     }
@@ -366,7 +383,8 @@ private fun LazyListScope.clubPage(
                         EditorCard { StrokeLetHelpSetting(allowed = canUseStrokeLetHelp) }
                     }
                     SettingsPage.Users -> UsersEditor(ui, viewModel, signedInUsername)
-                    SettingsPage.Courts -> CourtsEditor(ui, viewModel)
+                    SettingsPage.Courts -> CourtsEditor(ui, viewModel, canEdit = isAdmin)
+                    SettingsPage.Leagues -> LeaguesPage(ui)
                     else -> Unit
                 }
             }

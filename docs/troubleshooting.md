@@ -248,6 +248,14 @@ during normalization. If Home/Away disappears after saving, confirm the deployed
 normalizer retains `divisions[].fixtures[].venue` and that the full normalized
 competition list is returned by `GET /organization_settings/{organization_id}`.
 
+If a league is missing from web or iOS match setup, confirm its normalized entry has
+`match_setup_enabled: true` and contains at least one division fixture. Existing
+leagues default off intentionally. iOS hides the whole League Game switch when
+there are no enabled fixtures for the selected club, and Personal setup never
+shows it. Match creation rejects stale, disabled or
+cross-tenant fixture selections; deploy migration `063_match_league_fixture.sql`
+before the backend that persists the selected fixture snapshot.
+
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
 should therefore return `data.session` with all approved choices in
@@ -743,6 +751,7 @@ If behavior seems impossible:
   `scripts/migration-ledger-status.sql` to investigate later drift; the guarded
   baseline insert must not be rerun
 - confirm the expected migration actually exists in the target database
+- before applying `062_unique_club_courts.sql`, run `scripts/audit-duplicate-club-courts.sql`. No rows means existing sport-assigned courts are clean. Returned rows identify the club, canonical sport, conflicting number/name and court IDs; resolve those records deliberately before retrying the migration. The migration refuses to create its unique indexes while duplicates remain and never deletes or renames courts automatically
 - for offline iOS scoring, confirm migration `019_offline_scoring_support.sql` has added `org_user_sessions.expires_at` and `match_action_receipts`
 - if iPhone landscape scoring clips the score cards or places the timer/action dock over the opening-server prompt, confirm `MatchScoringView` is receiving compact vertical size class, that its phone-landscape score/header/rail dimensions are active, and that the dock is omitted while an opening-server, warm-up or interval overlay is visible. Run `RacketServiceSideTimelineUITests.testLandscapeScoringKeepsScoresAndControlsVisible` on an iPhone 16-class simulator; it verifies both score cards remain tappable above the timer control and retains a landscape screenshot in the result bundle
 - for Golden Point and final-set match-tiebreak options, confirm migration `021_tennis_scoring_formats.sql` has added both tennis format columns
@@ -769,6 +778,17 @@ Current workaround:
 cd frontend
 npm run build -- --outDir /tmp/rcktscore-frontend-dist
 ```
+
+## Apple Watch scoring
+
+If HitnScore is missing from Apple Watch, install the companion from the
+paired iPhone’s Watch app. Sign in to HitnScore on that iPhone with Personal
+Plus, open the live scoring screen and finish opening-serve setup. The iPhone
+needs internet access for the subscription check and must be reachable from
+the watch. For a club match, confirm that the selected member can score and
+holds the scorer lock when one is assigned. If a watch tap loses its
+connection, check the refreshed score before scoring again. Scoring actions
+enter the iPhone queue and sync from there.
 
 ## 9. Native iOS Issues
 

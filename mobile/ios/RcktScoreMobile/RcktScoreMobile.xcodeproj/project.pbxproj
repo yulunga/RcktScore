@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		347D28313050A6800007FAC9 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 347D28303050A67F0007FAC9 /* StoreKit.framework */; };
+		8849A84838440A6200000008 /* HitnScoreWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 8849A84838440A6200000002; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8849A84838440A620000000C /* WristScoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8849A84838440A620000000B; };
+		8849A84838440A6200000020 /* WristScoring.swift in Watch Sources */ = {isa = PBXBuildFile; fileRef = 8849A84838440A620000000B; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -18,13 +21,34 @@
 			remoteGlobalIDString = 347077DB2F756CF40099CAFA;
 			remoteInfo = RcktScoreMobile;
 		};
+		8849A84838440A6200000009 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 347077D42F756CF40099CAFA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8849A84838440A6200000001;
+			remoteInfo = HitnScoreWatch;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8849A84838440A6200000007 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (8849A84838440A6200000008 /* HitnScoreWatch.app in Embed Watch Content */, );
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RcktScoreMobileUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RcktScoreMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		347D28303050A67F0007FAC9 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		347D28323050A9C10007FAC9 /* HitnScore.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = HitnScore.storekit; path = RcktScoreMobile/HitnScore.storekit; sourceTree = "<group>"; };
+		8849A84838440A6200000002 /* HitnScoreWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HitnScoreWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8849A84838440A620000000B /* WristScoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WristScoring.swift; path = ../../watch/Shared/WristScoring.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -51,6 +75,12 @@
 			path = RcktScoreMobile;
 			sourceTree = "<group>";
 		};
+		8849A84838440A6200000003 /* Watch App Sources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = "Watch App Sources";
+			path = ../../watch/HitnScoreWatch;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +99,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8849A84838440A6200000006 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +114,9 @@
 				347D28323050A9C10007FAC9 /* HitnScore.storekit */,
 				343DE76B2FF9077800C5F143 /* RcktScoreMobileUITests */,
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
+				8849A84838440A6200000003,
+				8849A84838440A620000000B,
+				8849A84838440A6200000002,
 				343DE8442FFB9BC900C5F143 /* RcktScoreMobileUITests.xctest */,
 				347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */,
 				347D282F3050A67F0007FAC9 /* Frameworks */,
@@ -125,10 +164,12 @@
 				347077D82F756CF40099CAFA /* Sources */,
 				347077D92F756CF40099CAFA /* Frameworks */,
 				347077DA2F756CF40099CAFA /* Resources */,
+				8849A84838440A6200000007 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8849A84838440A620000000A,
 			);
 			fileSystemSynchronizedGroups = (
 				347077DE2F756CF40099CAFA /* RcktScoreMobile */,
@@ -138,6 +179,19 @@
 			);
 			productName = RcktScoreMobile;
 			productReference = 347D2733300FAB0D0007FAC9 /* RcktScoreMobile.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8849A84838440A6200000001 /* HitnScoreWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8849A84838440A620000000D;
+			buildPhases = (8849A84838440A6200000004, 8849A84838440A6200000006, 8849A84838440A6200000005, );
+			buildRules = ();
+			dependencies = ();
+			fileSystemSynchronizedGroups = (8849A84838440A6200000003, );
+			name = HitnScoreWatch;
+			packageProductDependencies = ();
+			productName = HitnScoreWatch;
+			productReference = 8849A84838440A6200000002;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -173,6 +227,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				8849A84838440A6200000001 /* HitnScoreWatch */,
 				347077DB2F756CF40099CAFA /* RcktScoreMobile */,
 				343DE7692FF9077800C5F143 /* RcktScoreMobileUITests */,
 			);
@@ -194,6 +249,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8849A84838440A6200000005 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -208,7 +269,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8849A84838440A620000000C,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8849A84838440A6200000004 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (8849A84838440A6200000020 /* WristScoring.swift in Watch Sources */, );
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -218,6 +286,11 @@
 			isa = PBXTargetDependency;
 			target = 347077DB2F756CF40099CAFA /* RcktScoreMobile */;
 			targetProxy = 343DE7702FF9077800C5F143 /* PBXContainerItemProxy */;
+		};
+		8849A84838440A620000000A = {
+			isa = PBXTargetDependency;
+			target = 8849A84838440A6200000001 /* HitnScoreWatch */;
+			targetProxy = 8849A84838440A6200000009;
 		};
 /* End PBXTargetDependency section */
 
@@ -477,6 +550,54 @@
 			};
 			name = Release;
 		};
+		8849A84838440A620000000E = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 65;
+				DEVELOPMENT_TEAM = 6GVCHR2885;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = HitnScore;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = rcktScore.RcktScoreMobile;
+				IPHONEOS_DEPLOYMENT_TARGET = "";
+				MARKETING_VERSION = 1.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = rcktScore.RcktScoreMobile.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Debug;
+		};
+		8849A84838440A620000000F = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 65;
+				DEVELOPMENT_TEAM = 6GVCHR2885;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = HitnScore;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = rcktScore.RcktScoreMobile;
+				IPHONEOS_DEPLOYMENT_TARGET = "";
+				MARKETING_VERSION = 1.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = rcktScore.RcktScoreMobile.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.6;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -504,6 +625,12 @@
 				347077E82F756CF60099CAFA /* Debug */,
 				347077E92F756CF60099CAFA /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8849A84838440A620000000D = {
+			isa = XCConfigurationList;
+			buildConfigurations = (8849A84838440A620000000E, 8849A84838440A620000000F, );
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};

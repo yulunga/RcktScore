@@ -103,11 +103,18 @@ function normalizePersonName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
+function formatLeagueFixtureDate(value) {
+  if (!value) return "Date not set";
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(`${value}T12:00:00`));
+}
+
 export default function NewMatch() {
   const { session } = useAuth();
   const [formState, setFormState] = useState(initialFormState);
   const [availableCourts, setAvailableCourts] = useState([]);
   const [activeMatches, setActiveMatches] = useState([]);
+  const [associationCompetitions, setAssociationCompetitions] = useState([]);
+  const [selectedAssociationFixtureId, setSelectedAssociationFixtureId] = useState("");
   const [courtLoading, setCourtLoading] = useState(true);
   const [courtError, setCourtError] = useState("");
   const [setupNotice, setSetupNotice] = useState("");
@@ -208,6 +215,33 @@ export default function NewMatch() {
   }, [activeCountryLookupField, playerCountryQueries]);
   const shouldScheduleMatch = requestedScheduledMatch || (!isPersonalAccount && Boolean(activeCourtMatch));
   const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
+  const enabledCompetitionGroups = useMemo(() => associationCompetitions
+    .filter((competition) => Boolean(competition?.match_setup_enabled))
+    .map((competition, competitionIndex) => {
+      const divisions = Array.isArray(competition.divisions) && competition.divisions.length
+        ? competition.divisions
+        : (Array.isArray(competition.fixtures) && competition.fixtures.length
+          ? [{ name: "General", fixtures: competition.fixtures }]
+          : []);
+      const fixtures = divisions.flatMap((division, divisionIndex) => (
+        (division.fixtures || []).map((fixture, fixtureIndex) => ({
+          id: `${competitionIndex}:${divisionIndex}:${fixtureIndex}`,
+          label: `${division.name} · ${formatLeagueFixtureDate(fixture.date)} · ${fixture.venue === "away" ? "Away at" : "Home vs"} ${fixture.opposition}`,
+          metadata: {
+            association_competition_type: competition.type || "league",
+            association_competition_name: competition.name,
+            association_division_name: division.name,
+            association_fixture_date: fixture.date,
+            association_opposition: fixture.opposition,
+            association_venue: fixture.venue === "away" ? "away" : "home",
+          },
+        }))
+      ));
+      return { id: `${competition.type || "league"}:${competition.name}`, name: competition.name, fixtures };
+    }), [associationCompetitions]);
+  const selectedAssociationFixture = useMemo(() => enabledCompetitionGroups
+    .flatMap((competition) => competition.fixtures)
+    .find((fixture) => fixture.id === selectedAssociationFixtureId), [enabledCompetitionGroups, selectedAssociationFixtureId]);
 
   useEffect(() => {
     if (!organizationId || !selectedSport) return undefined;
@@ -454,6 +488,8 @@ export default function NewMatch() {
         const nextOrganizationType = organizationSettings?.organization?.org_type || inferOrganizationType(session);
         const nextOrganizationPlan = organizationSettings?.organization?.plan || session?.plan || "";
         setAvailableCourts(courts);
+        setAssociationCompetitions(organizationSettings?.organization?.association_competitions || []);
+        setSelectedAssociationFixtureId("");
         setOrganizationType(nextOrganizationType);
         setOrganizationPlan(String(nextOrganizationPlan).toLowerCase());
         setFormState((current) => ({
@@ -911,6 +947,7 @@ export default function NewMatch() {
         && formState.best_of > 1
         && formState.tennis_final_set_match_tiebreak,
       tennis_timed_breaks: formState.tennis_timed_breaks,
+      ...(selectedAssociationFixture?.metadata || {}),
     });
     if (response?.match?.auto_scheduled && response?.match?.auto_schedule_reason) {
       setSetupNotice(response.match.auto_schedule_reason);
@@ -1261,6 +1298,25 @@ export default function NewMatch() {
                 ) : null}
               </div>
             ) : null}
+            </div>
+          ) : null}
+
+          {!isPersonalAccount && enabledCompetitionGroups.length > 0 ? (
+            <div className="match-setup-row match-setup-row--league">
+              <div className="field">
+                <label htmlFor="association_fixture">League / inter-club game</label>
+                <select id="association_fixture" value={selectedAssociationFixtureId} onChange={(event) => setSelectedAssociationFixtureId(event.target.value)}>
+                  <option value="">Not linked to a league game</option>
+                  {enabledCompetitionGroups.map((competition) => (
+                    <optgroup key={competition.id} label={competition.name}>
+                      {competition.fixtures.length > 0 ? competition.fixtures.map((fixture) => (
+                        <option key={fixture.id} value={fixture.id}>{fixture.label}</option>
+                      )) : <option disabled value={`${competition.id}:none`}>No games available</option>}
+                    </optgroup>
+                  ))}
+                </select>
+                <small className="field-hint">Only leagues enabled by a club administrator are shown.</small>
+              </div>
             </div>
           ) : null}
 

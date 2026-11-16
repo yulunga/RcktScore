@@ -211,6 +211,12 @@ extension UserSession {
         return organizationID >= 50_000
     }
 
+    var hasWristScoring: Bool {
+        guard !isExpired else { return false }
+        return plan?.lowercased() == "personal_plus"
+            || availableMemberships?.contains { $0.plan?.lowercased() == "personal_plus" } == true
+    }
+
     var planDisplayName: String {
         switch (plan ?? "").lowercased() {
         case "personal_plus":

@@ -13,6 +13,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.navArgument
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.AccountContextType
@@ -56,7 +58,7 @@ object ShellRoutes {
     fun watch(code: String) = "watch/${Uri.encode(code)}"
 
     /** Full-screen flows hide the bottom bar and the Start button. */
-    fun isFullScreen(route: String?) = route?.startsWith(NEW_MATCH) == true || route?.startsWith("score/") == true
+    fun isFullScreen(route: String?) = route?.startsWith("$NEW_MATCH/") == true || route?.startsWith("score/") == true
     /** A settings page; [organizationId] picks a club from Association (else the active account). */
     fun settingsPage(page: SettingsPage, organizationId: Int? = null) =
         "settings/${page.route}" + (organizationId?.let { "?org=$it" } ?: "")
@@ -127,7 +129,8 @@ fun HitNScoreTabNavHost(
         composable(AppDestination.Tournaments.route) {
             TournamentsScreen(currentSession, currentState, currentTournaments, currentActions)
         }
-        composable(ShellRoutes.NEW_MATCH) {
+        // Choose Racket Sport opens as a centred overlay over the current screen.
+        dialog(ShellRoutes.NEW_MATCH, dialogProperties = DialogProperties(usePlatformDefaultWidth = false)) {
             SportPickerScreen(
                 session = currentSession,
                 onContextSelected = { currentOnContextSelected(it) },

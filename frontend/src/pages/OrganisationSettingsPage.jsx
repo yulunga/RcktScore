@@ -497,7 +497,7 @@ export default function OrganisationSettingsPage() {
     event.preventDefault();
     const name = competitionDrafts[competitionType].trim();
     if (!name || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
-    const nextCompetition = { name, type: competitionType, divisions: [] };
+    const nextCompetition = { name, type: competitionType, match_setup_enabled: false, divisions: [] };
     const nextCompetitions = [...associationCompetitions, nextCompetition];
     const saved = await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
     if (saved) {
@@ -537,6 +537,20 @@ export default function OrganisationSettingsPage() {
       setCompetitionDeleteConfirmation("");
       setExpandedCompetition("");
     }
+  }
+
+  async function handleCompetitionSetupToggle(competition) {
+    const key = competitionKey(competition);
+    const enabled = !Boolean(competition.match_setup_enabled);
+    const nextCompetitions = associationCompetitions.map((item) => (
+      competitionKey(item) === key ? { ...item, match_setup_enabled: enabled } : item
+    ));
+    setAssociationCompetitions(nextCompetitions);
+    const saved = await saveAssociationCompetitions(
+      nextCompetitions,
+      enabled ? "League enabled for match setup." : "League hidden from match setup.",
+    );
+    if (!saved) setAssociationCompetitions(associationCompetitions);
   }
 
   async function handleDivisionAdd(event, competition) {
@@ -1250,6 +1264,22 @@ export default function OrganisationSettingsPage() {
                                 </div>
                                 {competitionOpen ? (
                                   <div className="settings-league-card__fixtures stack compact">
+                                    <label className="match-option-switch" htmlFor={`${domKey}-match-setup-enabled`}>
+                                      <span className="match-option-switch__copy">
+                                        <strong>Available in match setup</strong>
+                                        <small>Show this league to scorers setting up a club match.</small>
+                                      </span>
+                                      <span className="match-option-switch__control">
+                                        <input
+                                          checked={Boolean(competition.match_setup_enabled)}
+                                          disabled={savingSection === "association-competitions"}
+                                          id={`${domKey}-match-setup-enabled`}
+                                          type="checkbox"
+                                          onChange={() => handleCompetitionSetupToggle(competition)}
+                                        />
+                                        <span className="match-option-switch__track" aria-hidden="true"><span /></span>
+                                      </span>
+                                    </label>
                                     {editingCompetition === key ? (
                                       <form className="settings-league-rename-form" onSubmit={(event) => handleCompetitionRename(event, competition)}>
                                         <div className="field">
@@ -1257,7 +1287,7 @@ export default function OrganisationSettingsPage() {
                                           <input id={`${domKey}-rename`} value={competitionRenameDrafts[key] || ""} onChange={(event) => setCompetitionRenameDrafts((current) => ({ ...current, [key]: event.target.value }))} />
                                         </div>
                                         <button className="settings-form-action" disabled={!String(competitionRenameDrafts[key] || "").trim() || savingSection === "association-competitions"} type="submit">Save Name</button>
-                                        <button className="secondary" type="button" onClick={() => setEditingCompetition("")}>Cancel</button>
+                                        <button className="settings-form-action settings-form-action--secondary" type="button" onClick={() => setEditingCompetition("")}>Cancel</button>
                                       </form>
                                     ) : null}
                                     <div className="settings-league-divisions stack compact">
@@ -1334,12 +1364,12 @@ export default function OrganisationSettingsPage() {
                                                         <input id={`${divisionDomKey}-rename`} value={divisionRenameDrafts[currentDivisionKey] || ""} onChange={(event) => setDivisionRenameDrafts((current) => ({ ...current, [currentDivisionKey]: event.target.value }))} />
                                                       </div>
                                                       <button className="settings-form-action" disabled={!String(divisionRenameDrafts[currentDivisionKey] || "").trim() || savingSection === "association-competitions"} type="submit">Save Division</button>
-                                                      <button className="secondary" type="button" onClick={() => setEditingDivision("")}>Cancel</button>
+                                                      <button className="settings-form-action settings-form-action--secondary" type="button" onClick={() => setEditingDivision("")}>Cancel</button>
                                                     </form>
                                                   ) : null}
                                                   <div className="settings-division-link-row">
                                                     <span className="helper-text">{division.url ? "External tables or fixtures link saved." : "Add an optional external link for tables or fixtures."}</span>
-                                                    <button className="text-button" type="button" onClick={() => {
+                                                    <button className="settings-inline-action-button" type="button" onClick={() => {
                                                       setEditingDivisionLink(linkEditorOpen ? "" : currentDivisionKey);
                                                       setDivisionLinkDrafts((current) => ({ ...current, [currentDivisionKey]: division.url || "" }));
                                                     }}>{linkEditorOpen ? "Close link editor" : division.url ? "Edit division link" : "Add division link"}</button>

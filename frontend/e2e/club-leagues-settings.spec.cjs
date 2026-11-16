@@ -141,6 +141,10 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await expect(page.getByLabel("Division name")).toHaveCount(0);
   await leagueHeader.click();
   await expect(leagueHeader).toHaveAttribute("aria-expanded", "true");
+  const matchSetupToggle = page.getByLabel("Available in match setup");
+  await expect(matchSetupToggle).not.toBeChecked();
+  await matchSetupToggle.check();
+  await expect(matchSetupToggle).toBeChecked();
   await expect(page.getByRole("button", { name: "Add division to County League" })).toBeVisible();
   await page.getByRole("button", { name: "Add division to County League" }).click();
   await page.getByLabel("Division name").fill("Division 1");
@@ -169,6 +173,7 @@ test("club admins choose a managed club and assign league fixtures @club-setting
     {
       name: "County League",
       type: "league",
+      match_setup_enabled: true,
       divisions: [{
         name: "Premier Division",
         url: "https://league.example.com/division-1",

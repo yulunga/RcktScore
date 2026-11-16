@@ -3086,6 +3086,10 @@ textarea {
   align-items: end;
 }
 
+.match-setup-row--league {
+  grid-template-columns: minmax(0, 454px);
+}
+
 .match-setup-row--referee {
   grid-template-columns: minmax(0, 454px) auto;
 }
@@ -8669,6 +8673,31 @@ textarea {
 
 .settings-form-action:hover:not(:disabled) {
   background: #075da9;
+}
+
+.settings-form-action.settings-form-action--secondary {
+  border-color: #7f97ad;
+  background: #4d6f8d;
+  color: #fff;
+}
+
+.settings-form-action.settings-form-action--secondary:hover:not(:disabled) {
+  background: #3f5f7b;
+}
+
+.settings-inline-action-button {
+  min-height: 38px;
+  padding: 7px 14px;
+  border: 1px solid #7f97ad;
+  border-radius: 999px;
+  background: #4d6f8d;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.settings-inline-action-button:hover:not(:disabled) {
+  background: #3f5f7b;
 }
 
 .settings-form-action:disabled {

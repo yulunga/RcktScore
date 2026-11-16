@@ -35,6 +35,38 @@ data class OrganizationProfile(
     /** Facebook, Instagram, X, YouTube links (empty until the backend stores them). */
     @SerialName("social_profiles") val socialProfiles: Map<String, String> = emptyMap(),
     val features: OrganizationFeatures = OrganizationFeatures(),
+    /** Club and inter-club leagues with divisions and fixtures (read-only in the apps). */
+    @SerialName("association_competitions") val associationCompetitions: List<AssociationCompetition> = emptyList(),
+)
+
+/** As iOS `AssociationCompetition`: `type` is `league` or `interclub`. */
+@Serializable
+data class AssociationCompetition(
+    val name: String = "",
+    val type: String = "league",
+    val divisions: List<AssociationCompetitionDivision> = emptyList(),
+    /** Older records list fixtures without divisions. */
+    val fixtures: List<AssociationCompetitionFixture> = emptyList(),
+    /** Its games can be picked in match setup (League Game). */
+    @SerialName("match_setup_enabled") val matchSetupEnabled: Boolean = false,
+) {
+    /** Divisions, with legacy fixtures shown as one "General" division (as iOS). */
+    val allDivisions: List<AssociationCompetitionDivision>
+        get() = if (divisions.isEmpty() && fixtures.isNotEmpty()) listOf(AssociationCompetitionDivision("General", null, fixtures)) else divisions
+}
+
+@Serializable
+data class AssociationCompetitionDivision(
+    val name: String = "",
+    val url: String? = null,
+    val fixtures: List<AssociationCompetitionFixture> = emptyList(),
+)
+
+@Serializable
+data class AssociationCompetitionFixture(
+    val date: String = "",
+    val opposition: String = "",
+    val venue: String = "",
 )
 
 @Serializable

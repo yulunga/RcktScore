@@ -2,6 +2,9 @@ package com.hitnscore.mobile.feature.newmatch
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -59,7 +62,7 @@ import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.data.model.MatchFormatting
 import com.hitnscore.mobile.data.model.PlayerLookup
 import com.hitnscore.mobile.feature.scoring.Choice
-import com.hitnscore.mobile.feature.scoring.ShirtPicker
+import com.hitnscore.mobile.feature.scoring.ShirtSwatchPicker
 
 /** Match setup for all four sports, as iOS `StartNewMatchView`. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -292,24 +295,28 @@ private fun PlayerCard(
     /** Country and handedness are squash/racketball details; tennis and Padel hide them. */
     showDetails: Boolean = true,
 ) {
-    FormCard(title) {
+    // As iOS: the shirt colour is the swatch beside the heading; names share a row, and
+    // country shares a row with Lefty, so the whole setup fits on fewer screens.
+    FormCard(title, trailing = { ShirtSwatchPicker(shirt, stringResource(R.string.setup_shirt), onShirt) }) {
         val nameOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next)
-        OutlinedTextField(
-            value = firstName,
-            onValueChange = onFirstName,
-            label = { Text(stringResource(R.string.setup_first_name)) },
-            singleLine = true,
-            keyboardOptions = nameOptions,
-            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocus(it.isFocused) },
-        )
-        OutlinedTextField(
-            value = surname,
-            onValueChange = onSurname,
-            label = { Text(stringResource(R.string.setup_surname)) },
-            singleLine = true,
-            keyboardOptions = nameOptions,
-            modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) onFocus(true) },
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = firstName,
+                onValueChange = onFirstName,
+                label = { Text(stringResource(R.string.setup_first_name_required)) },
+                singleLine = true,
+                keyboardOptions = nameOptions,
+                modifier = Modifier.weight(1f).onFocusChanged { onFocus(it.isFocused) },
+            )
+            OutlinedTextField(
+                value = surname,
+                onValueChange = onSurname,
+                label = { Text(stringResource(R.string.setup_surname)) },
+                singleLine = true,
+                keyboardOptions = nameOptions,
+                modifier = Modifier.weight(1f).onFocusChanged { if (it.isFocused) onFocus(true) },
+            )
+        }
         suggestions.forEach { suggestion ->
             Surface(
                 onClick = { onSuggestion(suggestion) },
@@ -321,17 +328,24 @@ private fun PlayerCard(
             }
         }
         if (showDetails) {
-            OutlinedTextField(
-                value = country,
-                onValueChange = onCountry,
-                label = { Text(stringResource(R.string.setup_country)) },
-                singleLine = true,
-                keyboardOptions = nameOptions,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            SwitchRow(stringResource(R.string.setup_left_handed), null, leftHanded, onChange = onLeftHanded)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = country,
+                    onValueChange = onCountry,
+                    label = { Text(stringResource(R.string.setup_country_short)) },
+                    singleLine = true,
+                    keyboardOptions = nameOptions,
+                    modifier = Modifier.weight(1f),
+                )
+                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)) {
+                    Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.setup_lefty), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(8.dp))
+                        Switch(checked = leftHanded, onCheckedChange = onLeftHanded)
+                    }
+                }
+            }
         }
-        ShirtPicker(stringResource(R.string.setup_shirt), shirt, onShirt)
     }
 }
 
@@ -395,23 +409,28 @@ private fun TeamCard(title: String, first: PlayerFields, second: PlayerFields, s
         listOf(first, second).forEach { player ->
             val nameOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next)
             val heading = listOf(player.firstName.trim(), player.surname.trim()).filter { it.isNotEmpty() }.joinToString(" ")
-            Text(heading.ifEmpty { stringResource(R.string.setup_player_n, player.number) }, style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
-                value = player.firstName,
-                onValueChange = { v -> viewModel.update { it.withPlayer(player.number, firstName = v) } },
-                label = { Text(stringResource(R.string.setup_first_name)) },
-                singleLine = true,
-                keyboardOptions = nameOptions,
-                modifier = Modifier.fillMaxWidth().onFocusChanged { viewModel.focus(player.target, it.isFocused) },
-            )
-            OutlinedTextField(
-                value = player.surname,
-                onValueChange = { v -> viewModel.update { it.withPlayer(player.number, surname = v) } },
-                label = { Text(stringResource(R.string.setup_surname)) },
-                singleLine = true,
-                keyboardOptions = nameOptions,
-                modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) viewModel.focus(player.target, true) },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(heading.ifEmpty { stringResource(R.string.setup_player_n, player.number) }, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                ShirtSwatchPicker(player.shirt, stringResource(R.string.setup_shirt)) { v -> viewModel.update { it.withPlayer(player.number, shirt = v) } }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = player.firstName,
+                    onValueChange = { v -> viewModel.update { it.withPlayer(player.number, firstName = v) } },
+                    label = { Text(stringResource(R.string.setup_first_name_required)) },
+                    singleLine = true,
+                    keyboardOptions = nameOptions,
+                    modifier = Modifier.weight(1f).onFocusChanged { viewModel.focus(player.target, it.isFocused) },
+                )
+                OutlinedTextField(
+                    value = player.surname,
+                    onValueChange = { v -> viewModel.update { it.withPlayer(player.number, surname = v) } },
+                    label = { Text(stringResource(R.string.setup_surname)) },
+                    singleLine = true,
+                    keyboardOptions = nameOptions,
+                    modifier = Modifier.weight(1f).onFocusChanged { if (it.isFocused) viewModel.focus(player.target, true) },
+                )
+            }
             if (state.lookupTarget == player.target) {
                 state.playerSuggestions.forEach { suggestion ->
                     Surface(
@@ -424,7 +443,6 @@ private fun TeamCard(title: String, first: PlayerFields, second: PlayerFields, s
                     }
                 }
             }
-            ShirtPicker(stringResource(R.string.setup_shirt), player.shirt) { v -> viewModel.update { it.withPlayer(player.number, shirt = v) } }
         }
     }
 }
@@ -474,7 +492,7 @@ private fun BandPicker(player: String, band: String, offset: Int, modifier: Modi
 }
 
 @Composable
-private fun FormCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun FormCard(title: String, trailing: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = HitNScoreTheme.colors.card,
@@ -482,7 +500,10 @@ private fun FormCard(title: String, content: @Composable ColumnScope.() -> Unit)
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp).widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                trailing?.invoke()
+            }
             content()
         }
     }

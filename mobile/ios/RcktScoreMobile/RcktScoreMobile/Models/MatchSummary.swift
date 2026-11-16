@@ -78,6 +78,12 @@ struct MatchDetail: Codable, Identifiable {
     let player2Handedness: String?
     let player2ShirtColor: String?
     let refereeName: String?
+    let associationCompetitionType: String?
+    let associationCompetitionName: String?
+    let associationDivisionName: String?
+    let associationFixtureDate: String?
+    let associationOpposition: String?
+    let associationVenue: String?
     let scoreType: Int
     let bestOf: Int
     let handicapEnabled: Bool
@@ -110,6 +116,12 @@ struct MatchDetail: Codable, Identifiable {
         case player2Handedness = "player2_handedness"
         case player2ShirtColor = "player2_shirt_color"
         case refereeName = "referee_name"
+        case associationCompetitionType = "association_competition_type"
+        case associationCompetitionName = "association_competition_name"
+        case associationDivisionName = "association_division_name"
+        case associationFixtureDate = "association_fixture_date"
+        case associationOpposition = "association_opposition"
+        case associationVenue = "association_venue"
         case scoreType = "score_type"
         case bestOf = "best_of"
         case handicapEnabled = "handicap_enabled"

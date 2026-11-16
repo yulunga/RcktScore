@@ -188,6 +188,8 @@ private struct MatchSetupFormState {
     var tennisNoAdScoring = false
     var tennisFinalSetMatchTiebreak = false
     var tennisTimedBreaks = false
+    var leagueGameEnabled = false
+    var selectedLeagueFixtureID = ""
 
     var player1LookupQuery: String {
         [player1Name, player1Surname]
@@ -218,6 +220,40 @@ private struct MatchSetupFormState {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct LeagueFixtureOption: Identifiable, Hashable {
+    let competitionType: String
+    let competitionName: String
+    let divisionName: String
+    let fixture: AssociationCompetitionFixture
+
+    var id: String {
+        [
+            competitionType.lowercased(),
+            competitionName.lowercased(),
+            divisionName.lowercased(),
+            fixture.id
+        ].joined(separator: ":")
+    }
+
+    var heading: String { "\(competitionName) · \(divisionName)" }
+
+    var detail: String {
+        "\(Self.displayDate(fixture.date)) · \(fixture.venue.capitalized) vs \(fixture.opposition)"
+    }
+
+    private static func displayDate(_ value: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: value) else { return value }
+
+        let display = DateFormatter()
+        display.locale = .current
+        display.dateFormat = "d MMM yyyy"
+        return display.string(from: date)
     }
 }
 
@@ -687,6 +723,7 @@ struct StartNewMatchView: View {
     @State private var loadedOrganizationType: String?
     @State private var loadedEnabledSports: [String] = []
     @State private var loadedTimedBreakDefaults: [String: Bool] = [:]
+    @State private var availableLeagueFixtures: [LeagueFixtureOption] = []
     @State private var isLoading = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
@@ -771,6 +808,14 @@ struct StartNewMatchView: View {
         availableCourts.first(where: { String($0.id) == formState.courtID })
     }
 
+    private var selectedLeagueFixture: LeagueFixtureOption? {
+        availableLeagueFixtures.first { $0.id == formState.selectedLeagueFixtureID }
+    }
+
+    private var showsLeagueGameSelection: Bool {
+        !isPersonalAccount && !availableLeagueFixtures.isEmpty
+    }
+
     private var activeCourtMatch: MatchSummary? {
         activeMatches.first(where: { ($0.courtName ?? "") == formState.courtName })
     }
@@ -790,7 +835,8 @@ struct StartNewMatchView: View {
             )
         let hasCourt = isPersonalAccount || (!formState.courtID.isEmpty && !formState.courtName.isEmpty)
         let hasBands = !formState.handicapEnabled || (!formState.player1Band.isEmpty && !formState.player2Band.isEmpty)
-        return hasPrimaryPlayers && hasDoublesPlayers && hasCourt && hasBands && !refereeConflict
+        let hasLeagueFixture = !formState.leagueGameEnabled || selectedLeagueFixture != nil
+        return hasPrimaryPlayers && hasDoublesPlayers && hasCourt && hasBands && hasLeagueFixture && !refereeConflict
             && personalActiveMatch == nil && enabledSportIDs.contains(selectedSport.rawValue)
     }
 
@@ -884,6 +930,10 @@ struct StartNewMatchView: View {
                 }
 
                 formatCard
+
+                if showsLeagueGameSelection {
+                    leagueGameCard
+                }
 
                 if !isPersonalAccount {
                     refereeCard
@@ -1233,6 +1283,59 @@ struct StartNewMatchView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private var leagueGameCard: some View {
+        cardSection(title: "League Game") {
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: Binding(
+                    get: { formState.leagueGameEnabled },
+                    set: { enabled in
+                        formState.leagueGameEnabled = enabled
+                        if enabled && selectedLeagueFixture == nil {
+                            formState.selectedLeagueFixtureID = availableLeagueFixtures.first?.id ?? ""
+                        }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Link this match to a league game")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Select from the games configured for this club.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(Color.dashboardBrand)
+                .accessibilityIdentifier("startMatch.leagueGameToggle")
+
+                if formState.leagueGameEnabled {
+                    Picker("League game", selection: $formState.selectedLeagueFixtureID) {
+                        ForEach(availableLeagueFixtures) { option in
+                            Text("\(option.heading) · \(option.detail)")
+                                .tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.dashboardInnerCardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .accessibilityIdentifier("startMatch.leagueGamePicker")
+
+                    if let selectedLeagueFixture {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(selectedLeagueFixture.heading)
+                                .font(.subheadline.weight(.semibold))
+                            Text(selectedLeagueFixture.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }
@@ -1745,6 +1848,15 @@ struct StartNewMatchView: View {
                 }
                 loadedOrganizationType = settings.organization.organizationType
                 loadedTimedBreakDefaults = settings.organization.timedBreakDefaults
+                availableLeagueFixtures = leagueFixtureOptions(
+                    from: settings.organization.associationCompetitions
+                )
+                if availableLeagueFixtures.isEmpty {
+                    formState.leagueGameEnabled = false
+                    formState.selectedLeagueFixtureID = ""
+                } else if !availableLeagueFixtures.contains(where: { $0.id == formState.selectedLeagueFixtureID }) {
+                    formState.selectedLeagueFixtureID = availableLeagueFixtures[0].id
+                }
                 let sessionSports = Set(session?.normalizedEnabledSports ?? [])
                 loadedEnabledSports = settings.organization.enabledSports.filter {
                     sessionSports.contains($0.lowercased())
@@ -1794,6 +1906,32 @@ struct StartNewMatchView: View {
             formState.courtID = String(firstCourt.id)
             formState.courtName = firstCourt.courtName
             formState.courtAlias = firstCourt.courtAlias
+        }
+    }
+
+    private func leagueFixtureOptions(
+        from competitions: [AssociationCompetition]
+    ) -> [LeagueFixtureOption] {
+        competitions.filter(\.matchSetupEnabled).flatMap { competition in
+            competition.divisions.flatMap { division in
+                division.fixtures.map { fixture in
+                    LeagueFixtureOption(
+                        competitionType: competition.type,
+                        competitionName: competition.name,
+                        divisionName: division.name,
+                        fixture: fixture
+                    )
+                }
+            }
+        }
+        .sorted {
+            if $0.fixture.date != $1.fixture.date {
+                return $0.fixture.date < $1.fixture.date
+            }
+            if $0.competitionName != $1.competitionName {
+                return $0.competitionName.localizedCaseInsensitiveCompare($1.competitionName) == .orderedAscending
+            }
+            return $0.divisionName.localizedCaseInsensitiveCompare($1.divisionName) == .orderedAscending
         }
     }
 
@@ -2007,7 +2145,13 @@ struct StartNewMatchView: View {
             team2Player2ShirtColor: (isTennisMatch && formState.isDoubles) ? formState.doublesPlayer4ShirtColor : nil,
             tennisNoAdScoring: formState.tennisNoAdScoring,
             tennisFinalSetMatchTiebreak: isTennisMatch && formState.tennisFinalSetMatchTiebreak && formState.bestOf > 1,
-            tennisTimedBreaks: formState.tennisTimedBreaks
+            tennisTimedBreaks: formState.tennisTimedBreaks,
+            associationCompetitionType: formState.leagueGameEnabled ? selectedLeagueFixture?.competitionType : nil,
+            associationCompetitionName: formState.leagueGameEnabled ? selectedLeagueFixture?.competitionName : nil,
+            associationDivisionName: formState.leagueGameEnabled ? selectedLeagueFixture?.divisionName : nil,
+            associationFixtureDate: formState.leagueGameEnabled ? selectedLeagueFixture?.fixture.date : nil,
+            associationOpposition: formState.leagueGameEnabled ? selectedLeagueFixture?.fixture.opposition : nil,
+            associationVenue: formState.leagueGameEnabled ? selectedLeagueFixture?.fixture.venue : nil
         )
 
         do {

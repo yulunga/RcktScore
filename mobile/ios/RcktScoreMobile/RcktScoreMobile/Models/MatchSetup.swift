@@ -83,18 +83,21 @@ struct OrganizationProfile: Decodable {
 struct AssociationCompetition: Decodable, Identifiable, Hashable {
     let name: String
     let type: String
+    let matchSetupEnabled: Bool
     let divisions: [AssociationCompetitionDivision]
 
     var id: String { "\(type.lowercased()):\(name.lowercased())" }
 
     enum CodingKeys: String, CodingKey {
         case name, type, divisions, fixtures
+        case matchSetupEnabled = "match_setup_enabled"
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         type = try container.decodeIfPresent(String.self, forKey: .type) ?? "league"
+        matchSetupEnabled = try container.decodeIfPresent(Bool.self, forKey: .matchSetupEnabled) ?? false
         let decodedDivisions = try container.decodeIfPresent([AssociationCompetitionDivision].self, forKey: .divisions) ?? []
         if decodedDivisions.isEmpty,
            let legacyFixtures = try container.decodeIfPresent([AssociationCompetitionFixture].self, forKey: .fixtures),
@@ -326,6 +329,12 @@ struct CreateMatchRequest: Encodable {
     let tennisNoAdScoring: Bool
     let tennisFinalSetMatchTiebreak: Bool
     let tennisTimedBreaks: Bool
+    let associationCompetitionType: String?
+    let associationCompetitionName: String?
+    let associationDivisionName: String?
+    let associationFixtureDate: String?
+    let associationOpposition: String?
+    let associationVenue: String?
 
     enum CodingKeys: String, CodingKey {
         case tenantID = "tenant_id"
@@ -368,6 +377,12 @@ struct CreateMatchRequest: Encodable {
         case tennisNoAdScoring = "tennis_no_ad_scoring"
         case tennisFinalSetMatchTiebreak = "tennis_final_set_match_tiebreak"
         case tennisTimedBreaks = "tennis_timed_breaks"
+        case associationCompetitionType = "association_competition_type"
+        case associationCompetitionName = "association_competition_name"
+        case associationDivisionName = "association_division_name"
+        case associationFixtureDate = "association_fixture_date"
+        case associationOpposition = "association_opposition"
+        case associationVenue = "association_venue"
     }
 }
 

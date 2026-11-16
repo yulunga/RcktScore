@@ -35,10 +35,94 @@ STALE_ACTIVITY_EVENT_TYPES = (
     "serve_side",
 )
 UNDOABLE_SCORING_EVENT_TYPES = ("score_point", "stroke")
+ASSOCIATION_FIXTURE_FIELDS = (
+    "association_competition_type",
+    "association_competition_name",
+    "association_division_name",
+    "association_fixture_date",
+    "association_opposition",
+    "association_venue",
+)
 
 
 def _utcnow():
     return datetime.now(timezone.utc)
+
+
+def _association_fixture_metadata(connection, tenant_id, payload, is_personal_tenant):
+    requested_values = {
+        field: str(payload.get(field) or "").strip()
+        for field in ASSOCIATION_FIXTURE_FIELDS
+    }
+    if not any(requested_values.values()):
+        return {field: None for field in ASSOCIATION_FIXTURE_FIELDS}
+    if is_personal_tenant:
+        raise ValueError("League games can only be linked to club matches")
+    if not all(requested_values.values()):
+        raise ValueError("The selected league game is incomplete")
+
+    requested_type = requested_values["association_competition_type"].lower()
+    requested_venue = requested_values["association_venue"].lower()
+    if requested_type not in {"league", "interclub"} or requested_venue not in {"home", "away"}:
+        raise ValueError("The selected league game is invalid")
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT association_competitions
+            FROM "SkwshOrgSettings"
+            WHERE id = %(tenant_id)s
+            """,
+            {"tenant_id": int(tenant_id)},
+        )
+        organization = cursor.fetchone()
+
+    competitions = (organization or {}).get("association_competitions") or []
+    for competition in competitions if isinstance(competitions, list) else []:
+        if not isinstance(competition, dict):
+            continue
+        if not bool(competition.get("match_setup_enabled", False)):
+            continue
+        competition_type = str(competition.get("type") or "league").strip().lower()
+        competition_name = str(competition.get("name") or "").strip()
+        if (
+            competition_type != requested_type
+            or competition_name.casefold()
+            != requested_values["association_competition_name"].casefold()
+        ):
+            continue
+
+        divisions = competition.get("divisions") if isinstance(competition.get("divisions"), list) else []
+        if not divisions and isinstance(competition.get("fixtures"), list):
+            divisions = [{"name": "General", "fixtures": competition.get("fixtures")}]
+        for division in divisions:
+            if not isinstance(division, dict):
+                continue
+            division_name = str(division.get("name") or "").strip()
+            if division_name.casefold() != requested_values["association_division_name"].casefold():
+                continue
+            fixtures = division.get("fixtures") if isinstance(division.get("fixtures"), list) else []
+            for fixture in fixtures:
+                if not isinstance(fixture, dict):
+                    continue
+                fixture_date = str(fixture.get("date") or "").strip()
+                opposition = str(fixture.get("opposition") or "").strip()
+                venue = str(fixture.get("venue") or fixture.get("home_away") or "home").strip().lower()
+                if (
+                    fixture_date == requested_values["association_fixture_date"]
+                    and opposition.casefold() == requested_values["association_opposition"].casefold()
+                    and venue == requested_venue
+                ):
+                    return {
+                        "association_competition_type": competition_type,
+                        "association_competition_name": competition_name,
+                        "association_division_name": division_name,
+                        "association_fixture_date": fixture_date,
+                        "association_opposition": opposition,
+                        "association_venue": venue,
+                    }
+
+    raise ValueError("The selected league game is no longer available for this club")
 
 
 def _compensate_latest_undoable_event(
@@ -550,6 +634,16 @@ def _serialize_match(match_row, event_rows):
             DEFAULT_PLAYER_SHIRT_COLORS["player2"],
         ),
         "referee_name": match_row.get("referee_name"),
+        "association_competition_type": match_row.get("association_competition_type"),
+        "association_competition_name": match_row.get("association_competition_name"),
+        "association_division_name": match_row.get("association_division_name"),
+        "association_fixture_date": (
+            match_row["association_fixture_date"].isoformat()
+            if match_row.get("association_fixture_date")
+            else None
+        ),
+        "association_opposition": match_row.get("association_opposition"),
+        "association_venue": match_row.get("association_venue"),
         "score_type": match_row["score_type"],
         "best_of": best_of,
         "games_to_win": _coerce_int(match_row.get("games_to_win"), _games_to_win(best_of)),
@@ -904,6 +998,13 @@ def create_match(connection, payload, source="api"):
             "referee_name": None,
         })
 
+    association_fixture = _association_fixture_metadata(
+        connection,
+        tenant_id,
+        match_payload,
+        is_personal_tenant,
+    )
+
     best_of = _best_of_value(payload.get("best_of", 1))
     games_to_win = _games_to_win(best_of)
     conflicting_match = None
@@ -952,6 +1053,12 @@ def create_match(connection, payload, source="api"):
                 tennis_no_ad_scoring,
                 tennis_timed_breaks,
                 referee_name,
+                association_competition_type,
+                association_competition_name,
+                association_division_name,
+                association_fixture_date,
+                association_opposition,
+                association_venue,
                 score_type,
                 best_of,
                 games_to_win,
@@ -994,6 +1101,12 @@ def create_match(connection, payload, source="api"):
                 %(tennis_no_ad_scoring)s,
                 %(tennis_timed_breaks)s,
                 %(referee_name)s,
+                %(association_competition_type)s,
+                %(association_competition_name)s,
+                %(association_division_name)s,
+                %(association_fixture_date)s,
+                %(association_opposition)s,
+                %(association_venue)s,
                 %(score_type)s,
                 %(best_of)s,
                 %(games_to_win)s,
@@ -1037,6 +1150,7 @@ def create_match(connection, payload, source="api"):
                 "tennis_no_ad_scoring": bool(match_payload.get("tennis_no_ad_scoring")),
                 "tennis_timed_breaks": bool(match_payload.get("tennis_timed_breaks")),
                 "referee_name": match_payload.get("referee_name"),
+                **association_fixture,
                 "score_type": int(match_payload.get("score_type", 15)),
                 "best_of": best_of,
                 "games_to_win": games_to_win,

@@ -222,6 +222,24 @@ struct HistoricMatchView: View {
                 historicInfoRow(title: "Date", value: matchStartDate(match))
                 historicInfoRow(title: "Started", value: matchStartTime(match))
                 historicInfoRow(title: "Court", value: historicCourtName(match))
+                if let competitionName = match.associationCompetitionName {
+                    historicInfoRow(
+                        title: "League",
+                        value: [competitionName, match.associationDivisionName]
+                            .compactMap { $0 }
+                            .joined(separator: " · ")
+                    )
+                    historicInfoRow(
+                        title: "League Game",
+                        value: [
+                            match.associationFixtureDate,
+                            match.associationVenue?.capitalized,
+                            match.associationOpposition.map { "vs \($0)" }
+                        ]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                    )
+                }
                 historicInfoRow(title: "Referee", value: match.refereeName ?? "Not added")
             }
         }

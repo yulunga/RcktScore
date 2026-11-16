@@ -124,6 +124,7 @@ for (const sport of ["squash", "racketball"]) {
 }
 
 test("club setup keeps shirt colours compact and prevents a playing user from refereeing @racket", async ({ page }) => {
+  let createPayload;
   const clubSession = {
     ...session,
     first_name: "Web",
@@ -137,6 +138,9 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
   await page.addInitScript((storedSession) => {
     window.sessionStorage.setItem("rcktscore.auth", JSON.stringify({ session: storedSession, pendingSelection: null }));
   }, clubSession);
+  await page.route("**/session/status", async (route) => {
+    await route.fulfill({ json: envelope({ session: { ...clubSession, csrf_token: "playwright-racket-csrf" } }) });
+  });
   await page.route("**/organization_settings/42", async (route) => {
     await route.fulfill({ json: envelope({ organizationSettings: {
       organization: {
@@ -145,6 +149,26 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
         plan: "club_pro",
         enabled_sports: ["squash"],
         timed_break_defaults: { squash: false },
+        association_competitions: [
+          {
+            name: "Visible Winter League",
+            type: "league",
+            match_setup_enabled: true,
+            divisions: [{
+              name: "Premier",
+              fixtures: [{ date: "2027-02-12", opposition: "North Club", venue: "away" }],
+            }],
+          },
+          {
+            name: "Hidden Summer League",
+            type: "league",
+            match_setup_enabled: false,
+            divisions: [{
+              name: "One",
+              fixtures: [{ date: "2027-06-02", opposition: "South Club", venue: "home" }],
+            }],
+          },
+        ],
       },
       users: [],
       courts: [{ id: 7, court_name: "Court 1", court_alias: "Court 1" }],
@@ -153,9 +177,19 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
   await page.route("**/dashboard/42*", async (route) => {
     await route.fulfill({ json: envelope({ dashboard: { active_matches: [], scheduled_matches: [], recent_matches: [] } }) });
   });
+  await page.route("**/start_match", async (route) => {
+    createPayload = route.request().postDataJSON();
+    await route.fulfill({ json: envelope({ match: { ...freshRacketMatch("squash", false), tenant_id: "42", court_id: 7, court_name: "Court 1" } }) });
+  });
 
   await page.setViewportSize({ width: 414, height: 896 });
   await page.goto("/match/new/setup?sport=squash");
+
+  const leagueGame = page.getByLabel("League / inter-club game");
+  await expect(leagueGame).toBeVisible();
+  await expect(leagueGame.locator("optgroup")).toHaveCount(1);
+  await expect(leagueGame.locator("optgroup")).toHaveAttribute("label", "Visible Winter League");
+  await expect(leagueGame).not.toContainText("Hidden Summer League");
 
   await page.locator("#player1_name").fill("Dave");
   await page.locator("#player1_surname").fill("Williams");
@@ -175,6 +209,22 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
 
   const rulesCard = page.locator(".tennis-rules-card");
   await expect(rulesCard.getByLabel("Handicap Match")).toBeVisible();
+
+  await page.locator("#player1_name").fill("Dave");
+  await page.locator("#player1_surname").fill("Williams");
+  await page.locator("#player2_name").fill("Blair");
+  await page.locator("#court_id").selectOption("7");
+  await leagueGame.selectOption({ label: "Premier · 12 Feb 2027 · Away at North Club" });
+  await page.getByRole("button", { name: "Start Match" }).click();
+  await expect.poll(() => createPayload).toBeTruthy();
+  expect(createPayload).toMatchObject({
+    association_competition_type: "league",
+    association_competition_name: "Visible Winter League",
+    association_division_name: "Premier",
+    association_fixture_date: "2027-02-12",
+    association_opposition: "North Club",
+    association_venue: "away",
+  });
 });
 
 test("Personal Free can create a squash handicap match @racket", async ({ page }) => {

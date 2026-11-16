@@ -1,5 +1,7 @@
 package com.hitnscore.mobile.feature.newmatch
 
+import com.hitnscore.mobile.data.model.AssociationCompetitionFixture
+import com.hitnscore.mobile.data.model.AssociationCompetition
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -66,7 +68,42 @@ data class MatchSetupForm(
     val player2Offset: Int = 0,
     val goldenPoint: Boolean = false,
     val timedBreaks: Boolean = false,
+    /** League Game: link this match to one of the club's league fixtures (as iOS). */
+    val leagueGame: Boolean = false,
+    val leagueFixtureId: String = "",
 )
+
+/** One league game a match can be linked to: league, division and fixture (iOS `LeagueFixtureOption`). */
+data class LeagueFixtureOption(
+    val competitionType: String,
+    val competitionName: String,
+    val divisionName: String,
+    val fixture: AssociationCompetitionFixture,
+) {
+    val id: String
+        get() = listOf(competitionType.lowercase(), competitionName.lowercase(), divisionName.lowercase(), fixture.date, fixture.opposition.lowercase(), fixture.venue.lowercase())
+            .joinToString(":")
+
+    val heading: String get() = "$competitionName · $divisionName"
+
+    /** "15 Nov 2026 · Home vs Lincoln". */
+    val detail: String
+        get() = "${fixtureDisplayDate(fixture.date)} · ${fixture.venue.replaceFirstChar { it.uppercase() }} vs ${fixture.opposition}"
+}
+
+internal fun fixtureDisplayDate(value: String): String =
+    runCatching { java.time.LocalDate.parse(value.take(10)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.UK)) }
+        .getOrDefault(value)
+
+/** Games from leagues switched on for match setup, soonest first (as iOS). */
+fun leagueFixtureOptions(competitions: List<AssociationCompetition>): List<LeagueFixtureOption> =
+    competitions.filter { it.matchSetupEnabled }
+        .flatMap { competition ->
+            competition.allDivisions.flatMap { division ->
+                division.fixtures.map { LeagueFixtureOption(competition.type, competition.name, division.name, it) }
+            }
+        }
+        .sortedWith(compareBy({ it.fixture.date }, { it.competitionName.lowercase() }, { it.divisionName.lowercase() }))
 
 sealed interface SetupResult {
     data class Open(val matchId: String) : SetupResult
@@ -103,7 +140,15 @@ data class MatchSetupUiState(
     /** "Me" was switched off because the signed-in user was then entered as a player. */
     val refereeMeRevoked: Boolean = false,
     val result: SetupResult? = null,
+    /** League games this club can link a match to; empty hides League Game. */
+    val leagueFixtures: List<LeagueFixtureOption> = emptyList(),
 ) {
+    /** League Game is offered to clubs with league games set up for match setup. */
+    val showsLeagueGame: Boolean get() = !args.isPersonal && leagueFixtures.isNotEmpty()
+
+    val selectedLeagueFixture: LeagueFixtureOption?
+        get() = leagueFixtures.firstOrNull { it.id == form.leagueFixtureId }
+
     /** A club match on a court that already has a match in progress. */
     val activeCourtMatch: MatchSummary?
         get() = if (args.isPersonal || form.courtName.isBlank()) null else args.activeMatches.firstOrNull { it.courtName == form.courtName }
@@ -141,7 +186,8 @@ data class MatchSetupUiState(
                 (!form.doubles || (form.player3Name.isNotBlank() && form.player4Name.isNotBlank()))
             val court = args.isPersonal || (form.courtId.isNotBlank() && form.courtName.isNotBlank())
             val bands = !form.handicap || (form.player1Band.isNotBlank() && form.player2Band.isNotBlank())
-            return !isLoading && !isSubmitting && sportEnabled && players && court && bands &&
+            val league = !form.leagueGame || selectedLeagueFixture != null
+            return !isLoading && !isSubmitting && sportEnabled && players && court && bands && league &&
                 !refereeConflict && personalActiveMatch == null
         }
 }
@@ -212,15 +258,21 @@ class MatchSetupViewModel(
                         } else {
                             state.form
                         }
+                        val fixtures = if (args.isPersonal) emptyList() else leagueFixtureOptions(organization.associationCompetitions)
                         state.copy(
                             isLoading = false,
                             courts = courts,
+                            leagueFixtures = fixtures,
                             sportEnabled = args.sport in enabled,
                             form = defaults.copy(
                                 timedBreaks = organization.timedBreakDefaults[args.sport] ?: false,
                                 courtId = if (args.isPersonal) firstCourt?.id?.toString().orEmpty() else state.form.courtId.ifBlank { firstCourt?.id?.toString().orEmpty() },
                                 courtName = if (args.isPersonal) firstCourt?.courtName ?: PERSONAL_COURT else state.form.courtName.ifBlank { firstCourt?.courtName.orEmpty() },
                                 courtAlias = if (args.isPersonal) firstCourt?.courtAlias ?: PERSONAL_COURT else state.form.courtAlias.ifBlank { firstCourt?.courtAlias.orEmpty() },
+                                // Keep a still-valid choice; otherwise the soonest game, and off when there are none.
+                                leagueGame = state.form.leagueGame && fixtures.isNotEmpty(),
+                                leagueFixtureId = state.form.leagueFixtureId.takeIf { id -> fixtures.any { it.id == id } }
+                                    ?: fixtures.firstOrNull()?.id.orEmpty(),
                             ),
                         )
                     }
@@ -325,7 +377,7 @@ class MatchSetupViewModel(
         if (!state.canSubmit) return
         val form = state.form
         val args = state.args
-        val request = if (state.isTennis) tennisRequest(state) else CreateMatchRequest(
+        val baseRequest = if (state.isTennis) tennisRequest(state) else CreateMatchRequest(
             tenantId = args.organizationId.toString(),
             courtId = if (args.isPersonal) null else form.courtId,
             courtName = if (args.isPersonal) null else form.courtName,
@@ -353,6 +405,15 @@ class MatchSetupViewModel(
             goldenPoint = form.goldenPoint,
             finalSetMatchTiebreak = false,
             timedBreaks = form.timedBreaks,
+        )
+        val league = state.selectedLeagueFixture?.takeIf { form.leagueGame }
+        val request = if (league == null) baseRequest else baseRequest.copy(
+            associationCompetitionType = league.competitionType,
+            associationCompetitionName = league.competitionName,
+            associationDivisionName = league.divisionName,
+            associationFixtureDate = league.fixture.date,
+            associationOpposition = league.fixture.opposition,
+            associationVenue = league.fixture.venue,
         )
         mutableState.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {

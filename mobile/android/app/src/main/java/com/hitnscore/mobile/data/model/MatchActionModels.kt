@@ -74,6 +74,13 @@ data class CreateMatchRequest(
     @SerialName("tennis_final_set_match_tiebreak") val finalSetMatchTiebreak: Boolean,
     /** Timed warm-up and breaks. The backend uses the tennis flag name for every sport. */
     @SerialName("tennis_timed_breaks") val timedBreaks: Boolean,
+    // League Game: the fixture this match is for (as iOS). Left out when not a league game.
+    @SerialName("association_competition_type") val associationCompetitionType: String? = null,
+    @SerialName("association_competition_name") val associationCompetitionName: String? = null,
+    @SerialName("association_division_name") val associationDivisionName: String? = null,
+    @SerialName("association_fixture_date") val associationFixtureDate: String? = null,
+    @SerialName("association_opposition") val associationOpposition: String? = null,
+    @SerialName("association_venue") val associationVenue: String? = null,
 )
 
 @Serializable

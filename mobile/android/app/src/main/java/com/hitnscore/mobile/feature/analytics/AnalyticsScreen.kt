@@ -1,6 +1,7 @@
 package com.hitnscore.mobile.feature.analytics
 
 import androidx.compose.foundation.layout.Arrangement
+import com.hitnscore.mobile.feature.reports.CsvExportControls
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
@@ -167,6 +168,10 @@ fun AnalyticsScreen(
                             appUsage != null -> AppUsage(appUsage)
                             usageLoading -> SkeletonRows(2, height = 112)
                             else -> AppUsage(AppAnalytics())
+                        }
+                        if (plus && personalId != null) {
+                            // Personal Plus: download the personal report (as iOS).
+                            CsvExportControls(personalId, extra.periodDays, state.isOnline)
                         }
                         if (plus) {
                             when {

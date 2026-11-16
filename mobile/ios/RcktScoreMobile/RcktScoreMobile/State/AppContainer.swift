@@ -10,6 +10,9 @@ final class AppContainer: ObservableObject {
     let offlineMatchStore: OfflineMatchStore
     let purchaseService: StoreKitPurchaseService
     let uiTestLaunchOptions: UITestLaunchOptions
+    lazy var wristScoring = WristScoringBridge { [weak self] in
+        self?.sessionStore.session?.hasWristScoring == true
+    }
     private var cancellables = Set<AnyCancellable>()
     private var sessionValidationTask: Task<Void, Never>?
 

@@ -125,6 +125,11 @@ struct MatchScoringView: View {
     let matchID: String
     let openSettingsOnLoad: Bool
 
+    @State private var wristScorerID = UUID()
+    @State private var wristScore: WristScore?
+    @State private var wristEventID: String?
+    @State private var wristSession: String?
+    @State private var wristOrganizationID: Int?
     @State private var match: MatchDetail?
     @State private var displayAccess: MatchDisplayAccess?
     @State private var isLoading = false
@@ -1032,6 +1037,16 @@ struct MatchScoringView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            wristSession = container.sessionStore.session?.sessionToken
+            wristOrganizationID = container.sessionStore.session?.organizationID
+            container.wristScoring.connect(id: wristScorerID, handler: handleWristRequest)
+        }
+        .onDisappear {
+            container.wristScoring.disconnect(id: wristScorerID)
+            wristSession = nil
+            wristScore = nil
+        }
         .task {
             await loadMatch()
         }
@@ -2120,6 +2135,23 @@ struct MatchScoringView: View {
                 detailItem("Court Alias", value: match.courtAlias ?? "Not set")
             }
 
+            if let competitionName = match.associationCompetitionName {
+                HStack(spacing: 12) {
+                    detailItem("League", value: competitionName)
+                    detailItem("Division", value: match.associationDivisionName ?? "Not set")
+                    detailItem(
+                        "League Game",
+                        value: [
+                            match.associationFixtureDate,
+                            match.associationVenue?.capitalized,
+                            match.associationOpposition.map { "vs \($0)" }
+                        ]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                    )
+                }
+            }
+
             if isTennisMatch {
                 HStack(spacing: 12) {
                     detailItem("No-Ad", value: live?.tennisNoAdScoring == true ? "Enabled" : "Off")
@@ -3186,14 +3218,150 @@ struct MatchScoringView: View {
         return max(recordedMatchDurationSeconds, matchDurationSeconds)
     }
 
+    private var wristActionSession: UserSession? {
+        guard let session = container.sessionStore.session,
+              let wristSession, session.sessionToken == wristSession,
+              session.organizationID == wristOrganizationID,
+              session.hasWristScoring, canScoreThisMatch,
+              container.offlineMatchStore.cachedMatch(matchID: matchID, session: session) != nil else {
+            return nil
+        }
+        return session
+    }
+
+    private var needsPadelReceiverChoice: Bool {
+        isPadelMatch && live?.tennisNoAdScoring == true && live?.isTieBreak == false
+            && live?.player1Score == 3 && live?.player2Score == 3 && live?.noAdDecidingSide == nil
+    }
+
+    private func currentWristReply(message: String? = nil) -> WristReply {
+        guard wristActionSession != nil, let match, let live, hasBootstrappedCurrentMatch,
+              ["active", "completed"].contains(match.status.lowercased()),
+              timerPhase == .matchLive || timerPhase == .interval else {
+            wristScore = nil
+            return WristReply(score: nil, message: message ?? "Open a live match and finish setup on your iPhone.")
+        }
+
+        var status = ""
+        var actions: [WristAction] = []
+        if isMatchComplete {
+            status = live.winnerName.map { "\($0) won" } ?? "Match complete"
+        } else if timerPhase == .interval {
+            status = "Resume after the break on iPhone"
+        } else if needsPadelReceiverChoice {
+            status = "Choose Golden Point receiver"
+            actions = [.receiveRight, .receiveLeft]
+        } else {
+            actions = [.pointOne, .pointTwo]
+            if !isTennisMatch { actions += [.letCall, .strokeOne, .strokeTwo] }
+        }
+        let hasScored = live.events.contains {
+            $0.eventType == "score_point" || (!isTennisMatch && $0.eventType == "stroke")
+        }
+        if hasScored && !undoLocked && container.offlineMatchStore.pendingActionCount == 0 {
+            actions.append(.undo)
+        }
+
+        let preview = WristScore(
+            matchID: matchID,
+            revision: wristScore?.revision ?? UUID(),
+            one: .init(
+                name: isTennisDoublesMatch && !tennisTeamOneParticipants.isEmpty
+                    ? tennisTeamOneParticipants.map(\.displayName).joined(separator: " / ")
+                    : fullName(firstName: match.player1Name, surname: match.player1Surname),
+                points: displayScoreLabel(for: "player1"),
+                games: isTennisMatch ? live.player1SetGames : live.player1GamesWon,
+                sets: isTennisMatch ? live.player1GamesWon : nil,
+                serving: live.currentServerSide == "player1"
+            ),
+            two: .init(
+                name: isTennisDoublesMatch && !tennisTeamTwoParticipants.isEmpty
+                    ? tennisTeamTwoParticipants.map(\.displayName).joined(separator: " / ")
+                    : fullName(firstName: match.player2Name, surname: match.player2Surname),
+                points: displayScoreLabel(for: "player2"),
+                games: isTennisMatch ? live.player2SetGames : live.player2GamesWon,
+                sets: isTennisMatch ? live.player2GamesWon : nil,
+                serving: live.currentServerSide == "player2"
+            ),
+            server: isMatchComplete ? nil : live.currentServer,
+            status: status,
+            actions: actions
+        )
+        if preview != wristScore || live.events.last?.id != wristEventID {
+            wristScore = WristScore(
+                matchID: preview.matchID, revision: UUID(), one: preview.one, two: preview.two,
+                server: preview.server, status: preview.status, actions: preview.actions
+            )
+            wristEventID = live.events.last?.id
+        }
+        return WristReply(score: wristScore, message: message ?? container.offlineMatchStore.lastSyncErrorMessage)
+    }
+
+    private func handleWristRequest(_ request: WristRequest) async -> WristReply {
+        guard let session = wristActionSession else { return currentWristReply() }
+        reconcileWristTimer()
+        guard let action = request.action else { return currentWristReply() }
+
+        // Recheck the entitlement before every wrist mutation, including when the
+        // paired iPhone has been asleep since the last session refresh.
+        guard let verified = try? await container.apiClient.validateSession() else {
+            return currentWristReply(message: "Connect your iPhone to verify Personal Plus.")
+        }
+        guard verified.plan?.lowercased() == "personal_plus"
+            || verified.availableMemberships?.contains(where: { $0.plan?.lowercased() == "personal_plus" }) == true else {
+            wristScore = nil
+            return WristReply(score: nil, message: "Wrist scoring requires Personal Plus.")
+        }
+        guard let membership = verified.availableMemberships?.first(where: {
+            $0.organizationID == session.organizationID
+        }), session.switchingMembership(to: membership).canManageMatches else {
+            wristScore = nil
+            return WristReply(score: nil, message: "You don’t have scoring access to this match.")
+        }
+        guard wristActionSession?.sessionToken == session.sessionToken,
+              wristActionSession?.organizationID == session.organizationID,
+              !isMutating,
+              let score = currentWristReply().score,
+              request.matchID == score.matchID, request.revision == score.revision,
+              score.actions.contains(action) else {
+            return currentWristReply(message: "Score updated. Check it before scoring again.")
+        }
+
+        wristScore = nil
+        switch action {
+        case .pointOne, .pointTwo:
+            await addPoint(for: action.scorer)
+        case .undo:
+            await undoLastAction()
+        case .receiveRight, .receiveLeft:
+            await chooseNoAdReceiverCourt(action == .receiveRight ? "Right" : "Left")
+        case .strokeOne, .strokeTwo:
+            await awardStroke(to: action.scorer)
+        case .letCall:
+            await callLet()
+        }
+        return currentWristReply(message: errorMessage)
+    }
+
+    private func reconcileWristTimer() {
+        guard hasBootstrappedCurrentMatch, !isMatchComplete,
+              timerRunning, let stored = readStoredTimerState(matchID: matchID),
+              stored.phase == timerPhase, stored.seconds == timerSeconds,
+              stored.matchDurationSeconds == matchDurationSeconds,
+              Date().timeIntervalSince1970 - stored.updatedAt >= 2 else { return }
+
+        // The view's one-second timer can stop while the phone is suspended.
+        let advanced = advanceTimerSnapshot(stored)
+        timerPhase = advanced.phase
+        timerSeconds = advanced.seconds
+        matchDurationSeconds = advanced.matchDurationSeconds
+        timerRunning = advanced.running
+        persistTimerState()
+    }
+
     private func addPoint(for side: String) async {
         guard canScoreThisMatch, !isMutating, !isMatchComplete, !isScheduledMatch, timerPhase == .matchLive else { return }
-        guard !(isPadelMatch
-            && live?.tennisNoAdScoring == true
-            && live?.isTieBreak == false
-            && live?.player1Score == 3
-            && live?.player2Score == 3
-            && live?.noAdDecidingSide == nil) else { return }
+        guard !needsPadelReceiverChoice else { return }
         resumeMatchTimerForDecision()
         await performQueuedMutation {
             container.offlineMatchStore.enqueue(kind: .scorePoint, matchID: matchID, scorer: side)

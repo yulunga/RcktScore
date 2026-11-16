@@ -55,6 +55,110 @@ class _RecordingConnection:
         self.committed = True
 
 
+class _AssociationFixtureCursor(_RecordingCursor):
+    def fetchone(self):
+        return {"association_competitions": self.connection.competitions}
+
+
+class _AssociationFixtureConnection(_RecordingConnection):
+    def __init__(self, competitions):
+        super().__init__()
+        self.competitions = competitions
+
+    def cursor(self):
+        return _AssociationFixtureCursor(self)
+
+
+def test_association_fixture_metadata_returns_canonical_saved_fixture():
+    connection = _AssociationFixtureConnection([{
+        "name": "County League",
+        "type": "league",
+        "match_setup_enabled": True,
+        "divisions": [{
+            "name": "Division 1",
+            "fixtures": [{
+                "date": "2026-11-20",
+                "opposition": "Racket Club",
+                "venue": "away",
+            }],
+        }],
+    }])
+
+    result = squash_match_logic._association_fixture_metadata(
+        connection,
+        42,
+        {
+            "association_competition_type": "LEAGUE",
+            "association_competition_name": "county league",
+            "association_division_name": "division 1",
+            "association_fixture_date": "2026-11-20",
+            "association_opposition": "racket club",
+            "association_venue": "AWAY",
+        },
+        False,
+    )
+
+    assert result == {
+        "association_competition_type": "league",
+        "association_competition_name": "County League",
+        "association_division_name": "Division 1",
+        "association_fixture_date": "2026-11-20",
+        "association_opposition": "Racket Club",
+        "association_venue": "away",
+    }
+    assert connection.executions[0][1] == {"tenant_id": 42}
+
+
+def test_association_fixture_metadata_rejects_fixture_not_saved_for_club():
+    connection = _AssociationFixtureConnection([])
+
+    with pytest.raises(ValueError, match="no longer available"):
+        squash_match_logic._association_fixture_metadata(
+            connection,
+            42,
+            {
+                "association_competition_type": "league",
+                "association_competition_name": "Unknown League",
+                "association_division_name": "Division 1",
+                "association_fixture_date": "2026-11-20",
+                "association_opposition": "Racket Club",
+                "association_venue": "home",
+            },
+            False,
+        )
+
+
+def test_association_fixture_metadata_rejects_disabled_league():
+    connection = _AssociationFixtureConnection([{
+        "name": "County League",
+        "type": "league",
+        "match_setup_enabled": False,
+        "divisions": [{
+            "name": "Division 1",
+            "fixtures": [{
+                "date": "2026-11-20",
+                "opposition": "Racket Club",
+                "venue": "home",
+            }],
+        }],
+    }])
+
+    with pytest.raises(ValueError, match="no longer available"):
+        squash_match_logic._association_fixture_metadata(
+            connection,
+            42,
+            {
+                "association_competition_type": "league",
+                "association_competition_name": "County League",
+                "association_division_name": "Division 1",
+                "association_fixture_date": "2026-11-20",
+                "association_opposition": "Racket Club",
+                "association_venue": "home",
+            },
+            False,
+        )
+
+
 class _UndoCursor:
     def __init__(self, connection):
         self.connection = connection

@@ -449,7 +449,8 @@ fun OrganisationEditor(state: OrganizationSettingsUiState, viewModel: Organizati
 @Composable
 internal fun <T> AddAndFilterRow(
     addLabel: String,
-    onAdd: () -> Unit,
+    /** Null hides the + button (read-only lists). */
+    onAdd: (() -> Unit)?,
     enabled: Boolean,
     options: List<T>,
     selected: T,
@@ -459,7 +460,7 @@ internal fun <T> AddAndFilterRow(
 ) {
     var open by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        FilledIconButton(onClick = onAdd, enabled = enabled) {
+        if (onAdd != null) FilledIconButton(onClick = onAdd, enabled = enabled) {
             Icon(painterResource(R.drawable.ic_add), contentDescription = addLabel)
         }
         if (options.size > 1) {
@@ -803,7 +804,12 @@ private fun UserDialog(
 // Courts --------------------------------------------------------------------------
 
 @Composable
-fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSettingsViewModel) {
+fun CourtsEditor(
+    state: OrganizationSettingsUiState,
+    viewModel: OrganizationSettingsViewModel,
+    /** Admins add, edit and pair courts; other members see the club's courts read-only (as iOS). */
+    canEdit: Boolean = true,
+) {
     val courts = state.settings?.courts ?: return
     val enabledSports = state.settings.organization.enabledSports.map { it.lowercase() }
     var editing by remember { mutableStateOf<CourtSummary?>(null) }
@@ -834,7 +840,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
         }
         AddAndFilterRow(
             addLabel = stringResource(R.string.settings_add_court),
-            onAdd = { adding = true },
+            onAdd = if (canEdit) ({ adding = true }) else null,
             enabled = !state.isSaving,
             options = listOf<String?>(null) + types,
             selected = typeFilter,
@@ -845,6 +851,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
         if (shown.isEmpty()) {
             EditorNote(stringResource(R.string.settings_courts_empty))
         }
+        if (!canEdit) EditorNote(stringResource(R.string.settings_courts_read_only))
         CardGrid(shown) { court ->
             EditorCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -859,18 +866,19 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    IconButton(onClick = { editing = court }, enabled = !state.isSaving) {
+                    if (canEdit) IconButton(onClick = { editing = court }, enabled = !state.isSaving) {
                         Icon(painterResource(R.drawable.ic_edit), contentDescription = stringResource(R.string.settings_edit_court), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                Column {
+                // Scoreboard code and pairing are for club admins only (the server sends no code otherwise).
+                if (canEdit) Column {
                     Text(stringResource(R.string.settings_display_code), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         court.displayCode?.takeIf { it.isNotBlank() } ?: stringResource(R.string.settings_display_code_none),
                         style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                     )
                 }
-                OutlinedButton(
+                if (canEdit) OutlinedButton(
                     onClick = {
                         scannerError = null
                         scanner.startScan()
@@ -891,7 +899,7 @@ fun CourtsEditor(state: OrganizationSettingsUiState, viewModel: OrganizationSett
                 ) {
                     Text(stringResource(R.string.settings_scan_scoreboard_qr))
                 }
-                TextButton(onClick = { pasting = court }, enabled = !state.isSaving, modifier = Modifier.fillMaxWidth()) {
+                if (canEdit) TextButton(onClick = { pasting = court }, enabled = !state.isSaving, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.settings_paste_scoreboard_link))
                 }
             }

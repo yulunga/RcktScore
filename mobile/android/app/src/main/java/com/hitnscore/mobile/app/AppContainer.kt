@@ -27,6 +27,8 @@ import com.hitnscore.mobile.data.remote.RemoteMatchWatchApi
 import com.hitnscore.mobile.data.remote.RemoteTournamentApi
 import com.hitnscore.mobile.data.remote.RemoteSetupAnalyticsApi
 import com.hitnscore.mobile.data.remote.SetupAnalyticsApi
+import com.hitnscore.mobile.data.remote.ScoringWarmup
+import com.hitnscore.mobile.data.remote.AnalyticsExportApi
 import com.hitnscore.mobile.data.remote.TournamentApi
 import com.hitnscore.mobile.data.remote.SettingsApi
 import com.hitnscore.mobile.core.network.ApiClient
@@ -113,6 +115,8 @@ class AppContainer(context: Context) {
     val matchWatchApi: MatchWatchApi by lazy { RemoteMatchWatchApi(apiClient) }
     val tournamentApi: TournamentApi by lazy { RemoteTournamentApi(apiClient) }
     val setupAnalyticsApi: SetupAnalyticsApi by lazy { RemoteSetupAnalyticsApi(apiClient) }
+    val scoringWarmup: ScoringWarmup by lazy { ScoringWarmup(apiClient) }
+    val analyticsExportApi: AnalyticsExportApi by lazy { AnalyticsExportApi(apiClient) }
 
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 

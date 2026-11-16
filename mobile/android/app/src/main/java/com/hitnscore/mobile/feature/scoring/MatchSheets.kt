@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.data.model.MatchDetail
@@ -243,6 +245,49 @@ fun ShirtPicker(playerName: String, selected: String, onSelect: (String) -> Unit
                         onSelect(option.id)
                     },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * The shirt colour as a round swatch (match setup, beside the player's heading): tapping it
+ * opens the ten colours as two rows of five swatches, without names.
+ */
+@Composable
+fun ShirtSwatchPicker(selected: String, contentDescription: String, onSelect: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val current = ShirtColors.of(selected)
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = CircleShape,
+            color = current.fill,
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.size(36.dp).semantics { this.contentDescription = contentDescription },
+        ) {}
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ShirtColors.all.chunked(5).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { option ->
+                            val chosen = option.id == current.id
+                            Surface(
+                                onClick = {
+                                    expanded = false
+                                    onSelect(option.id)
+                                },
+                                shape = CircleShape,
+                                color = option.fill,
+                                border = BorderStroke(
+                                    if (chosen) 3.dp else 1.dp,
+                                    if (chosen) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.2f),
+                                ),
+                                modifier = Modifier.size(36.dp).semantics { this.contentDescription = option.label },
+                            ) {}
+                        }
+                    }
+                }
             }
         }
     }

@@ -30,6 +30,7 @@ def test_association_competitions_are_normalized_and_deduplicated():
         {
             "name": " County League ",
             "type": "league",
+            "match_setup_enabled": True,
             "fixtures": [
                 {"date": "2027-02-12", "opposition": " North Club "},
                 {"date": "2027-01-08", "opposition": "South Club"},
@@ -47,12 +48,17 @@ def test_association_competitions_are_normalized_and_deduplicated():
         {
             "name": "County League",
             "type": "league",
-            "fixtures": [
-                {"date": "2027-01-08", "opposition": "South Club"},
-                {"date": "2027-02-12", "opposition": "North Club"},
-            ],
+            "match_setup_enabled": True,
+            "divisions": [{
+                "name": "General",
+                "url": "",
+                "fixtures": [
+                    {"date": "2027-01-08", "opposition": "South Club", "venue": "home"},
+                    {"date": "2027-02-12", "opposition": "North Club", "venue": "home"},
+                ],
+            }],
         },
-        {"name": "Club Cup", "type": "interclub", "fixtures": []},
+        {"name": "Club Cup", "type": "interclub", "match_setup_enabled": False, "divisions": []},
     ]
 
 

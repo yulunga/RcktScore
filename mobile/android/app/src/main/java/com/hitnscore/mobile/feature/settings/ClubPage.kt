@@ -54,18 +54,19 @@ fun ClubPage(club: AccountContext, onOpenPage: (SettingsPage, Int) -> Unit) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val organization = ui.settings?.organization
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Admins: the club's management pages first.
-        if (isAdmin) {
-            Text(stringResource(R.string.club_manage), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            val actions = listOf(
-                Triple(SettingsPage.Courts, R.string.settings_courts, R.drawable.ic_tab_matches),
-                Triple(SettingsPage.Users, R.string.settings_users, R.drawable.ic_person),
-                Triple(SettingsPage.RacketSports, R.string.settings_club_settings, R.drawable.ic_tune),
-            )
-            // One row: icon above the label.
-            CardGrid(actions, columns = actions.size) { (page, label, icon) ->
-                ActionTile(label, icon) { onOpenPage(page, club.organizationId) }
-            }
+        // The club's pages by role, as iOS: Users and Club Settings for admins; Courts for everyone.
+        val actions = listOfNotNull(
+            Triple(SettingsPage.Users, R.string.settings_users, R.drawable.ic_person).takeIf { isAdmin },
+            Triple(SettingsPage.Courts, R.string.settings_courts, R.drawable.ic_tab_matches),
+            Triple(SettingsPage.Leagues, R.string.settings_leagues, R.drawable.ic_tab_tournament),
+            Triple(SettingsPage.RacketSports, R.string.settings_club_settings, R.drawable.ic_tune).takeIf { isAdmin },
+            Triple(SettingsPage.Data, R.string.settings_data, R.drawable.ic_tab_analytics).takeIf { isAdmin },
+        )
+        Text(stringResource(if (isAdmin) R.string.club_manage else R.string.club_pages), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        // One row: icon above the label.
+        // Up to three tiles a row (admins have five).
+        CardGrid(actions, columns = minOf(actions.size, 3)) { (page, label, icon) ->
+            ActionTile(label, icon) { onOpenPage(page, club.organizationId) }
         }
         ui.errorMessage?.let { ErrorBanner(it, onRetry = viewModel::load) }
         if (ui.isLoading && organization == null) CircularProgressIndicator()

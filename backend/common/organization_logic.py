@@ -4,6 +4,7 @@ from calendar import monthrange
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
+from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 
 from common.mailer import send_email_message
@@ -106,7 +107,12 @@ def normalize_association_competitions(value):
                 "url": external_url,
                 "fixtures": normalize_fixtures(division.get("fixtures")),
             })
-        normalized.append({"name": name[:120], "type": competition_type, "divisions": divisions[:50]})
+        normalized.append({
+            "name": name[:120],
+            "type": competition_type,
+            "match_setup_enabled": bool(item.get("match_setup_enabled", False)),
+            "divisions": divisions[:50],
+        })
     return normalized
 
 
@@ -149,7 +155,15 @@ def _court_number_exists(connection, organization_id, sport, court_name, *, excl
             FROM "SkwshCourts"
             WHERE organization_name = %(organization_id)s
               AND CASE WHEN sport = 'racketball' THEN 'squash' ELSE sport END = %(sport)s
-              AND LOWER(court_name) = LOWER(%(court_name)s)
+              AND REGEXP_REPLACE(
+                    LOWER(BTRIM(court_name)),
+                    '^court[- ]*0*([1-9][0-9]*)$',
+                    'court-\\1'
+                  ) = REGEXP_REPLACE(
+                    LOWER(BTRIM(%(court_name)s)),
+                    '^court[- ]*0*([1-9][0-9]*)$',
+                    'court-\\1'
+                  )
               AND (%(excluding_court_id)s IS NULL OR id <> %(excluding_court_id)s)
             LIMIT 1
             """,
@@ -161,6 +175,36 @@ def _court_number_exists(connection, organization_id, sport, court_name, *, excl
             },
         )
         return cursor.fetchone() is not None
+
+
+def _court_alias_exists(connection, organization_id, sport, court_alias, *, excluding_court_id=None):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id
+            FROM "SkwshCourts"
+            WHERE organization_name = %(organization_id)s
+              AND CASE WHEN sport = 'racketball' THEN 'squash' ELSE sport END = %(sport)s
+              AND LOWER(BTRIM(court_alias)) = LOWER(BTRIM(%(court_alias)s))
+              AND (%(excluding_court_id)s IS NULL OR id <> %(excluding_court_id)s)
+            LIMIT 1
+            """,
+            {
+                "organization_id": int(organization_id),
+                "sport": court_sport_id(sport),
+                "court_alias": court_alias,
+                "excluding_court_id": int(excluding_court_id) if excluding_court_id is not None else None,
+            },
+        )
+        return cursor.fetchone() is not None
+
+
+def _court_unique_violation_message(error, court_name, court_alias, sport):
+    constraint_name = getattr(getattr(error, "diag", None), "constraint_name", "") or ""
+    sport_label = court_sport_id(sport).title()
+    if constraint_name == "uq_skwshcourts_org_sport_alias":
+        return f'{court_alias} is already used as a court name for {sport_label}'
+    return f"{court_name} already exists for {sport_label}"
 
 
 def _months_after(value, months):
@@ -1373,54 +1417,62 @@ def create_court(connection, organization_id, court_name, court_alias=None, spor
     if _court_number_exists(connection, org_id, normalized_sport, trimmed_name):
         raise ValueError(f"{trimmed_name} already exists for {normalized_sport.title()}")
     display_name = (court_alias or "").strip() or trimmed_name
+    if _court_alias_exists(connection, org_id, normalized_sport, display_name):
+        raise ValueError(f"{display_name} is already used as a court name for {normalized_sport.title()}")
     created_at = _utcnow()
     display_code = generate_unique_display_code(connection)
 
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO "SkwshCourts" (
-                created_at,
-                court_name,
-                court_alias,
-                sport,
-                organization_name,
-                display_code,
-                display_code_enabled,
-                display_code_created_at
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO "SkwshCourts" (
+                    created_at,
+                    court_name,
+                    court_alias,
+                    sport,
+                    organization_name,
+                    display_code,
+                    display_code_enabled,
+                    display_code_created_at
+                )
+                VALUES (
+                    %(created_at)s,
+                    %(court_name)s,
+                    %(court_alias)s,
+                    %(sport)s,
+                    %(organization_id)s,
+                    %(display_code)s,
+                    TRUE,
+                    %(display_code_created_at)s
+                )
+                RETURNING
+                    id,
+                    court_name,
+                    court_alias,
+                    sport,
+                    created_at,
+                    display_code,
+                    display_code_enabled,
+                    display_code_created_at,
+                    display_code_last_used_at
+                """,
+                {
+                    "created_at": created_at,
+                    "court_name": trimmed_name,
+                    "court_alias": display_name,
+                    "sport": normalized_sport,
+                    "organization_id": org_id,
+                    "display_code": display_code,
+                    "display_code_created_at": created_at,
+                },
             )
-            VALUES (
-                %(created_at)s,
-                %(court_name)s,
-                %(court_alias)s,
-                %(sport)s,
-                %(organization_id)s,
-                %(display_code)s,
-                TRUE,
-                %(display_code_created_at)s
-            )
-            RETURNING
-                id,
-                court_name,
-                court_alias,
-                sport,
-                created_at,
-                display_code,
-                display_code_enabled,
-                display_code_created_at,
-                display_code_last_used_at
-            """,
-            {
-                "created_at": created_at,
-                "court_name": trimmed_name,
-                "court_alias": display_name,
-                "sport": normalized_sport,
-                "organization_id": org_id,
-                "display_code": display_code,
-                "display_code_created_at": created_at,
-            },
-        )
-        court_row = cursor.fetchone()
+            court_row = cursor.fetchone()
+    except UniqueViolation as error:
+        connection.rollback()
+        raise ValueError(
+            _court_unique_violation_message(error, trimmed_name, display_name, normalized_sport)
+        ) from error
 
     connection.commit()
     return _serialize_court(court_row)
@@ -1444,7 +1496,7 @@ def update_court(
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT court_name, sport
+            SELECT court_name, court_alias, sport
             FROM "SkwshCourts"
             WHERE id = %(court_id)s
               AND organization_name = %(organization_id)s
@@ -1481,37 +1533,55 @@ def update_court(
         ):
             raise ValueError(f"{trimmed_name} already exists for {effective_sport.title()}")
     display_name = (court_alias or "").strip() or trimmed_name
+    alias_changed = (
+        display_name.casefold() != str(existing_court.get("court_alias") or existing_court.get("court_name") or "").strip().casefold()
+        or effective_sport != court_sport_id(existing_court.get("sport"))
+    )
+    if effective_sport and alias_changed and _court_alias_exists(
+        connection,
+        org_id,
+        effective_sport,
+        display_name,
+        excluding_court_id=court_id,
+    ):
+        raise ValueError(f"{display_name} is already used as a court name for {effective_sport.title()}")
 
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            UPDATE "SkwshCourts"
-            SET court_name = %(court_name)s,
-                court_alias = %(court_alias)s,
-                sport = CASE WHEN %(update_sport)s THEN %(sport)s ELSE sport END
-            WHERE id = %(court_id)s
-              AND organization_name = %(organization_id)s
-            RETURNING
-                id,
-                court_name,
-                court_alias,
-                sport,
-                created_at,
-                display_code,
-                display_code_enabled,
-                display_code_created_at,
-                display_code_last_used_at
-            """,
-            {
-                "court_id": int(court_id),
-                "organization_id": org_id,
-                "court_name": trimmed_name,
-                "court_alias": display_name,
-                "sport": normalized_sport,
-                "update_sport": bool(update_sport),
-            },
-        )
-        court_row = cursor.fetchone()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE "SkwshCourts"
+                SET court_name = %(court_name)s,
+                    court_alias = %(court_alias)s,
+                    sport = CASE WHEN %(update_sport)s THEN %(sport)s ELSE sport END
+                WHERE id = %(court_id)s
+                  AND organization_name = %(organization_id)s
+                RETURNING
+                    id,
+                    court_name,
+                    court_alias,
+                    sport,
+                    created_at,
+                    display_code,
+                    display_code_enabled,
+                    display_code_created_at,
+                    display_code_last_used_at
+                """,
+                {
+                    "court_id": int(court_id),
+                    "organization_id": org_id,
+                    "court_name": trimmed_name,
+                    "court_alias": display_name,
+                    "sport": normalized_sport,
+                    "update_sport": bool(update_sport),
+                },
+            )
+            court_row = cursor.fetchone()
+    except UniqueViolation as error:
+        connection.rollback()
+        raise ValueError(
+            _court_unique_violation_message(error, trimmed_name, display_name, effective_sport)
+        ) from error
 
     connection.commit()
     return _serialize_court(court_row) if court_row else None

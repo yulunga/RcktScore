@@ -11,31 +11,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +43,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Dp
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.session.AccountContext
@@ -78,8 +74,11 @@ fun SessionState.SignedIn.enabledSports(): List<String> =
         ?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() }
         ?: listOf("squash", "racketball", "tennis")
 
-/** "Choose Racket Sport", with the brand court-line cards and ball artwork from iOS. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * "Choose Racket Sport" as a small centred overlay over the current screen (phone and
+ * tablet, portrait or landscape). The ball cards are sized and arranged in rows so every
+ * enabled sport fits without scrolling; more sports simply make the cards smaller.
+ */
 @Composable
 fun SportPickerScreen(
     session: SessionState.SignedIn,
@@ -89,45 +88,81 @@ fun SportPickerScreen(
 ) {
     val enabled = session.enabledSports()
     val sports = SPORT_OPTIONS.filter { it.id in enabled }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.choose_sport)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.close))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
-    ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 8.dp, bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            // As iOS: choose whether this match is scored for a club or for yourself.
-            val scorable = session.availableContexts.filter {
-                it.type == AccountContextType.Personal || ClubRoles.canManageMatches(it.role)
-            }
-            if (scorable.size > 1) {
-                item(span = { GridItemSpan(2) }) {
-                    ScoreForCard(scorable, session.activeContext, onContextSelected)
+    // As iOS: choose whether this match is scored for a club or for yourself.
+    val scorable = session.availableContexts.filter {
+        it.type == AccountContextType.Personal || ClubRoles.canManageMatches(it.role)
+    }
+    // Measure the space the overlay really has (a dialog's configuration can report the
+    // dialog window rather than the screen, which made the cards stack in one column).
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .clickable(interactionSource = null, indication = null, onClick = onBack),
+        contentAlignment = Alignment.Center,
+    ) {
+    val gap = 12.dp
+    val padding = 20.dp
+    // Room left for the cards once the heading, and Score for when shown, are drawn.
+    val chrome = 64.dp + 14.dp + (if (scorable.size > 1) 140.dp else 0.dp)
+    val maxW = minOf(maxWidth - 32.dp, 760.dp) - padding * 2
+    val maxH = maxHeight * 0.9f - chrome - padding * 2
+    val layout = remember(sports.size, maxW, maxH) { sportGrid(sports.size, maxW, maxH, gap) }
+    // Wide enough for the heading and the Score for pill, however few sports there are.
+    val cardWidth = maxOf(layout.width + padding * 2, minOf(380.dp, maxWidth - 32.dp))
+
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        shadowElevation = 12.dp,
+        modifier = Modifier.padding(16.dp).width(cardWidth),
+    ) {
+        Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.choose_sport),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onBack) {
+                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.close))
                 }
             }
-            items(sports, key = { it.id }) { sport ->
-                SportCard(sport, onClick = { onChoose(sport.id) })
+            if (scorable.size > 1) ScoreForCard(scorable, session.activeContext, onContextSelected)
+            Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                sports.chunked(layout.columns).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap), modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        row.forEach { sport ->
+                            SportCard(sport, cardSize = layout.tile, onClick = { onChoose(sport.id) })
+                        }
+                    }
+                }
             }
         }
     }
+    }
+}
+
+/** Columns and square card size that fit [count] cards into [maxW] × [maxH] at the largest size. */
+internal data class SportGrid(val columns: Int, val tile: Dp, val width: Dp)
+
+internal fun sportGrid(count: Int, maxW: Dp, maxH: Dp, gap: Dp, maxTile: Dp = 190.dp, minTile: Dp = 84.dp): SportGrid {
+    val n = count.coerceAtLeast(1)
+    var best = SportGrid(1, minTile, minTile)
+    for (columns in 1..n) {
+        val rows = (n + columns - 1) / columns
+        val byWidth = (maxW - gap * (columns - 1)) / columns
+        val byHeight = (maxH - gap * (rows - 1)) / rows
+        val tile = minOf(byWidth, byHeight, maxTile)
+        if (tile > best.tile) best = SportGrid(columns, tile, tile * columns + gap * (columns - 1))
+    }
+    val tile = maxOf(best.tile, minTile)
+    return best.copy(tile = tile, width = tile * best.columns + gap * (best.columns - 1))
 }
 
 @Composable
-private fun SportCard(sport: SportOption, onClick: () -> Unit) {
+private fun SportCard(sport: SportOption, cardSize: Dp, onClick: () -> Unit) {
     val blue = MaterialTheme.colorScheme.primary
     val pink = HitNScoreTheme.colors.brandPink
     val name = MatchFormatting.sportName(sport.id)
@@ -139,7 +174,7 @@ private fun SportCard(sport: SportOption, onClick: () -> Unit) {
         border = BorderStroke(1.dp, Brush.linearGradient(listOf(blue.copy(alpha = 0.78f), pink.copy(alpha = 0.32f), blue.copy(alpha = 0.28f)))),
         shadowElevation = 2.dp,
         modifier = Modifier
-            .aspectRatio(1f)
+            .size(cardSize)
             .semantics { contentDescription = description },
     ) {
         Box {
@@ -153,7 +188,7 @@ private fun SportCard(sport: SportOption, onClick: () -> Unit) {
             }
             Column(Modifier.fillMaxSize().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.weight(1f))
-                Image(painterResource(sport.ball), contentDescription = null, modifier = Modifier.size(76.dp))
+                Image(painterResource(sport.ball), contentDescription = null, modifier = Modifier.size(cardSize * 0.42f))
                 Spacer(Modifier.weight(0.6f))
                 Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.surface) {
                     Row(Modifier.padding(horizontal = 11.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -197,9 +232,16 @@ private fun ScoreForCard(contexts: List<AccountContext>, active: AccountContext,
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text(stringResource(R.string.score_for_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.score_for_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     Spacer(Modifier.width(8.dp))
-                    Text(contextTitle(active), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        contextTitle(active),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     Spacer(Modifier.width(6.dp))
                     Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null, modifier = Modifier.size(20.dp))
                 }

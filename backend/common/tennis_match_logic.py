@@ -728,6 +728,16 @@ def _serialize_match(match_row, event_rows):
             shared.DEFAULT_PLAYER_SHIRT_COLORS["player2"],
         ),
         "referee_name": match_row.get("referee_name"),
+        "association_competition_type": match_row.get("association_competition_type"),
+        "association_competition_name": match_row.get("association_competition_name"),
+        "association_division_name": match_row.get("association_division_name"),
+        "association_fixture_date": (
+            match_row["association_fixture_date"].isoformat()
+            if match_row.get("association_fixture_date")
+            else None
+        ),
+        "association_opposition": match_row.get("association_opposition"),
+        "association_venue": match_row.get("association_venue"),
         "score_type": _score_type_value(match_row.get("score_type", 6)),
         "best_of": best_of,
         "games_to_win": shared._coerce_int(match_row.get("games_to_win"), _games_to_win(best_of)),
@@ -899,6 +909,13 @@ def create_match(connection, payload, source="api"):
             "referee_name": None,
         })
 
+    association_fixture = shared._association_fixture_metadata(
+        connection,
+        tenant_id,
+        match_payload,
+        is_personal_tenant,
+    )
+
     best_of = _best_of_value(payload.get("best_of", 3))
     games_to_win = _games_to_win(best_of)
     score_type = _score_type_value(payload.get("score_type", 6))
@@ -963,6 +980,12 @@ def create_match(connection, payload, source="api"):
                 player2_handedness,
                 player2_shirt_color,
                 referee_name,
+                association_competition_type,
+                association_competition_name,
+                association_division_name,
+                association_fixture_date,
+                association_opposition,
+                association_venue,
                 score_type,
                 best_of,
                 games_to_win,
@@ -1005,6 +1028,12 @@ def create_match(connection, payload, source="api"):
                 %(player2_handedness)s,
                 %(player2_shirt_color)s,
                 %(referee_name)s,
+                %(association_competition_type)s,
+                %(association_competition_name)s,
+                %(association_division_name)s,
+                %(association_fixture_date)s,
+                %(association_opposition)s,
+                %(association_venue)s,
                 %(score_type)s,
                 %(best_of)s,
                 %(games_to_win)s,
@@ -1048,6 +1077,7 @@ def create_match(connection, payload, source="api"):
                 "player2_handedness": str(match_payload.get("player2_handedness") or "right").lower(),
                 "player2_shirt_color": player2_shirt_color,
                 "referee_name": match_payload.get("referee_name"),
+                **association_fixture,
                 "score_type": score_type,
                 "best_of": best_of,
                 "games_to_win": games_to_win,

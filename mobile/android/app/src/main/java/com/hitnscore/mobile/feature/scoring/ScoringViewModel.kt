@@ -88,6 +88,8 @@ class ScoringViewModel(
     private val isOnline: StateFlow<Boolean>,
     private val owner: () -> OfflineOwner?,
     private val nowMillis: () -> Long = System::currentTimeMillis,
+    /** Wakes the scoring services for this match (as iOS); null in tests. */
+    private val warmScoring: (suspend (String) -> Unit)? = null,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(ScoringUiState(isOnline = isOnline.value))
@@ -138,6 +140,8 @@ class ScoringViewModel(
                 }
                 return@launch
             }
+            // Wake the scoring services in parallel with loading, so the first point is quick.
+            warmScoring?.let { warm -> launch { runCatching { warm(matchId) } } }
             offlineStore.sync(api, owner())
             when (val result = api.match(matchId)) {
                 is ApiResult.Success -> {
@@ -493,6 +497,7 @@ class ScoringViewModel(
                     offlineStore = container.offlineMatchStore,
                     isOnline = container.connectivity.isOnline,
                     owner = { container.offlineOwner() },
+                    warmScoring = { container.scoringWarmup.warm(it) },
                 )
             }
         }
