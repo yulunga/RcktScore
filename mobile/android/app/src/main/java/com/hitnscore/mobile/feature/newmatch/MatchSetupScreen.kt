@@ -2,6 +2,7 @@ package com.hitnscore.mobile.feature.newmatch
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
@@ -209,6 +210,11 @@ fun MatchSetupScreen(
                     }
                 }
             }
+            // League Game, between the match format and the referee (as iOS); only for clubs
+            // with league games switched on for match setup.
+            if (state.showsLeagueGame) {
+                item { LeagueGameCard(state, viewModel) }
+            }
             if (!args.isPersonal) {
                 item {
                     FormCard(stringResource(R.string.setup_referee)) {
@@ -342,6 +348,64 @@ private fun PlayerCard(
                         Text(stringResource(R.string.setup_lefty), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(8.dp))
                         Switch(checked = leftHanded, onCheckedChange = onLeftHanded)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** League Game: a switch, then a drop-down of the club's league games (league, division, date). */
+@Composable
+private fun LeagueGameCard(state: MatchSetupUiState, viewModel: MatchSetupViewModel) {
+    val form = state.form
+    FormCard(stringResource(R.string.setup_league_game)) {
+        SwitchRow(stringResource(R.string.setup_league_link), stringResource(R.string.setup_league_link_body), form.leagueGame) { on ->
+            viewModel.update {
+                it.copy(
+                    leagueGame = on,
+                    leagueFixtureId = it.leagueFixtureId.ifBlank { state.leagueFixtures.firstOrNull()?.id.orEmpty() },
+                )
+            }
+        }
+        if (form.leagueGame) {
+            var open by remember { mutableStateOf(false) }
+            val selected = state.selectedLeagueFixture
+            Box {
+                Surface(
+                    onClick = { open = true },
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                selected?.heading ?: stringResource(R.string.setup_league_choose),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            selected?.let {
+                                Text(it.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Icon(painterResource(R.drawable.ic_expand_more), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }, modifier = Modifier.heightIn(max = 360.dp)) {
+                    state.leagueFixtures.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(option.heading, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(option.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            },
+                            onClick = {
+                                open = false
+                                viewModel.update { it.copy(leagueFixtureId = option.id) }
+                            },
+                        )
                     }
                 }
             }

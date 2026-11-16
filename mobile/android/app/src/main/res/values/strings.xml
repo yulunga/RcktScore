@@ -708,4 +708,10 @@
     <string name="setup_first_name_required">First name *</string>
     <string name="setup_country_short">Country</string>
     <string name="setup_lefty">Lefty</string>
+    <string name="setup_league_game">League Game</string>
+    <string name="setup_league_link">Link this match to a league game</string>
+    <string name="setup_league_link_body">Select from the games configured for this club.</string>
+    <string name="setup_league_choose">Choose a league game</string>
+    <string name="info_league">League</string>
+    <string name="info_league_game">League Game</string>
 </resources>

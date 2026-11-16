@@ -181,6 +181,18 @@ internal fun InformationCard(match: MatchDetail, tennis: Boolean) {
                 InfoRow(stringResource(R.string.info_date), MatchFormatting.isoDate(startedAt))
                 InfoRow(stringResource(R.string.info_started), MatchFormatting.time24(startedAt))
                 InfoRow(stringResource(R.string.info_court), courtName(match))
+                // A league game (as iOS): the league and division, then the fixture.
+                match.associationCompetitionName?.takeIf { it.isNotBlank() }?.let { league ->
+                    InfoRow(stringResource(R.string.info_league), listOfNotNull(league, match.associationDivisionName?.takeIf { it.isNotBlank() }).joinToString(" · "))
+                    InfoRow(
+                        stringResource(R.string.info_league_game),
+                        listOfNotNull(
+                            match.associationFixtureDate?.takeIf { it.isNotBlank() },
+                            match.associationVenue?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() },
+                            match.associationOpposition?.takeIf { it.isNotBlank() }?.let { "vs $it" },
+                        ).joinToString(" · "),
+                    )
+                }
                 InfoRow(stringResource(R.string.info_referee), match.refereeName ?: stringResource(R.string.not_added))
             }
         }
