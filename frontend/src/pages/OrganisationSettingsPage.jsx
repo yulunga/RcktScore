@@ -391,8 +391,12 @@ export default function OrganisationSettingsPage() {
     setMessage("");
     setError("");
     try {
-      await task();
-      await loadSettings();
+      const result = await task();
+      if (result?.organizationSettings) {
+        syncLocalState(result.organizationSettings);
+      } else {
+        await loadSettings();
+      }
       setMessage(successMessage);
       return true;
     } catch (requestError) {
@@ -488,7 +492,18 @@ export default function OrganisationSettingsPage() {
   async function saveAssociationCompetitions(nextCompetitions, successMessage) {
     return runMutation(
       "association-competitions",
-      () => updateOrganizationDetails(organizationId, { association_competitions: nextCompetitions }),
+      async () => {
+        const response = await updateOrganizationDetails(organizationId, { association_competitions: nextCompetitions });
+        const savedCompetitions = response?.organizationSettings?.organization?.association_competitions;
+        const retainedEverySetupFlag = Array.isArray(savedCompetitions) && nextCompetitions.every((expected) => {
+          const saved = savedCompetitions.find((item) => competitionKey(item) === competitionKey(expected));
+          return Boolean(saved?.match_setup_enabled) === Boolean(expected.match_setup_enabled);
+        });
+        if (!retainedEverySetupFlag) {
+          throw new Error("The server did not retain the match setup setting. Deploy the latest backend and try again.");
+        }
+        return response;
+      },
       successMessage,
     );
   }

@@ -255,6 +255,12 @@ there are no enabled fixtures for the selected club, and Personal setup never
 shows it. Match creation rejects stale, disabled or
 cross-tenant fixture selections; deploy migration `063_match_league_fixture.sql`
 before the backend that persists the selected fixture snapshot.
+If the web switch immediately returns to off, inspect the `PUT
+/organization_details/{organization_id}` response. The returned normalized league
+must retain `match_setup_enabled: true`; otherwise the frontend and organisation
+settings Lambda are on incompatible releases. Deploy the current backend. The web
+client consumes the successful PUT response directly to avoid a stale follow-up
+GET and shows an explicit error when the server drops the flag.
 
 Identity-first login is controlled centrally by the SAM parameter
 `IdentityFirstLoginEnabled` and defaults to `true`. A multi-membership login
