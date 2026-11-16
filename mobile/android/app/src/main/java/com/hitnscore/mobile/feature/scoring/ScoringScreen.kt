@@ -79,6 +79,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -189,6 +200,8 @@ fun ScoringScreen(
                 BottomDock(
                     timer = state.timer,
                     isScheduled = state.isScheduled,
+                    syncing = state.isSyncing && state.pendingActions > 0,
+                    pending = state.pendingActions,
                     enabled = state.scoringAllowed,
                     onToggleTimer = viewModel::toggleTimer,
                     onSkip = viewModel::skipTimedPhase,
@@ -446,14 +459,18 @@ private fun Scoreboard(
                     }
                 }
             }
-            // Score panels either side of the point rail.
+            // Score panels either side of the point rail. Tablets (portrait and landscape): the
+            // panels take the spare width and sit close to a fixed-width rail, with much larger
+            // scores, so they are easy to see and press.
+            val tablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
             Row(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = if (tablet) 10.dp else 6.dp),
+                horizontalArrangement = if (tablet) Arrangement.spacedBy(10.dp) else Arrangement.SpaceBetween,
             ) {
+                val panelModifier = if (tablet) Modifier.weight(1f) else Modifier.width(112.dp)
                 ScorePanel(
                     name = match.player1Name,
                     score = live?.player1ScoreLabel ?: "${live?.player1Score ?: 0}",
@@ -462,8 +479,10 @@ private fun Scoreboard(
                     enabled = state.canScore,
                     onTap = { onScore("player1") },
                     onSwipeDown = onSwipeUndo,
+                    large = tablet,
+                    modifier = panelModifier,
                 )
-                PointRail(state.rail, Modifier.weight(1f).fillMaxHeight())
+                PointRail(state.rail, (if (tablet) Modifier.width(TABLET_RAIL_WIDTH) else Modifier.weight(1f)).fillMaxHeight())
                 ScorePanel(
                     name = match.player2Name,
                     score = live?.player2ScoreLabel ?: "${live?.player2Score ?: 0}",
@@ -472,6 +491,8 @@ private fun Scoreboard(
                     enabled = state.canScore,
                     onTap = { onScore("player2") },
                     onSwipeDown = onSwipeUndo,
+                    large = tablet,
+                    modifier = panelModifier,
                 )
             }
             // Completed games strip.
@@ -496,6 +517,9 @@ private fun Scoreboard(
     }
 }
 
+/** Width of the point rail between the two score panels on tablets. */
+private val TABLET_RAIL_WIDTH = 200.dp
+
 /** Tap to score; swipe down to undo (approved UX change 2). */
 @Composable
 private fun ScorePanel(
@@ -506,12 +530,14 @@ private fun ScorePanel(
     enabled: Boolean,
     onTap: () -> Unit,
     onSwipeDown: () -> Unit,
+    /** Tablets: a wide panel with a much bigger score. */
+    large: Boolean = false,
+    modifier: Modifier = Modifier.width(112.dp),
 ) {
     val description = stringResource(R.string.score_description, name, score)
     var dragged by remember { mutableStateOf(0f) }
     Column(
-        modifier = Modifier
-            .width(112.dp)
+        modifier = modifier
             .fillMaxHeight()
             .padding(vertical = 8.dp)
             .background(shirt.fill, RoundedCornerShape(24.dp))
@@ -529,18 +555,30 @@ private fun ScorePanel(
             .semantics(mergeDescendants = true) { contentDescription = description }
             .padding(horizontal = 8.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = if (large) Arrangement.spacedBy(16.dp, Alignment.CenterVertically) else Arrangement.spacedBy(10.dp),
     ) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .background(if (shirt.isLight) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
-                .padding(vertical = 12.dp),
+                .padding(vertical = if (large) 20.dp else 12.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(score, style = ScoreTextStyles.Large.copy(fontSize = 46.sp, lineHeight = 50.sp), color = shirt.onFill, maxLines = 1)
+            Text(
+                score,
+                style = ScoreTextStyles.Large.copy(
+                    fontSize = if (large) 120.sp else 46.sp,
+                    lineHeight = if (large) 126.sp else 50.sp,
+                ),
+                color = shirt.onFill,
+                maxLines = 1,
+            )
         }
-        Text(stringResource(R.string.games_n, games), style = MaterialTheme.typography.labelLarge, color = shirt.onFill)
+        Text(
+            stringResource(R.string.games_n, games),
+            style = if (large) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelLarge,
+            color = shirt.onFill,
+        )
     }
 }
 
@@ -590,6 +628,9 @@ private fun RailMarkers(entry: RailEntry, accent: Color) {
 private fun BottomDock(
     timer: MatchTimer,
     isScheduled: Boolean,
+    /** Points are being sent: a spinning refresh icon between the clock and Action. */
+    syncing: Boolean,
+    pending: Int,
     enabled: Boolean,
     onToggleTimer: () -> Unit,
     onSkip: () -> Unit,
@@ -599,6 +640,9 @@ private fun BottomDock(
         Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 TimerChip(timer, enabled = enabled && !isScheduled && timer.phase != TimerPhase.FirstServer, onClick = onToggleTimer, modifier = Modifier.weight(1f))
+                AnimatedVisibility(visible = syncing, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+                    SyncingIcon(pending)
+                }
                 Button(
                     onClick = onAction,
                     enabled = enabled && !isScheduled,
@@ -618,6 +662,32 @@ private fun BottomDock(
             }
             if (skipLabel != null) TextButton(onClick = onSkip, enabled = enabled) { Text(stringResource(skipLabel)) }
         }
+    }
+}
+
+/** Spinning refresh icon shown while queued points are being sent. */
+@Composable
+private fun SyncingIcon(pending: Int) {
+    val rotation by rememberInfiniteTransition(label = "sync").animateFloat(
+        initialValue = 0f,
+        targetValue = -360f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)),
+        label = "syncRotation",
+    )
+    val description = pluralStringResource(R.plurals.sync_sending, pending, pending)
+    Box(
+        Modifier
+            .size(40.dp)
+            .background(ServeOrange.copy(alpha = 0.14f), CircleShape)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_sync),
+            contentDescription = null,
+            tint = ServeOrange,
+            modifier = Modifier.size(22.dp).rotate(rotation),
+        )
     }
 }
 
@@ -811,7 +881,7 @@ private fun SyncBanner(
         failure != null -> stringResource(R.string.sync_refused, failure)
         !isOnline && pending > 0 -> pluralStringResource(R.plurals.sync_offline_pending, pending, pending)
         !isOnline -> stringResource(R.string.sync_offline)
-        isSyncing && pending > 0 -> pluralStringResource(R.plurals.sync_sending, pending, pending)
+        // "Sending" is the small refresh icon in the bottom dock, so the scoreboard never moves.
         else -> null
     } ?: return
     val accent = if (failure != null) Danger else ServeOrange

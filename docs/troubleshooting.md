@@ -154,9 +154,11 @@ Use `npm run test:e2e:header:watch` to watch the signed-in dashboard header
 compact after a vertical scroll. The check confirms that the outer width does
 not change, the header remains sticky, Home and the blue new-match `+` precede
 Matches/Analytics/Settings/Help, labels become icons, account and club details
-stay absent, the removed dashboard description and footer stay absent, and
-Start New Match remains a separate blue action. The header `+` and dashboard
-action must both open the same sport-selection overlay before setup. It also verifies that new-match
+stay absent, the removed dashboard description and footer stay absent, and the
+removed dashboard Start New Match banner stays absent. The header `+` must open
+the sport-selection overlay before setup. The suite also verifies that the desktop
+match list is visible while its mobile/carousel counterpart is hidden, preventing
+one active match from appearing twice. It also verifies that new-match
 routes do not highlight Matches, that the mobile menu remains on one row and
 Settings opens `/settings`, the Settings section tabs do not repeat Home, and
 Recent Matches uses date/time tiles with six-card pages over at most 24 records,

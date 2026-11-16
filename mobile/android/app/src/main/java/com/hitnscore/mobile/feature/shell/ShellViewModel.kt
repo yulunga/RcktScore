@@ -83,6 +83,12 @@ class ShellViewModel(
 
     fun refresh() = reload(userInitiated = true)
 
+    /** Background refresh (no spinner): finished matches leave Active Matches, new ones appear. */
+    fun refreshQuietly() {
+        if (loadJob?.isActive == true) return
+        reload(userInitiated = false)
+    }
+
     fun selectMatchesCategory(category: MatchesCategory) =
         mutableState.update { it.copy(matchesCategory = category) }
 

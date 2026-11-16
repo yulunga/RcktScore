@@ -332,7 +332,7 @@ const GUIDES = {
       {
         title: "Choose where the match belongs",
         steps: [
-          "Select the blue plus or Start New Match.",
+          "Select the blue plus in the navigation menu.",
           "Choose Personal, Personal Plus or one of the retained clubs under Score this match for.",
           "Choose Squash, Racketball, Tennis or Padel from the sports enabled for that account and client.",
         ],

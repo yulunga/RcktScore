@@ -90,4 +90,11 @@ class MatchTimerTest {
         assertEquals(120, setBreak.seconds)
         assertEquals(TimerPhase.MatchLive, setBreak.ticks(120).phase)
     }
+
+    @Test
+    fun freshSquashMatchWithoutTimedBreaksAsksWhoServesFirst() {
+        val start = MatchTimer.initial(isScheduled = false, isComplete = false, isFresh = true, timedBreaks = false, recordedDuration = 0)
+        assertEquals(TimerPhase.FirstServer, start.phase)
+        assertFalse(start.running)
+    }
 }

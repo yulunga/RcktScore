@@ -15,6 +15,10 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.delay
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -99,6 +103,21 @@ fun AppShellScreen(
 
     val fullScreen = ShellRoutes.isFullScreen(currentRoute)
 
+    // Auto-refresh while the app is open: a match finished on any device leaves Active
+    // Matches (and new ones appear) without pulling to refresh. Faster while matches are live;
+    // paused on the scorer, which has its own live updates.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentFullScreen by rememberUpdatedState(fullScreen)
+    val hasLiveMatches by rememberUpdatedState(shellState.dashboard?.activeMatches.orEmpty().isNotEmpty())
+    LaunchedEffect(lifecycleOwner, shellViewModel) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                delay(if (hasLiveMatches) LIVE_REFRESH_MS else IDLE_REFRESH_MS)
+                if (!currentFullScreen) shellViewModel.refreshQuietly()
+            }
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -180,6 +199,10 @@ private fun RowScope.PlayItem(onClick: () -> Unit) {
         modifier = Modifier.testTag(ShellTags.PLAY),
     )
 }
+
+/** Dashboard auto-refresh: every 10 s while matches are live, otherwise every 30 s. */
+private const val LIVE_REFRESH_MS = 10_000L
+private const val IDLE_REFRESH_MS = 30_000L
 
 object ShellTags {
     const val PLAY = "shell_play"

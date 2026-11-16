@@ -120,8 +120,8 @@ data class MatchTimer(
                 isScheduled -> base.copy(phase = TimerPhase.MatchLive, running = false)
                 isComplete -> base.copy(phase = TimerPhase.MatchLive, running = false, matchDurationSeconds = recordedDuration)
                 isFresh && timedBreaks -> base.copy(phase = TimerPhase.WarmupReady, seconds = base.warmupSeconds)
-                // Tennis/Padel always confirm the opening server (and receiver for doubles) first.
-                isFresh && isTennis -> base.copy(phase = TimerPhase.FirstServer, running = false)
+                // As iOS: every sport asks who serves first (tennis/Padel also the receiver for doubles).
+                isFresh -> base.copy(phase = TimerPhase.FirstServer, running = false)
                 else -> base.copy(phase = TimerPhase.MatchLive, running = true, matchDurationSeconds = recordedDuration)
             }
         }

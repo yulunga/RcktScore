@@ -257,15 +257,7 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   await expect(page.getByText(/RcktScore v\d/)).toHaveCount(0);
   await expect(page.getByText(/build \d+/)).toHaveCount(0);
   const viewport = page.viewportSize();
-  const usesMobileBottomNavigation = viewport.width <= 480
-    || (viewport.width <= 1024 && viewport.height > viewport.width);
-  if (usesMobileBottomNavigation) {
-    await expect(startMatch).toBeHidden();
-  } else {
-    await expect(startMatch).toBeVisible();
-    await expect(startMatch).toHaveCSS("color", "rgb(255, 255, 255)");
-    await expect(startMatch.locator("strong")).toHaveCSS("font-weight", "700");
-  }
+  await expect(startMatch).toHaveCount(0);
 
   let initialHomeBox = null;
   if (viewport.width <= 600) {
@@ -405,6 +397,33 @@ test("keeps the signed-in header width fixed while compacting its menu on scroll
   }
 
   await page.evaluate(() => window.__headerObserver?.disconnect());
+});
+
+test("shows each active match once on a laptop dashboard @header", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.unroute("**/dashboard/42*");
+  await page.route("**/dashboard/42*", async (route) => {
+    await route.fulfill({ json: envelope({ dashboard: {
+      organization: { id: 42, name: "Header Test Club", type: "club", plan: "club_essentials" },
+      active_matches: [{
+        id: 701,
+        court_name: "Court-1",
+        player1_name: "Paul",
+        player2_name: "Derrick",
+        best_of: 3,
+        created_at: "2026-11-16T10:00:00Z",
+        state: { player1_score: 0, player2_score: 0, player1_games_won: 0, player2_games_won: 0 },
+      }],
+      scheduled_matches: [],
+      recent_matches: [],
+    } }) });
+  });
+
+  await page.goto("/dashboard");
+
+  await expect(page.locator(".dashboard-card-grid--desktop .dashboard-active-card")).toHaveCount(1);
+  await expect(page.locator(".dashboard-card-grid.dashboard-carousel--mobile")).toBeHidden();
+  await expect(page.locator(".dashboard-start-hero")).toHaveCount(0);
 });
 
 test("switches identity context from the header and exposes it on Matches and match creation @header", async ({ page }) => {
@@ -896,7 +915,9 @@ for (const viewportSize of [
     });
     await page.setViewportSize({ width: viewportSize.width, height: viewportSize.height });
     await page.goto("/dashboard");
-    await page.locator(".dashboard-start-hero").click();
+    await page.getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("button", { name: "Start New Match" })
+      .click();
 
     const chooser = page.getByRole("dialog", { name: "Personal or Club Match" });
     const options = chooser.locator(".match-sport-overlay__option");
@@ -963,7 +984,7 @@ for (const viewportSize of [
     await expect(navigation.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(navigation.getByRole("button", { name: "Help" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeHidden();
-    await expect(page.locator(".dashboard-start-hero")).toBeVisible();
+    await expect(page.locator(".dashboard-start-hero")).toHaveCount(0);
 
     const [brandBox, navBox, messagesBox, contextBox] = await Promise.all([
       header.locator(".club-page-header__brand-row").boundingBox(),

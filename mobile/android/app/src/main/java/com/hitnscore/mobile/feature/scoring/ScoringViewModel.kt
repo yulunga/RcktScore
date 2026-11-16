@@ -109,6 +109,23 @@ class ScoringViewModel(
                 persistTimer()
             }
         }
+        // Locked out (another scorer controls this match): follow their score live by
+        // reading the match every couple of seconds, until this account can score again.
+        viewModelScope.launch {
+            while (true) {
+                delay(VIEWER_REFRESH_MS)
+                val state = mutableState.value
+                if (!isOnline.value || state.match == null || state.scoringAllowed || state.isComplete || state.isMutating) continue
+                when (val result = api.match(matchId)) {
+                    is ApiResult.Success -> {
+                        owner()?.let { offlineStore.cache(result.value, it) }
+                        // Nothing is queued from a locked device, so the server copy is what to show.
+                        apply(offlineStore.projectedMatch(matchId, owner()) ?: result.value, bootstrap = false)
+                    }
+                    is ApiResult.Failure -> Unit
+                }
+            }
+        }
         // Queue, sync progress and server responses all arrive through the store.
         viewModelScope.launch {
             combine(offlineStore.snapshots, offlineStore.isSyncing, offlineStore.syncFailure) { _, syncing, failure ->
@@ -481,6 +498,8 @@ class ScoringViewModel(
 
     companion object {
         private const val TICK_MS = 1_000L
+        /** How often a locked-out viewer reads the live score. */
+        private const val VIEWER_REFRESH_MS = 2_000L
         const val OFFLINE_NOT_HELD = "You're offline and this match isn't saved on this phone yet. Open it once while online to score it offline."
         const val NOT_HELD = "This match isn't available for offline scoring on this phone. Reload it while online."
         const val UNDO_NEEDS_CONNECTION = "Only points scored on this phone while offline can be undone until you reconnect."

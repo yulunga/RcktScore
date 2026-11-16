@@ -371,10 +371,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     }
   }
 
-  function handleOpenSportOverlay() {
-    setShowSportOverlay(true);
-  }
-
   function handleCloseSportOverlay() {
     setShowSportOverlay(false);
     if (location.pathname === "/dashboard" && location.hash === "#new-match") {
@@ -794,24 +790,6 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
               : (isPersonalAccount ? "" : organization.name || session?.organization_name || "Club Dashboard")
         }
       />
-
-      {screenMode === "dashboard" && matchManagementEnabled ? (
-        <button
-          className="dashboard-start-hero"
-          type="button"
-          onClick={handleOpenSportOverlay}
-        >
-          <span className="dashboard-start-hero__tile" aria-hidden="true">
-            +
-          </span>
-          <span className="dashboard-start-hero__copy">
-            <strong>Start New Match</strong>
-          </span>
-          <span className="dashboard-start-hero__chevron" aria-hidden="true">
-            ›
-          </span>
-        </button>
-      ) : null}
 
       {loading ? <div className="notice">Loading dashboard...</div> : null}
       {actionError ? <div className="notice error">{actionError}</div> : null}

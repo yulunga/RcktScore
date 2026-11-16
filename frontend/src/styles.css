@@ -4517,6 +4517,12 @@ textarea {
   display: none;
 }
 
+/* A mobile grid carries both classes, so keep the viewport variant hidden on
+   desktop even though the generic grid rule below establishes display:grid. */
+.dashboard-card-grid.dashboard-carousel--mobile {
+  display: none;
+}
+
 .dashboard-card-grid {
   display: grid;
   gap: 14px;
@@ -8923,6 +8929,10 @@ textarea {
     display: grid;
   }
 
+  .dashboard-card-grid.dashboard-carousel--mobile {
+    display: grid;
+  }
+
   .dashboard-card-grid--mobile {
     grid-template-columns: 1fr;
   }
@@ -8940,6 +8950,10 @@ textarea {
   }
 
   .dashboard-carousel--mobile {
+    display: grid;
+  }
+
+  .dashboard-card-grid.dashboard-carousel--mobile {
     display: grid;
   }
 
