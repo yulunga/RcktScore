@@ -83,13 +83,14 @@ struct OrganizationProfile: Decodable {
 struct AssociationCompetition: Decodable, Identifiable, Hashable {
     let name: String
     let type: String
+    let sport: String
     let matchSetupEnabled: Bool
     let divisions: [AssociationCompetitionDivision]
 
     var id: String { "\(type.lowercased()):\(name.lowercased())" }
 
     enum CodingKeys: String, CodingKey {
-        case name, type, divisions, fixtures
+        case name, type, sport, divisions, fixtures
         case matchSetupEnabled = "match_setup_enabled"
     }
 
@@ -97,6 +98,7 @@ struct AssociationCompetition: Decodable, Identifiable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         type = try container.decodeIfPresent(String.self, forKey: .type) ?? "league"
+        sport = try container.decodeIfPresent(String.self, forKey: .sport) ?? ""
         matchSetupEnabled = try container.decodeIfPresent(Bool.self, forKey: .matchSetupEnabled) ?? false
         let decodedDivisions = try container.decodeIfPresent([AssociationCompetitionDivision].self, forKey: .divisions) ?? []
         if decodedDivisions.isEmpty,

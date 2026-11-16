@@ -248,11 +248,13 @@ during normalization. If Home/Away disappears after saving, confirm the deployed
 normalizer retains `divisions[].fixtures[].venue` and that the full normalized
 competition list is returned by `GET /organization_settings/{organization_id}`.
 
-If a league is missing from web or iOS match setup, confirm its normalized entry has
-`match_setup_enabled: true` and contains at least one division fixture. Existing
-leagues default off intentionally. iOS hides the whole League Game switch when
-there are no enabled fixtures for the selected club, and Personal setup never
-shows it. Match creation rejects stale, disabled or
+If a league is missing from web, iOS or Android match setup, confirm its normalized entry has
+`match_setup_enabled: true`, a `sport` equal to the match sport, and at least one
+division fixture. Existing leagues without a sport default off intentionally and
+must be edited before their switch becomes available. Native clients hide the
+whole League Game control when there are no matching enabled fixtures for the
+selected club, and Personal setup never shows it. Match creation rejects stale,
+disabled, wrong-sport or
 cross-tenant fixture selections; deploy migration `063_match_league_fixture.sql`
 before the backend that persists the selected fixture snapshot.
 If the web switch immediately returns to off, inspect the `PUT

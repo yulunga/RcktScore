@@ -135,6 +135,7 @@ test("club admins choose a managed club and assign league fixtures @club-setting
   await page.getByRole("button", { name: /Club leagues/ }).click();
   await page.getByRole("button", { name: "Add Club leagues" }).click();
   await page.getByLabel("League name").fill("County League");
+  await page.getByLabel("Racket sport").selectOption("squash");
   await page.getByRole("button", { name: "Save League" }).click();
   const leagueHeader = page.getByRole("button", { name: /County League.*0 divisions/ });
   await expect(leagueHeader).toHaveAttribute("aria-expanded", "false");
@@ -173,6 +174,7 @@ test("club admins choose a managed club and assign league fixtures @club-setting
     {
       name: "County League",
       type: "league",
+      sport: "squash",
       match_setup_enabled: true,
       divisions: [{
         name: "Premier Division",
@@ -184,7 +186,7 @@ test("club admins choose a managed club and assign league fixtures @club-setting
 
   await page.getByRole("button", { name: "Edit County League" }).click();
   await page.getByLabel("League name").fill("County Winter League");
-  await page.getByRole("button", { name: "Save Name" }).click();
+  await page.getByRole("button", { name: "Save League" }).click();
   await expect(page.getByText("County Winter League", { exact: true })).toBeVisible();
   expect(updates.at(-1).association_competitions[0].name).toBe("County Winter League");
 

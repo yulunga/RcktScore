@@ -15,9 +15,10 @@ class LeagueFixtureOptionsTest {
     fun onlyLeaguesSwitchedOnForMatchSetupAreOffered() {
         val options = leagueFixtureOptions(
             listOf(
-                AssociationCompetition("Notts League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureA))), matchSetupEnabled = true),
-                AssociationCompetition("Hidden League", "league", listOf(AssociationCompetitionDivision("Div 2", null, listOf(fixtureB))), matchSetupEnabled = false),
+                AssociationCompetition("Notts League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureA))), matchSetupEnabled = true, sport = "squash"),
+                AssociationCompetition("Hidden League", "league", listOf(AssociationCompetitionDivision("Div 2", null, listOf(fixtureB))), matchSetupEnabled = false, sport = "squash"),
             ),
+            "squash",
         )
         assertEquals(listOf("Notts League"), options.map { it.competitionName })
     }
@@ -26,9 +27,10 @@ class LeagueFixtureOptionsTest {
     fun soonestGameFirstAndLegacyFixturesUseGeneral() {
         val options = leagueFixtureOptions(
             listOf(
-                AssociationCompetition("Notts League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureA))), matchSetupEnabled = true),
-                AssociationCompetition("Inter-club", "interclub", fixtures = listOf(fixtureB), matchSetupEnabled = true),
+                AssociationCompetition("Notts League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureA))), matchSetupEnabled = true, sport = "squash"),
+                AssociationCompetition("Inter-club", "interclub", fixtures = listOf(fixtureB), matchSetupEnabled = true, sport = "squash"),
             ),
+            "squash",
         )
         assertEquals(listOf("2026-11-20", "2026-12-01"), options.map { it.fixture.date })
         assertEquals("Inter-club · General", options.first().heading)
@@ -36,7 +38,18 @@ class LeagueFixtureOptionsTest {
     }
 
     @Test
+    fun onlyLeaguesForTheMatchSportAreOffered() {
+        val competitions = listOf(
+            AssociationCompetition("Squash League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureA))), matchSetupEnabled = true, sport = "squash"),
+            AssociationCompetition("Racketball League", "league", listOf(AssociationCompetitionDivision("Div 1", null, listOf(fixtureB))), matchSetupEnabled = true, sport = "racketball"),
+        )
+        assertEquals(listOf("Squash League"), leagueFixtureOptions(competitions, "squash").map { it.competitionName })
+        assertEquals(listOf("Racketball League"), leagueFixtureOptions(competitions, "racketball").map { it.competitionName })
+        assertTrue(leagueFixtureOptions(competitions, "tennis").isEmpty())
+    }
+
+    @Test
     fun noEnabledLeaguesMeansNoOptions() {
-        assertTrue(leagueFixtureOptions(emptyList()).isEmpty())
+        assertTrue(leagueFixtureOptions(emptyList(), "squash").isEmpty())
     }
 }

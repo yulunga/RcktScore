@@ -49,6 +49,8 @@ data class AssociationCompetition(
     val fixtures: List<AssociationCompetitionFixture> = emptyList(),
     /** Its games can be picked in match setup (League Game). */
     @SerialName("match_setup_enabled") val matchSetupEnabled: Boolean = false,
+    /** The racket sport the league is played in (`squash`, `racketball`, `tennis`, `padel`). */
+    val sport: String = "",
 ) {
     /** Divisions, with legacy fixtures shown as one "General" division (as iOS). */
     val allDivisions: List<AssociationCompetitionDivision>

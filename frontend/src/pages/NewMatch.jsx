@@ -216,7 +216,10 @@ export default function NewMatch() {
   const shouldScheduleMatch = requestedScheduledMatch || (!isPersonalAccount && Boolean(activeCourtMatch));
   const canSubmitMatch = requiredFieldsComplete && !personalActiveMatch;
   const enabledCompetitionGroups = useMemo(() => associationCompetitions
-    .filter((competition) => Boolean(competition?.match_setup_enabled))
+    .filter((competition) => (
+      Boolean(competition?.match_setup_enabled)
+      && String(competition?.sport || "").toLowerCase() === selectedSport
+    ))
     .map((competition, competitionIndex) => {
       const divisions = Array.isArray(competition.divisions) && competition.divisions.length
         ? competition.divisions
@@ -238,7 +241,7 @@ export default function NewMatch() {
         }))
       ));
       return { id: `${competition.type || "league"}:${competition.name}`, name: competition.name, fixtures };
-    }), [associationCompetitions]);
+    }), [associationCompetitions, selectedSport]);
   const selectedAssociationFixture = useMemo(() => enabledCompetitionGroups
     .flatMap((competition) => competition.fixtures)
     .find((fixture) => fixture.id === selectedAssociationFixtureId), [enabledCompetitionGroups, selectedAssociationFixtureId]);

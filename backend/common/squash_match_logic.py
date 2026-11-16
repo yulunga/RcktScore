@@ -43,6 +43,7 @@ ASSOCIATION_FIXTURE_FIELDS = (
     "association_opposition",
     "association_venue",
 )
+VALID_ASSOCIATION_SPORTS = {"squash", "racketball", "tennis", "padel"}
 
 
 def _utcnow():
@@ -63,7 +64,12 @@ def _association_fixture_metadata(connection, tenant_id, payload, is_personal_te
 
     requested_type = requested_values["association_competition_type"].lower()
     requested_venue = requested_values["association_venue"].lower()
-    if requested_type not in {"league", "interclub"} or requested_venue not in {"home", "away"}:
+    requested_sport = str(payload.get("sport") or "").strip().lower()
+    if (
+        requested_type not in {"league", "interclub"}
+        or requested_venue not in {"home", "away"}
+        or requested_sport not in VALID_ASSOCIATION_SPORTS
+    ):
         raise ValueError("The selected league game is invalid")
 
     with connection.cursor() as cursor:
@@ -85,8 +91,10 @@ def _association_fixture_metadata(connection, tenant_id, payload, is_personal_te
             continue
         competition_type = str(competition.get("type") or "league").strip().lower()
         competition_name = str(competition.get("name") or "").strip()
+        competition_sport = str(competition.get("sport") or "").strip().lower()
         if (
             competition_type != requested_type
+            or competition_sport != requested_sport
             or competition_name.casefold()
             != requested_values["association_competition_name"].casefold()
         ):

@@ -140,6 +140,7 @@ export default function OrganisationSettingsPage() {
   const [activeGameSettingsTile, setActiveGameSettingsTile] = useState("");
   const [associationCompetitions, setAssociationCompetitions] = useState([]);
   const [competitionDrafts, setCompetitionDrafts] = useState({ league: "", interclub: "" });
+  const [competitionSportDrafts, setCompetitionSportDrafts] = useState({ league: "", interclub: "" });
   const [leagueGroupsOpen, setLeagueGroupsOpen] = useState({ league: false, interclub: false });
   const [addLeagueOpen, setAddLeagueOpen] = useState({ league: false, interclub: false });
   const [expandedCompetition, setExpandedCompetition] = useState("");
@@ -149,6 +150,7 @@ export default function OrganisationSettingsPage() {
   const [fixtureDrafts, setFixtureDrafts] = useState({});
   const [editingCompetition, setEditingCompetition] = useState("");
   const [competitionRenameDrafts, setCompetitionRenameDrafts] = useState({});
+  const [competitionSportEditDrafts, setCompetitionSportEditDrafts] = useState({});
   const [editingDivisionLink, setEditingDivisionLink] = useState("");
   const [divisionLinkDrafts, setDivisionLinkDrafts] = useState({});
   const [editingDivision, setEditingDivision] = useState("");
@@ -230,6 +232,10 @@ export default function OrganisationSettingsPage() {
   }, [userSearchQuery, users]);
   const courtSportOptions = useMemo(
     () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && sport.value !== "racketball" && enabledSports.includes(sport.value)),
+    [enabledSports],
+  );
+  const leagueSportOptions = useMemo(
+    () => MATCH_SPORT_OPTIONS.filter((sport) => sport.implemented && enabledSports.includes(sport.value)),
     [enabledSports],
   );
   const courts = settings?.courts || [];
@@ -497,7 +503,8 @@ export default function OrganisationSettingsPage() {
         const savedCompetitions = response?.organizationSettings?.organization?.association_competitions;
         const retainedEverySetupFlag = Array.isArray(savedCompetitions) && nextCompetitions.every((expected) => {
           const saved = savedCompetitions.find((item) => competitionKey(item) === competitionKey(expected));
-          return Boolean(saved?.match_setup_enabled) === Boolean(expected.match_setup_enabled);
+          return Boolean(saved?.match_setup_enabled) === Boolean(expected.match_setup_enabled)
+            && String(saved?.sport || "") === String(expected.sport || "");
         });
         if (!retainedEverySetupFlag) {
           throw new Error("The server did not retain the match setup setting. Deploy the latest backend and try again.");
@@ -511,12 +518,14 @@ export default function OrganisationSettingsPage() {
   async function handleCompetitionAdd(event, competitionType) {
     event.preventDefault();
     const name = competitionDrafts[competitionType].trim();
-    if (!name || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
-    const nextCompetition = { name, type: competitionType, match_setup_enabled: false, divisions: [] };
+    const sport = competitionSportDrafts[competitionType];
+    if (!name || !sport || associationCompetitions.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
+    const nextCompetition = { name, type: competitionType, sport, match_setup_enabled: false, divisions: [] };
     const nextCompetitions = [...associationCompetitions, nextCompetition];
     const saved = await saveAssociationCompetitions(nextCompetitions, "Club competition added.");
     if (saved) {
       setCompetitionDrafts((current) => ({ ...current, [competitionType]: "" }));
+      setCompetitionSportDrafts((current) => ({ ...current, [competitionType]: "" }));
       setAddLeagueOpen((current) => ({ ...current, [competitionType]: false }));
       setExpandedCompetition("");
     }
@@ -526,15 +535,16 @@ export default function OrganisationSettingsPage() {
     event.preventDefault();
     const oldKey = competitionKey(competition);
     const name = String(competitionRenameDrafts[oldKey] || "").trim();
-    if (!name || associationCompetitions.some((item) => (
+    const sport = String(competitionSportEditDrafts[oldKey] || "").trim();
+    if (!name || !sport || associationCompetitions.some((item) => (
       competitionKey(item) !== oldKey && item.name.toLowerCase() === name.toLowerCase()
     ))) return;
-    const renamedCompetition = { ...competition, name };
+    const renamedCompetition = { ...competition, name, sport };
     const newKey = competitionKey(renamedCompetition);
     const nextCompetitions = associationCompetitions.map((item) => (
       competitionKey(item) === oldKey ? renamedCompetition : item
     ));
-    const saved = await saveAssociationCompetitions(nextCompetitions, "League name updated.");
+    const saved = await saveAssociationCompetitions(nextCompetitions, "League details updated.");
     if (saved) {
       setEditingCompetition("");
       setExpandedCompetition(newKey);
@@ -555,6 +565,11 @@ export default function OrganisationSettingsPage() {
   }
 
   async function handleCompetitionSetupToggle(competition) {
+    if (!competition.sport) {
+      setMessage("");
+      setError("Choose a racket sport for this league before enabling match setup.");
+      return;
+    }
     const key = competitionKey(competition);
     const enabled = !Boolean(competition.match_setup_enabled);
     const nextCompetitions = associationCompetitions.map((item) => (
@@ -1227,7 +1242,18 @@ export default function OrganisationSettingsPage() {
                                   .map((item) => <option key={`${item.type}-${item.name}`} value={item.name} />)}
                               </datalist>
                             </div>
-                            <button className="settings-form-action" disabled={!competitionDrafts[group.type].trim() || savingSection === "association-competitions"} type="submit">Save League</button>
+                            <div className="field">
+                              <label htmlFor={`${group.type}-competition-sport`}>Racket sport</label>
+                              <select
+                                id={`${group.type}-competition-sport`}
+                                value={competitionSportDrafts[group.type]}
+                                onChange={(event) => setCompetitionSportDrafts((current) => ({ ...current, [group.type]: event.target.value }))}
+                              >
+                                <option value="">Choose a sport</option>
+                                {leagueSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
+                              </select>
+                            </div>
+                            <button className="settings-form-action" disabled={!competitionDrafts[group.type].trim() || !competitionSportDrafts[group.type] || savingSection === "association-competitions"} type="submit">Save League</button>
                           </form>
                         ) : null}
                         {competitions.length === 0 ? <div className="dashboard-empty">No {group.title.toLowerCase()} added.</div> : null}
@@ -1247,7 +1273,7 @@ export default function OrganisationSettingsPage() {
                                     type="button"
                                     onClick={() => setExpandedCompetition(competitionOpen ? "" : key)}
                                   >
-                                    <strong>{competition.name}</strong><small>{divisions.length} division{divisions.length === 1 ? "" : "s"} · {gameCount} game{gameCount === 1 ? "" : "s"}</small>
+                                    <strong>{competition.name}</strong><small>{competition.sport ? getMatchSportLabel(competition.sport) : "Sport not assigned"} · {divisions.length} division{divisions.length === 1 ? "" : "s"} · {gameCount} game{gameCount === 1 ? "" : "s"}</small>
                                   </button>
                                   <span className="settings-league-card__actions">
                                     <button
@@ -1259,6 +1285,7 @@ export default function OrganisationSettingsPage() {
                                         setExpandedCompetition(key);
                                         setEditingCompetition(key);
                                         setCompetitionRenameDrafts((current) => ({ ...current, [key]: competition.name }));
+                                        setCompetitionSportEditDrafts((current) => ({ ...current, [key]: competition.sport || "" }));
                                       }}
                                     >
                                       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-1 5 5-1L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></svg>
@@ -1282,12 +1309,12 @@ export default function OrganisationSettingsPage() {
                                     <label className="match-option-switch" htmlFor={`${domKey}-match-setup-enabled`}>
                                       <span className="match-option-switch__copy">
                                         <strong>Available in match setup</strong>
-                                        <small>Show this league to scorers setting up a club match.</small>
+                                        <small>{competition.sport ? `Show this league when scoring ${getMatchSportLabel(competition.sport)}.` : "Choose a racket sport before enabling this league."}</small>
                                       </span>
                                       <span className="match-option-switch__control">
                                         <input
                                           checked={Boolean(competition.match_setup_enabled)}
-                                          disabled={savingSection === "association-competitions"}
+                                          disabled={!competition.sport || savingSection === "association-competitions"}
                                           id={`${domKey}-match-setup-enabled`}
                                           type="checkbox"
                                           onChange={() => handleCompetitionSetupToggle(competition)}
@@ -1301,7 +1328,14 @@ export default function OrganisationSettingsPage() {
                                           <label htmlFor={`${domKey}-rename`}>League name</label>
                                           <input id={`${domKey}-rename`} value={competitionRenameDrafts[key] || ""} onChange={(event) => setCompetitionRenameDrafts((current) => ({ ...current, [key]: event.target.value }))} />
                                         </div>
-                                        <button className="settings-form-action" disabled={!String(competitionRenameDrafts[key] || "").trim() || savingSection === "association-competitions"} type="submit">Save Name</button>
+                                        <div className="field">
+                                          <label htmlFor={`${domKey}-sport`}>Racket sport</label>
+                                          <select id={`${domKey}-sport`} value={competitionSportEditDrafts[key] || ""} onChange={(event) => setCompetitionSportEditDrafts((current) => ({ ...current, [key]: event.target.value }))}>
+                                            <option value="">Choose a sport</option>
+                                            {leagueSportOptions.map((sport) => <option key={sport.value} value={sport.value}>{sport.label}</option>)}
+                                          </select>
+                                        </div>
+                                        <button className="settings-form-action" disabled={!String(competitionRenameDrafts[key] || "").trim() || !competitionSportEditDrafts[key] || savingSection === "association-competitions"} type="submit">Save League</button>
                                         <button className="settings-form-action settings-form-action--secondary" type="button" onClick={() => setEditingCompetition("")}>Cancel</button>
                                       </form>
                                     ) : null}

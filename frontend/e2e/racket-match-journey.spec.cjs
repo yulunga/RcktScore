@@ -153,6 +153,7 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
           {
             name: "Visible Winter League",
             type: "league",
+            sport: "squash",
             match_setup_enabled: true,
             divisions: [{
               name: "Premier",
@@ -162,10 +163,21 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
           {
             name: "Hidden Summer League",
             type: "league",
+            sport: "squash",
             match_setup_enabled: false,
             divisions: [{
               name: "One",
               fixtures: [{ date: "2027-06-02", opposition: "South Club", venue: "home" }],
+            }],
+          },
+          {
+            name: "Enabled Tennis League",
+            type: "league",
+            sport: "tennis",
+            match_setup_enabled: true,
+            divisions: [{
+              name: "Open",
+              fixtures: [{ date: "2027-03-12", opposition: "Tennis Club", venue: "home" }],
             }],
           },
         ],
@@ -190,6 +202,7 @@ test("club setup keeps shirt colours compact and prevents a playing user from re
   await expect(leagueGame.locator("optgroup")).toHaveCount(1);
   await expect(leagueGame.locator("optgroup")).toHaveAttribute("label", "Visible Winter League");
   await expect(leagueGame).not.toContainText("Hidden Summer League");
+  await expect(leagueGame).not.toContainText("Enabled Tennis League");
 
   await page.locator("#player1_name").fill("Dave");
   await page.locator("#player1_surname").fill("Williams");

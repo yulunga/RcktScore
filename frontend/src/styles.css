@@ -8565,7 +8565,7 @@ textarea {
 }
 
 .settings-league-group__content .settings-competition-search {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.35fr) auto;
   padding-top: 14px;
 }
 
@@ -8727,6 +8727,10 @@ textarea {
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: 10px;
+}
+
+.settings-league-rename-form {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.35fr) auto auto;
 }
 
 .settings-league-fixture-form {

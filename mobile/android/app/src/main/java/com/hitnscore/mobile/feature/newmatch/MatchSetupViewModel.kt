@@ -95,9 +95,12 @@ internal fun fixtureDisplayDate(value: String): String =
     runCatching { java.time.LocalDate.parse(value.take(10)).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.UK)) }
         .getOrDefault(value)
 
-/** Games from leagues switched on for match setup, soonest first (as iOS). */
-fun leagueFixtureOptions(competitions: List<AssociationCompetition>): List<LeagueFixtureOption> =
-    competitions.filter { it.matchSetupEnabled }
+/**
+ * Games from leagues switched on for match setup and played in [sport] (a squash match only
+ * offers squash leagues), soonest first.
+ */
+fun leagueFixtureOptions(competitions: List<AssociationCompetition>, sport: String): List<LeagueFixtureOption> =
+    competitions.filter { it.matchSetupEnabled && it.sport.trim().equals(sport.trim(), ignoreCase = true) }
         .flatMap { competition ->
             competition.allDivisions.flatMap { division ->
                 division.fixtures.map { LeagueFixtureOption(competition.type, competition.name, division.name, it) }
@@ -258,7 +261,7 @@ class MatchSetupViewModel(
                         } else {
                             state.form
                         }
-                        val fixtures = if (args.isPersonal) emptyList() else leagueFixtureOptions(organization.associationCompetitions)
+                        val fixtures = if (args.isPersonal) emptyList() else leagueFixtureOptions(organization.associationCompetitions, args.sport)
                         state.copy(
                             isLoading = false,
                             courts = courts,

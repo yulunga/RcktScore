@@ -79,6 +79,9 @@ def normalize_association_competitions(value):
             continue
         name = str(item.get("name") or "").strip()
         competition_type = str(item.get("type") or "league").strip().lower()
+        competition_sport = normalize_sport_id(item.get("sport"), default="")
+        if competition_sport not in TIMED_BREAK_SPORTS:
+            competition_sport = ""
         if not name or competition_type not in {"league", "interclub"}:
             continue
         key = name.casefold()
@@ -110,7 +113,8 @@ def normalize_association_competitions(value):
         normalized.append({
             "name": name[:120],
             "type": competition_type,
-            "match_setup_enabled": bool(item.get("match_setup_enabled", False)),
+            "sport": competition_sport,
+            "match_setup_enabled": bool(item.get("match_setup_enabled", False)) and bool(competition_sport),
             "divisions": divisions[:50],
         })
     return normalized

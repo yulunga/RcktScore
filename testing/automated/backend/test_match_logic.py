@@ -73,6 +73,7 @@ def test_association_fixture_metadata_returns_canonical_saved_fixture():
     connection = _AssociationFixtureConnection([{
         "name": "County League",
         "type": "league",
+        "sport": "squash",
         "match_setup_enabled": True,
         "divisions": [{
             "name": "Division 1",
@@ -94,6 +95,7 @@ def test_association_fixture_metadata_returns_canonical_saved_fixture():
             "association_fixture_date": "2026-11-20",
             "association_opposition": "racket club",
             "association_venue": "AWAY",
+            "sport": "squash",
         },
         False,
     )
@@ -123,6 +125,7 @@ def test_association_fixture_metadata_rejects_fixture_not_saved_for_club():
                 "association_fixture_date": "2026-11-20",
                 "association_opposition": "Racket Club",
                 "association_venue": "home",
+                "sport": "squash",
             },
             False,
         )
@@ -132,6 +135,7 @@ def test_association_fixture_metadata_rejects_disabled_league():
     connection = _AssociationFixtureConnection([{
         "name": "County League",
         "type": "league",
+        "sport": "squash",
         "match_setup_enabled": False,
         "divisions": [{
             "name": "Division 1",
@@ -154,6 +158,40 @@ def test_association_fixture_metadata_rejects_disabled_league():
                 "association_fixture_date": "2026-11-20",
                 "association_opposition": "Racket Club",
                 "association_venue": "home",
+                "sport": "squash",
+            },
+            False,
+        )
+
+
+def test_association_fixture_metadata_rejects_league_for_another_sport():
+    connection = _AssociationFixtureConnection([{
+        "name": "County League",
+        "type": "league",
+        "sport": "tennis",
+        "match_setup_enabled": True,
+        "divisions": [{
+            "name": "Division 1",
+            "fixtures": [{
+                "date": "2026-11-20",
+                "opposition": "Racket Club",
+                "venue": "home",
+            }],
+        }],
+    }])
+
+    with pytest.raises(ValueError, match="no longer available"):
+        squash_match_logic._association_fixture_metadata(
+            connection,
+            42,
+            {
+                "association_competition_type": "league",
+                "association_competition_name": "County League",
+                "association_division_name": "Division 1",
+                "association_fixture_date": "2026-11-20",
+                "association_opposition": "Racket Club",
+                "association_venue": "home",
+                "sport": "squash",
             },
             False,
         )

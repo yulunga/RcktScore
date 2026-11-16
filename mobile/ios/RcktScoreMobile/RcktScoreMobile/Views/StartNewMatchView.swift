@@ -1849,7 +1849,8 @@ struct StartNewMatchView: View {
                 loadedOrganizationType = settings.organization.organizationType
                 loadedTimedBreakDefaults = settings.organization.timedBreakDefaults
                 availableLeagueFixtures = leagueFixtureOptions(
-                    from: settings.organization.associationCompetitions
+                    from: settings.organization.associationCompetitions,
+                    sport: selectedSport.rawValue
                 )
                 if availableLeagueFixtures.isEmpty {
                     formState.leagueGameEnabled = false
@@ -1910,9 +1911,12 @@ struct StartNewMatchView: View {
     }
 
     private func leagueFixtureOptions(
-        from competitions: [AssociationCompetition]
+        from competitions: [AssociationCompetition],
+        sport: String
     ) -> [LeagueFixtureOption] {
-        competitions.filter(\.matchSetupEnabled).flatMap { competition in
+        competitions.filter {
+            $0.matchSetupEnabled && $0.sport.caseInsensitiveCompare(sport) == .orderedSame
+        }.flatMap { competition in
             competition.divisions.flatMap { division in
                 division.fixtures.map { fixture in
                     LeagueFixtureOption(

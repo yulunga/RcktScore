@@ -30,6 +30,7 @@ def test_association_competitions_are_normalized_and_deduplicated():
         {
             "name": " County League ",
             "type": "league",
+            "sport": "squash",
             "match_setup_enabled": True,
             "fixtures": [
                 {"date": "2027-02-12", "opposition": " North Club "},
@@ -40,7 +41,7 @@ def test_association_competitions_are_normalized_and_deduplicated():
             ],
         },
         {"name": "county league", "type": "interclub"},
-        {"name": "Club Cup", "type": "INTERCLUB"},
+        {"name": "Club Cup", "type": "INTERCLUB", "sport": "tennis"},
         {"name": "Ignored", "type": "unsupported"},
         {"name": "", "type": "league"},
         "not-an-object",
@@ -48,6 +49,7 @@ def test_association_competitions_are_normalized_and_deduplicated():
         {
             "name": "County League",
             "type": "league",
+            "sport": "squash",
             "match_setup_enabled": True,
             "divisions": [{
                 "name": "General",
@@ -58,7 +60,7 @@ def test_association_competitions_are_normalized_and_deduplicated():
                 ],
             }],
         },
-        {"name": "Club Cup", "type": "interclub", "match_setup_enabled": False, "divisions": []},
+        {"name": "Club Cup", "type": "interclub", "sport": "tennis", "match_setup_enabled": False, "divisions": []},
     ]
 
 
