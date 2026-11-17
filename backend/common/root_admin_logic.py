@@ -1,5 +1,7 @@
 import secrets
 from calendar import monthrange
+from copy import deepcopy
+from uuid import uuid4
 
 from common.match_logic import _serialize_match_row
 from common.mailer import send_email_message
@@ -700,6 +702,147 @@ def get_root_admin_match(connection, match_id):
         **match,
         **_serialize_root_admin_match(row),
     }
+
+
+def _corrected_participant(payload, prefix, current):
+    first_name = str(payload.get(f"{prefix}_name", current.get("first_name") or "") or "").strip()
+    surname = str(payload.get(f"{prefix}_surname", current.get("surname") or "") or "").strip() or None
+    if not first_name:
+        raise ValueError("Every player requires a first name")
+    if len(first_name) > 100 or len(surname or "") > 100:
+        raise ValueError("Player names must be 100 characters or fewer")
+    return {
+        **current,
+        "first_name": first_name,
+        "surname": surname,
+        "display_name": " ".join(value for value in (first_name, surname) if value),
+    }
+
+
+def correct_root_admin_match_players(connection, match_id, payload, *, updated_by):
+    match_row = _get_root_admin_match_row(connection, match_id, include_archived=True, lock=True)
+    if not match_row:
+        raise LookupError("Match not found")
+    if match_row.get("status") != "completed":
+        raise ValueError("Player names can only be corrected after the match is completed")
+
+    match = _serialize_match_row(connection, match_row)
+    tennis_teams = deepcopy(match.get("state", {}).get("tennis_teams") or {})
+    old_names = {
+        "player1_name": match_row.get("player1_name") or "",
+        "player1_surname": match_row.get("player1_surname") or "",
+        "player2_name": match_row.get("player2_name") or "",
+        "player2_surname": match_row.get("player2_surname") or "",
+    }
+
+    if tennis_teams:
+        for side_number, side in ((1, "player1"), (2, "player2")):
+            team = tennis_teams.get(side) or []
+            if not team:
+                raise ValueError("The stored tennis or padel lineup is incomplete")
+            for participant_index, participant in enumerate(team, start=1):
+                prefix = f"team{side_number}_player{participant_index}"
+                legacy_prefix = side if participant_index == 1 else None
+                participant_payload = dict(payload)
+                if legacy_prefix:
+                    if f"{legacy_prefix}_name" in payload:
+                        participant_payload.setdefault(f"{prefix}_name", payload[f"{legacy_prefix}_name"])
+                    if f"{legacy_prefix}_surname" in payload:
+                        participant_payload.setdefault(f"{prefix}_surname", payload[f"{legacy_prefix}_surname"])
+                team[participant_index - 1] = _corrected_participant(participant_payload, prefix, participant)
+    else:
+        tennis_teams = {
+            "player1": [_corrected_participant(payload, "player1", {
+                "id": "team1_player1",
+                "first_name": match_row.get("player1_name") or "",
+                "surname": match_row.get("player1_surname"),
+            })],
+            "player2": [_corrected_participant(payload, "player2", {
+                "id": "team2_player1",
+                "first_name": match_row.get("player2_name") or "",
+                "surname": match_row.get("player2_surname"),
+            })],
+        }
+
+    team_format = (match.get("state", {}).get("team_format") or "singles").strip().lower()
+    player1_primary = tennis_teams["player1"][0]
+    player2_primary = tennis_teams["player2"][0]
+    if team_format == "doubles":
+        stored_player1_name = " / ".join(player["display_name"] for player in tennis_teams["player1"])
+        stored_player2_name = " / ".join(player["display_name"] for player in tennis_teams["player2"])
+        stored_player1_surname = None
+        stored_player2_surname = None
+    else:
+        stored_player1_name = player1_primary["first_name"]
+        stored_player2_name = player2_primary["first_name"]
+        stored_player1_surname = player1_primary["surname"]
+        stored_player2_surname = player2_primary["surname"]
+
+    winner_side = match_row.get("winner_side")
+    corrected_winner_name = match_row.get("winner_name")
+    if winner_side == "player1":
+        corrected_winner_name = stored_player1_name
+    elif winner_side == "player2":
+        corrected_winner_name = stored_player2_name
+
+    now = _utcnow()
+    correction_payload = {
+        "old_names": old_names,
+        "player1_name": player1_primary["first_name"],
+        "player1_surname": player1_primary["surname"],
+        "player2_name": player2_primary["first_name"],
+        "player2_surname": player2_primary["surname"],
+        "tennis_teams": tennis_teams if match_row.get("sport") in {"tennis", "padel"} else None,
+        "winner_name": corrected_winner_name,
+        "winner_side": winner_side,
+        "corrected_by": (updated_by or "root_admin").strip(),
+    }
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE matches
+            SET player1_name = %(player1_name)s,
+                player1_surname = %(player1_surname)s,
+                player2_name = %(player2_name)s,
+                player2_surname = %(player2_surname)s,
+                winner_name = %(winner_name)s,
+                updated_at = %(updated_at)s
+            WHERE id = %(match_id)s
+            """,
+            {
+                "match_id": match_id,
+                "player1_name": stored_player1_name,
+                "player1_surname": stored_player1_surname,
+                "player2_name": stored_player2_name,
+                "player2_surname": stored_player2_surname,
+                "winner_name": corrected_winner_name,
+                "updated_at": now,
+            },
+        )
+        cursor.execute(
+            """
+            INSERT INTO match_events (
+                id, match_id, tenant_id, event_type, payload,
+                event_source, actor_username, created_at
+            )
+            VALUES (
+                %(id)s, %(match_id)s, %(tenant_id)s, 'root_admin_name_correction', %(payload)s,
+                'root_admin', %(actor_username)s, %(created_at)s
+            )
+            """,
+            {
+                "id": str(uuid4()),
+                "match_id": match_id,
+                "tenant_id": match_row["tenant_id"],
+                "payload": Jsonb(correction_payload),
+                "actor_username": (updated_by or "root_admin").strip(),
+                "created_at": now,
+            },
+        )
+
+    connection.commit()
+    return get_root_admin_match(connection, match_id)
 
 
 def archive_root_admin_match(connection, match_id):

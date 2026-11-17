@@ -26,6 +26,17 @@ Globals:
           - HasAppleServerApiSecret
           - !Ref AppleServerApiSecretArn
           - ""
+        GOOGLE_PLAY_PURCHASES_ENABLED: !Ref GooglePlayPurchasesEnabled
+        GOOGLE_PLAY_PACKAGE_NAME: !Ref GooglePlayPackageName
+        GOOGLE_PLAY_PERSONAL_PLUS_PRODUCT_ID: !Ref GooglePlayPersonalPlusProductId
+        GOOGLE_PLAY_PERSONAL_PLUS_BASE_PLAN_ID: !Ref GooglePlayPersonalPlusBasePlanId
+        GOOGLE_PLAY_ALLOW_TEST_PURCHASES: !Ref GooglePlayAllowTestPurchases
+        GOOGLE_PLAY_SERVICE_ACCOUNT_SECRET_ARN: !If
+          - HasGooglePlayServiceAccountSecret
+          - !Ref GooglePlayServiceAccountSecretArn
+          - ""
+        GOOGLE_PLAY_PUSH_AUDIENCE: !Ref GooglePlayPushAudience
+        GOOGLE_PLAY_PUSH_SERVICE_ACCOUNT: !Ref GooglePlayPushServiceAccount
 
 Parameters:
   SupabaseDbUrl:
@@ -128,9 +139,46 @@ Parameters:
     Type: String
     Default: ""
     Description: Optional Secrets Manager ARN containing private_key, key_id and issuer_id.
+  GooglePlayPurchasesEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  GooglePlayPackageName:
+    Type: String
+    Default: com.hitnscore.mobile
+  GooglePlayPersonalPlusProductId:
+    Type: String
+    Default: personal_plus
+    Description: Play Console subscription product ID for Personal Plus.
+  GooglePlayPersonalPlusBasePlanId:
+    Type: String
+    Default: yearly
+    Description: The only accepted base plan (annual billing).
+  GooglePlayAllowTestPurchases:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Accept Play license-tester purchases.
+  GooglePlayServiceAccountSecretArn:
+    Type: String
+    Default: ""
+    Description: Secrets Manager ARN holding the Play Developer API service-account JSON key.
+  GooglePlayPushAudience:
+    Type: String
+    Default: ""
+    Description: OIDC audience configured on the RTDN Pub/Sub push subscription. Empty rejects notifications.
+  GooglePlayPushServiceAccount:
+    Type: String
+    Default: ""
+    Description: Service-account email the RTDN Pub/Sub push subscription authenticates as.
 
 Conditions:
   HasAppleServerApiSecret: !Not [!Equals [!Ref AppleServerApiSecretArn, ""]]
+  HasGooglePlayServiceAccountSecret: !Not [!Equals [!Ref GooglePlayServiceAccountSecretArn, ""]]
 
 Resources:
   ProfileImagesBucket:
@@ -502,6 +550,18 @@ Resources:
             ApiId: !Ref RcktScoreHttpApi
             Path: /root_admin/matches/{match_id}
             Method: DELETE
+
+  UpdateRootAdminMatchPlayersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/update_root_admin_match_players/handler.lambda_handler
+      Events:
+        UpdateRootAdminMatchPlayers:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /root_admin/matches/{match_id}/players
+            Method: PUT
 
   CreateRootAdminOrganizationFunction:
     Type: AWS::Serverless::Function
@@ -1069,6 +1129,84 @@ Resources:
           - !Ref AWS::NoValue
       Events:
         HourlyAppleReconcile:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            FlexibleTimeWindow:
+              Mode: "OFF"
+
+  GetGooglePlaySubscriptionContextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/get_google_play_subscription_context/handler.lambda_handler
+      Events:
+        GetGooglePlaySubscriptionContext:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/google/context/{organization_id}
+            Method: GET
+
+  VerifyGooglePlaySubscriptionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/verify_google_play_subscription/handler.lambda_handler
+      Timeout: 30
+      Policies:
+        - !If
+          - HasGooglePlayServiceAccountSecret
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GooglePlayServiceAccountSecretArn
+          - !Ref AWS::NoValue
+      Events:
+        VerifyGooglePlaySubscription:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/google/verify
+            Method: POST
+
+  GooglePlaySubscriptionNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/google_play_subscription_notifications/handler.lambda_handler
+      Timeout: 30
+      Policies:
+        - !If
+          - HasGooglePlayServiceAccountSecret
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GooglePlayServiceAccountSecretArn
+          - !Ref AWS::NoValue
+      Events:
+        GooglePlaySubscriptionNotifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /subscriptions/google/notifications
+            Method: POST
+
+  ReconcileGooglePlaySubscriptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/reconcile_google_play_subscriptions/handler.lambda_handler
+      Timeout: 120
+      Policies:
+        - !If
+          - HasGooglePlayServiceAccountSecret
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GooglePlayServiceAccountSecretArn
+          - !Ref AWS::NoValue
+      Events:
+        HourlyPlayReconcile:
           Type: ScheduleV2
           Properties:
             ScheduleExpression: rate(1 hour)
@@ -1769,6 +1907,28 @@ Resources:
       OKActions:
         - !Ref ProductionAlarmTopic
 
+  GooglePlayReconciliationErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-google-play-reconciliation-errors"
+      AlarmDescription: Hourly Google Play subscription reconciliation failed.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReconcileGooglePlaySubscriptionsFunction
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref ProductionAlarmTopic
+      OKActions:
+        - !Ref ProductionAlarmTopic
+
   AppleReconciliationMissingAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -1854,6 +2014,10 @@ Resources:
         - !Ref VerifyAppleSubscriptionFunction
         - !Ref AppleSubscriptionNotificationsFunction
         - !Ref ReconcileAppleSubscriptionsFunction
+        - !Ref GetGooglePlaySubscriptionContextFunction
+        - !Ref VerifyGooglePlaySubscriptionFunction
+        - !Ref GooglePlaySubscriptionNotificationsFunction
+        - !Ref ReconcileGooglePlaySubscriptionsFunction
         - !Ref GetRootAdminSubscriptionsFunction
         - !Ref GetNotificationsFunction
         - !Ref ReadNotificationFunction

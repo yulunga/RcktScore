@@ -158,8 +158,10 @@ def get_org_users(connection, username, for_update=True):
                     CASE source.status
                         WHEN 'active' THEN 0
                         WHEN 'grace_period' THEN 1
-                        WHEN 'billing_retry' THEN 2
-                        ELSE 3
+                        -- Auto-renew off but still paid until current_period_end.
+                        WHEN 'cancelled' THEN 2
+                        WHEN 'billing_retry' THEN 3
+                        ELSE 4
                     END,
                     source.last_verified_at DESC,
                     source.id DESC

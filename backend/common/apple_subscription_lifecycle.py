@@ -16,6 +16,7 @@ from common.apple_purchase_verification import (
     normalize_verified_transaction,
 )
 from common.apple_subscription_logic import _configured_product_ids, _normalize_username
+from common.subscription_entitlement import other_source_entitled
 
 
 APPLE_NOTIFICATION_MAX_LENGTH = 262_144
@@ -481,6 +482,13 @@ def apply_lifecycle_state(
             effective_now,
         )
         target_plan = "personal_plus" if _entitled(status, purchase, renewal, effective_now) else "personal_free"
+        if (
+            target_plan == "personal_free"
+            and previous_plan == "personal_plus"
+            and other_source_entitled(cursor, account["id"], effective_now, exclude_provider="apple")
+        ):
+            # Still paid through Google Play, Stripe or a manual grant.
+            target_plan = "personal_plus"
         username = _normalize_username(account.get("owner_username"))
 
         cursor.execute(
@@ -851,7 +859,15 @@ def expire_elapsed_entitlements(
             SELECT s.id, s.organization_id, s.username, s.app_account_token,
                    s.original_transaction_id, s.latest_transaction_id,
                    s.status, s.expires_at, s.grace_period_expires_at,
-                   o.plan
+                   o.plan,
+                   EXISTS (
+                       SELECT 1 FROM subscription_sources AS other
+                       WHERE other.organization_id = s.organization_id
+                         AND other.provider <> 'apple'
+                         AND other.plan = 'personal_plus'
+                         AND other.status IN ('active', 'grace_period', 'cancelled')
+                         AND other.current_period_end > %(now)s
+                   ) AS other_source_entitled
             FROM app_store_subscriptions AS s
             JOIN "SkwshOrgSettings" AS o ON o.id = s.organization_id
             WHERE (
@@ -884,7 +900,7 @@ def expire_elapsed_entitlements(
                     "next_reconciliation_at": effective_now + timedelta(hours=1),
                 },
             )
-            if row.get("plan") == "personal_plus":
+            if row.get("plan") == "personal_plus" and not row.get("other_source_entitled"):
                 cursor.execute(
                     'UPDATE "SkwshOrgSettings" SET plan = \'personal_free\' WHERE id = %(organization_id)s',
                     {"organization_id": row["organization_id"]},

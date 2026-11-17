@@ -556,8 +556,9 @@
     <string name="plan_enquire">Enquire</string>
     <string name="plan_upgrade_title">Upgrade to Personal+</string>
     <string name="plan_billed_annually_pricing">Billed annually. Pricing to be confirmed.</string>
-    <string name="plan_upgrade_button">Upgrade with Google Play (coming soon)</string>
-    <string name="plan_upgrade_note">Upgrading in the Android app arrives with Google Play billing. Your plan is the same on every device you sign in on.</string>
+    <string name="plan_upgrade_button">Upgrade with Google Play</string>
+    <string name="plan_upgrade_note">Billed yearly through Google Play and renews automatically until you cancel in the Play Store. Your plan is the same on every device and on the web.</string>
+    <string name="plan_billed_annually_price">%1$s per year, billed annually.</string>
     <string name="plan_annual_only">All plans are billed annually.</string>
     <string name="club_enquiry_title">Enquire about %1$s</string>
     <string name="club_enquiry_body">Send your club\'s details and the HitnScore team will contact you about the next steps.</string>

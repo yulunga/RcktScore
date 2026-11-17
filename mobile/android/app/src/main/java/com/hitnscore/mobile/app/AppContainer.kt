@@ -29,6 +29,8 @@ import com.hitnscore.mobile.data.remote.RemoteSetupAnalyticsApi
 import com.hitnscore.mobile.data.remote.SetupAnalyticsApi
 import com.hitnscore.mobile.data.remote.ScoringWarmup
 import com.hitnscore.mobile.data.remote.AnalyticsExportApi
+import com.hitnscore.mobile.data.remote.SubscriptionApi
+import com.hitnscore.mobile.core.billing.GooglePlayBilling
 import com.hitnscore.mobile.data.remote.TournamentApi
 import com.hitnscore.mobile.data.remote.SettingsApi
 import com.hitnscore.mobile.core.network.ApiClient
@@ -117,6 +119,10 @@ class AppContainer(context: Context) {
     val setupAnalyticsApi: SetupAnalyticsApi by lazy { RemoteSetupAnalyticsApi(apiClient) }
     val scoringWarmup: ScoringWarmup by lazy { ScoringWarmup(apiClient) }
     val analyticsExportApi: AnalyticsExportApi by lazy { AnalyticsExportApi(apiClient) }
+    val subscriptionApi: SubscriptionApi by lazy { SubscriptionApi(apiClient) }
+
+    /** Google Play Billing for the yearly Personal Plus subscription. */
+    val googlePlayBilling: GooglePlayBilling by lazy { GooglePlayBilling(appContext) }
 
     val connectivity: ConnectivityMonitor by lazy { AndroidConnectivityMonitor(appContext) }
 

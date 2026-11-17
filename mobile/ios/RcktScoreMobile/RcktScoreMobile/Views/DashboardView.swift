@@ -6992,17 +6992,50 @@ struct DashboardView: View {
             return nil
         }
 
+        // Same wording as the web and Android Subscription pages, from the central
+        // subscription_sources record returned by /session/status.
         let providerName: String
         switch provider {
-        case "apple": providerName = "App Store"
+        case "apple": providerName = "the App Store"
         case "google_play": providerName = "Google Play"
-        case "stripe": providerName = "Web / Stripe"
-        case "manual": providerName = "HitnScore administrator"
-        default: providerName = provider.replacingOccurrences(of: "_", with: " ").capitalized
+        case "stripe": providerName = "the HitnScore website"
+        case "manual": providerName = "a HitnScore administrator"
+        default: providerName = provider.replacingOccurrences(of: "_", with: " ")
         }
 
         let action = membership.subscriptionLastRenewedAt == nil ? "Purchased" : "Last renewed"
-        return "\(action) through \(providerName)"
+        let paid = "\(action) through \(providerName)"
+        let until = membership.subscriptionExpiresAt.flatMap(Self.subscriptionDate)
+        switch membership.subscriptionStatus?.lowercased() {
+        case "active":
+            return until.map { "Valid until \($0), renews automatically · \(paid)" } ?? paid
+        case "cancelled":
+            return until.map { "Valid until \($0), will not renew · \(paid)" } ?? paid
+        case "grace_period":
+            return "Payment issue: update your payment method in \(providerName)\(until.map { " before \($0)" } ?? "") · \(paid)"
+        case "billing_retry":
+            return "On hold: payment failed in \(providerName) · \(paid)"
+        case "revoked":
+            return "Refunded or revoked · \(paid)"
+        case "expired":
+            return "Expired\(until.map { " on \($0)" } ?? "") · \(paid)"
+        default:
+            return paid
+        }
+    }
+
+    private static func subscriptionDate(_ value: String) -> String? {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = parser.date(from: value) ?? {
+            parser.formatOptions = [.withInternetDateTime]
+            return parser.date(from: value)
+        }()
+        guard let date else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = "d MMM yyyy"
+        return formatter.string(from: date)
     }
 }
 

@@ -288,3 +288,17 @@ def test_expiry_worker_downgrades_once_after_reconciliation_window_elapses():
     )
     assert "expiry_deadline_elapsed_after_reconciliation_window" in audit_query
     assert '"fallback_delay_seconds": 900' in audit_params["metadata"]
+
+
+def test_expiry_worker_keeps_plus_while_another_provider_still_pays():
+    connection = _ExpiryConnection(
+        NOW - EXPIRY_RECONCILIATION_FALLBACK_DELAY - timedelta(seconds=1)
+    )
+    connection.subscription["other_source_entitled"] = True
+
+    expired = expire_elapsed_entitlements(connection, now=NOW)
+
+    assert expired == 1
+    assert connection.subscription_updates == 1
+    assert connection.plan_updates == 0
+    assert connection.audit_inserts == 0

@@ -262,6 +262,7 @@ matches while retaining their Start and details actions; no response field chang
 - `PUT /root_admin/users/{user_id}/memberships/{membership_id}/sport-access`
 - `GET /root_admin/matches`
 - `GET /root_admin/matches/{match_id}`
+- `PUT /root_admin/matches/{match_id}/players`
 - `PUT /root_admin/matches/{match_id}/archive`
 - `DELETE /root_admin/matches/{match_id}`
 - `POST /root_admin/organizations`
@@ -304,6 +305,7 @@ Current root-admin match-management behavior:
 - archived matches are excluded from standard club/user match views and from the root-admin match directory by default
 - `PUT /root_admin/matches/{match_id}/archive` hides a match without deleting the underlying row
 - `GET /root_admin/matches/{match_id}` returns a read-only scoring snapshot and effective event timeline, including for archived matches. It requires a Root Admin session.
+- `PUT /root_admin/matches/{match_id}/players` requires a Root Admin session/CSRF validation and accepts corrected first-name/surname fields for a completed match. Squash/Racketball use `player1_*` and `player2_*`; tennis/Padel also accept `team1_player1_*`, `team1_player2_*`, `team2_player1_*`, and `team2_player2_*` for the stored lineup. First names are required and every name part is limited to 100 characters. The transaction updates the match and winner projections and appends an actor-attributed `root_admin_name_correction` event used by replay; active and scheduled matches are rejected.
 - `DELETE /root_admin/matches/{match_id}` requires the exact JSON confirmation `{"confirmation":"DELETE"}` and Root Admin session/CSRF validation. It removes linked setup analytics and deletes the match, cascading to scoring events, undo links, action receipts and saved views. Separate tournament bracket results are retained and their scoring link is cleared.
 
 Current root-admin Tournament Manager behavior:
@@ -670,6 +672,23 @@ Current behavior:
 - StoreKit now uses the returned account token and finishes a server-enabled purchase only after backend acceptance; local Xcode StoreKit tests remain non-authoritative while `APPLE_PURCHASES_ENABLED=false`
 - production activation remains outstanding until migration/configuration deployment and Sandbox/Production lifecycle evidence pass the release checklist
 - the complete production architecture, lifecycle mapping, configuration gates and test checklist are maintained in [apple-subscription-production.md](/Users/glennrowe/Development/Projects/RcktScore/docs/apple-subscription-production.md)
+
+### Google Play subscription boundary
+
+[common/google_play_subscription_logic.py](/Users/glennrowe/Development/Projects/RcktScore/backend/common/google_play_subscription_logic.py)
+
+- Android sells Personal Plus through one Play subscription product (`GOOGLE_PLAY_PERSONAL_PLUS_PRODUCT_ID`, default `personal_plus`) and only its yearly base plan (`GOOGLE_PLAY_PERSONAL_PLUS_BASE_PLAN_ID`, default `yearly`). Any other base plan is rejected. Club plans are never sold through Play
+- `GET /subscriptions/google/context/{organization_id}` requires an org-user session for the personal-account owner and returns `obfuscated_account_id` (the same server-issued account token Apple uses), product/base-plan IDs, current plan and `purchases_enabled`
+- `POST /subscriptions/google/verify` takes `organization_id` and `purchase_token`. The backend re-reads the token with the Play Developer API (`purchases.subscriptionsv2.get`) using the service account in `GOOGLE_PLAY_SERVICE_ACCOUNT_SECRET_ARN`, validates package, product, base plan, account token, state and expiry, writes `subscription_sources` (`provider = google_play`, `provider_subscription_id` = purchase token), updates the plan with an append-only `subscription_entitlement_audit` row in the same transaction, then acknowledges the purchase server-side. Pending payments return `GOOGLE_PLAY_PURCHASE_PENDING` without granting access
+- `POST /subscriptions/google/notifications` receives Real-time Developer Notifications from a Pub/Sub push subscription. It requires the push OIDC token (audience `GOOGLE_PLAY_PUSH_AUDIENCE`, sender `GOOGLE_PLAY_PUSH_SERVICE_ACCOUNT`), deduplicates on Pub/Sub `messageId` in `google_play_notifications` (migration `064_google_play_subscriptions.sql`, token stored only as a SHA-256 hash), and treats every message only as a trigger to re-read state from Google. Revocations and voided purchases remove access immediately
+- an hourly scheduler re-reads live tokens that expire within a day, were not verified for a day, or are still unacknowledged
+- Play states map to `active`, `cancelled` (auto-renew off, still paid until `current_period_end`), `grace_period`, `billing_retry` (on hold), `expired` and `revoked`; Personal Plus is granted for `active`, `cancelled` and `grace_period` before expiry
+- cross-provider: neither Apple nor Google Play processing downgrades an account while another `subscription_sources` row (Apple, Google Play, Stripe or manual) still grants Personal Plus
+
+### Central subscription status
+
+- `subscription_sources` is the one provider-neutral record. `/session/status` and login return, per membership, `subscription_provider`, `subscription_status`, `subscription_expires_at`, `subscription_auto_renew_enabled` and `subscription_last_renewed_at` from the best current source (active, grace, cancelled-but-paid, then others)
+- web, iOS and Android render the same sentence from those fields, e.g. `Valid until 17 Nov 2027, renews automatically · Purchased through Google Play`, so a web user sees a Play-purchased plan and its end date without any provider SDK
 
 ### Organisation settings
 

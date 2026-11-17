@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import AppFooter from "../components/AppFooter";
 import RootAdminSessionBar from "../components/RootAdminSessionBar";
-import { archiveRootAdminMatch, deleteRootAdminMatch, getRootAdminMatch, getRootAdminMatches } from "../services/api";
+import { archiveRootAdminMatch, deleteRootAdminMatch, getRootAdminMatch, getRootAdminMatches, updateRootAdminMatchPlayers } from "../services/api";
 
 const PAGE_SIZE = 50;
 const SPORT_ABBREVIATIONS = {
@@ -171,21 +171,70 @@ function detailValue(key, value) {
   return String(value);
 }
 
+function editablePlayers(match) {
+  const teams = match?.state?.tennis_teams;
+  if (teams?.player1?.length && teams?.player2?.length) {
+    return [
+      ...teams.player1.map((player, index) => ({ ...player, key: `team1_player${index + 1}`, label: `Team 1 · Player ${index + 1}` })),
+      ...teams.player2.map((player, index) => ({ ...player, key: `team2_player${index + 1}`, label: `Team 2 · Player ${index + 1}` })),
+    ];
+  }
+  return [
+    { key: "player1", label: "Player 1", first_name: match?.player1_name || "", surname: match?.player1_surname || "" },
+    { key: "player2", label: "Player 2", first_name: match?.player2_name || "", surname: match?.player2_surname || "" },
+  ];
+}
+
+function playerFormValues(match) {
+  return Object.fromEntries(editablePlayers(match).flatMap((player) => [
+    [`${player.key}_name`, player.first_name || ""],
+    [`${player.key}_surname`, player.surname || ""],
+  ]));
+}
+
 function MatchDetail({ matchId }) {
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [confirmation, setConfirmation] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [editingPlayers, setEditingPlayers] = useState(false);
+  const [savingPlayers, setSavingPlayers] = useState(false);
+  const [playerValues, setPlayerValues] = useState({});
+  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     let current = true;
     getRootAdminMatch(matchId).then(
-      (response) => { if (current) setMatch(response.match); },
+      (response) => {
+        if (current) {
+          setMatch(response.match);
+          setPlayerValues(playerFormValues(response.match));
+        }
+      },
       (failure) => { if (current) setError(failure.message); },
     );
     return () => { current = false; };
   }, [matchId]);
+
+  async function savePlayers(event) {
+    event.preventDefault();
+    if (savingPlayers) return;
+    setSavingPlayers(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await updateRootAdminMatchPlayers(matchId, playerValues);
+      setMatch(response.match);
+      setPlayerValues(playerFormValues(response.match));
+      setEditingPlayers(false);
+      setSuccess("Player names updated. Match history and replay data now use the corrected names.");
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setSavingPlayers(false);
+    }
+  }
 
   async function remove(event) {
     event.preventDefault();
@@ -207,10 +256,44 @@ function MatchDetail({ matchId }) {
         <h1>{match ? participants(match) : "Match Details"}</h1>
         <button type="button" className="secondary" onClick={() => navigate(DIRECTORY)}>Back to Matches</button>
       </div>
+      {success ? <div className="notice success" role="status">{success}</div> : null}
       {error ? <div className="notice error" role="alert">{error}</div> : null}
       {!match && !error ? <div className="notice">Loading match…</div> : null}
       {match ? (
         <>
+          <section className="dashboard-item stack compact root-admin-player-correction">
+            <div className="root-admin-section-header">
+              <div>
+                <h2>Player names</h2>
+                <p className="helper-text">Correct a name entered incorrectly after this match was played.</p>
+              </div>
+              {match.status === "completed" && !editingPlayers ? (
+                <button type="button" className="secondary" onClick={() => { setPlayerValues(playerFormValues(match)); setEditingPlayers(true); setSuccess(""); }}>Edit player names</button>
+              ) : null}
+            </div>
+            {match.status !== "completed" ? <p className="helper-text">Names can be corrected here after the match is completed.</p> : null}
+            {editingPlayers ? (
+              <form className="stack compact" onSubmit={savePlayers}>
+                <div className="root-admin-player-name-grid">
+                  {editablePlayers(match).map((player) => (
+                    <fieldset key={player.key} className="stack compact">
+                      <legend>{player.label}</legend>
+                      <label className="field">First name
+                        <input required maxLength={100} value={playerValues[`${player.key}_name`] || ""} onChange={(event) => setPlayerValues((current) => ({ ...current, [`${player.key}_name`]: event.target.value }))} />
+                      </label>
+                      <label className="field">Surname
+                        <input maxLength={100} value={playerValues[`${player.key}_surname`] || ""} onChange={(event) => setPlayerValues((current) => ({ ...current, [`${player.key}_surname`]: event.target.value }))} />
+                      </label>
+                    </fieldset>
+                  ))}
+                </div>
+                <div className="button-row">
+                  <button type="submit" disabled={savingPlayers}>{savingPlayers ? "Saving…" : "Save corrected names"}</button>
+                  <button type="button" className="secondary" disabled={savingPlayers} onClick={() => { setPlayerValues(playerFormValues(match)); setEditingPlayers(false); }}>Cancel</button>
+                </div>
+              </form>
+            ) : null}
+          </section>
           <dl className="root-admin-profile-detail-grid">
             {Object.entries(match).filter(([key, value]) => key !== "state" && key !== "court_display_code" && typeof value !== "object").map(([key, value]) => (
               <div key={key}><dt>{detailLabel(key)}</dt><dd>{detailValue(key, value)}</dd></div>

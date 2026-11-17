@@ -374,6 +374,8 @@ def _event_summary(match_row, event_type, payload):
             f"Match settings updated: PAR-{payload.get('score_type', match_row['score_type'])}, "
             f"best of {payload.get('best_of', match_row['best_of'])}"
         )
+    if event_type == "root_admin_name_correction":
+        return "Player names corrected by Ground Control"
     if event_type == "match_ended":
         if payload.get("ended_early"):
             return payload.get("reason") or "Match ended early"
@@ -522,6 +524,21 @@ def _build_state(match_row, event_rows):
             )
             state["current_server"] = payload.get("current_server", state["current_server"])
             state["current_server_side"] = payload.get("current_server_side", state["current_server_side"])
+
+        elif event_type == "root_admin_name_correction":
+            if state.get("current_server_side") == "player2":
+                state["current_server"] = payload.get("player2_name", state.get("current_server"))
+            else:
+                state["current_server"] = payload.get("player1_name", state.get("current_server"))
+            if state.get("winner_side") == "player1":
+                state["winner_name"] = payload.get("player1_name", state.get("winner_name"))
+            elif state.get("winner_side") == "player2":
+                state["winner_name"] = payload.get("player2_name", state.get("winner_name"))
+            for game_result in state.get("game_history") or []:
+                if game_result.get("winner_side") == "player1":
+                    game_result["winner_name"] = payload.get("player1_name", game_result.get("winner_name"))
+                elif game_result.get("winner_side") == "player2":
+                    game_result["winner_name"] = payload.get("player2_name", game_result.get("winner_name"))
 
         elif event_type in {"score_point", "stroke"}:
             game_result = payload.get("game_result")

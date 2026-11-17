@@ -24,12 +24,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +46,7 @@ import com.hitnscore.mobile.core.designsystem.theme.HitNScoreTheme
 import com.hitnscore.mobile.core.session.AccountContext
 import com.hitnscore.mobile.core.session.AccountContextType
 import com.hitnscore.mobile.core.session.SessionState
+import com.hitnscore.mobile.feature.auth.findFragmentActivity
 
 /** Plan codes as the backend sends them. */
 internal object PlanCodes {
@@ -69,17 +72,24 @@ internal object PlanCodes {
  * club plans with that club's tier highlighted. Without a club, Club Essentials and Club Pro
  * are offered by enquiry. Every plan is billed annually.
  *
- * The Personal+ upgrade needs Google Play Billing (v1.1), so on Android it explains that
- * and does not take payment yet.
+ * Personal+ is bought yearly through Google Play; the backend verifies the purchase. However
+ * a plan was paid for (App Store, Google Play, web/Stripe), its provider, status and renewal
+ * date come from the same server record shown on every client.
  */
 @Composable
 fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boolean? = null) {
     val enquiry: ClubEnquiryViewModel = viewModel(factory = ClubEnquiryViewModel.Factory)
     val enquiryState by enquiry.uiState.collectAsStateWithLifecycle()
+    val purchase: PersonalPlusPurchaseViewModel = viewModel(factory = PersonalPlusPurchaseViewModel.Factory)
+    val purchaseState by purchase.uiState.collectAsStateWithLifecycle()
     var upgradeOpen by rememberSaveable { mutableStateOf(false) }
     val personal = session.availableContexts.firstOrNull { it.type == AccountContextType.Personal }
     val clubs = session.availableContexts.filter { it.type == AccountContextType.Club }
-    val isPlus = personalPlusOverride ?: (personal?.let { PlanCodes.of(it) } == PlanCodes.PERSONAL_PLUS)
+    val isPlus = purchaseState.purchased ||
+        (personalPlusOverride ?: (personal?.let { PlanCodes.of(it) } == PlanCodes.PERSONAL_PLUS))
+    LaunchedEffect(personal?.organizationId, upgradeOpen) {
+        if (upgradeOpen && personal != null) purchase.load(personal.organizationId)
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         EditorCard(stringResource(R.string.settings_subscription), iconRes = R.drawable.ic_payment) {
@@ -97,7 +107,7 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
                     expanded = upgradeOpen,
                     onClick = if (isPlus) null else ({ upgradeOpen = !upgradeOpen }),
                 )
-                AnimatedVisibility(visible = upgradeOpen && !isPlus) { UpgradePanel() }
+                AnimatedVisibility(visible = upgradeOpen && !isPlus) { UpgradePanel(purchaseState, purchase) }
                 SubscriptionSourceLine(personal)
             }
 
@@ -145,19 +155,44 @@ fun SubscriptionPage(session: SessionState.SignedIn, personalPlusOverride: Boole
 
 @Composable
 private fun SubscriptionSourceLine(context: AccountContext) {
-    val provider = context.subscriptionProvider ?: return
+    val text = subscriptionSummary(
+        context.subscriptionProvider,
+        context.subscriptionStatus,
+        context.subscriptionExpiresAt,
+        context.subscriptionLastRenewedAt,
+    ) ?: return
+    Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+}
+
+/**
+ * The same wording as the web Subscription page: where the plan was paid for, whether it is
+ * still valid, and until when. Built only from the server's central subscription record.
+ */
+internal fun subscriptionSummary(provider: String?, status: String?, expiresAt: String?, lastRenewedAt: String?): String? {
+    provider ?: return null
     val providerName = when (provider.lowercase()) {
-        "apple" -> "App Store"
+        "apple" -> "the App Store"
         "google_play" -> "Google Play"
-        "stripe" -> "Web / Stripe"
-        "manual" -> "HitnScore administrator"
-        else -> provider.replace('_', ' ').replaceFirstChar { it.uppercase() }
+        "stripe" -> "the HitnScore website"
+        "manual" -> "a HitnScore administrator"
+        else -> provider.replace('_', ' ')
     }
-    Text(
-        text = "${if (context.subscriptionLastRenewedAt == null) "Purchased" else "Last renewed"} through $providerName",
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-    )
+    val until = expiresAt?.let { value ->
+        runCatching {
+            java.time.OffsetDateTime.parse(value)
+                .format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.UK))
+        }.getOrNull()
+    }
+    val paid = "${if (lastRenewedAt == null) "Purchased" else "Last renewed"} through $providerName"
+    return when (status?.lowercase()) {
+        "active" -> if (until != null) "Valid until $until, renews automatically · $paid" else paid
+        "cancelled" -> if (until != null) "Valid until $until, will not renew · $paid" else paid
+        "grace_period" -> "Payment issue: update your payment method in $providerName${until?.let { " before $it" }.orEmpty()} · $paid"
+        "billing_retry" -> "On hold: payment failed in $providerName · $paid"
+        "revoked" -> "Refunded or revoked · $paid"
+        "expired" -> "Expired${until?.let { " on $it" }.orEmpty()} · $paid"
+        else -> paid
+    }
 }
 
 private enum class PlanStatus { Current, Available, Upgrade, Enquire }
@@ -254,9 +289,10 @@ private fun PlanOptionCard(
     }
 }
 
-/** Personal+ upgrade, opened from its card (as iOS). Payment arrives with Google Play Billing. */
+/** Personal+ upgrade, opened from its card (as iOS), paid yearly through Google Play. */
 @Composable
-private fun UpgradePanel() {
+private fun UpgradePanel(state: PersonalPlusPurchaseUiState, purchase: PersonalPlusPurchaseViewModel) {
+    val activity = LocalContext.current.findFragmentActivity()
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
@@ -271,10 +307,25 @@ private fun UpgradePanel() {
                     Text(stringResource(feature), style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            Text(stringResource(R.string.plan_billed_annually_pricing), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                Text(stringResource(R.string.plan_upgrade_button))
+            Text(
+                state.price?.let { stringResource(R.string.plan_billed_annually_price, it) }
+                    ?: stringResource(R.string.plan_billed_annually_pricing),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Button(
+                onClick = { activity?.let(purchase::buy) },
+                enabled = state.canPurchase && !state.isWorking && activity != null,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                if (state.isWorking || state.isLoading) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.plan_upgrade_button))
+                }
             }
+            state.message?.let { Text(it, color = HitNScoreTheme.colors.brandPink, style = MaterialTheme.typography.bodyMedium) }
             EditorNote(stringResource(R.string.plan_upgrade_note))
         }
     }

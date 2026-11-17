@@ -319,6 +319,13 @@ export function deleteRootAdminMatch(matchId, confirmation) {
   });
 }
 
+export function updateRootAdminMatchPlayers(matchId, payload) {
+  return apiRequest(`/root_admin/matches/${matchId}/players`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getRootAdminInterestRequests(status = "") {
   const params = status ? new URLSearchParams({ status }) : null;
   const suffix = params ? `?${params.toString()}` : "";

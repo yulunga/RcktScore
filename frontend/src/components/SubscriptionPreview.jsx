@@ -44,16 +44,42 @@ function PaymentIcon() {
 }
 
 function providerName(provider) {
-  if (provider === "apple") return "App Store";
+  if (provider === "apple") return "the App Store";
   if (provider === "google_play") return "Google Play";
-  if (provider === "stripe") return "Web / Stripe";
-  if (provider === "manual") return "HitnScore administrator";
+  if (provider === "stripe") return "the HitnScore website";
+  if (provider === "manual") return "a HitnScore administrator";
   return String(provider || "").replaceAll("_", " ");
 }
 
-function sourceLine(membership) {
+function formatDate(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// Same wording as the Android Subscription page, built only from the central
+// subscription_sources record that /session/status returns for every client.
+export function subscriptionSummary(membership) {
   if (!membership?.subscription_provider) return "No verified payment source recorded";
-  return `${membership.subscription_last_renewed_at ? "Last renewed" : "Purchased"} through ${providerName(membership.subscription_provider)}`;
+  const source = providerName(membership.subscription_provider);
+  const until = formatDate(membership.subscription_expires_at);
+  const paid = `${membership.subscription_last_renewed_at ? "Last renewed" : "Purchased"} through ${source}`;
+  switch (membership.subscription_status) {
+    case "active":
+      return until ? `Valid until ${until}, renews automatically · ${paid}` : paid;
+    case "cancelled":
+      return until ? `Valid until ${until}, will not renew · ${paid}` : paid;
+    case "grace_period":
+      return `Payment issue: update your payment method in ${source}${until ? ` before ${until}` : ""} · ${paid}`;
+    case "billing_retry":
+      return `On hold: payment failed in ${source} · ${paid}`;
+    case "revoked":
+      return `Refunded or revoked · ${paid}`;
+    case "expired":
+      return `Expired${until ? ` on ${until}` : ""} · ${paid}`;
+    default:
+      return paid;
+  }
 }
 
 export default function SubscriptionPreview({ currentPlan = "club_essentials", accountEmail = "", personalMembership = null, clubMemberships = [] }) {
@@ -74,7 +100,7 @@ export default function SubscriptionPreview({ currentPlan = "club_essentials", a
             <article className="subscription-current-card">
               <div className="subscription-current-card__copy">
                 <h3>{planName(personalMembership.plan)}</h3>
-                <p>{sourceLine(personalMembership)}</p>
+                <p>{subscriptionSummary(personalMembership)}</p>
               </div>
             </article>
           ) : <p>No Personal subscription is associated with this sign-in.</p>}
@@ -83,7 +109,7 @@ export default function SubscriptionPreview({ currentPlan = "club_essentials", a
             <article className="subscription-current-card" key={membership.organization_id}>
               <div className="subscription-current-card__copy">
                 <h3>{membership.organization_name}</h3>
-                <p>{planName(membership.plan)} · {sourceLine(membership)}</p>
+                <p>{planName(membership.plan)} · {subscriptionSummary(membership)}</p>
               </div>
             </article>
           )) : <p>No Club subscription is associated with this sign-in.</p>}

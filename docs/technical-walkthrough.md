@@ -744,6 +744,12 @@ The Ground Control Users directory sorts the full filtered response by latest lo
 
 The root-admin trust boundary is now enforced. Rate limiting, richer security audit events, and operational session-management tooling remain launch-hardening work.
 
+## Subscriptions across providers
+
+Personal Plus can be paid yearly through the App Store (iOS), Google Play (Android) or, later, Stripe on the web; club plans will be paid only through Stripe on the web. Each provider adapter verifies its own purchase server-side and writes one row per provider subscription to `subscription_sources`, then moves `SkwshOrgSettings.plan` with an append-only entitlement audit. Clients never grant access. Session status exposes the best current source, and web, iOS and Android all show where the plan was bought and until when from that one record.
+
+Google Play flow: Android fetches `/subscriptions/google/context`, launches Play Billing with the account token as the obfuscated account ID, and posts the resulting purchase token to `/subscriptions/google/verify`. The backend re-reads it from the Play Developer API, records it and acknowledges it. Play RTDN pushes and an hourly reconciler keep renewals, cancellations, holds, refunds and expiry current. On opening the upgrade panel Android also re-submits any owned, unverified Play purchase.
+
 ## Apple Watch scoring
 
 The iOS Xcode project embeds the watchOS target from `mobile/watch/`. A
@@ -871,7 +877,7 @@ leaving its host-club affiliation as `guest`.
 
 ### Ground Control Match Directory
 
-The directory filters non-archived matches locally by organisation name, sport and UK calendar date. The date is the completion date when available, otherwise the creation date. Match rows show club or Personal context, and the court is displayed in Match Details. The sport totals count completed matches for the organisation and date scope across all sports. The detail route fetches the sport engine's read-only snapshot and effective scoring events. Archive hides the match from standard views. The detail page requires typed confirmation before permanently deleting the match and its scoring records.
+The directory filters non-archived matches locally by organisation name, sport and UK calendar date. The date is the completion date when available, otherwise the creation date. Match rows show club or Personal context, and the court is displayed in Match Details. The sport totals count completed matches for the organisation and date scope across all sports. The detail route fetches the sport engine's read-only snapshot and effective scoring events. On a completed match, Ground Control can correct both sides' first names and surnames; tennis and Padel doubles expose all four stored participants. `PUT /root_admin/matches/{match_id}/players` updates the projected match/winner names and appends an actor-attributed correction event, which the sport replay applies to the lineup, winner and completed game/set labels without mutating earlier scoring events. Archive hides the match from standard views. The detail page requires typed confirmation before permanently deleting the match and its scoring records.
 
 The Ground Control counts a user with multiple club memberships once under Users → Club Accounts. Published notification cards report the eligible audience size captured at publication and the distinct identities with an inbox read receipt. The inbox audience remains plan-based when users open it.
 

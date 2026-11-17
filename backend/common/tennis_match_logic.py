@@ -348,6 +348,8 @@ def _event_summary(match_row, event_type, payload):
             f"Match settings updated: first to {payload.get('score_type', match_row['score_type'])} games, "
             f"best of {payload.get('best_of', match_row['best_of'])} sets"
         )
+    if event_type == "root_admin_name_correction":
+        return "Player names corrected by Ground Control"
     if event_type == "match_ended":
         if payload.get("ended_early"):
             return payload.get("reason") or "Match ended early"
@@ -586,6 +588,25 @@ def _build_state(match_row, event_rows):
                 server_participant_id=state.get("current_server_participant_id"),
                 service_side=state.get("service_side"),
             )
+            _apply_score_labels(state)
+        elif event_type == "root_admin_name_correction":
+            if payload.get("tennis_teams"):
+                state["tennis_teams"] = payload["tennis_teams"]
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
+            )
+            if state.get("winner_side") in {"player1", "player2"}:
+                state["winner_name"] = payload.get("winner_name", state.get("winner_name"))
+            for set_result in state.get("game_history") or []:
+                if set_result.get("winner_side") in {"player1", "player2"}:
+                    team = (state.get("tennis_teams") or {}).get(set_result["winner_side"]) or []
+                    if team:
+                        set_result["winner_name"] = " / ".join(
+                            participant.get("display_name") or participant.get("first_name") or ""
+                            for participant in team
+                        )
             _apply_score_labels(state)
         elif event_type in {"score_point", "stroke"}:
             set_result = payload.get("game_result")

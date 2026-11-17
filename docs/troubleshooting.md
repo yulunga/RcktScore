@@ -641,6 +641,14 @@ If the display is stale:
 - treat WebSocket behavior as optional/partial until the infra is completed
 - check `VITE_WEBSOCKET_URL`, `WEBSOCKET_DOMAIN_NAME`, and `WEBSOCKET_STAGE`
 
+## Google Play subscriptions
+
+- Android shows `Personal Plus purchases through Google Play are not available yet` when `GooglePlayPurchasesEnabled` is false, or when Play returns no yearly offer: only the `prod` flavour (`com.hitnscore.mobile`) installed from a Play testing track can buy, and the Play Console product/base-plan IDs must match the stack parameters
+- `GOOGLE_PLAY_NOT_CONFIGURED` / `GOOGLE_PLAY_AUTH_FAILED`: set `GooglePlayServiceAccountSecretArn` to a Secrets Manager secret holding the service-account JSON key, and grant that service account access to the app in Play Console (Users and permissions → financial data/orders)
+- `GOOGLE_PLAY_ACCOUNT_MISMATCH`: the token was bought from a different HitnScore account on the same Google account. Android ignores these quietly during automatic restore
+- notifications returning 401/503: the Pub/Sub push subscription must use authentication with the service account in `GooglePlayPushServiceAccount` and the audience in `GooglePlayPushAudience`; inspect `google_play_notifications.outcome` for processed messages
+- a purchase left unacknowledged is refunded by Google after three days. The verify call and hourly reconciliation both acknowledge; `rcktscore-backend-google-play-reconciliation-errors` alarms when reconciliation fails
+
 ## Services traffic light and subscription access
 
 - If the flag is unavailable or Want In cannot check availability, verify migration `059_public_registration.sql` and the backend deployment, then check `GET https://api.hitnscore.com/registration/status`.
@@ -1139,6 +1147,8 @@ Standard layout keeps the court name at the same 0.8rem size as the game details
 ### Ground Control match lookup
 
 The Match Directory excludes archived matches. Clear the sport, organisation and date fields when looking for a missing match. The date filter uses UK time and matches the completion date where available, otherwise the creation date. Open Match Details to see the court. For permanent deletion from Match Details, enter uppercase `DELETE`.
+
+Completed-match participant corrections are available only from Ground Control Match Details. If **Edit player names** is absent, verify the match status is `completed`; scheduled and active matches deliberately use their existing scorer/admin edit flow. A successful correction updates `matches.player1_*`, `matches.player2_*`, and the side-derived `winner_name`, then appends a `match_events.event_type = 'root_admin_name_correction'` row with `event_source = 'root_admin'` and the acting root-admin username. If a corrected tennis/Padel name reverts on reload, confirm that correction event contains the complete `tennis_teams` lineup and that the current backend includes the correction replay branch; do not edit earlier append-only scoring events.
 
 Older Ground Control notifications have no publish-time recipient snapshot. Their recipient count is unavailable, while stored read receipts still contribute to the read count. Apply migration `051_notification_recipient_count.sql` before deploying the updated notification Lambda.
 
