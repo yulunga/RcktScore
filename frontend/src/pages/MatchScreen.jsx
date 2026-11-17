@@ -15,7 +15,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { useMatch } from "../hooks/useMatch";
 import { getMatchDisplayAccess } from "../services/api";
-import { canManageMatches } from "../utils/accessControl";
+import { canAdministerClub, canManageMatches } from "../utils/accessControl";
 
 function getInitials(value) {
   if (!value) {
@@ -36,7 +36,6 @@ function getInitials(value) {
     .map((part) => part[0]?.toUpperCase() || "")
     .join("");
 }
-
 function inferOrganizationType(session) {
   if (session?.organization_type) {
     return session.organization_type;
@@ -164,7 +163,7 @@ function advanceTimerSnapshot(snapshot) {
     if (phase === "warmup_side_two") {
       if (remainingElapsed >= seconds) {
         remainingElapsed -= seconds;
-        phase = "first_server";
+        phase = "game_ready";
         seconds = 0;
         break;
       }
@@ -187,7 +186,7 @@ function advanceTimerSnapshot(snapshot) {
       break;
     }
 
-    if (phase === "warmup_ready" || phase === "first_server") {
+    if (phase === "warmup_ready" || phase === "game_ready" || phase === "first_server") {
       break;
     }
 
@@ -256,6 +255,7 @@ export default function MatchScreen() {
   const matchComplete = currentMatch?.state?.match_complete || currentMatch?.status === "completed";
   const scoringAccess = currentMatch?.scoring_access;
   const scoringAllowed = matchManagementEnabled && scoringAccess?.can_score !== false;
+  const metadataEditingAllowed = scoringAllowed || canAdministerClub(session);
   const canTakeOverScoring = scoringAccess?.can_take_over === true;
   const completedAtTimestamp = currentMatch?.completed_at ? new Date(currentMatch.completed_at).getTime() : NaN;
   const undoLocked = matchComplete
@@ -281,13 +281,22 @@ export default function MatchScreen() {
   const [gameSettingsForm, setGameSettingsForm] = useState({
     score_type: 15,
     best_of: 5,
+    player1_name: "",
+    player1_surname: "",
     player1_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player1,
+    player2_name: "",
+    player2_surname: "",
     player2_shirt_color: DEFAULT_PLAYER_SHIRT_COLORS.player2,
+    team1_player2_name: "",
+    team1_player2_surname: "",
+    team2_player2_name: "",
+    team2_player2_surname: "",
   });
   const bootstrappedMatchRef = useRef(null);
   const previousGameHistoryCountRef = useRef(0);
   const seenTennisCompletionRefs = useRef(new Set());
   const durationSyncRef = useRef({});
+  const pausedMatchSecondsRef = useRef(0);
   const settingsAutoloadedRef = useRef(false);
 
   useEffect(() => {
@@ -343,16 +352,23 @@ export default function MatchScreen() {
     );
 
     const storedState = readStoredTimerState(currentMatch.id);
-    const storedOptionalTimerPhase = ["warmup_ready", "warmup_side_one", "warmup_side_two", "interval"]
+    const storedOptionalTimerPhase = ["warmup_ready", "warmup_side_one", "warmup_side_two", "game_ready", "interval"]
       .includes(storedState?.phase);
-    if (storedState && (live.tennis_timed_breaks || !storedOptionalTimerPhase)) {
+    if (storedState && (live.tennis_timed_breaks || storedState.phase === "game_ready" || (!isTennisMatch && storedState.phase === "interval") || !storedOptionalTimerPhase)) {
       const advancedState = advanceTimerSnapshot(storedState);
       const needsFirstServer = advancedState.phase === "first_server";
+      pausedMatchSecondsRef.current = Number(advancedState.matchDurationSeconds ?? (
+        advancedState.phase === "match_live" ? advancedState.seconds : 0
+      ));
       setActiveIntervalSeconds(advancedState.intervalDurationSeconds || INTERVAL_SECONDS);
-      setTimerPhase(needsFirstServer ? "warmup_side_two" : advancedState.phase);
-      setTimerSeconds(needsFirstServer ? 0 : advancedState.seconds);
+      setTimerPhase(advancedState.phase);
+      setTimerSeconds(needsFirstServer ? 0 : (
+        advancedState.phase === "match_live" && storedState.phase === "interval"
+          ? pausedMatchSecondsRef.current
+          : advancedState.seconds
+      ));
       setTimerRunning(needsFirstServer ? false : advancedState.running);
-      setShowWarmupOverlay(["warmup_ready", "warmup_side_one", "warmup_side_two"].includes(advancedState.phase));
+      setShowWarmupOverlay(["warmup_ready", "warmup_side_one", "warmup_side_two", "game_ready"].includes(advancedState.phase));
       setShowFirstServerOverlay(needsFirstServer);
       return;
     }
@@ -369,11 +385,11 @@ export default function MatchScreen() {
     }
 
     if (isFreshMatch(currentMatch)) {
-      setTimerPhase("first_server");
+      setTimerPhase("game_ready");
       setTimerSeconds(0);
       setTimerRunning(false);
-      setShowWarmupOverlay(false);
-      setShowFirstServerOverlay(true);
+      setShowWarmupOverlay(true);
+      setShowFirstServerOverlay(false);
       return;
     }
 
@@ -408,6 +424,7 @@ export default function MatchScreen() {
     }
 
     if (duration > 0 && !matchComplete) {
+      pausedMatchSecondsRef.current = timerSeconds;
       setActiveIntervalSeconds(duration);
       setTimerPhase("interval");
       setTimerSeconds(duration);
@@ -426,7 +443,7 @@ export default function MatchScreen() {
     }
 
     settingsAutoloadedRef.current = true;
-    setShowGameSettingsOverlay(true);
+    openGameSettings();
   }, [currentMatch?.id, location.search]);
 
   useEffect(() => {
@@ -439,16 +456,17 @@ export default function MatchScreen() {
       previousGameHistoryCountRef.current = gameHistory.length;
       const matchComplete = currentMatch?.state?.match_complete || currentMatch?.status === "completed";
 
-      if (!matchComplete && !isTennisMatch && live.tennis_timed_breaks) {
+      if (!matchComplete && !isTennisMatch) {
+        pausedMatchSecondsRef.current = timerSeconds;
+        setActiveIntervalSeconds(0);
         setTimerPhase("interval");
-        setTimerSeconds(INTERVAL_SECONDS);
-        setTimerRunning(true);
+        setTimerRunning(false);
       }
       return;
     }
 
     previousGameHistoryCountRef.current = gameHistory.length;
-  }, [currentMatch?.id, currentMatch?.state?.match_complete, currentMatch?.status, gameHistory.length, isTennisMatch, live.tennis_timed_breaks]);
+  }, [currentMatch?.id, currentMatch?.state?.match_complete, currentMatch?.status, gameHistory.length, isTennisMatch, live.tennis_timed_breaks, timerSeconds]);
 
   useEffect(() => {
     if (!currentMatch?.id) {
@@ -465,6 +483,7 @@ export default function MatchScreen() {
       running: timerRunning,
       seconds: timerSeconds,
       intervalDurationSeconds: timerPhase === "interval" ? activeIntervalSeconds : null,
+      matchDurationSeconds: timerPhase === "match_live" ? timerSeconds : pausedMatchSecondsRef.current,
       updatedAt: Date.now(),
     });
   }, [
@@ -510,22 +529,30 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "warmup_side_two") {
+      setTimerPhase("game_ready");
       setTimerRunning(false);
-      setShowFirstServerOverlay(true);
+      setShowWarmupOverlay(true);
+      setShowFirstServerOverlay(false);
       return;
     }
 
     if (timerPhase === "interval") {
+      if (!isTennisMatch) {
+        return;
+      }
       window.alert(activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS
         ? "Set break complete. Resume play."
         : "Changeover complete. Resume play.");
       setTimerPhase("match_live");
-      setTimerSeconds(0);
+      setTimerSeconds(pausedMatchSecondsRef.current);
       setTimerRunning(true);
     }
-  }, [activeIntervalSeconds, timerPhase, timerRunning, timerSeconds]);
+  }, [activeIntervalSeconds, isTennisMatch, timerPhase, timerRunning, timerSeconds]);
 
   function resolveMatchDurationSeconds() {
+    if (timerPhase === "interval") {
+      return pausedMatchSecondsRef.current;
+    }
     if (timerPhase === "match_live") {
       return timerSeconds;
     }
@@ -610,12 +637,19 @@ export default function MatchScreen() {
       return "Warm-Up: Side 2";
     }
 
+    if (timerPhase === "game_ready") {
+      return "Ready to Start";
+    }
+
     if (timerPhase === "interval") {
+      if (!isTennisMatch) {
+        return "Next Game Ready";
+      }
       return activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS ? "Set Break - 120s" : "Changeover - 90s";
     }
 
     return "Match Time";
-  }, [activeIntervalSeconds, matchComplete, timerPhase]);
+  }, [activeIntervalSeconds, isTennisMatch, matchComplete, timerPhase]);
 
   const timerHelperText = useMemo(() => {
     if (matchComplete) {
@@ -632,14 +666,21 @@ export default function MatchScreen() {
       return "Warm-up runs for 60 seconds on each side of the court.";
     }
 
+    if (timerPhase === "game_ready") {
+      return "The match clock is paused until Start Game is pressed and the opening server is selected.";
+    }
+
     if (timerPhase === "interval") {
+      if (!isTennisMatch) {
+        return "The match clock is paused. Resume when both players are ready for the next game.";
+      }
       return activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS
         ? "120 second break between sets."
         : "90 second odd-game changeover.";
     }
 
     return "Tap the clock to pause or resume the match.";
-  }, [activeIntervalSeconds, matchComplete, recordedMatchDurationSeconds, timerPhase]);
+  }, [activeIntervalSeconds, isTennisMatch, matchComplete, recordedMatchDurationSeconds, timerPhase]);
 
   const timerSkipLabel = useMemo(() => {
     if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
@@ -647,11 +688,11 @@ export default function MatchScreen() {
     }
 
     if (timerPhase === "interval") {
-      return "Skip Break";
+      return isTennisMatch ? "Skip Break" : "Resume Next Game";
     }
 
     return "";
-  }, [timerPhase]);
+  }, [isTennisMatch, timerPhase]);
 
   function handleStartWarmup() {
     setShowWarmupOverlay(true);
@@ -662,6 +703,16 @@ export default function MatchScreen() {
   }
 
   function handleSkipWarmup() {
+    setTimerPhase("game_ready");
+    setTimerSeconds(0);
+    setShowWarmupOverlay(true);
+    setTimerRunning(false);
+    setShowFirstServerOverlay(false);
+  }
+
+  function handleStartGame() {
+    setTimerPhase("first_server");
+    setTimerSeconds(0);
     setShowWarmupOverlay(false);
     setTimerRunning(false);
     setShowFirstServerOverlay(true);
@@ -673,33 +724,51 @@ export default function MatchScreen() {
       return;
     }
 
+    if (timerPhase === "interval" && !isTennisMatch) {
+      handleSkipTimedPhase();
+      return;
+    }
+
     setTimerRunning((value) => !value);
   }
 
   function handleSkipTimedPhase() {
     if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two" || timerPhase === "interval") {
       if (timerPhase === "warmup_side_one" || timerPhase === "warmup_side_two") {
+        setTimerPhase("game_ready");
+        setTimerSeconds(0);
         setTimerRunning(false);
-        setShowFirstServerOverlay(true);
+        setShowWarmupOverlay(true);
+        setShowFirstServerOverlay(false);
         return;
       }
 
       setTimerPhase("match_live");
-      setTimerSeconds(0);
+      setTimerSeconds(pausedMatchSecondsRef.current);
       setTimerRunning(true);
     }
   }
 
   function openGameSettings() {
+    const player1Primary = tennisTeams.player1?.[0];
+    const player2Primary = tennisTeams.player2?.[0];
     setGameSettingsForm({
       score_type: currentMatch?.score_type ?? currentMatch?.state?.score_type ?? 15,
       best_of: currentMatch?.best_of ?? currentMatch?.state?.best_of ?? 5,
+      player1_name: player1Primary?.first_name ?? currentMatch?.player1_name ?? "",
+      player1_surname: player1Primary?.surname ?? currentMatch?.player1_surname ?? "",
       player1_shirt_color: currentMatch?.player1_shirt_color
         ?? currentMatch?.state?.player1_shirt_color
         ?? DEFAULT_PLAYER_SHIRT_COLORS.player1,
+      player2_name: player2Primary?.first_name ?? currentMatch?.player2_name ?? "",
+      player2_surname: player2Primary?.surname ?? currentMatch?.player2_surname ?? "",
       player2_shirt_color: currentMatch?.player2_shirt_color
         ?? currentMatch?.state?.player2_shirt_color
         ?? DEFAULT_PLAYER_SHIRT_COLORS.player2,
+      team1_player2_name: tennisTeams.player1?.[1]?.first_name ?? "",
+      team1_player2_surname: tennisTeams.player1?.[1]?.surname ?? "",
+      team2_player2_name: tennisTeams.player2?.[1]?.first_name ?? "",
+      team2_player2_surname: tennisTeams.player2?.[1]?.surname ?? "",
     });
     setOpenSettingsShirtPicker("");
     setShowGameSettingsOverlay(true);
@@ -710,7 +779,18 @@ export default function MatchScreen() {
     const settingsPayload = {
       score_type: Number(gameSettingsForm.score_type),
       best_of: Number(gameSettingsForm.best_of),
+      player1_name: gameSettingsForm.player1_name.trim(),
+      player1_surname: gameSettingsForm.player1_surname.trim(),
+      player2_name: gameSettingsForm.player2_name.trim(),
+      player2_surname: gameSettingsForm.player2_surname.trim(),
     };
+
+    if (isTennisDoubles) {
+      settingsPayload.team1_player2_name = gameSettingsForm.team1_player2_name.trim();
+      settingsPayload.team1_player2_surname = gameSettingsForm.team1_player2_surname.trim();
+      settingsPayload.team2_player2_name = gameSettingsForm.team2_player2_name.trim();
+      settingsPayload.team2_player2_surname = gameSettingsForm.team2_player2_surname.trim();
+    }
 
     if (canChoosePlayerShirtColors) {
       settingsPayload.player1_shirt_color = gameSettingsForm.player1_shirt_color;
@@ -871,6 +951,7 @@ export default function MatchScreen() {
 
   const showWarmupFlowOverlay = showWarmupOverlay
     || showFirstServerOverlay
+    || timerPhase === "game_ready"
     || timerPhase === "warmup_side_one"
     || timerPhase === "warmup_side_two";
   const isWarmupCountdownWarning = timerRunning
@@ -900,7 +981,17 @@ export default function MatchScreen() {
       {showWarmupFlowOverlay ? (
         <div className="overlay-backdrop">
           <div className="overlay-panel overlay-panel--warmup stack">
-            {showFirstServerOverlay && currentMatch ? (
+            {timerPhase === "game_ready" ? (
+              <>
+                <h2>Ready to Start</h2>
+                <p className="helper-text">
+                  The match clock is paused. Press Start Game when the players are ready, then choose the opening server.
+                </p>
+                <button className="opening-match-submit" type="button" onClick={handleStartGame}>
+                  Start Game
+                </button>
+              </>
+            ) : showFirstServerOverlay && currentMatch ? (
               <>
                 <h2>{isTennisMatch ? (isTennisDoubles ? "Opening Serve & Receive" : "Opening Server") : "First Server"}</h2>
                 <p className="helper-text">
@@ -1016,9 +1107,11 @@ export default function MatchScreen() {
       {timerPhase === "interval" && currentMatch?.status !== "completed" ? (
         <div className="overlay-backdrop">
           <div className="overlay-panel overlay-panel--warmup stack">
-            <h2>{activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS ? "Set Break" : "Changeover"}</h2>
+            <h2>{!isTennisMatch ? "Game Complete" : activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS ? "Set Break" : "Changeover"}</h2>
             <p className="helper-text">
-              {activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS
+              {!isTennisMatch
+                ? "The match clock is paused. Resume when both players are ready to start the next game."
+                : activeIntervalSeconds === TENNIS_SET_INTERVAL_SECONDS
                 ? "120 second interval between sets. Tap the clock to pause or resume if needed."
                 : "90 second odd-game changeover. Tap the clock to pause or resume if needed."}
             </p>
@@ -1032,7 +1125,7 @@ export default function MatchScreen() {
             </button>
             <div className="button-row warmup-overlay__actions">
               <button className="secondary" type="button" onClick={handleSkipTimedPhase}>
-                Skip Break
+                {isTennisMatch ? "Skip Break" : "Resume Next Game"}
               </button>
             </div>
           </div>
@@ -1057,6 +1150,42 @@ export default function MatchScreen() {
               </button>
             </div>
             <div className="game-settings-match-grid">
+              <div className="field">
+                <label htmlFor="live_player1_name">{isTennisDoubles ? "Team 1 · Player 1 First Name" : "Player 1 First Name"}</label>
+                <input id="live_player1_name" required maxLength="100" value={gameSettingsForm.player1_name} onChange={(event) => setGameSettingsForm((current) => ({ ...current, player1_name: event.target.value }))} />
+              </div>
+              <div className="field">
+                <label htmlFor="live_player1_surname">{isTennisDoubles ? "Team 1 · Player 1 Surname" : "Player 1 Surname"}</label>
+                <input id="live_player1_surname" maxLength="100" value={gameSettingsForm.player1_surname} onChange={(event) => setGameSettingsForm((current) => ({ ...current, player1_surname: event.target.value }))} />
+              </div>
+              <div className="field">
+                <label htmlFor="live_player2_name">{isTennisDoubles ? "Team 2 · Player 1 First Name" : "Player 2 First Name"}</label>
+                <input id="live_player2_name" required maxLength="100" value={gameSettingsForm.player2_name} onChange={(event) => setGameSettingsForm((current) => ({ ...current, player2_name: event.target.value }))} />
+              </div>
+              <div className="field">
+                <label htmlFor="live_player2_surname">{isTennisDoubles ? "Team 2 · Player 1 Surname" : "Player 2 Surname"}</label>
+                <input id="live_player2_surname" maxLength="100" value={gameSettingsForm.player2_surname} onChange={(event) => setGameSettingsForm((current) => ({ ...current, player2_surname: event.target.value }))} />
+              </div>
+              {isTennisDoubles ? (
+                <>
+                  <div className="field">
+                    <label htmlFor="live_team1_player2_name">Team 1 · Player 2 First Name</label>
+                    <input id="live_team1_player2_name" required maxLength="100" value={gameSettingsForm.team1_player2_name} onChange={(event) => setGameSettingsForm((current) => ({ ...current, team1_player2_name: event.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="live_team1_player2_surname">Team 1 · Player 2 Surname</label>
+                    <input id="live_team1_player2_surname" maxLength="100" value={gameSettingsForm.team1_player2_surname} onChange={(event) => setGameSettingsForm((current) => ({ ...current, team1_player2_surname: event.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="live_team2_player2_name">Team 2 · Player 2 First Name</label>
+                    <input id="live_team2_player2_name" required maxLength="100" value={gameSettingsForm.team2_player2_name} onChange={(event) => setGameSettingsForm((current) => ({ ...current, team2_player2_name: event.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="live_team2_player2_surname">Team 2 · Player 2 Surname</label>
+                    <input id="live_team2_player2_surname" maxLength="100" value={gameSettingsForm.team2_player2_surname} onChange={(event) => setGameSettingsForm((current) => ({ ...current, team2_player2_surname: event.target.value }))} />
+                  </div>
+                </>
+              ) : null}
               <div className="field">
                 <label htmlFor="live_best_of">Match Format</label>
                 <select
@@ -1212,6 +1341,7 @@ export default function MatchScreen() {
             >
               <MatchControls
                 disabled={!currentMatch || loading || needsPadelGoldenPointReceiver || !scoringAllowed}
+                settingsDisabled={!currentMatch || loading || !metadataEditingAllowed}
                 match={currentMatch}
                 showRacketActions={false}
                 undoDisabled={undoLocked}
@@ -1236,6 +1366,7 @@ export default function MatchScreen() {
             >
             <MatchControls
               disabled={!currentMatch || loading || !scoringAllowed}
+              settingsDisabled={!currentMatch || loading || !metadataEditingAllowed}
               match={currentMatch}
               undoDisabled={undoLocked}
               onEventAction={(actionType, payload) =>

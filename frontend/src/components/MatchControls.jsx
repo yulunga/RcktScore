@@ -3,6 +3,7 @@ import React, { useState } from "react";
 export default function MatchControls({
   match,
   disabled = false,
+  settingsDisabled = disabled,
   undoDisabled = false,
   onEventAction,
   onUndo,
@@ -150,7 +151,7 @@ export default function MatchControls({
         <button
           aria-label="Game settings"
           className="secondary match-control-grid__settings"
-          disabled={disabled || matchComplete}
+          disabled={settingsDisabled || matchComplete}
           onClick={onOpenSettings}
           title="Game settings"
           type="button"

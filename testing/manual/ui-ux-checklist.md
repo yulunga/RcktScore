@@ -31,7 +31,9 @@ Use this checklist after UI changes and before releases.
 - Create a match
 - In a club context on web and iOS, select Referee → Me and confirm the signed-in profile name is filled; then enter that same person as any singles/doubles player and confirm Me clears and becomes unavailable
 - Start the match
+- On web, iOS and Android, confirm the match clock is stopped on `Ready to Start`; press Start Game, choose the opening server/serve-receive order, and confirm only then does the clock run
 - Score several points
+- Finish a non-final Squash/Racketball game and confirm `Game Complete` blocks scoring while the accumulated clock remains frozen; press Resume Next Game and confirm timing resumes from the same value
 - Use undo
 - End the match
 - Confirm the history/result feels correct to a real scorer
@@ -45,6 +47,7 @@ Use this checklist after UI changes and before releases.
 - Complete the takeover, confirm the admin can score immediately, and confirm Scorer A becomes read-only on its next refresh or rejected mutation
 - Confirm an ordinary scorer never sees a takeover action and cannot call the takeover endpoint successfully
 - Create a scheduled club match, activate it as Scorer A and repeat the ownership checks; also confirm Personal Free and Personal Plus matches remain unaffected
+- Before activation, edit the scheduled match as both a scorer and admin and correct every singles/doubles player name; confirm the edit does not assign `scoring_owner_membership_id`. Once active, confirm the assigned scorer and an admin can correct names, while Scorer B remains blocked and an admin correction does not transfer ownership
 - Test an active club match created before migration 060 and confirm the first authorised post-deployment mutation claims it once without duplicate audit rows
 - On iOS and Android, open a match while online, then lose connectivity; confirm a non-owner device cannot queue new local points after it has received the locked state and that server reconciliation rejects any stale queued mutation
 

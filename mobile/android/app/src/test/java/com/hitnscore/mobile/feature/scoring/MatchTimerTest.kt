@@ -9,7 +9,7 @@ class MatchTimerTest {
     private fun MatchTimer.ticks(n: Int): MatchTimer = (1..n).fold(this) { t, _ -> t.tick() }
 
     @Test
-    fun warmupRunsBothSidesThenWaitsForFirstServer() {
+    fun warmupRunsBothSidesThenWaitsForStartBeforeFirstServer() {
         val start = MatchTimer.initial(isScheduled = false, isComplete = false, isFresh = true, timedBreaks = true, recordedDuration = 0)
         assertEquals(TimerPhase.WarmupReady, start.phase)
 
@@ -18,7 +18,10 @@ class MatchTimerTest {
         val sideTwo = sideOne.ticks(60)
         assertEquals(TimerPhase.WarmupSideTwo, sideTwo.phase)
         assertEquals(60, sideTwo.seconds)
-        val firstServer = sideTwo.ticks(60)
+        val ready = sideTwo.ticks(60)
+        assertEquals(TimerPhase.GameReady, ready.phase)
+        assertFalse(ready.running)
+        val firstServer = ready.beginServerSelection()
         assertEquals(TimerPhase.FirstServer, firstServer.phase)
         assertFalse(firstServer.running)
         // The clock cannot be started from first-server; choosing a server does that.
@@ -47,6 +50,22 @@ class MatchTimerTest {
     }
 
     @Test
+    fun squashGameCompletionPausesUntilNextGameIsResumed() {
+        val live = MatchTimer(phase = TimerPhase.MatchLive, running = true, matchDurationSeconds = 371)
+        val paused = live.beginGamePause()
+
+        assertEquals(TimerPhase.Interval, paused.phase)
+        assertFalse(paused.running)
+        assertEquals(371, paused.displaySeconds)
+        assertEquals(371, paused.ticks(30).matchDurationSeconds)
+
+        val resumed = paused.skip()
+        assertEquals(TimerPhase.MatchLive, resumed.phase)
+        assertTrue(resumed.running)
+        assertEquals(372, resumed.tick().matchDurationSeconds)
+    }
+
+    @Test
     fun catchesUpAfterTheAppWasClosed() {
         val saved = MatchTimer(phase = TimerPhase.MatchLive, running = true, matchDurationSeconds = 60, updatedAtMillis = 1_000_000)
         assertEquals(60 + 45, saved.advancedTo(1_045_000).matchDurationSeconds)
@@ -72,14 +91,14 @@ class MatchTimerTest {
         val running = start.togglePause()
         assertEquals(300, running.seconds)
         val next = running.ticks(300)
-        assertEquals(TimerPhase.FirstServer, next.phase)
+        assertEquals(TimerPhase.GameReady, next.phase)
         assertFalse(next.running)
     }
 
     @Test
-    fun freshTennisWithoutTimedBreaksAsksForTheOpeningServer() {
+    fun freshTennisWithoutTimedBreaksWaitsForStartBeforeOpeningServer() {
         val start = MatchTimer.initial(isScheduled = false, isComplete = false, isFresh = true, timedBreaks = false, recordedDuration = 0, isTennis = true)
-        assertEquals(TimerPhase.FirstServer, start.phase)
+        assertEquals(TimerPhase.GameReady, start.phase)
         assertFalse(start.running)
     }
 
@@ -92,9 +111,9 @@ class MatchTimerTest {
     }
 
     @Test
-    fun freshSquashMatchWithoutTimedBreaksAsksWhoServesFirst() {
+    fun freshSquashMatchWithoutTimedBreaksWaitsForStartBeforeServerSelection() {
         val start = MatchTimer.initial(isScheduled = false, isComplete = false, isFresh = true, timedBreaks = false, recordedDuration = 0)
-        assertEquals(TimerPhase.FirstServer, start.phase)
+        assertEquals(TimerPhase.GameReady, start.phase)
         assertFalse(start.running)
     }
 }

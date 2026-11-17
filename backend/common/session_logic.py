@@ -675,7 +675,13 @@ def take_over_match_scoring(connection, match_id, auth_context):
     return auth_context["scoring_access"]
 
 
-def authorize_match_session(connection, event, match_id, required_capability=CAPABILITY_MATCH_READ):
+def authorize_match_session(
+    connection,
+    event,
+    match_id,
+    required_capability=CAPABILITY_MATCH_READ,
+    allow_metadata_edit=False,
+):
     match_context = _get_match_access_context(connection, match_id)
     if not match_context:
         raise SessionAuthError(404, "MATCH_NOT_FOUND", "Match not found")
@@ -697,7 +703,15 @@ def authorize_match_session(connection, event, match_id, required_capability=CAP
         )
     if required_capability == CAPABILITY_MATCH_MANAGE:
         membership = auth_context["membership"]
-        if membership.get("organization_type") == "club" and not match_context.get("scoring_owner_membership_id"):
+        scheduled_metadata_edit = bool(
+            allow_metadata_edit
+            and match_context.get("status") == "scheduled"
+        )
+        if (
+            membership.get("organization_type") == "club"
+            and not match_context.get("scoring_owner_membership_id")
+            and not scheduled_metadata_edit
+        ):
             _claim_unowned_club_match(
                 connection,
                 match_id,
@@ -707,7 +721,15 @@ def authorize_match_session(connection, event, match_id, required_capability=CAP
             )
             match_context = _get_match_access_context(connection, match_id)
         scoring_access = _match_scoring_access(match_context, membership)
-        if not scoring_access["can_score"]:
+        admin_metadata_edit = (
+            allow_metadata_edit
+            and normalize_membership_role(membership.get("role")) == ROLE_ADMIN
+        )
+        metadata_edit_allowed = bool(
+            allow_metadata_edit
+            and (scheduled_metadata_edit or scoring_access["can_score"] or admin_metadata_edit)
+        )
+        if not scoring_access["can_score"] and not metadata_edit_allowed:
             raise SessionAuthError(
                 409,
                 "MATCH_SCORER_LOCKED",
@@ -719,6 +741,7 @@ def authorize_match_session(connection, event, match_id, required_capability=CAP
                 {"can_take_over": scoring_access["can_take_over"]},
             )
         auth_context["scoring_access"] = scoring_access
+        auth_context["can_edit_match_metadata"] = bool(scoring_access["can_score"] or metadata_edit_allowed)
     else:
         auth_context["scoring_access"] = _match_scoring_access(match_context, auth_context["membership"])
     auth_context["tenant_id"] = tenant_id

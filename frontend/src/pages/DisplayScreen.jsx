@@ -79,6 +79,48 @@ function formatGameHistory(gameHistory) {
     .join(" / ");
 }
 
+const COURT_LAYOUT_COUNTS = { "split-screen": 2, "quarter-screen": 4 };
+
+function getActiveCourts(primaryMatch, otherMatches) {
+  const matches = primaryMatch?.status === "active" ? [primaryMatch, ...otherMatches] : otherMatches;
+  const courts = new Map();
+  for (const match of matches) {
+    if (match.court_id != null && !courts.has(match.court_id)) {
+      courts.set(match.court_id, match);
+    }
+  }
+  return [...courts.values()].sort((a, b) =>
+    (a.court_alias || a.court_name || "").localeCompare(
+      b.court_alias || b.court_name || "", undefined, { numeric: true },
+    ) || a.court_id - b.court_id
+  );
+}
+
+function LiveCourtTile({ match }) {
+  const state = match.state || match;
+  const isSetBased = state.player1_set_games != null;
+  return (
+    <article className="live-court-tile">
+      <h2>{match.court_alias || match.court_name || "Court"}</h2>
+      <div className="live-court-tile__players">
+        {["player1", "player2"].map((side) => (
+          <div className="live-court-tile__player" key={side}>
+            <span className="live-court-tile__name">
+              {[match[`${side}_name`], match[`${side}_surname`]].filter(Boolean).join(" ")}
+            </span>
+            <strong>{state[`${side}_score_label`] ?? state[`${side}_score`] ?? 0}</strong>
+            <small>
+              {isSetBased
+                ? `Games: ${state[`${side}_set_games`]} · Sets: ${state[`${side}_games_won`] ?? 0}`
+                : `Games: ${state[`${side}_games_won`] ?? 0}`}
+            </small>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export default function DisplayScreen() {
   const [code, setCode] = useState("");
   const [currentMatch, setCurrentMatch] = useState(null);
@@ -120,7 +162,12 @@ export default function DisplayScreen() {
     storeDisplaySession(nextSession);
     setCourt(payload?.court || null);
     setCurrentMatch(payload?.match || null);
-    setClubMatches(payload?.club_matches || []);
+    const otherMatches = payload?.club_matches || [];
+    setClubMatches(otherMatches);
+    const count = getActiveCourts(payload?.match, otherMatches).length;
+    setDisplayMode((mode) => COURT_LAYOUT_COUNTS[mode] && COURT_LAYOUT_COUNTS[mode] !== count
+      ? "standard"
+      : mode);
   }, [displaySession?.display_session_token, pollIntervalSeconds]);
 
   const loadCurrent = useCallback(async (displaySessionToken, options = {}) => {
@@ -256,6 +303,8 @@ export default function DisplayScreen() {
     await loadCurrent(displaySession.display_session_token, { silent: true });
   }
 
+  const activeCourts = getActiveCourts(currentMatch, clubMatches);
+  const isCourtLayout = Boolean(COURT_LAYOUT_COUNTS[displayMode]);
   const allGamesPageCount = Math.max(1, Math.ceil(clubMatches.length / ALL_GAMES_PAGE_SIZE));
   const visibleClubMatches = displayMode === "all-games"
     ? clubMatches.slice(
@@ -301,9 +350,15 @@ export default function DisplayScreen() {
               ) : null}
               <label className="display-layout-control">
                 <span className="display-layout-control__label">Layout</span>
-                <select value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
+                <select aria-label="Layout" value={displayMode} onChange={(event) => setDisplayMode(event.target.value)}>
                   <option value="standard">Standard</option>
                   <option value="large-scores">Large Scores</option>
+                  {(activeCourts.length === 2 || displayMode === "split-screen") && (
+                    <option value="split-screen">Split Screen</option>
+                  )}
+                  {(activeCourts.length === 4 || displayMode === "quarter-screen") && (
+                    <option value="quarter-screen">Quarter Screen (¼)</option>
+                  )}
                   <option value="all-games">All Games</option>
                   <option value="minimal">Minimal</option>
                 </select>
@@ -367,7 +422,12 @@ export default function DisplayScreen() {
 
       {loading && displaySession?.display_session_token ? <div className="notice">Loading scoreboard...</div> : null}
       {error ? <div className="notice error">{error}</div> : null}
-      {displaySession?.display_session_token && !currentMatch ? (
+      {displaySession?.display_session_token && isCourtLayout ? (
+        <section className="live-court-grid" aria-label="Live court scores">
+          {activeCourts.map((match) => <LiveCourtTile key={match.court_id} match={match} />)}
+        </section>
+      ) : null}
+      {displaySession?.display_session_token && !isCourtLayout && !currentMatch ? (
         <section className="scoreboard-card scoreboard-card--idle">
           <div className="scoreboard-header">
             <div>
@@ -385,7 +445,7 @@ export default function DisplayScreen() {
           </div>
         </section>
       ) : null}
-      {currentMatch ? (
+      {currentMatch && !isCourtLayout ? (
         <>
           <Scoreboard match={currentMatch} showServeDetails={false} />
         </>

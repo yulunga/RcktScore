@@ -329,6 +329,87 @@ def test_club_admin_must_explicitly_take_over_a_locked_match(monkeypatch):
     assert error.value.details == {"can_take_over": True}
 
 
+def test_club_admin_can_edit_locked_match_metadata_without_taking_over(monkeypatch):
+    monkeypatch.setattr(
+        session_logic,
+        "_get_match_access_context",
+        lambda *_args: {
+            "tenant_id": 12,
+            "sport": "squash",
+            "status": "active",
+            "scoring_owner_membership_id": 101,
+            "scoring_locked_at": datetime.now(timezone.utc),
+        },
+    )
+    monkeypatch.setattr(
+        session_logic,
+        "authorize_organization_session",
+        lambda *_args, **_kwargs: {
+            "membership": {
+                "id": 303,
+                "organization_id": 12,
+                "organization_type": "club",
+                "role": "admin",
+                "enabled_sports": ["squash"],
+            }
+        },
+    )
+
+    context = session_logic.authorize_match_session(
+        object(),
+        {},
+        "match-1",
+        required_capability=CAPABILITY_MATCH_MANAGE,
+        allow_metadata_edit=True,
+    )
+
+    assert context["scoring_access"]["can_score"] is False
+    assert context["scoring_access"]["can_take_over"] is True
+    assert context["can_edit_match_metadata"] is True
+
+
+def test_club_scorer_can_edit_unowned_scheduled_match_without_claiming_lock(monkeypatch):
+    match_context = {
+        "tenant_id": 12,
+        "sport": "squash",
+        "status": "scheduled",
+        "scoring_owner_membership_id": None,
+        "scoring_locked_at": None,
+    }
+    monkeypatch.setattr(session_logic, "_get_match_access_context", lambda *_args: match_context)
+    monkeypatch.setattr(
+        session_logic,
+        "authorize_organization_session",
+        lambda *_args, **_kwargs: {
+            "membership": {
+                "id": 303,
+                "organization_id": 12,
+                "organization_type": "club",
+                "role": "scorer",
+                "enabled_sports": ["squash"],
+            }
+        },
+    )
+    claim_calls = []
+    monkeypatch.setattr(
+        session_logic,
+        "_claim_unowned_club_match",
+        lambda *_args, **_kwargs: claim_calls.append((_args, _kwargs)),
+    )
+
+    context = session_logic.authorize_match_session(
+        object(),
+        {},
+        "match-1",
+        required_capability=CAPABILITY_MATCH_MANAGE,
+        allow_metadata_edit=True,
+    )
+
+    assert context["can_edit_match_metadata"] is True
+    assert context["scoring_access"]["can_score"] is True
+    assert claim_calls == []
+
+
 def test_match_owner_keeps_mutation_access(monkeypatch):
     monkeypatch.setattr(
         session_logic,

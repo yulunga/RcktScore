@@ -1,3 +1,4 @@
+from copy import deepcopy
 from uuid import uuid4
 
 from psycopg.types.json import Jsonb
@@ -577,6 +578,13 @@ def _build_state(match_row, event_rows):
             state["player2_shirt_color"] = shared._shirt_color_value(
                 payload.get("player2_shirt_color"),
                 state["player2_shirt_color"],
+            )
+            if payload.get("tennis_teams"):
+                state["tennis_teams"] = payload.get("tennis_teams")
+            _apply_current_service_participants(
+                state,
+                server_participant_id=state.get("current_server_participant_id"),
+                service_side=state.get("service_side"),
             )
             _apply_score_labels(state)
         elif event_type in {"score_point", "stroke"}:
@@ -1630,6 +1638,60 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
         match.get("player2_shirt_color") or shared.DEFAULT_PLAYER_SHIRT_COLORS["player2"],
     )
 
+    tennis_teams = deepcopy(match["state"].get("tennis_teams") or {})
+    player1_team = tennis_teams.get("player1") or []
+    player2_team = tennis_teams.get("player2") or []
+    player1_primary = player1_team[0] if player1_team else {}
+    player2_primary = player2_team[0] if player2_team else {}
+    participant_updates = [
+        (player1_team, 0, "team1_player1", "player1_name", "player1_surname", player1_shirt_color),
+        (player1_team, 1, "team1_player2", None, None, None),
+        (player2_team, 0, "team2_player1", "player2_name", "player2_surname", player2_shirt_color),
+        (player2_team, 1, "team2_player2", None, None, None),
+    ]
+    for team, index, field_prefix, legacy_name_key, legacy_surname_key, shirt_color in participant_updates:
+        if index >= len(team):
+            continue
+        participant = team[index]
+        name_value = payload.get(f"{field_prefix}_name")
+        surname_value = payload.get(f"{field_prefix}_surname")
+        if name_value is None and legacy_name_key:
+            name_value = payload.get(legacy_name_key)
+        if surname_value is None and legacy_surname_key:
+            surname_value = payload.get(legacy_surname_key)
+        first_name = str(name_value if name_value is not None else participant.get("first_name") or "").strip()
+        surname = str(surname_value if surname_value is not None else participant.get("surname") or "").strip() or None
+        if not first_name:
+            raise ValueError("Every player requires a first name")
+        if len(first_name) > 100 or len(surname or "") > 100:
+            raise ValueError("Player names must be 100 characters or fewer")
+        participant.update({
+            "first_name": first_name,
+            "surname": surname,
+            "display_name": _display_name(first_name, surname),
+        })
+        if shirt_color:
+            participant["shirt_color"] = shirt_color
+
+    player1_name = player1_primary.get("first_name") or str(payload.get("player1_name") or match.get("player1_name") or "").strip()
+    player1_surname = player1_primary.get("surname") or None
+    player2_name = player2_primary.get("first_name") or str(payload.get("player2_name") or match.get("player2_name") or "").strip()
+    player2_surname = player2_primary.get("surname") or None
+    if not player1_name or not player2_name:
+        raise ValueError("Both players require a first name")
+
+    team_format = _team_format_value(match["state"].get("team_format"))
+    stored_player1_name = (
+        " / ".join(participant.get("display_name") or "" for participant in player1_team).strip(" / ")
+        if team_format == "doubles" else player1_name
+    )
+    stored_player2_name = (
+        " / ".join(participant.get("display_name") or "" for participant in player2_team).strip(" / ")
+        if team_format == "doubles" else player2_name
+    )
+    stored_player1_surname = None if team_format == "doubles" else player1_surname
+    stored_player2_surname = None if team_format == "doubles" else player2_surname
+
     now = shared._utcnow()
     settings_payload = {
         "score_type": score_type,
@@ -1637,11 +1699,20 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
         "games_to_win": games_to_win,
         "player1_shirt_color": player1_shirt_color,
         "player2_shirt_color": player2_shirt_color,
+        "player1_name": player1_name,
+        "player1_surname": player1_surname,
+        "player2_name": player2_name,
+        "player2_surname": player2_surname,
+        "tennis_teams": tennis_teams,
         "previous_score_type": match["score_type"],
         "previous_best_of": match["best_of"],
         "previous_player1_shirt_color": match.get("player1_shirt_color"),
         "previous_player2_shirt_color": match.get("player2_shirt_color"),
     }
+    for side_index, team in ((1, player1_team), (2, player2_team)):
+        for player_index, participant in enumerate(team, start=1):
+            settings_payload[f"team{side_index}_player{player_index}_name"] = participant.get("first_name")
+            settings_payload[f"team{side_index}_player{player_index}_surname"] = participant.get("surname")
 
     with connection.cursor() as cursor:
         cursor.execute(
@@ -1652,6 +1723,10 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
                 games_to_win = %(games_to_win)s,
                 player1_shirt_color = %(player1_shirt_color)s,
                 player2_shirt_color = %(player2_shirt_color)s,
+                player1_name = %(player1_name)s,
+                player1_surname = %(player1_surname)s,
+                player2_name = %(player2_name)s,
+                player2_surname = %(player2_surname)s,
                 updated_at = %(updated_at)s
             WHERE id = %(match_id)s
             """,
@@ -1661,6 +1736,10 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
                 "games_to_win": games_to_win,
                 "player1_shirt_color": player1_shirt_color,
                 "player2_shirt_color": player2_shirt_color,
+                "player1_name": stored_player1_name,
+                "player1_surname": stored_player1_surname,
+                "player2_name": stored_player2_name,
+                "player2_surname": stored_player2_surname,
                 "updated_at": now,
                 "match_id": match_id,
             },

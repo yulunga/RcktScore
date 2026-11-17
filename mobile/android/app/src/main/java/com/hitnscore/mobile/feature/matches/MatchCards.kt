@@ -36,6 +36,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.unit.sp
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.components.InnerCard
@@ -98,11 +101,19 @@ fun ActiveMatchCard(match: MatchSummary, onClick: () -> Unit) {
 
 /** Compact scheduled-match row: court • format, then the two players. */
 @Composable
-fun ScheduledMatchCard(match: MatchSummary) {
+fun ScheduledMatchCard(
+    match: MatchSummary,
+    onClick: (() -> Unit)? = null,
+    /** Play: start the match now (scorers and admins). Null hides the button. */
+    onStart: (() -> Unit)? = null,
+    isStarting: Boolean = false,
+) {
     val court = match.courtName?.trim().orEmpty()
     val format = stringResource(R.string.best_of, match.bestOf ?: 3)
-    InnerCard(shape = RoundedCornerShape(18.dp)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Tapping opens the scorer, where Start begins the scheduled match (as iOS).
+    InnerCard(onClick = onClick, shape = RoundedCornerShape(18.dp)) {
+      Row(Modifier.padding(end = if (onStart != null) 10.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 if (court.isEmpty()) format else "$court • $format",
                 style = MaterialTheme.typography.labelMedium,
@@ -127,6 +138,25 @@ fun ScheduledMatchCard(match: MatchSummary) {
                 )
             }
         }
+        if (onStart != null) {
+            val label = stringResource(if (isStarting) R.string.scheduled_starting else R.string.scheduled_start)
+            Surface(
+                onClick = onStart,
+                enabled = !isStarting,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(42.dp).semantics { contentDescription = label },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isStarting) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(painterResource(R.drawable.ic_tab_play), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+      }
     }
 }
 

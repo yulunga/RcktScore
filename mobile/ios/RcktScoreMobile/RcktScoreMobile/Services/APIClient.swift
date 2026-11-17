@@ -847,7 +847,15 @@ struct MatchSettingsRequest: Encodable {
     let actionType: String
     let scoreType: Int
     let bestOf: Int
+    let player1Name: String?
+    let player1Surname: String?
     let player1ShirtColor: String?
+    let player2Name: String?
+    let player2Surname: String?
+    let team1Player2Name: String?
+    let team1Player2Surname: String?
+    let team2Player2Name: String?
+    let team2Player2Surname: String?
     let player2ShirtColor: String?
     let clientActionID: String
 
@@ -856,7 +864,15 @@ struct MatchSettingsRequest: Encodable {
         case actionType = "action_type"
         case scoreType = "score_type"
         case bestOf = "best_of"
+        case player1Name = "player1_name"
+        case player1Surname = "player1_surname"
         case player1ShirtColor = "player1_shirt_color"
+        case player2Name = "player2_name"
+        case player2Surname = "player2_surname"
+        case team1Player2Name = "team1_player2_name"
+        case team1Player2Surname = "team1_player2_surname"
+        case team2Player2Name = "team2_player2_name"
+        case team2Player2Surname = "team2_player2_surname"
         case player2ShirtColor = "player2_shirt_color"
         case clientActionID = "client_action_id"
     }
@@ -1811,7 +1827,15 @@ final class APIClient {
         matchID: String,
         scoreType: Int,
         bestOf: Int,
+        player1Name: String? = nil,
+        player1Surname: String? = nil,
         player1ShirtColor: String?,
+        player2Name: String? = nil,
+        player2Surname: String? = nil,
+        team1Player2Name: String? = nil,
+        team1Player2Surname: String? = nil,
+        team2Player2Name: String? = nil,
+        team2Player2Surname: String? = nil,
         player2ShirtColor: String?,
         clientActionID: String = UUID().uuidString
     ) async throws -> MatchDetail {
@@ -1823,7 +1847,15 @@ final class APIClient {
                 actionType: "match_settings",
                 scoreType: scoreType,
                 bestOf: bestOf,
+                player1Name: player1Name,
+                player1Surname: player1Surname,
                 player1ShirtColor: player1ShirtColor,
+                player2Name: player2Name,
+                player2Surname: player2Surname,
+                team1Player2Name: team1Player2Name,
+                team1Player2Surname: team1Player2Surname,
+                team2Player2Name: team2Player2Name,
+                team2Player2Surname: team2Player2Surname,
                 player2ShirtColor: player2ShirtColor,
                 clientActionID: clientActionID
             )

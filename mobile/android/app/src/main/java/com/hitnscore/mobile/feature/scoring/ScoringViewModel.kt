@@ -10,6 +10,8 @@ import com.hitnscore.mobile.HitNScoreApplication
 import com.hitnscore.mobile.core.network.ApiResult
 import com.hitnscore.mobile.data.model.MatchDetail
 import com.hitnscore.mobile.data.model.MatchFormatting
+import com.hitnscore.mobile.data.model.EventActionRequest
+import com.hitnscore.mobile.data.model.newClientActionId
 import com.hitnscore.mobile.data.remote.HitNScoreApi
 import com.hitnscore.mobile.feature.scoring.offline.OfflineActionKind
 import com.hitnscore.mobile.feature.scoring.offline.OfflineMatchAction
@@ -42,6 +44,7 @@ data class ScoringUiState(
     val isSyncing: Boolean = false,
     /** The server refused a queued action; Retry or Discard is offered. */
     val syncFailure: String? = null,
+    val isMetadataAdmin: Boolean = false,
 ) {
     val isComplete: Boolean get() = match?.let(ScoringRules::isComplete) == true
     val isScheduled: Boolean get() = match?.let(ScoringRules::isScheduled) == true
@@ -53,6 +56,7 @@ data class ScoringUiState(
 
     val scoringAllowed: Boolean get() = match?.scoringAccess?.canScore != false
     val canTakeOverScoring: Boolean get() = match?.scoringAccess?.canTakeOver == true
+    val canEditMetadata: Boolean get() = scoringAllowed || isMetadataAdmin
 
     val canPlay: Boolean
         get() = match != null && scoringAllowed && !isMutating && !isComplete && !isScheduled && timer.phase == TimerPhase.MatchLive
@@ -87,6 +91,7 @@ class ScoringViewModel(
     private val offlineStore: OfflineMatchStore,
     private val isOnline: StateFlow<Boolean>,
     private val owner: () -> OfflineOwner?,
+    private val canEditMatchMetadata: () -> Boolean = { false },
     private val nowMillis: () -> Long = System::currentTimeMillis,
     /** Wakes the scoring services for this match (as iOS); null in tests. */
     private val warmScoring: (suspend (String) -> Unit)? = null,
@@ -97,7 +102,9 @@ class ScoringViewModel(
     private val syncScope: kotlinx.coroutines.CoroutineScope? = null,
 ) : ViewModel() {
 
-    private val mutableState = MutableStateFlow(ScoringUiState(isOnline = isOnline.value))
+    private val mutableState = MutableStateFlow(
+        ScoringUiState(isOnline = isOnline.value, isMetadataAdmin = canEditMatchMetadata()),
+    )
     val uiState: StateFlow<ScoringUiState> = mutableState.asStateFlow()
 
     private var durationRecorded = false
@@ -306,17 +313,61 @@ class ScoringViewModel(
         }
     }
 
-    fun saveSettings(scoreType: Int, bestOf: Int, player1Shirt: String, player2Shirt: String) {
-        if (!mutableState.value.scoringAllowed) return
-        enqueue(
-            action(
-                OfflineActionKind.MatchSettings,
+    fun saveSettings(
+        scoreType: Int,
+        bestOf: Int,
+        player1Name: String,
+        player1Surname: String,
+        player1Shirt: String,
+        player2Name: String,
+        player2Surname: String,
+        team1Player2Name: String,
+        team1Player2Surname: String,
+        team2Player2Name: String,
+        team2Player2Surname: String,
+        player2Shirt: String,
+    ) {
+        val state = mutableState.value
+        if (!state.canEditMetadata || state.isMutating) return
+        if (!isOnline.value) {
+            mutableState.update { it.copy(errorMessage = "Connect to the internet to change player details.") }
+            return
+        }
+        val doubles = state.isTennis && TennisRules.isDoubles(state.match!!)
+        if (player1Name.isBlank() || player2Name.isBlank() ||
+            (doubles && (team1Player2Name.isBlank() || team2Player2Name.isBlank()))
+        ) {
+            mutableState.update { it.copy(errorMessage = "Every player requires a first name.") }
+            return
+        }
+        mutableState.update { it.copy(isMutating = true, errorMessage = null) }
+        viewModelScope.launch {
+            val request = EventActionRequest(
+                matchId = matchId,
+                actionType = OfflineActionKind.MatchSettings.eventType,
+                clientActionId = newClientActionId(),
                 scoreType = scoreType,
                 bestOf = bestOf,
+                player1Name = player1Name.trim(),
+                player1Surname = player1Surname.trim(),
                 player1ShirtColor = player1Shirt,
+                player2Name = player2Name.trim(),
+                player2Surname = player2Surname.trim(),
+                team1Player2Name = team1Player2Name.trim().takeIf { doubles },
+                team1Player2Surname = team1Player2Surname.trim().takeIf { doubles },
+                team2Player2Name = team2Player2Name.trim().takeIf { doubles },
+                team2Player2Surname = team2Player2Surname.trim().takeIf { doubles },
                 player2ShirtColor = player2Shirt,
-            ),
-        )
+            )
+            when (val result = api.eventAction(request)) {
+                is ApiResult.Success -> {
+                    owner()?.let { offlineStore.cache(result.value, it) }
+                    apply(result.value, bootstrap = false)
+                }
+                is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
+            }
+            mutableState.update { it.copy(isMutating = false) }
+        }
     }
 
     /** Try sending queued actions again (after a refusal or once back online). */
@@ -335,6 +386,13 @@ class ScoringViewModel(
     fun toggleTimer() {
         if (!mutableState.value.scoringAllowed || mutableState.value.isComplete || mutableState.value.isScheduled) return
         mutableState.update { it.copy(timer = it.timer.togglePause()) }
+        persistTimer()
+    }
+
+    fun startGame() {
+        val state = mutableState.value
+        if (!state.scoringAllowed || state.isComplete || state.isScheduled || state.timer.phase != TimerPhase.GameReady) return
+        mutableState.update { it.copy(timer = it.timer.beginServerSelection()) }
         persistTimer()
     }
 
@@ -422,8 +480,8 @@ class ScoringViewModel(
         val complete = ScoringRules.isComplete(match)
         val tennis = TennisRules.isTennis(match)
 
-        if (!bootstrap && !complete && match.state?.tennisTimedBreaks == true) {
-            if (tennis) {
+        if (!bootstrap && !complete) {
+            if (tennis && match.state?.tennisTimedBreaks == true) {
                 // A break starts once for each newly completed game (changeover or set break),
                 // never after an undo takes a game back.
                 val signature = TennisRules.gameCompletionSignature(match.state)
@@ -433,8 +491,8 @@ class ScoringViewModel(
                     TennisRules.breakSeconds(true, payload.completedGameNumber ?: 0, payload.setCompleted == true)
                         ?.let { timer = timer.beginInterval(it) }
                 }
-            } else if (games > previousGames) {
-                timer = timer.beginInterval()
+            } else if (!tennis && games > previousGames) {
+                timer = timer.beginGamePause()
             }
         }
         if (complete) {
@@ -479,7 +537,12 @@ class ScoringViewModel(
         }
         val stored = timerStore.load(matchId)
         val optionalPhase = stored?.phase in setOf(TimerPhase.WarmupReady, TimerPhase.WarmupSideOne, TimerPhase.WarmupSideTwo, TimerPhase.Interval)
-        if (stored != null && (match.state?.tennisTimedBreaks == true || !optionalPhase)) {
+        if (stored != null && (
+                match.state?.tennisTimedBreaks == true ||
+                    (!TennisRules.isTennis(match) && stored.phase == TimerPhase.Interval) ||
+                    !optionalPhase
+                )
+        ) {
             return stored.advancedTo(nowMillis())
         }
         return initialTimer(match)
@@ -521,6 +584,11 @@ class ScoringViewModel(
                     offlineStore = container.offlineMatchStore,
                     isOnline = container.connectivity.isOnline,
                     owner = { container.offlineOwner() },
+                    canEditMatchMetadata = {
+                        val session = container.sessionRepository.state.value
+                        session is com.hitnscore.mobile.core.session.SessionState.SignedIn &&
+                            session.activeContext.role.equals("admin", ignoreCase = true)
+                    },
                     warmScoring = { container.scoringWarmup.warm(it) },
                     syncScope = container.applicationScope,
                 )

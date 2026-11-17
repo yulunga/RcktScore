@@ -5,6 +5,7 @@ import pytest
 from psycopg.errors import UndefinedColumn
 
 import common.squash_match_logic as squash_match_logic
+import common.tennis_match_logic as tennis_match_logic
 from common.squash_match_logic import (
     _build_state,
     _best_of_value,
@@ -53,6 +54,127 @@ class _RecordingConnection:
 
     def commit(self):
         self.committed = True
+
+
+def test_match_settings_update_player_names_and_shirt_colours(monkeypatch):
+    connection = _RecordingConnection()
+    match = {
+        "id": "match-1",
+        "tenant_id": 42,
+        "status": "active",
+        "score_type": 11,
+        "best_of": 3,
+        "player1_name": "Old One",
+        "player1_surname": None,
+        "player1_shirt_color": "navy",
+        "player2_name": "Old Two",
+        "player2_surname": None,
+        "player2_shirt_color": "white",
+        "state": {
+            "match_complete": False,
+            "player1_games_won": 0,
+            "player2_games_won": 0,
+            "current_server_side": "player1",
+        },
+    }
+    monkeypatch.setattr(squash_match_logic, "get_match", lambda *_args: match)
+    monkeypatch.setattr(
+        squash_match_logic,
+        "_fetch_tenant_plan",
+        lambda *_args: {"org_type": "club", "plan": "club_essentials"},
+    )
+
+    squash_match_logic._update_match_settings(
+        connection,
+        "match-1",
+        {
+            "player1_name": "Alice",
+            "player1_surname": "Smith",
+            "player1_shirt_color": "blue",
+            "player2_name": "Bob",
+            "player2_surname": "Jones",
+            "player2_shirt_color": "pink",
+        },
+        commit=False,
+    )
+
+    update_parameters = connection.executions[0][1]
+    assert update_parameters["player1_name"] == "Alice"
+    assert update_parameters["player1_surname"] == "Smith"
+    assert update_parameters["player1_shirt_color"] == "blue"
+    assert update_parameters["player2_name"] == "Bob"
+    assert update_parameters["player2_surname"] == "Jones"
+    assert update_parameters["player2_shirt_color"] == "pink"
+
+    event_payload = connection.executions[1][1]["payload"].obj
+    assert event_payload["current_server"] == "Alice"
+    assert event_payload["player1_name"] == "Alice"
+    assert event_payload["player2_name"] == "Bob"
+
+
+def test_tennis_match_settings_update_every_doubles_player_name(monkeypatch):
+    connection = _RecordingConnection()
+    teams = {
+        "player1": [
+            {"id": "team1_player1", "first_name": "Alex", "surname": "One", "display_name": "Alex One"},
+            {"id": "team1_player2", "first_name": "Casey", "surname": "Two", "display_name": "Casey Two"},
+        ],
+        "player2": [
+            {"id": "team2_player1", "first_name": "Blair", "surname": "Three", "display_name": "Blair Three"},
+            {"id": "team2_player2", "first_name": "Drew", "surname": "Four", "display_name": "Drew Four"},
+        ],
+    }
+    match = {
+        "id": "match-1",
+        "tenant_id": 42,
+        "status": "scheduled",
+        "score_type": 6,
+        "best_of": 3,
+        "player1_name": "Alex One / Casey Two",
+        "player1_surname": None,
+        "player1_shirt_color": "navy",
+        "player2_name": "Blair Three / Drew Four",
+        "player2_surname": None,
+        "player2_shirt_color": "white",
+        "state": {
+            "match_complete": False,
+            "player1_set_games": 0,
+            "player2_set_games": 0,
+            "team_format": "doubles",
+            "tennis_teams": teams,
+            "current_server_participant_id": "team1_player2",
+            "service_side": "Right",
+        },
+    }
+    monkeypatch.setattr(tennis_match_logic, "get_match", lambda *_args: match)
+    monkeypatch.setattr(
+        tennis_match_logic.shared,
+        "_fetch_tenant_plan",
+        lambda *_args: {"org_type": "club", "plan": "club_essentials"},
+    )
+
+    tennis_match_logic._update_match_settings(
+        connection,
+        "match-1",
+        {
+            "team1_player1_name": "Alicia",
+            "team1_player1_surname": "Ace",
+            "team1_player2_name": "Cameron",
+            "team1_player2_surname": "Cross",
+            "team2_player1_name": "Billie",
+            "team2_player1_surname": "Back",
+            "team2_player2_name": "Drew",
+            "team2_player2_surname": "Drive",
+        },
+        commit=False,
+    )
+
+    update_parameters = connection.executions[0][1]
+    assert update_parameters["player1_name"] == "Alicia Ace / Cameron Cross"
+    assert update_parameters["player2_name"] == "Billie Back / Drew Drive"
+    event_payload = connection.executions[1][1]["payload"].obj
+    assert event_payload["team1_player2_name"] == "Cameron"
+    assert event_payload["team2_player2_surname"] == "Drive"
 
 
 class _AssociationFixtureCursor(_RecordingCursor):

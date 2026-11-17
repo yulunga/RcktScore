@@ -21,8 +21,14 @@ def lambda_handler(event, context):
 
     try:
         with get_db_connection() as connection:
+            authorization_kwargs = {"required_capability": CAPABILITY_MATCH_MANAGE}
+            if payload.get("action_type") == "match_settings":
+                authorization_kwargs["allow_metadata_edit"] = True
             auth_context = authorize_match_session(
-                connection, event, payload["match_id"], required_capability=CAPABILITY_MATCH_MANAGE
+                connection,
+                event,
+                payload["match_id"],
+                **authorization_kwargs,
             )
             if warm_requested:
                 logger.info("Warmed event action path for match %s", payload["match_id"])

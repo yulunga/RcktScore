@@ -1,5 +1,6 @@
 package com.hitnscore.mobile.feature.matches
 
+import com.hitnscore.mobile.data.model.ClubRoles
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -167,7 +168,12 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                             )
                         } else {
                             MatchSection(dashboard?.scheduledMatches.orEmpty(), state.isLoading, stringResource(R.string.empty_scheduled)) {
-                                ScheduledMatchCard(it)
+                                ScheduledMatchCard(
+                                    it,
+                                    onClick = { actions.onOpenMatch(it) },
+                                    onStart = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onStartScheduled(it) }) else null,
+                                    isStarting = state.startingMatchId == it.matchId,
+                                )
                             }
                         }
                     }

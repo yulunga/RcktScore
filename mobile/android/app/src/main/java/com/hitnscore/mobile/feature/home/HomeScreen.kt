@@ -1,5 +1,6 @@
 package com.hitnscore.mobile.feature.home
 
+import com.hitnscore.mobile.data.model.ClubRoles
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -113,7 +114,14 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                             matches = dashboard?.scheduledMatches.orEmpty().take(HOME_LIST_ITEMS),
                             isLoading = state.isLoading,
                             emptyText = stringResource(R.string.empty_scheduled),
-                        ) { ScheduledMatchCard(it) }
+                        ) { match ->
+                            ScheduledMatchCard(
+                                match,
+                                onClick = { actions.onOpenMatch(match) },
+                                onStart = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onStartScheduled(match) }) else null,
+                                isStarting = state.startingMatchId == match.matchId,
+                            )
+                        }
                     }
                 }
             }

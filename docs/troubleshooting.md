@@ -566,6 +566,8 @@ Common symptoms:
 - tennis score labels or server rotation look wrong during tie-breaks
 - tennis shows an unexpected service side or scoring-mode label
 - the live Game Settings modal is missing shirt choices or club Spectator Display access
+- a club admin cannot correct a scheduled/active match player name or shirt colour, or changing metadata unexpectedly transfers the scorer lock
+- a Squash/Racketball game ends but the clock keeps running, or the next game begins without the resume overlay
 - Golden Point scoring reaches 40-40 but the next point cannot be recorded
 - a final-set 10-point match tiebreak does not start when the sets become level
 - a queued offline point appears to be applied twice after reconnection
@@ -604,6 +606,9 @@ What to check:
 - on iOS, verify camera permission is enabled for HitnScore and VisionKit reports scanning support. On Android, the Google Code Scanner is supplied by Play services and deliberately needs no app camera permission; confirm Play services can install the barcode scanner module
 - the `Tournament` and `Live Scoreboard` labels beneath the public wordmark intentionally use the platform system font at weight 600 with font smoothing; avoid inheriting the heavier global Avenir label weight when adjusting these headers
 - shirt palettes are intentionally hidden until their current-colour selector is opened; Spectator Display appears inside Game Settings only for club matches and still depends on `GET /match_display_access/{match_id}` returning a court display code
+- Game Settings name/colour corrections use `event_action: match_settings`. Before activation, any match-capable scorer/admin may edit the scheduled match and the request must leave `scoring_owner_membership_id` null. Once active, the assigned scorer and current club admins may submit it; an admin correction must leave the existing owner unchanged. An unrelated non-admin scorer must still receive `MATCH_SCORER_LOCKED`. Tennis/Padel doubles must return all four corrected participants in `state.tennis_teams`
+- on a fresh match, verify the persisted local timer enters `game_ready` with a stopped clock. `Start Game` must advance to `first_server`; choosing the opening server/serve-receive order must then advance to `match_live` and start the clock
+- after a non-final Squash/Racketball game, confirm the client sees `game_history` grow, enters its local interval phase with the accumulated duration frozen, and shows `Game Complete`. `Resume Next Game` must restore the live phase and continue from that stored duration; this pause is required even when timed breaks were disabled
 - whether the UI is expecting realtime updates instead of using the returned `data.match`
 - whether the active engine is `squash_match_logic.py` or `tennis_match_logic.py`
 - whether migration `021_tennis_scoring_formats.sql` is present and the match row contains the expected tennis flags; tennis should accept the deciding point immediately from the Right service side, while padel must have a `receiver_choice` event identifying the selected receiving partner's court first
@@ -742,6 +747,17 @@ Most relevant current tables:
 - `match_events`
 - `match_event_compensations`
 - `HitnScoreInterestRequests`
+
+If a primary participant's name was entered incorrectly and must be corrected
+while the match is still active, use
+[`scripts/change-active-match-player-name.sql`](../scripts/change-active-match-player-name.sql)
+in the target Supabase SQL Editor. Set the exact match UUID, tenant ID, side,
+expected current first name and replacement name. The script locks the match,
+refuses non-active or mismatched records, and updates both `matches` and the
+denormalised tennis/padel and server/receiver/winner names in `match_events` so
+event replay cannot restore the old value. It changes only the primary Player 1
+or Player 2 on that match; it is not an identity/profile rename and must not be
+used for a doubles team's second participant.
 
 If behavior seems impossible:
 
@@ -1111,6 +1127,10 @@ membership role is `admin` or `scorer`. A `read_only` response is intentional.
 Non-admin tournament responses must not contain entrant email,
 `registered_username`, or canonical `user_id` fields.
 
+
+### Split and Quarter Screen availability
+
+Split Screen needs exactly two active courts in the paired club; Quarter Screen needs exactly four. Scheduled matches and held final results do not count. If the display switches to Standard, check whether a match ended or another court started; the layout menu updates on each poll.
 
 ### Standard spectator display spacing
 

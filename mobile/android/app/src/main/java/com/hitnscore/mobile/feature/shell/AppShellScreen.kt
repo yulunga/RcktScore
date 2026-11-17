@@ -98,6 +98,9 @@ fun AppShellScreen(
             onContextSelected = onContextSelected,
             onWatchMatch = { code -> navController.navigate(ShellRoutes.watch(code)) },
             onSignOut = { currentOnSignOut() },
+            onStartScheduled = { match ->
+                shellViewModel.startScheduled(match.matchId) { id -> navController.navigate(ShellRoutes.score(id)) }
+            },
         )
     }
 

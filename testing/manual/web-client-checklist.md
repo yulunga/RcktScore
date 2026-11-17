@@ -92,7 +92,7 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 |---|---|---|
 | SQ-01 | Create squash from dashboard; select players, shirts, format and a club court where applicable. | Setup saves correct players/rules/court; disabled or unavailable sports cannot be created. |
 | SQ-02 | Score both players; change service side; use stroke/let and Undo; refresh. | Scores, server and point rail are correct; side change replaces the current marker; undo/refresh retain consistent state. |
-| SQ-03 | Exercise Golden Point, handicap and optional timing; complete a match and separately test early-end confirmation. | Handicap works across all tiers; timer-off opens scoring directly; enabled warm-up/break works; completion records correct winner; cancelling early-end preserves play. |
+| SQ-03 | Exercise Golden Point, handicap and optional timing; complete a match and separately test early-end confirmation. | Handicap works across all tiers; every fresh match pauses at Start Game before server selection; a non-final game pauses at Game Complete until Resume Next Game; enabled warm-up works; completion records correct winner; cancelling early-end preserves play. |
 
 ### Racketball
 
@@ -138,6 +138,7 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 | MAT-04 | Filter History by squash, racketball, tennis and Padel in turn. | Only the selected sport remains; clearing restores the accessible results. |
 | MAT-05 | Search by player name, surname, winner and sport; try mixed case and no-match text. | Matching results are correct and case-insensitive; useful no-results state; clear restores results. |
 | MAT-06 | Combine text, sport, single date and date range; clear filters; paginate. | All filters apply together; boundaries include expected matches; no duplicates/skipped entries; History has up to 20 cards per page (ten desktop rows). |
+| MAT-07 | As a club scorer and admin, edit an unstarted scheduled singles match and a doubles match, changing every player name; then repeat while the assigned scorer is running the match. | Scheduled edits save without claiming the future scorer lock. All singles/doubles names update across scoring and display views. During play the assigned scorer or an admin may correct metadata, but an unrelated scorer remains locked and an admin correction does not take over scoring. |
 
 ### Analytics
 

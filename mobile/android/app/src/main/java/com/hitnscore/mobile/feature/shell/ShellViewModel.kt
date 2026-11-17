@@ -39,6 +39,8 @@ data class ShellUiState(
     val errorMessage: String? = null,
     val dashboard: Dashboard? = null,
     val notifications: List<AppNotification> = emptyList(),
+    /** The scheduled match being started from its Play button. */
+    val startingMatchId: String? = null,
     /** A delete in Notifications failed; the messages are back in the list. */
     val notificationError: String? = null,
     val matchesCategory: MatchesCategory = MatchesCategory.Current,
@@ -108,6 +110,29 @@ class ShellViewModel(
     }
 
     fun refresh() = reload(userInitiated = true)
+
+    /**
+     * Starts a scheduled match (as iOS Play): the server makes it the court's live match,
+     * then [onStarted] opens the scorer. Failures show on Home.
+     */
+    fun startScheduled(matchId: String, onStarted: (String) -> Unit) {
+        if (mutableState.value.startingMatchId != null) return
+        if (!mutableState.value.isOnline) {
+            mutableState.update { it.copy(errorMessage = "Connect to the internet to start a scheduled match.") }
+            return
+        }
+        mutableState.update { it.copy(startingMatchId = matchId, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = api.startScheduledMatch(matchId)) {
+                is ApiResult.Success -> {
+                    mutableState.update { it.copy(startingMatchId = null) }
+                    onStarted(result.value.id)
+                    refreshQuietly()
+                }
+                is ApiResult.Failure -> mutableState.update { it.copy(startingMatchId = null, errorMessage = result.error.message) }
+            }
+        }
+    }
 
     /** Background refresh (no spinner): finished matches leave Active Matches, new ones appear. */
     fun refreshQuietly() {

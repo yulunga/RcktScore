@@ -4,12 +4,12 @@ import kotlinx.serialization.Serializable
 
 /** Phases of the scorer's clock, as iOS `MatchTimerPhase`. */
 @Serializable
-enum class TimerPhase { WarmupReady, WarmupSideOne, WarmupSideTwo, FirstServer, Interval, MatchLive }
+enum class TimerPhase { WarmupReady, WarmupSideOne, WarmupSideTwo, GameReady, FirstServer, Interval, MatchLive }
 
 /**
  * The scorer's clock. Pure and immutable, so it can be saved, restored after the app
- * is closed, and unit-tested. Squash/racketball: 60 s warm-up per side, then 90 s
- * breaks between games when timed breaks are on. Tennis/Padel: one 5-minute warm-up,
+ * is closed, and unit-tested. Squash/racketball: 60 s warm-up per side, then an
+ * acknowledgement pause between games. Tennis/Padel: one 5-minute warm-up,
  * 90 s changeovers after odd games and 120 s between sets (as iOS).
  */
 @Serializable
@@ -42,7 +42,7 @@ data class MatchTimer(
                 val next = (seconds - 1).coerceAtLeast(0)
                 if (next == 0) copy(seconds = 0).elapsed() else copy(seconds = next)
             }
-            TimerPhase.WarmupReady, TimerPhase.FirstServer -> copy(running = false)
+            TimerPhase.WarmupReady, TimerPhase.GameReady, TimerPhase.FirstServer -> copy(running = false)
         }
     }
 
@@ -52,9 +52,9 @@ data class MatchTimer(
             if (warmupSides >= 2) {
                 copy(phase = TimerPhase.WarmupSideTwo, seconds = warmupSeconds, running = true)
             } else {
-                copy(phase = TimerPhase.FirstServer, seconds = 0, running = false)
+                copy(phase = TimerPhase.GameReady, seconds = 0, running = false)
             }
-        TimerPhase.WarmupSideTwo -> copy(phase = TimerPhase.FirstServer, seconds = 0, running = false)
+        TimerPhase.WarmupSideTwo -> copy(phase = TimerPhase.GameReady, seconds = 0, running = false)
         TimerPhase.Interval -> copy(phase = TimerPhase.MatchLive, running = true)
         else -> this
     }
@@ -64,21 +64,31 @@ data class MatchTimer(
     /** Skip warm-up (to first server) or skip a break (back to live). */
     fun skip(): MatchTimer = when (phase) {
         TimerPhase.WarmupReady, TimerPhase.WarmupSideOne, TimerPhase.WarmupSideTwo ->
-            copy(phase = TimerPhase.FirstServer, seconds = 0, running = false)
+            copy(phase = TimerPhase.GameReady, seconds = 0, running = false)
         TimerPhase.Interval -> copy(phase = TimerPhase.MatchLive, running = true)
         else -> this
     }
 
     fun togglePause(): MatchTimer = when (phase) {
         TimerPhase.WarmupReady -> startWarmup()
+        TimerPhase.GameReady -> this
         TimerPhase.FirstServer -> this
         else -> copy(running = !running)
     }
 
     fun beginLive() = copy(phase = TimerPhase.MatchLive, running = true)
 
+    fun beginServerSelection() = copy(phase = TimerPhase.FirstServer, seconds = 0, running = false)
+
     fun beginInterval(durationSeconds: Int = INTERVAL_SECONDS) =
         copy(phase = TimerPhase.Interval, seconds = durationSeconds, intervalDurationSeconds = durationSeconds, running = true)
+
+    fun beginGamePause() = copy(
+        phase = TimerPhase.Interval,
+        seconds = matchDurationSeconds,
+        intervalDurationSeconds = 0,
+        running = false,
+    )
 
     fun stopped(durationSeconds: Int) = copy(phase = TimerPhase.MatchLive, running = false, matchDurationSeconds = durationSeconds)
 
@@ -121,7 +131,7 @@ data class MatchTimer(
                 isComplete -> base.copy(phase = TimerPhase.MatchLive, running = false, matchDurationSeconds = recordedDuration)
                 isFresh && timedBreaks -> base.copy(phase = TimerPhase.WarmupReady, seconds = base.warmupSeconds)
                 // As iOS: every sport asks who serves first (tennis/Padel also the receiver for doubles).
-                isFresh -> base.copy(phase = TimerPhase.FirstServer, running = false)
+                isFresh -> base.copy(phase = TimerPhase.GameReady, running = false)
                 else -> base.copy(phase = TimerPhase.MatchLive, running = true, matchDurationSeconds = recordedDuration)
             }
         }

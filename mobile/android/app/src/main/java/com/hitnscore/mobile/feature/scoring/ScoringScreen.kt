@@ -187,7 +187,7 @@ fun ScoringScreen(
                 },
                 actions = {
                     if (match != null && !state.isComplete) {
-                        IconButton(onClick = { showSettings = true }, enabled = state.scoringAllowed) {
+                        IconButton(onClick = { showSettings = true }, enabled = state.canEditMetadata) {
                             Icon(painterResource(R.drawable.ic_tab_settings), contentDescription = stringResource(R.string.match_settings))
                         }
                     }
@@ -280,6 +280,7 @@ fun ScoringScreen(
                 when (state.timer.phase) {
                     TimerPhase.WarmupReady, TimerPhase.WarmupSideOne, TimerPhase.WarmupSideTwo ->
                         WarmupOverlay(state.timer, state.isTennis, viewModel::toggleTimer, viewModel::skipTimedPhase)
+                    TimerPhase.GameReady -> StartGameOverlay(viewModel::startGame)
                     TimerPhase.FirstServer ->
                         if (state.isTennis) {
                             TennisOpeningOverlay(match, state.isMutating, viewModel::chooseTennisOpening)
@@ -307,7 +308,7 @@ fun ScoringScreen(
             showStrokeLetHelp = strokeLetHelp && !state.isTennis,
         )
     }
-    if (showSettings && match != null && state.scoringAllowed) {
+    if (showSettings && match != null && state.canEditMetadata) {
         GameSettingsSheet(
             match = match,
             isTennis = state.isTennis,
@@ -760,6 +761,17 @@ private fun WarmupOverlay(timer: MatchTimer, isTennis: Boolean, onToggle: () -> 
 }
 
 @Composable
+private fun StartGameOverlay(onStart: () -> Unit) = OverlayCard {
+    Text(stringResource(R.string.ready_to_start), style = MaterialTheme.typography.headlineSmall)
+    Text(stringResource(R.string.ready_to_start_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Button(
+        onClick = onStart,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(18.dp),
+    ) { Text(stringResource(R.string.start_game)) }
+}
+
+@Composable
 private fun FirstServerOverlay(match: MatchDetail, isMutating: Boolean, onChoose: (String) -> Unit) = OverlayCard {
     Text(stringResource(R.string.first_server), style = MaterialTheme.typography.headlineSmall)
     Text(stringResource(R.string.first_server_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -844,22 +856,22 @@ private fun IntervalOverlay(timer: MatchTimer, isTennis: Boolean, onToggle: () -
     val title = when {
         setBreak -> R.string.tennis_set_break
         isTennis -> R.string.tennis_changeover
-        else -> R.string.game_break
+        else -> R.string.game_complete
     }
     val body = when {
         setBreak -> R.string.tennis_set_break_body
         isTennis -> R.string.tennis_changeover_body
-        else -> R.string.game_break_body
+        else -> R.string.game_complete_pause_body
     }
     Text(stringResource(title), style = MaterialTheme.typography.headlineSmall)
     Text(stringResource(body), color = MaterialTheme.colorScheme.onSurfaceVariant)
-    TimerChip(timer, enabled = true, onClick = onToggle, modifier = Modifier.fillMaxWidth(), large = true)
+    TimerChip(timer, enabled = isTennis, onClick = onToggle, modifier = Modifier.fillMaxWidth(), large = true)
     Button(
         onClick = onSkip,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Slate),
-    ) { Text(stringResource(R.string.skip_break)) }
+    ) { Text(stringResource(if (isTennis) R.string.skip_break else R.string.resume_next_game)) }
 }
 
 /**

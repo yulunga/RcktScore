@@ -16,4 +16,6 @@ data class ShellActions(
     val onWatchMatch: (String) -> Unit = {},
     /** Logout from the header's account menu (as the web). */
     val onSignOut: () -> Unit = {},
+    /** Play on a scheduled match: start it on the server, then open the scorer (as iOS). */
+    val onStartScheduled: (MatchSummary) -> Unit = {},
 )

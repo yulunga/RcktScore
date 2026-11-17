@@ -520,6 +520,8 @@ def _build_state(match_row, event_rows):
                 payload.get("player2_shirt_color"),
                 state["player2_shirt_color"],
             )
+            state["current_server"] = payload.get("current_server", state["current_server"])
+            state["current_server_side"] = payload.get("current_server_side", state["current_server_side"])
 
         elif event_type in {"score_point", "stroke"}:
             game_result = payload.get("game_result")
@@ -1548,6 +1550,18 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
         match.get("player2_shirt_color") or DEFAULT_PLAYER_SHIRT_COLORS["player2"],
     )
 
+    player1_name = str(payload.get("player1_name", match.get("player1_name")) or "").strip()
+    player1_surname = str(payload.get("player1_surname", match.get("player1_surname")) or "").strip() or None
+    player2_name = str(payload.get("player2_name", match.get("player2_name")) or "").strip()
+    player2_surname = str(payload.get("player2_surname", match.get("player2_surname")) or "").strip() or None
+    if not player1_name or not player2_name:
+        raise ValueError("Both players require a first name")
+    if any(len(value) > 100 for value in (player1_name, player1_surname or "", player2_name, player2_surname or "")):
+        raise ValueError("Player names must be 100 characters or fewer")
+
+    current_server_side = match["state"].get("current_server_side")
+    current_server = player2_name if current_server_side == "player2" else player1_name
+
     now = _utcnow()
     settings_payload = {
         "score_type": score_type,
@@ -1555,6 +1569,12 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
         "games_to_win": games_to_win,
         "player1_shirt_color": player1_shirt_color,
         "player2_shirt_color": player2_shirt_color,
+        "player1_name": player1_name,
+        "player1_surname": player1_surname,
+        "player2_name": player2_name,
+        "player2_surname": player2_surname,
+        "current_server": current_server,
+        "current_server_side": current_server_side,
         "previous_score_type": match["score_type"],
         "previous_best_of": match["best_of"],
         "previous_player1_shirt_color": match.get("player1_shirt_color"),
@@ -1570,6 +1590,10 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
                 games_to_win = %(games_to_win)s,
                 player1_shirt_color = %(player1_shirt_color)s,
                 player2_shirt_color = %(player2_shirt_color)s,
+                player1_name = %(player1_name)s,
+                player1_surname = %(player1_surname)s,
+                player2_name = %(player2_name)s,
+                player2_surname = %(player2_surname)s,
                 updated_at = %(updated_at)s
             WHERE id = %(match_id)s
             """,
@@ -1579,6 +1603,10 @@ def _update_match_settings(connection, match_id, payload, source="api", commit=T
                 "games_to_win": games_to_win,
                 "player1_shirt_color": player1_shirt_color,
                 "player2_shirt_color": player2_shirt_color,
+                "player1_name": player1_name,
+                "player1_surname": player1_surname,
+                "player2_name": player2_name,
+                "player2_surname": player2_surname,
                 "updated_at": now,
                 "match_id": match_id,
             },

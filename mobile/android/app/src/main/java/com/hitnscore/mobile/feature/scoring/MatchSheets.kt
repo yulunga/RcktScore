@@ -22,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -161,15 +162,30 @@ fun GameSettingsSheet(
     match: MatchDetail,
     isTennis: Boolean,
     onDismiss: () -> Unit,
-    onSave: (Int, Int, String, String) -> Unit,
+    onSave: (Int, Int, String, String, String, String, String, String, String, String, String, String) -> Unit,
     /** As iOS Game Settings › Remote Match Viewing. */
     onShareLiveScore: (() -> Unit)? = null,
 ) {
     val live = match.state
+    val player1Primary = live?.tennisTeams?.get("player1")?.firstOrNull()
+    val player2Primary = live?.tennisTeams?.get("player2")?.firstOrNull()
+    val isDoubles = isTennis && (
+        live?.teamFormat.equals("doubles", ignoreCase = true) ||
+            (live?.tennisTeams?.get("player1")?.size ?: 0) > 1 ||
+            (live?.tennisTeams?.get("player2")?.size ?: 0) > 1
+        )
     var scoreType by rememberSaveable { mutableStateOf(live?.scoreType ?: match.scoreType) }
     var bestOf by rememberSaveable { mutableStateOf(live?.bestOf ?: match.bestOf) }
+    var player1Name by rememberSaveable { mutableStateOf(player1Primary?.firstName ?: match.player1Name) }
+    var player1Surname by rememberSaveable { mutableStateOf(player1Primary?.surname ?: match.player1Surname.orEmpty()) }
     var shirt1 by rememberSaveable { mutableStateOf(live?.player1ShirtColor ?: match.player1ShirtColor ?: "navy") }
+    var player2Name by rememberSaveable { mutableStateOf(player2Primary?.firstName ?: match.player2Name) }
+    var player2Surname by rememberSaveable { mutableStateOf(player2Primary?.surname ?: match.player2Surname.orEmpty()) }
     var shirt2 by rememberSaveable { mutableStateOf(live?.player2ShirtColor ?: match.player2ShirtColor ?: "white") }
+    var team1Player2Name by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player1")?.getOrNull(1)?.firstName.orEmpty()) }
+    var team1Player2Surname by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player1")?.getOrNull(1)?.surname.orEmpty()) }
+    var team2Player2Name by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player2")?.getOrNull(1)?.firstName.orEmpty()) }
+    var team2Player2Surname by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player2")?.getOrNull(1)?.surname.orEmpty()) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
@@ -188,6 +204,64 @@ fun GameSettingsSheet(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.share_live_title)) }
             }
+            OutlinedTextField(
+                value = player1Name,
+                onValueChange = { player1Name = it.take(100) },
+                label = { Text("Player 1 first name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = player1Surname,
+                onValueChange = { player1Surname = it.take(100) },
+                label = { Text("Player 1 surname") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = player2Name,
+                onValueChange = { player2Name = it.take(100) },
+                label = { Text("Player 2 first name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = player2Surname,
+                onValueChange = { player2Surname = it.take(100) },
+                label = { Text("Player 2 surname") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (isDoubles) {
+                OutlinedTextField(
+                    value = team1Player2Name,
+                    onValueChange = { team1Player2Name = it.take(100) },
+                    label = { Text("Team 1 · Player 2 first name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = team1Player2Surname,
+                    onValueChange = { team1Player2Surname = it.take(100) },
+                    label = { Text("Team 1 · Player 2 surname") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = team2Player2Name,
+                    onValueChange = { team2Player2Name = it.take(100) },
+                    label = { Text("Team 2 · Player 2 first name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = team2Player2Surname,
+                    onValueChange = { team2Player2Surname = it.take(100) },
+                    label = { Text("Team 2 · Player 2 surname") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             // Tennis/Padel sets are always first to 6 games, so only the match format changes.
             if (!isTennis) {
                 Text(stringResource(R.string.setup_game_format), style = MaterialTheme.typography.labelLarge)
@@ -199,9 +273,15 @@ fun GameSettingsSheet(
             ShirtPicker(MatchFormatting.fullName(match.player2Name, match.player2Surname), shirt2) { shirt2 = it }
             Button(
                 onClick = {
-                    onSave(scoreType, bestOf, shirt1, shirt2)
+                    onSave(
+                        scoreType, bestOf, player1Name, player1Surname, shirt1,
+                        player2Name, player2Surname, team1Player2Name, team1Player2Surname,
+                        team2Player2Name, team2Player2Surname, shirt2,
+                    )
                     onDismiss()
                 },
+                enabled = player1Name.isNotBlank() && player2Name.isNotBlank() &&
+                    (!isDoubles || (team1Player2Name.isNotBlank() && team2Player2Name.isNotBlank())),
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.save)) }
         }

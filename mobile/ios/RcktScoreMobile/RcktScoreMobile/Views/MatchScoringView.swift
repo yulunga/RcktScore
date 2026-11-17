@@ -84,8 +84,16 @@ private struct ScoringShirtColorGridPicker: View {
 private struct MatchGameSettingsForm {
     var scoreType: Int = 15
     var bestOf: Int = 5
+    var player1Name: String = ""
+    var player1Surname: String = ""
     var player1ShirtColor: String = "navy"
+    var player2Name: String = ""
+    var player2Surname: String = ""
     var player2ShirtColor: String = "white"
+    var team1Player2Name: String = ""
+    var team1Player2Surname: String = ""
+    var team2Player2Name: String = ""
+    var team2Player2Surname: String = ""
 }
 
 private enum MatchSheetSection {
@@ -97,6 +105,7 @@ private enum MatchTimerPhase: String, Codable {
     case warmupReady = "warmup_ready"
     case warmupSideOne = "warmup_side_one"
     case warmupSideTwo = "warmup_side_two"
+    case gameReady = "game_ready"
     case firstServer = "first_server"
     case interval
     case matchLive = "match_live"
@@ -171,6 +180,9 @@ struct MatchScoringView: View {
     }
     private var canTakeOverScoring: Bool {
         match?.scoringAccess?.canTakeOver == true
+    }
+    private var canEditMatchMetadata: Bool {
+        canScoreThisMatch || container.sessionStore.session?.normalizedClubRole == "admin"
     }
     private var isTennisMatch: Bool {
         ["tennis", "padel"].contains((match?.sport ?? "").lowercased())
@@ -289,6 +301,8 @@ struct MatchScoringView: View {
             return isTennisMatch ? "Warm-Up" : "Warm-Up: Side 1"
         case .warmupSideTwo:
             return "Warm-Up: Side 2"
+        case .gameReady:
+            return "Ready to Start"
         case .firstServer:
             return isTennisMatch
                 ? (isTennisDoublesMatch ? "Serve & Receive" : "Opening Server")
@@ -299,7 +313,7 @@ struct MatchScoringView: View {
                     ? "Set Break - 120s"
                     : "Changeover - 90s"
             }
-            return "Game Break - 90s"
+            return "Next Game Ready"
         case .matchLive:
             return "Match Time"
         }
@@ -319,6 +333,8 @@ struct MatchScoringView: View {
             return isTennisMatch
                 ? "Warm-up runs for 5 minutes before the opening server is confirmed."
                 : "Warm-up runs for 60 seconds on each side of the court."
+        case .gameReady:
+            return "The match clock is paused until Start Game is pressed and the opening server is selected."
         case .firstServer:
             return isTennisMatch
                 ? (isTennisDoublesMatch
@@ -331,7 +347,7 @@ struct MatchScoringView: View {
                     ? "120 second break between sets."
                     : "90 second changeover after this odd-numbered game."
             }
-            return "90 second break between games."
+            return "The match clock is paused. Resume when both players are ready for the next game."
         case .matchLive:
             return "Tap the clock to pause or resume the match."
         }
@@ -342,14 +358,14 @@ struct MatchScoringView: View {
         case .warmupSideOne, .warmupSideTwo:
             return "Skip Warm-Up"
         case .interval:
-            return "Skip Break"
+            return isTennisMatch ? "Skip Break" : "Resume Next Game"
         default:
             return nil
         }
     }
 
     private var intervalOverlayTitle: String {
-        guard isTennisMatch else { return "Game Break" }
+        guard isTennisMatch else { return "Game Complete" }
         return activeIntervalDurationSeconds == tennisSetIntervalSeconds
             ? "Set Break"
             : "Changeover"
@@ -357,7 +373,7 @@ struct MatchScoringView: View {
 
     private var intervalOverlayMessage: String {
         guard isTennisMatch else {
-            return "90 second interval between games. Tap the clock to pause or resume if needed."
+            return "The match clock is paused. Resume when both players are ready to start the next game."
         }
         return activeIntervalDurationSeconds == tennisSetIntervalSeconds
             ? "120 second break between sets. Tap the clock to pause or resume if needed."
@@ -378,7 +394,7 @@ struct MatchScoringView: View {
         }
 
         switch timerPhase {
-        case .warmupReady, .warmupSideOne, .warmupSideTwo, .firstServer:
+        case .warmupReady, .warmupSideOne, .warmupSideTwo, .gameReady, .firstServer:
             return !isMatchComplete
         default:
             return false
@@ -581,8 +597,8 @@ struct MatchScoringView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
-        .disabled(isMutating || match == nil || !canScoreThisMatch)
-        .opacity((isMutating || match == nil || !canScoreThisMatch) ? 0.72 : 1)
+        .disabled(isMutating || match == nil || !canEditMatchMetadata)
+        .opacity((isMutating || match == nil || !canEditMatchMetadata) ? 0.72 : 1)
         .accessibilityLabel("Game Settings")
         .accessibilityIdentifier("scoring.gameSettingsButton")
     }
@@ -1630,6 +1646,32 @@ struct MatchScoringView: View {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(Color.rcktBorder, lineWidth: 1)
             )
+        } else if timerPhase == .gameReady {
+            VStack(alignment: .leading, spacing: isPhoneLandscapeLayout ? 10 : 18) {
+                Text("Ready to Start")
+                    .font(isPhoneLandscapeLayout ? .headline.weight(.bold) : .title2.weight(.bold))
+                Text("The match clock is paused. Press Start Game when the players are ready, then choose the opening server.")
+                    .font(isPhoneLandscapeLayout ? .caption : .body)
+                    .foregroundStyle(.secondary)
+                Button("Start Game") {
+                    handleStartGame()
+                }
+                .font(.headline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.rcktBlue)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .accessibilityIdentifier("scoring.startGameButton")
+            }
+            .padding(isPhoneLandscapeLayout ? 16 : 24)
+            .frame(maxWidth: isPhoneLandscapeLayout ? 520 : 420, alignment: .leading)
+            .background(Color.rcktCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.rcktBorder, lineWidth: 1)
+            )
         } else {
             VStack(alignment: .leading, spacing: 18) {
                 Text(timerPhase == .warmupSideTwo ? "Change Sides" : "Warm-Up")
@@ -1875,7 +1917,7 @@ struct MatchScoringView: View {
             }
             .buttonStyle(.plain)
 
-            Button("Skip Break") {
+            Button(isTennisMatch ? "Skip Break" : "Resume Next Game") {
                 handleSkipTimedPhase()
             }
             .font(.headline.weight(.semibold))
@@ -2513,6 +2555,29 @@ struct MatchScoringView: View {
     @ViewBuilder
     private var matchSettingsContent: some View {
         VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Players")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("Player 1 first name", text: $gameSettingsForm.player1Name)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Player 1 surname", text: $gameSettingsForm.player1Surname)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Player 2 first name", text: $gameSettingsForm.player2Name)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Player 2 surname", text: $gameSettingsForm.player2Surname)
+                    .textFieldStyle(.roundedBorder)
+                if isTennisDoublesMatch {
+                    TextField("Team 1 · Player 2 first name", text: $gameSettingsForm.team1Player2Name)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Team 1 · Player 2 surname", text: $gameSettingsForm.team1Player2Surname)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Team 2 · Player 2 first name", text: $gameSettingsForm.team2Player2Name)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Team 2 · Player 2 surname", text: $gameSettingsForm.team2Player2Surname)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
             VStack(alignment: .leading, spacing: 8) {
                 Text("Match Format")
                     .font(.caption.weight(.semibold))
@@ -2780,28 +2845,59 @@ struct MatchScoringView: View {
 
     private func openGameSettings() {
         let currentMatch = match
+        let player1Primary = live?.tennisTeams?["player1"]?.first
+        let player2Primary = live?.tennisTeams?["player2"]?.first
         selectedSheetSection = .settings
         gameSettingsForm = MatchGameSettingsForm(
             scoreType: currentMatch?.scoreType ?? live?.scoreType ?? 15,
             bestOf: currentMatch?.bestOf ?? live?.bestOf ?? 5,
+            player1Name: player1Primary?.firstName ?? currentMatch?.player1Name ?? "",
+            player1Surname: player1Primary?.surname ?? currentMatch?.player1Surname ?? "",
             player1ShirtColor: currentMatch?.player1ShirtColor
                 ?? live?.player1ShirtColor
                 ?? "navy",
+            player2Name: player2Primary?.firstName ?? currentMatch?.player2Name ?? "",
+            player2Surname: player2Primary?.surname ?? currentMatch?.player2Surname ?? "",
             player2ShirtColor: currentMatch?.player2ShirtColor
                 ?? live?.player2ShirtColor
-                ?? "white"
+                ?? "white",
+            team1Player2Name: live?.tennisTeams?["player1"]?.dropFirst().first?.firstName ?? "",
+            team1Player2Surname: live?.tennisTeams?["player1"]?.dropFirst().first?.surname ?? "",
+            team2Player2Name: live?.tennisTeams?["player2"]?.dropFirst().first?.firstName ?? "",
+            team2Player2Surname: live?.tennisTeams?["player2"]?.dropFirst().first?.surname ?? ""
         )
         showGameSettingsSheet = true
     }
 
     private func saveGameSettings() async {
-        await performQueuedMutation {
-            container.offlineMatchStore.enqueue(
-                kind: .matchSettings,
+        guard isOnline else {
+            errorMessage = "Connect to the internet to change player details."
+            return
+        }
+        guard !gameSettingsForm.player1Name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !gameSettingsForm.player2Name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !isTennisDoublesMatch || (
+                !gameSettingsForm.team1Player2Name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !gameSettingsForm.team2Player2Name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+              ) else {
+            errorMessage = "Every player requires a first name."
+            return
+        }
+
+        await performMutation {
+            try await container.apiClient.updateMatchSettings(
                 matchID: matchID,
                 scoreType: gameSettingsForm.scoreType,
                 bestOf: gameSettingsForm.bestOf,
+                player1Name: gameSettingsForm.player1Name.trimmingCharacters(in: .whitespacesAndNewlines),
+                player1Surname: gameSettingsForm.player1Surname.trimmingCharacters(in: .whitespacesAndNewlines),
                 player1ShirtColor: canChoosePlayerShirtColors ? gameSettingsForm.player1ShirtColor : nil,
+                player2Name: gameSettingsForm.player2Name.trimmingCharacters(in: .whitespacesAndNewlines),
+                player2Surname: gameSettingsForm.player2Surname.trimmingCharacters(in: .whitespacesAndNewlines),
+                team1Player2Name: isTennisDoublesMatch ? gameSettingsForm.team1Player2Name.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+                team1Player2Surname: isTennisDoublesMatch ? gameSettingsForm.team1Player2Surname.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+                team2Player2Name: isTennisDoublesMatch ? gameSettingsForm.team2Player2Name.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+                team2Player2Surname: isTennisDoublesMatch ? gameSettingsForm.team2Player2Surname.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
                 player2ShirtColor: canChoosePlayerShirtColors ? gameSettingsForm.player2ShirtColor : nil
             )
         }
@@ -2871,9 +2967,10 @@ struct MatchScoringView: View {
                 MatchTimerPhase.warmupReady,
                 .warmupSideOne,
                 .warmupSideTwo,
+                .gameReady,
                 .interval
             ].contains(storedState.phase)
-            if live?.tennisTimedBreaks == true || !optionalTimerPhase {
+            if live?.tennisTimedBreaks == true || storedState.phase == .gameReady || (!isTennisMatch && storedState.phase == .interval) || !optionalTimerPhase {
                 let advancedState = advanceTimerSnapshot(storedState)
                 timerPhase = advancedState.phase
                 timerSeconds = advancedState.seconds
@@ -2903,7 +3000,7 @@ struct MatchScoringView: View {
         }
 
         if isFreshMatch(match) {
-            timerPhase = .firstServer
+            timerPhase = .gameReady
             timerSeconds = 0
             matchDurationSeconds = 0
             timerRunning = false
@@ -2928,11 +3025,11 @@ struct MatchScoringView: View {
         if currentCount > previousCount {
             previousGameHistoryCount = currentCount
 
-            if !isTennisMatch && !isMatchComplete && live?.tennisTimedBreaks == true {
+            if !isTennisMatch && !isMatchComplete {
                 timerPhase = .interval
-                timerSeconds = intervalSeconds
-                activeIntervalDurationSeconds = intervalSeconds
-                timerRunning = true
+                timerSeconds = matchDurationSeconds
+                activeIntervalDurationSeconds = 0
+                timerRunning = false
             }
             return
         }
@@ -3055,7 +3152,7 @@ struct MatchScoringView: View {
             if timerSeconds == 0 {
                 handleElapsedTimedPhase()
             }
-        case .warmupReady, .firstServer:
+        case .warmupReady, .gameReady, .firstServer:
             timerRunning = false
         }
     }
@@ -3064,7 +3161,7 @@ struct MatchScoringView: View {
         switch timerPhase {
         case .warmupSideOne:
             if isTennisMatch {
-                timerPhase = .firstServer
+                timerPhase = .gameReady
                 timerSeconds = 0
                 timerRunning = false
             } else {
@@ -3073,14 +3170,14 @@ struct MatchScoringView: View {
                 timerRunning = true
             }
         case .warmupSideTwo:
-            timerPhase = .firstServer
+            timerPhase = .gameReady
             timerSeconds = 0
             timerRunning = false
         case .interval:
             timerPhase = .matchLive
             timerSeconds = matchDurationSeconds
             timerRunning = true
-        case .warmupReady, .firstServer, .matchLive:
+        case .warmupReady, .gameReady, .firstServer, .matchLive:
             break
         }
     }
@@ -3092,6 +3189,11 @@ struct MatchScoringView: View {
 
         if timerPhase == .warmupReady {
             handleStartWarmup()
+            return
+        }
+
+        if timerPhase == .interval && !isTennisMatch {
+            handleSkipTimedPhase()
             return
         }
 
@@ -3110,6 +3212,12 @@ struct MatchScoringView: View {
     }
 
     private func handleSkipWarmup() {
+        timerPhase = .gameReady
+        timerSeconds = 0
+        timerRunning = false
+    }
+
+    private func handleStartGame() {
         timerPhase = .firstServer
         timerSeconds = 0
         timerRunning = false
@@ -3118,7 +3226,7 @@ struct MatchScoringView: View {
     private func handleSkipTimedPhase() {
         switch timerPhase {
         case .warmupSideOne, .warmupSideTwo:
-            timerPhase = .firstServer
+            timerPhase = .gameReady
             timerSeconds = 0
             timerRunning = false
         case .interval:
@@ -3842,7 +3950,7 @@ struct MatchScoringView: View {
             case .warmupSideOne:
                 if seconds <= 0 {
                     if isTennisMatch {
-                        phase = .firstServer
+                        phase = .gameReady
                         seconds = 0
                         running = false
                         remainingElapsed = 0
@@ -3855,7 +3963,7 @@ struct MatchScoringView: View {
                 if remainingElapsed >= seconds {
                     remainingElapsed -= seconds
                     if isTennisMatch {
-                        phase = .firstServer
+                        phase = .gameReady
                         seconds = 0
                         running = false
                         remainingElapsed = 0
@@ -3869,7 +3977,7 @@ struct MatchScoringView: View {
                 }
             case .warmupSideTwo:
                 if seconds <= 0 {
-                    phase = .firstServer
+                    phase = .gameReady
                     seconds = 0
                     running = false
                     remainingElapsed = 0
@@ -3877,7 +3985,7 @@ struct MatchScoringView: View {
                 }
                 if remainingElapsed >= seconds {
                     remainingElapsed -= seconds
-                    phase = .firstServer
+                    phase = .gameReady
                     seconds = 0
                     running = false
                     remainingElapsed = 0
@@ -3885,7 +3993,7 @@ struct MatchScoringView: View {
                     seconds -= remainingElapsed
                     remainingElapsed = 0
                 }
-            case .firstServer:
+            case .gameReady, .firstServer:
                 running = false
                 remainingElapsed = 0
             case .interval:

@@ -227,8 +227,12 @@ def _build_scoreboard_payload(connection, court_row, *, display_session_token=No
             "player2_surname": match.get("player2_surname") or "",
             "player1_score": match.get("state", {}).get("player1_score") or 0,
             "player2_score": match.get("state", {}).get("player2_score") or 0,
+            "player1_score_label": match.get("state", {}).get("player1_score_label"),
+            "player2_score_label": match.get("state", {}).get("player2_score_label"),
             "player1_games_won": match.get("state", {}).get("player1_games_won") or 0,
             "player2_games_won": match.get("state", {}).get("player2_games_won") or 0,
+            "player1_set_games": match.get("state", {}).get("player1_set_games"),
+            "player2_set_games": match.get("state", {}).get("player2_set_games"),
             "game_history": match.get("state", {}).get("game_history") or [],
             "updated_at": match.get("updated_at"),
         }
