@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Events that mean scoring has started (after these, the server can't be re-chosen). */
+private val SCORING_EVENTS = setOf("score_point", "stroke", "game_won", "match_won")
+
 data class ScoringUiState(
     val isLoading: Boolean = true,
     val match: MatchDetail? = null,
@@ -56,6 +59,20 @@ data class ScoringUiState(
 
     val scoringAllowed: Boolean get() = match?.scoringAccess?.canScore != false
     val canTakeOverScoring: Boolean get() = match?.scoringAccess?.canTakeOver == true
+
+    /**
+     * The server can be chosen again until the first point (or stroke) is scored: the match
+     * is live, has a server, and no game or rally has been recorded yet.
+     */
+    val canChangeServer: Boolean
+        get() {
+            val m = match ?: return false
+            val live = m.state ?: return false
+            if (!scoringAllowed || isComplete || isScheduled || timer.phase != TimerPhase.MatchLive) return false
+            if (live.currentServerSide.isNullOrBlank()) return false
+            if (live.gameHistory.isNotEmpty() || live.currentGameNumber > 1) return false
+            return live.events.none { it.eventType in SCORING_EVENTS }
+        }
     val canEditMetadata: Boolean get() = scoringAllowed || isMetadataAdmin
 
     val canPlay: Boolean
@@ -388,6 +405,13 @@ class ScoringViewModel(
     fun toggleTimer() {
         if (!mutableState.value.scoringAllowed || mutableState.value.isComplete || mutableState.value.isScheduled) return
         mutableState.update { it.copy(timer = it.timer.togglePause()) }
+        persistTimer()
+    }
+
+    /** Back to the "Who serves first?" choice (from Match Actions, before the first point). */
+    fun changeServer() {
+        if (!mutableState.value.canChangeServer) return
+        mutableState.update { it.copy(timer = it.timer.beginServerSelection()) }
         persistTimer()
     }
 

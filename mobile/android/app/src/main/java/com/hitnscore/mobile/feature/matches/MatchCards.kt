@@ -119,7 +119,7 @@ fun ScheduledMatchCard(
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val court = match.courtName?.trim().orEmpty()
     val format = stringResource(R.string.best_of, match.bestOf ?: 3)
-    // Tapping opens the scorer, where Start begins the scheduled match (as iOS).
+    // Tapping the card opens the match with its Start overlay; ▶ starts it now; ✏ edits it.
     InnerCard(onClick = onClick, shape = RoundedCornerShape(18.dp)) {
       Row(Modifier.padding(end = if (onStart != null) 10.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

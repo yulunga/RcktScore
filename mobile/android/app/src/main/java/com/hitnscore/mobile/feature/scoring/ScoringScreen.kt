@@ -253,9 +253,6 @@ fun ScoringScreen(
                             onTakeOver = { confirmTakeover = true },
                         )
                     }
-                    if (state.isScheduled) {
-                        ScheduledBanner(isMutating = state.isMutating || !state.scoringAllowed, onStart = viewModel::startScheduled)
-                    }
                     if (state.isTennis) {
                         TennisScoreboard(
                             match = match,
@@ -278,6 +275,10 @@ fun ScoringScreen(
                 }
             }
 
+            // A scheduled match: a centred Start overlay over the scoreboard (not a banner).
+            if (match != null && state.isScheduled && !state.isComplete && !showSettings) {
+                ScheduledStartOverlay(match, isMutating = state.isMutating || !state.scoringAllowed, onStart = viewModel::startScheduled)
+            }
             if (match != null && state.scoringAllowed && !state.isComplete && !state.isScheduled) {
                 when (state.timer.phase) {
                     TimerPhase.WarmupReady, TimerPhase.WarmupSideOne, TimerPhase.WarmupSideTwo ->
@@ -308,6 +309,8 @@ fun ScoringScreen(
             onEndEarly = { confirmEnd = true },
             onShareLiveScore = { showShare = true },
             showStrokeLetHelp = strokeLetHelp && !state.isTennis,
+            // Fix a wrong first-server choice; gone once the first point is scored.
+            onChangeServer = if (state.canChangeServer) viewModel::changeServer else null,
         )
     }
     if (showSettings && match != null && state.canEditMetadata) {
@@ -454,6 +457,8 @@ private fun Scoreboard(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(name, color = shirt.onFill, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        // Same height whether or not this player is serving, so both strips line up.
+                        Box(Modifier.height(SERVE_PILL_HEIGHT), contentAlignment = Alignment.Center) {
                         if (serving) {
                             Surface(
                                 onClick = onToggleServeSide,
@@ -465,8 +470,7 @@ private fun Scoreboard(
                             ) {
                                 Text(sideLabel, color = Color.Black, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
                             }
-                        } else {
-                            Spacer(Modifier.height(32.dp))
+                        }
                         }
                     }
                 }
@@ -528,6 +532,9 @@ private fun Scoreboard(
         }
     }
 }
+
+/** Height kept for the serve-side pill under each name, so serving and receiving strips match. */
+private val SERVE_PILL_HEIGHT = 40.dp
 
 /** Width of the point rail between the two score panels on tablets. */
 private val TABLET_RAIL_WIDTH = 200.dp
@@ -941,13 +948,19 @@ private fun SyncBanner(
 }
 
 @Composable
-private fun ScheduledBanner(isMutating: Boolean, onStart: () -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.scheduled_note), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Button(onClick = onStart, enabled = !isMutating, shape = RoundedCornerShape(50)) { Text(stringResource(R.string.start_scheduled)) }
-        }
-    }
+private fun ScheduledStartOverlay(match: MatchDetail, isMutating: Boolean, onStart: () -> Unit) = OverlayCard {
+    Text(stringResource(R.string.scheduled_title), style = MaterialTheme.typography.headlineSmall)
+    Text(
+        "${MatchFormatting.fullName(match.player1Name, match.player1Surname)} ${stringResource(R.string.versus)} ${MatchFormatting.fullName(match.player2Name, match.player2Surname)}",
+        style = MaterialTheme.typography.titleMedium,
+    )
+    Text(stringResource(R.string.scheduled_note), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Button(
+        onClick = onStart,
+        enabled = !isMutating,
+        modifier = Modifier.fillMaxWidth().height(56.dp),
+        shape = RoundedCornerShape(18.dp),
+    ) { Text(stringResource(R.string.start_scheduled)) }
 }
 
 @Composable

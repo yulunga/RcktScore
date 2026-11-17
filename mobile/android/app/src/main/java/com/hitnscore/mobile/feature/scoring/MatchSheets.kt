@@ -41,6 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import com.hitnscore.mobile.R
@@ -67,6 +70,8 @@ fun MatchActionsSheet(
     onShareLiveScore: (() -> Unit)? = null,
     /** ST/L Help is switched on in Game Settings and the account may use it (Personal Plus or club). */
     showStrokeLetHelp: Boolean = false,
+    /** Choose the server again (before the first point only). Null hides it. */
+    onChangeServer: (() -> Unit)? = null,
 ) {
     var pending by rememberSaveable { mutableStateOf<PendingAction?>(null) }
     var helpOpen by rememberSaveable { mutableStateOf(false) }
@@ -89,6 +94,12 @@ fun MatchActionsSheet(
             Text("$p1 ${stringResource(R.string.versus)} $p2", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when (pending) {
                 null -> {
+                    if (onChangeServer != null) {
+                        ActionRow(stringResource(R.string.action_change_server), enabled = !state.isMutating) {
+                            onDismiss()
+                            onChangeServer()
+                        }
+                    }
                     if (onShareLiveScore != null) {
                         ActionRow(stringResource(R.string.share_live_title), enabled = true) {
                             onDismiss()
@@ -186,12 +197,15 @@ fun GameSettingsSheet(
     var team1Player2Surname by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player1")?.getOrNull(1)?.surname.orEmpty()) }
     var team2Player2Name by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player2")?.getOrNull(1)?.firstName.orEmpty()) }
     var team2Player2Surname by rememberSaveable { mutableStateOf(live?.tennisTeams?.get("player2")?.getOrNull(1)?.surname.orEmpty()) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // Opens fully and scrolls, so every setting is reachable on a tablet in landscape.
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 22.dp)
                 .padding(bottom = 16.dp)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .imePadding(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(stringResource(R.string.match_settings), style = MaterialTheme.typography.headlineSmall)

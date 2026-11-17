@@ -723,4 +723,6 @@
     <string name="info_league_game">League Game</string>
     <string name="scheduled_start">Start scheduled match</string>
     <string name="scheduled_starting">Starting scheduled match</string>
+    <string name="action_change_server">Change server</string>
+    <string name="scheduled_title">Scheduled match</string>
 </resources>
