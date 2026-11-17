@@ -32,6 +32,8 @@ struct DashboardView: View {
     @State private var settingsSuccessMessage: String?
     @State private var startingScheduledMatchID: String?
     @State private var navigationTarget: MatchRoute?
+    @State private var scheduledMatchDeletionPrompt: ScheduledMatchDeletionPrompt?
+    @State private var deletingScheduledMatchID: String?
     @State private var activeSheet: DashboardSheet?
     @State private var dashboardNotice: String?
     @State private var transientNotice: String?
@@ -523,7 +525,14 @@ struct DashboardView: View {
             .navigationDestination(item: $navigationTarget) { route in
                 switch route.presentation {
                 case .live(let openSettingsOnLoad):
-                    MatchScoringView(matchID: route.id, openSettingsOnLoad: openSettingsOnLoad)
+                    MatchScoringView(
+                        matchID: route.id,
+                        openSettingsOnLoad: openSettingsOnLoad,
+                        onScheduledMatchSaved: {
+                            navigationTarget = nil
+                            Task { await loadDashboard() }
+                        }
+                    )
                 case .historic:
                     HistoricMatchView(matchID: route.id)
                 }
@@ -635,6 +644,16 @@ struct DashboardView: View {
             }
             .alert(item: $accountDeletionPrompt) { prompt in
                 accountDeletionAlert(for: prompt)
+            }
+            .alert(item: $scheduledMatchDeletionPrompt) { prompt in
+                Alert(
+                    title: Text("Delete scheduled match?"),
+                    message: Text("\(prompt.playerNames) will be removed from the club schedule. This cannot be undone in the app."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        Task { await deleteScheduledMatch(prompt.match) }
+                    },
+                    secondaryButton: .cancel()
+                )
             }
             .overlay(alignment: .bottom) {
                 if let transientNotice {
@@ -4568,6 +4587,28 @@ struct DashboardView: View {
                 .accessibilityLabel(startingScheduledMatchID == match.id ? "Starting scheduled match" : "Start scheduled match")
                 .disabled(startingScheduledMatchID != nil)
                 .opacity(startingScheduledMatchID != nil ? 0.7 : 1)
+
+                if isAdmin {
+                    Button {
+                        scheduledMatchDeletionPrompt = ScheduledMatchDeletionPrompt(match: match)
+                    } label: {
+                        Group {
+                            if deletingScheduledMatchID == match.id {
+                                ProgressView().tint(.red)
+                            } else {
+                                Image(systemName: "trash")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .frame(width: 38, height: 38)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Delete scheduled match")
+                    .disabled(deletingScheduledMatchID != nil)
+                }
                 }
             } else {
                 Text("Read only")
@@ -4579,6 +4620,21 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.dashboardInnerCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    @MainActor
+    private func deleteScheduledMatch(_ match: MatchSummary) async {
+        guard isAdmin, isOnline, deletingScheduledMatchID == nil else { return }
+        deletingScheduledMatchID = match.id
+        errorMessage = nil
+        do {
+            try await container.apiClient.deleteScheduledMatch(matchID: match.id)
+            await loadDashboard()
+            presentTransientNotice("Scheduled match deleted.")
+        } catch {
+            errorMessage = (error as? APIErrorResponse)?.message ?? "Unable to delete the scheduled match."
+        }
+        deletingScheduledMatchID = nil
     }
 
     private func recentMatchCard(_ match: MatchSummary) -> some View {
@@ -7067,6 +7123,22 @@ private struct ClubSubscriptionEnquiryDraft {
 private struct MatchRoute: Hashable, Identifiable {
     let id: String
     var presentation: MatchPresentation = .live(openSettingsOnLoad: false)
+}
+
+private struct ScheduledMatchDeletionPrompt: Identifiable {
+    let match: MatchSummary
+    var id: String { match.id }
+    var playerNames: String {
+        let player1 = [match.player1Name, match.player1Surname]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let player2 = [match.player2Name, match.player2Surname]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        return "\(player1) vs \(player2)"
+    }
 }
 
 private enum MatchPresentation: Hashable {

@@ -7,8 +7,9 @@ import MatchSportArtwork from "../components/MatchSportArtwork";
 import ClubPageHeader from "../components/ClubPageHeader";
 import { MATCH_SPORT_OPTIONS, getMatchSportOption, getPlayableMatchSports } from "../constants/matchSports";
 import { useAuth } from "../hooks/useAuth";
-import { canManageMatches } from "../utils/accessControl";
+import { canAdministerClub, canManageMatches } from "../utils/accessControl";
 import {
+  deleteScheduledMatch,
   endMatch,
   getDashboard,
   getOrganizationSettings,
@@ -192,6 +193,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState("");
+  const [deletingScheduledMatchId, setDeletingScheduledMatchId] = useState("");
   const [minuteTick, setMinuteTick] = useState(Date.now());
   const [expandedScheduledMatches, setExpandedScheduledMatches] = useState({});
   const [historyPage, setHistoryPage] = useState(0);
@@ -371,6 +373,25 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
     }
   }
 
+  async function handleDeleteScheduledMatch(match) {
+    const playerNames = formatPlayers(match);
+    if (!window.confirm(`Delete the scheduled match ${playerNames}? This removes it from the club schedule and cannot be undone in the app.`)) {
+      return;
+    }
+
+    setActionError("");
+    setDeletingScheduledMatchId(match.id);
+    try {
+      await deleteScheduledMatch(match.id);
+      const response = await getDashboard(session.organization_id);
+      setDashboard(response.dashboard || null);
+    } catch (requestError) {
+      setActionError(requestError.message || "Failed to delete scheduled match.");
+    } finally {
+      setDeletingScheduledMatchId("");
+    }
+  }
+
   function handleCloseSportOverlay() {
     setShowSportOverlay(false);
     if (location.pathname === "/dashboard" && location.hash === "#new-match") {
@@ -427,6 +448,7 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
   const organizationType = organization.type || inferOrganizationType(session);
   const organizationPlan = organization.plan || session?.plan || (organizationType === "personal" ? "personal_free" : "club_essentials");
   const isPersonalAccount = organizationType === "personal";
+  const canDeleteClubScheduledMatches = !isPersonalAccount && canAdministerClub(session);
   const isPersonalPlus = isPersonalAccount && organizationPlan === "personal_plus";
   const historyLimit = organization.history_limit;
   const historyTitle = screenMode === "dashboard" ? "Recent Matches" : "Match History";
@@ -706,6 +728,16 @@ export default function DashboardPage({ screenMode = "dashboard" }) {
                 >
                   Edit Game
                 </button>
+                {canDeleteClubScheduledMatches ? (
+                  <button
+                    className="danger dashboard-scheduled-card__delete"
+                    disabled={deletingScheduledMatchId === match.id}
+                    type="button"
+                    onClick={() => handleDeleteScheduledMatch(match)}
+                  >
+                    {deletingScheduledMatchId === match.id ? "Deleting…" : "Delete Game"}
+                  </button>
+                ) : null}
               </div> : null}
             </div>
           ) : null}

@@ -117,9 +117,12 @@ fun HomeScreen(session: SessionState.SignedIn, state: ShellUiState, actions: She
                         ) { match ->
                             ScheduledMatchCard(
                                 match,
-                                onClick = { actions.onOpenMatch(match) },
+                                onClick = { actions.onEditScheduled(match) },
                                 onStart = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onStartScheduled(match) }) else null,
                                 isStarting = state.startingMatchId == match.matchId,
+                                onEdit = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onEditScheduled(match) }) else null,
+                                onDelete = if (ClubRoles.normalize(session.activeContext.role) == ClubRoles.ADMIN) ({ actions.onDeleteScheduled(match) }) else null,
+                                isDeleting = state.deletingScheduledMatchId == match.matchId,
                             )
                         }
                     }

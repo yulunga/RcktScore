@@ -81,6 +81,7 @@ class ShellViewModelTest {
         override suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups> = error("unused")
         override suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> = error("unused")
+        override suspend fun deleteScheduledMatch(matchId: String): ApiResult<Boolean> = error("unused")
         override suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail> = error("unused")
         override suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail> = error("unused")

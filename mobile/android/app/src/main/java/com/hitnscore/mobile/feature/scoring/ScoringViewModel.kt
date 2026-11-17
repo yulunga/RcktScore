@@ -326,6 +326,7 @@ class ScoringViewModel(
         team2Player2Name: String,
         team2Player2Surname: String,
         player2Shirt: String,
+        onSaved: (() -> Unit)? = null,
     ) {
         val state = mutableState.value
         if (!state.canEditMetadata || state.isMutating) return
@@ -363,6 +364,7 @@ class ScoringViewModel(
                 is ApiResult.Success -> {
                     owner()?.let { offlineStore.cache(result.value, it) }
                     apply(result.value, bootstrap = false)
+                    onSaved?.invoke()
                 }
                 is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
             }

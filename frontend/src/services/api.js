@@ -104,6 +104,12 @@ export function startScheduledMatch(payload) {
   });
 }
 
+export function deleteScheduledMatch(matchId) {
+  return apiRequest(`/matches/${matchId}/schedule`, {
+    method: "DELETE",
+  });
+}
+
 export function takeOverMatchScoring(matchId) {
   return apiRequest(`/matches/${matchId}/scorer-lock/takeover`, {
     method: "POST",

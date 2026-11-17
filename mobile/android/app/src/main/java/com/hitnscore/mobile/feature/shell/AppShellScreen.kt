@@ -101,6 +101,8 @@ fun AppShellScreen(
             onStartScheduled = { match ->
                 shellViewModel.startScheduled(match.matchId) { id -> navController.navigate(ShellRoutes.score(id)) }
             },
+            onEditScheduled = { match -> navController.navigate(ShellRoutes.score(match.matchId, edit = true)) },
+            onDeleteScheduled = { match -> shellViewModel.deleteScheduled(match.matchId) },
         )
     }
 

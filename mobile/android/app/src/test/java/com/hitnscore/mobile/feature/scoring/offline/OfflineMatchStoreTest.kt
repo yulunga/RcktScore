@@ -69,6 +69,7 @@ class OfflineMatchStoreTest {
         override suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups> = error("unused")
         override suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail> = error("unused")
         override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> = error("unused")
+        override suspend fun deleteScheduledMatch(matchId: String): ApiResult<Boolean> = error("unused")
         override suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail> = error("unused")
         override suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail> = ApiResult.Success(server)
         override suspend fun undo(request: MatchIdRequest): ApiResult<MatchDetail> = error("unused")

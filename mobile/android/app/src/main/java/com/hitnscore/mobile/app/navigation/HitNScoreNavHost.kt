@@ -46,7 +46,7 @@ import com.hitnscore.mobile.feature.watch.WatchMatchScreen
 object ShellRoutes {
     const val NEW_MATCH = "newmatch"
     const val SETUP = "newmatch/{sport}"
-    const val SCORE = "score/{matchId}"
+    const val SCORE = "score/{matchId}?edit={edit}"
     const val MATCH = "match/{matchId}"
     const val NOTIFICATIONS = "notifications"
     const val SETTINGS_PAGE = "settings/{page}?org={org}"
@@ -54,7 +54,7 @@ object ShellRoutes {
 
     fun match(matchId: String) = "match/${Uri.encode(matchId)}"
     fun setup(sport: String) = "newmatch/$sport"
-    fun score(matchId: String) = "score/${Uri.encode(matchId)}"
+    fun score(matchId: String, edit: Boolean = false) = "score/${Uri.encode(matchId)}?edit=$edit"
     fun watch(code: String) = "watch/${Uri.encode(code)}"
 
     /** Full-screen flows hide the bottom bar and the Start button. */
@@ -170,10 +170,15 @@ fun HitNScoreTabNavHost(
                 },
             )
         }
-        composable(ShellRoutes.SCORE) { entry ->
+        composable(
+            ShellRoutes.SCORE,
+            arguments = listOf(navArgument("edit") { type = NavType.BoolType; defaultValue = false }),
+        ) { entry ->
             val matchId = entry.arguments?.getString("matchId").orEmpty()
+            val editScheduled = entry.arguments?.getBoolean("edit") == true
             ScoringScreen(
                 matchId = matchId,
+                openSettingsOnLoad = editScheduled,
                 isOnline = currentState.isOnline,
                 isPersonalAccount = currentSession.activeContext.type == AccountContextType.Personal,
                 isPersonalPlus = currentState.isPersonalPlus(currentSession) || currentSession.hasPersonalPlus(),
@@ -187,6 +192,10 @@ fun HitNScoreTabNavHost(
                         popUpTo(ShellRoutes.SCORE) { inclusive = true }
                     }
                 },
+                onScheduledSettingsSaved = if (editScheduled) ({
+                    currentActions.onRefresh()
+                    navController.popBackStack()
+                }) else null,
             )
         }
         composable(ShellRoutes.MATCH) { entry ->

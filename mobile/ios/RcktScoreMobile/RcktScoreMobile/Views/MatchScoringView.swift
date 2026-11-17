@@ -133,6 +133,7 @@ struct MatchScoringView: View {
 
     let matchID: String
     let openSettingsOnLoad: Bool
+    let onScheduledMatchSaved: (() -> Void)?
 
     @State private var wristScorerID = UUID()
     @State private var wristScore: WristScore?
@@ -960,9 +961,14 @@ struct MatchScoringView: View {
         ]
     }
 
-    init(matchID: String, openSettingsOnLoad: Bool = false) {
+    init(
+        matchID: String,
+        openSettingsOnLoad: Bool = false,
+        onScheduledMatchSaved: (() -> Void)? = nil
+    ) {
         self.matchID = matchID
         self.openSettingsOnLoad = openSettingsOnLoad
+        self.onScheduledMatchSaved = onScheduledMatchSaved
     }
 
     @ViewBuilder
@@ -2870,6 +2876,7 @@ struct MatchScoringView: View {
     }
 
     private func saveGameSettings() async {
+        let wasScheduledMatch = isScheduledMatch
         guard isOnline else {
             errorMessage = "Connect to the internet to change player details."
             return
@@ -2905,6 +2912,10 @@ struct MatchScoringView: View {
         await MainActor.run {
             if errorMessage == nil {
                 showGameSettingsSheet = false
+                if wasScheduledMatch {
+                    onScheduledMatchSaved?()
+                    dismiss()
+                }
             }
         }
     }

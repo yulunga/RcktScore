@@ -37,9 +37,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.hitnscore.mobile.R
 import com.hitnscore.mobile.core.designsystem.components.InnerCard
 import com.hitnscore.mobile.core.designsystem.components.StatusDot
@@ -107,7 +112,11 @@ fun ScheduledMatchCard(
     /** Play: start the match now (scorers and admins). Null hides the button. */
     onStart: (() -> Unit)? = null,
     isStarting: Boolean = false,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+    isDeleting: Boolean = false,
 ) {
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val court = match.courtName?.trim().orEmpty()
     val format = stringResource(R.string.best_of, match.bestOf ?: 3)
     // Tapping opens the scorer, where Start begins the scheduled match (as iOS).
@@ -156,7 +165,46 @@ fun ScheduledMatchCard(
                 }
             }
         }
+        if (onEdit != null) {
+            Surface(
+                onClick = onEdit,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                modifier = Modifier.size(42.dp).semantics { contentDescription = "Edit scheduled match" },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(painterResource(R.drawable.ic_edit), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+                }
+            }
+        }
+        if (onDelete != null) {
+            Surface(
+                onClick = { confirmDelete = true },
+                enabled = !isDeleting,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                modifier = Modifier.size(42.dp).semantics { contentDescription = "Delete scheduled match" },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isDeleting) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("×", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
       }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete scheduled match?") },
+            text = { Text("This match will be removed from the club schedule and cannot be undone in the app.") },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDelete?.invoke() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
     }
 }
 

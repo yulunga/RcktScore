@@ -776,6 +776,7 @@ export default function MatchScreen() {
 
   async function handleSaveGameSettings(event) {
     event.preventDefault();
+    const wasScheduledMatch = currentMatch?.status === "scheduled";
     const settingsPayload = {
       score_type: Number(gameSettingsForm.score_type),
       best_of: Number(gameSettingsForm.best_of),
@@ -802,6 +803,9 @@ export default function MatchScreen() {
     if (updatedMatch) {
       setOpenSettingsShirtPicker("");
       setShowGameSettingsOverlay(false);
+      if (wasScheduledMatch) {
+        navigate("/matches#scheduled-matches-section", { replace: true });
+      }
     }
   }
 

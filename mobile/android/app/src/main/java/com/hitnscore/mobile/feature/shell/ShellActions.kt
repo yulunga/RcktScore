@@ -18,4 +18,8 @@ data class ShellActions(
     val onSignOut: () -> Unit = {},
     /** Play on a scheduled match: start it on the server, then open the scorer (as iOS). */
     val onStartScheduled: (MatchSummary) -> Unit = {},
+    /** Edit a scheduled fixture without starting it. */
+    val onEditScheduled: (MatchSummary) -> Unit = {},
+    /** Club administrators only: remove an ordinary scheduled fixture. */
+    val onDeleteScheduled: (MatchSummary) -> Unit = {},
 )

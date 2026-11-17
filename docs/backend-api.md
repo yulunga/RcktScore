@@ -537,6 +537,7 @@ Current organisation-settings behavior:
 
 - `POST /start_match`
 - `POST /start_scheduled_match`
+- `DELETE /matches/{match_id}/schedule` requires the active club membership to have `club.settings.write` (administrator). It row-locks the match, accepts only an unarchived ordinary club match whose status is still `scheduled`, and soft-deletes it with `is_archived`/`archived_at`. Active, completed, Personal, cross-tenant and tournament-linked fixtures are rejected; tournament fixtures must be resolved through Tournament Manager
 - `GET /get_score/{match_id}`
 - `GET /match_display_access/{match_id}`
 - `POST /match_watch/lookup`
@@ -782,6 +783,7 @@ Current behavior:
 
 - create: [functions/create_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/create_match/handler.py)
 - start scheduled: [functions/start_scheduled_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/start_scheduled_match/handler.py)
+- delete scheduled club match: [functions/delete_scheduled_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/delete_scheduled_match/handler.py)
 - load match: [functions/get_match/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/get_match/handler.py)
 - score point: [functions/score_point/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/score_point/handler.py)
 - event action: [functions/event_action/handler.py](/Users/glennrowe/Development/Projects/RcktScore/backend/functions/event_action/handler.py)
@@ -794,6 +796,7 @@ Current behavior:
 - these routes are backend-authorized against the match tenant through `authorize_match_session(...)`
 - an active club match is assigned to the membership that creates or activates it. Match responses include `scoring_access` with `locked`, `is_owner`, `can_score`, and `can_take_over`; a different scorer receives `409 MATCH_SCORER_LOCKED` on every mutation even if an older client still renders enabled controls
 - `POST /event_action` with `action_type = "match_settings"` is the narrow metadata exception to that lock. While the match is scheduled, any match-capable scorer/admin may correct all singles/doubles participant names without claiming the future scorer lock. Once active, the assigned scorer and any current club administrator may make those corrections; an administrator does not take over the scoring lock. Score, Undo, event and completion mutations remain owner-only until the audited takeover route is used, and unrelated non-admin scorers remain blocked on an active match
+- web, iOS and Android treat scheduled editing as management rather than activation: saving player names, shirt colours, game/set format or best-of format returns to the Scheduled list, and only `POST /start_scheduled_match` enters the live scorer
 - `POST /matches/{match_id}/scorer-lock/takeover` transfers the lock only for a club `admin`, returns the updated match, and records the previous/new membership in the append-only `match_scorer_lock_audit`. Admins must call this endpoint explicitly before mutating a match owned by another scorer; ordinary scorers cannot transfer the lock
 - migration `060_club_match_scorer_lock.sql` adds the lock and audit. Existing active club matches with no owner are atomically claimed by the first authorised match mutation after deployment; personal matches are not locked
 - `scoring_access` is membership-specific and is never included in the shared WebSocket broadcast payload; each client retains or reloads the access state produced by its own authenticated match request

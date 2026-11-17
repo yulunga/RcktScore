@@ -826,6 +826,18 @@ private struct DeletedAccountResponseData: Decodable {
     let deleted: Bool
 }
 
+private struct ScheduledMatchDeleteResponseData: Decodable {
+    let deletedMatch: DeletedScheduledMatch
+
+    enum CodingKeys: String, CodingKey {
+        case deletedMatch = "deletedMatch"
+    }
+}
+
+private struct DeletedScheduledMatch: Decodable {
+    let id: String
+}
+
 struct EndMatchRequest: Encodable {
     let matchID: String
     let endedEarly: Bool
@@ -1821,6 +1833,11 @@ final class APIClient {
             body: MatchIDRequest(matchID: matchID)
         )
         return try await unwrapMatchResponse(request)
+    }
+
+    func deleteScheduledMatch(matchID: String) async throws {
+        let request = try makeRequest(path: "/matches/\(matchID)/schedule", method: "DELETE")
+        let _: APIEnvelope<ScheduledMatchDeleteResponseData> = try await send(request)
     }
 
     func updateMatchSettings(

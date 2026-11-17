@@ -48,6 +48,7 @@ Use this checklist after UI changes and before releases.
 - Confirm an ordinary scorer never sees a takeover action and cannot call the takeover endpoint successfully
 - Create a scheduled club match, activate it as Scorer A and repeat the ownership checks; also confirm Personal Free and Personal Plus matches remain unaffected
 - Before activation, edit the scheduled match as both a scorer and admin and correct every singles/doubles player name; confirm the edit does not assign `scoring_owner_membership_id`. Once active, confirm the assigned scorer and an admin can correct names, while Scorer B remains blocked and an admin correction does not transfer ownership
+- Change the scheduled fixture's names, game/set format and best-of format on web, iOS and Android; saving must return to Scheduled without starting the match. Confirm only Start activates it. Confirm Delete is admin-only, confirmation-protected and removes an ordinary scheduled fixture, while a tournament-linked fixture is refused
 - Test an active club match created before migration 060 and confirm the first authorised post-deployment mutation claims it once without duplicate audit rows
 - On iOS and Android, open a match while online, then lose connectivity; confirm a non-owner device cannot queue new local points after it has received the locked state and that server reconciliation rejects any stale queued mutation
 

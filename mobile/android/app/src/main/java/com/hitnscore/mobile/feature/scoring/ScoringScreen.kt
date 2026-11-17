@@ -117,6 +117,8 @@ fun ScoringScreen(
     isOnline: Boolean,
     onBack: () -> Unit,
     onOpenMatchView: (String) -> Unit,
+    openSettingsOnLoad: Boolean = false,
+    onScheduledSettingsSaved: (() -> Unit)? = null,
     /** Personal accounts need Personal Plus for remote viewing (as iOS). */
     isPersonalAccount: Boolean = false,
     /** Personal Plus on any membership: completed serve metrics and ST/L Help. */
@@ -130,7 +132,7 @@ fun ScoringScreen(
     val haptics = LocalHapticFeedback.current
     var showActions by rememberSaveable { mutableStateOf(false) }
     var showShare by rememberSaveable { mutableStateOf(false) }
-    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(openSettingsOnLoad) }
     var confirmEnd by rememberSaveable { mutableStateOf(false) }
     var confirmTakeover by rememberSaveable { mutableStateOf(false) }
     val appContext = LocalContext.current
@@ -313,7 +315,16 @@ fun ScoringScreen(
             match = match,
             isTennis = state.isTennis,
             onDismiss = { showSettings = false },
-            onSave = viewModel::saveSettings,
+            onSave = { scoreType, bestOf, player1Name, player1Surname, player1Shirt,
+                       player2Name, player2Surname, team1Player2Name, team1Player2Surname,
+                       team2Player2Name, team2Player2Surname, player2Shirt ->
+                viewModel.saveSettings(
+                    scoreType, bestOf, player1Name, player1Surname, player1Shirt,
+                    player2Name, player2Surname, team1Player2Name, team1Player2Surname,
+                    team2Player2Name, team2Player2Surname, player2Shirt,
+                    onSaved = if (state.isScheduled) onScheduledSettingsSaved else null,
+                )
+            },
             onShareLiveScore = { showShare = true },
         )
     }

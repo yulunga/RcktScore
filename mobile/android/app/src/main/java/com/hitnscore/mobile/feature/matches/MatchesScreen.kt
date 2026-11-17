@@ -170,9 +170,12 @@ fun MatchesScreen(session: SessionState.SignedIn, state: ShellUiState, isPersona
                             MatchSection(dashboard?.scheduledMatches.orEmpty(), state.isLoading, stringResource(R.string.empty_scheduled)) {
                                 ScheduledMatchCard(
                                     it,
-                                    onClick = { actions.onOpenMatch(it) },
+                                    onClick = { actions.onEditScheduled(it) },
                                     onStart = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onStartScheduled(it) }) else null,
                                     isStarting = state.startingMatchId == it.matchId,
+                                    onEdit = if (ClubRoles.canManageMatches(session.activeContext.role)) ({ actions.onEditScheduled(it) }) else null,
+                                    onDelete = if (ClubRoles.normalize(session.activeContext.role) == ClubRoles.ADMIN) ({ actions.onDeleteScheduled(it) }) else null,
+                                    isDeleting = state.deletingScheduledMatchId == it.matchId,
                                 )
                             }
                         }

@@ -139,6 +139,8 @@ Record each case as **Not run / Pass / Fail / Blocked / N/A**. A group passes on
 | MAT-05 | Search by player name, surname, winner and sport; try mixed case and no-match text. | Matching results are correct and case-insensitive; useful no-results state; clear restores results. |
 | MAT-06 | Combine text, sport, single date and date range; clear filters; paginate. | All filters apply together; boundaries include expected matches; no duplicates/skipped entries; History has up to 20 cards per page (ten desktop rows). |
 | MAT-07 | As a club scorer and admin, edit an unstarted scheduled singles match and a doubles match, changing every player name; then repeat while the assigned scorer is running the match. | Scheduled edits save without claiming the future scorer lock. All singles/doubles names update across scoring and display views. During play the assigned scorer or an admin may correct metadata, but an unrelated scorer remains locked and an admin correction does not take over scoring. |
+| MAT-08 | Edit an ordinary scheduled club match on web, iOS and Android; change player names plus game/set and best-of formats, then save. | Each client returns to Scheduled. The match remains scheduled, its clock is stopped and the live scorer does not open until Start is pressed. |
+| MAT-09 | As a scorer, then as an admin, inspect and attempt to delete ordinary and tournament-linked scheduled club matches. | Scorers have no Delete action. Admin Delete requires confirmation and removes an ordinary fixture from Scheduled; active/completed and tournament-linked fixtures are rejected, with tournament fixtures directed to Tournament Manager. |
 
 ### Analytics
 

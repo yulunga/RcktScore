@@ -21,6 +21,13 @@ import com.hitnscore.mobile.data.model.MatchSetupLookups
 import com.hitnscore.mobile.data.model.ScorePointRequest
 import java.net.URLEncoder
 import com.hitnscore.mobile.core.network.ApiResult
+import kotlinx.serialization.Serializable
+
+@Serializable
+private data class DeletedScheduledMatch(val id: String)
+
+@Serializable
+private data class ScheduledMatchDeleteResponseData(val deletedMatch: DeletedScheduledMatch)
 
 /** Read-only backend calls for M2. An interface so ViewModels can be tested with fakes. */
 interface HitNScoreApi {
@@ -36,6 +43,7 @@ interface HitNScoreApi {
     suspend fun setupLookup(organizationId: Int, query: String): ApiResult<MatchSetupLookups>
     suspend fun createMatch(request: CreateMatchRequest): ApiResult<MatchDetail>
     suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail>
+    suspend fun deleteScheduledMatch(matchId: String): ApiResult<Boolean>
     suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail>
     suspend fun scorePoint(request: ScorePointRequest): ApiResult<MatchDetail>
     suspend fun eventAction(request: EventActionRequest): ApiResult<MatchDetail>
@@ -91,6 +99,10 @@ class RemoteHitNScoreApi(private val client: ApiClient) : HitNScoreApi {
     override suspend fun startScheduledMatch(matchId: String): ApiResult<MatchDetail> =
         client.post("start_scheduled_match", MatchIdRequest(matchId), MatchIdRequest.serializer(), MatchResponseData.serializer())
             .map { it.match }
+
+    override suspend fun deleteScheduledMatch(matchId: String): ApiResult<Boolean> =
+        client.delete("matches/$matchId/schedule", ScheduledMatchDeleteResponseData.serializer())
+            .map { it.deletedMatch.id == matchId }
 
     override suspend fun takeOverMatchScoring(matchId: String): ApiResult<MatchDetail> =
         client.post(

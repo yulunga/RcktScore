@@ -309,6 +309,18 @@ Resources:
             Path: /start_scheduled_match
             Method: POST
 
+  DeleteScheduledMatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: functions/delete_scheduled_match/handler.lambda_handler
+      Events:
+        DeleteScheduledMatch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref RcktScoreHttpApi
+            Path: /matches/{match_id}/schedule
+            Method: DELETE
+
   TakeOverMatchScoringFunction:
     Type: AWS::Serverless::Function
     Properties:

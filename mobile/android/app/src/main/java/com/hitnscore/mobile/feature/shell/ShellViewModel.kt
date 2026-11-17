@@ -41,6 +41,7 @@ data class ShellUiState(
     val notifications: List<AppNotification> = emptyList(),
     /** The scheduled match being started from its Play button. */
     val startingMatchId: String? = null,
+    val deletingScheduledMatchId: String? = null,
     /** A delete in Notifications failed; the messages are back in the list. */
     val notificationError: String? = null,
     val matchesCategory: MatchesCategory = MatchesCategory.Current,
@@ -131,6 +132,22 @@ class ShellViewModel(
                 }
                 is ApiResult.Failure -> mutableState.update { it.copy(startingMatchId = null, errorMessage = result.error.message) }
             }
+        }
+    }
+
+    fun deleteScheduled(matchId: String) {
+        if (mutableState.value.deletingScheduledMatchId != null) return
+        if (!mutableState.value.isOnline) {
+            mutableState.update { it.copy(errorMessage = "Connect to the internet to delete a scheduled match.") }
+            return
+        }
+        mutableState.update { it.copy(deletingScheduledMatchId = matchId, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = api.deleteScheduledMatch(matchId)) {
+                is ApiResult.Success -> refreshQuietly()
+                is ApiResult.Failure -> mutableState.update { it.copy(errorMessage = result.error.message) }
+            }
+            mutableState.update { it.copy(deletingScheduledMatchId = null) }
         }
     }
 
